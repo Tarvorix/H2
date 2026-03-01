@@ -1,0 +1,147 @@
+{
+  "id": "saturnine-terminator-squad",
+  "name": "Saturnine Terminator Squad",
+  "titles": "Saturnine Terminator Squad",
+  "lore": "First seen in numbers on the black sands of Isstvan V, the pattern of Saturnine armour developed by Vulkan stands bulkier and more ponderous than the more widely-utilised Cataphractii and Tartaros patterns of Tactical Dreadnought armour. Mounting an array of fearsome energy weapons, combined with complex and potent energy shielding, those warriors capable of wearing such armour see the already legendary resilience of a Legionary improved significantly, allowing them to stride through the fires of battle with impunity.",
+  "basePoints": 200,
+  "battlefieldRole": "Heavy Assault",
+  "modelDefinitions": [
+    {
+      "name": "Saturnine Terminator Sergeant",
+      "baseSizeMM": 50,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 5,
+        "WS": 4,
+        "BS": 4,
+        "S": 4,
+        "T": 6,
+        "W": 3,
+        "I": 3,
+        "A": 2,
+        "LD": 8,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Saturnine Terminator",
+      "baseSizeMM": 50,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 5,
+        "WS": 4,
+        "BS": 4,
+        "S": 4,
+        "T": 6,
+        "W": 3,
+        "I": 3,
+        "A": 2,
+        "LD": 8,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 3,
+  "maxModels": 6,
+  "pointsPerAdditionalModel": 60,
+  "defaultWargear": [
+    "plasma-bombard",
+    "saturnine-disruption-fist",
+    "occulix-targeting-auspex",
+    "thermal-diffraction-field"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its Saturnine disruption fist exchanged for one of the following:",
+      "removes": [
+        "saturnine-disruption-fist"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Plasma bombard Free",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Twin heavy disintegrator +10 Points per Model",
+      "adds": [
+        "twin-heavy-disintegrator"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its plasma bombard exchanged for one twin heavy disintegrator for +10 Points per Model.",
+      "removes": [
+        "plasma-bombard"
+      ],
+      "adds": [
+        "twin-heavy-disintegrator-for-10-points-per-model"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Any Model in this Unit with a Saturnine disruption fist may have one particle shredder selected for it for +5 Points per Model.",
+      "adds": [
+        "one-particle-shredder-selected-for-it-for-5-points-per-model"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Bulky",
+      "value": "4"
+    },
+    {
+      "name": "Explodes",
+      "value": "6+"
+    },
+    {
+      "name": "Implacable Advance"
+    },
+    {
+      "name": "Slow and Purposeful"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Sergeant",
+    "Heavy"
+  ]
+}

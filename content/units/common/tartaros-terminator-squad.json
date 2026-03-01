@@ -1,0 +1,176 @@
+{
+  "id": "tartaros-terminator-squad",
+  "name": "Tartaros Terminator Squad",
+  "titles": "Tartaros Terminator Squad",
+  "lore": "The fruition of the Tactical Dreadnought Armour project, Terminator suits are the ultimate advance in personal armour technology the Imperium has developed. Terminator armour-equipped units are particularly valuable in heavy close-quarter fighting, such as battles fought in the deep confines of hive cities or in starship boarding actions. Perhaps the most advanced form of Terminator armour ever designed, Tartaros armour offers greater durability and protection than power armour while sacrificing none of the latter’s mobility.",
+  "basePoints": 150,
+  "battlefieldRole": "Heavy Assault",
+  "modelDefinitions": [
+    {
+      "name": "Tartaros Terminator Sergeant",
+      "baseSizeMM": 40,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 7,
+        "WS": 4,
+        "BS": 4,
+        "S": 4,
+        "T": 5,
+        "W": 2,
+        "I": 4,
+        "A": 3,
+        "LD": 8,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 2,
+        "INV": 5
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Tartaros Terminator",
+      "baseSizeMM": 40,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 4,
+        "BS": 4,
+        "S": 4,
+        "T": 5,
+        "W": 2,
+        "I": 4,
+        "A": 2,
+        "LD": 8,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 2,
+        "INV": 5
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 5,
+  "maxModels": 10,
+  "pointsPerAdditionalModel": 30,
+  "defaultWargear": [
+    "combi-bolter",
+    "power-weapon"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its combi-bolter exchanged for one volkite charger for Free, or for one item from the Legion Combi-weapons list.",
+      "removes": [
+        "combi-bolter"
+      ],
+      "adds": [
+        "volkite-charger-for-free-or-for-one-item-from-the-legion-combi-weapons-list"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its power weapon exchanged for one item from the Legion Terminator Melee Weapons list.",
+      "removes": [
+        "power-weapon"
+      ],
+      "adds": [
+        "item-from-the-legion-terminator-melee-weapons-list"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its combi-bolter and power weapon exchanged for one pair of lightning claws for +10 Points per Model.",
+      "removes": [
+        "combi-bolter-and-power-weapon"
+      ],
+      "adds": [
+        "pair-of-lightning-claws-for-10-points-per-model"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "For every five Models in this Unit, one Tartaros Terminator in this Unit may have its combi-bolter exchanged for one of the following:",
+      "removes": [
+        "combi-bolter"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Heavy flamer +5 Points per Model",
+      "adds": [
+        "heavy-flamer"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Reaper autocannon +15 Points per Model",
+      "adds": [
+        "reaper-autocannon"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Plasma blaster +10 Points per Model",
+      "adds": [
+        "plasma-blaster"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "The Tartaros Terminator Sergeant in this Unit may have one grenade harness selected for it for +5 Points.",
+      "adds": [
+        "one-grenade-harness-selected-for-it"
+      ],
+      "pointsCost": 5,
+      "scope": "leader"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Bulky",
+      "value": "2"
+    },
+    {
+      "name": "Implacable Advance"
+    },
+    {
+      "name": "Vanguard",
+      "value": "3"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Sergeant"
+  ]
+}

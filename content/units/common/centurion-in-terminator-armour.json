@@ -1,0 +1,143 @@
+{
+  "id": "centurion-in-terminator-armour",
+  "name": "Centurion in Terminator Armour",
+  "titles": "Centurion in Terminator Armour",
+  "lore": "Centurions make up the bulk of Legion officers. When facing heavy resistance, many centurions will march to war clad in Terminator armour, leading their subordinates into the thickest fighting. Line centurions fight in the vanguard of Legion forces, the superior durability and protection afforded by Terminator suits greatly increasing the survivability of such a perilous duty, as well as providing a platform for additional fi repower. Some of the greatest victories of the Great Crusade were won by a bold centurion storming a breached fortress clad in ornamented Terminator plate.",
+  "basePoints": 100,
+  "battlefieldRole": "Command",
+  "modelDefinitions": [
+    {
+      "name": "Cataphractii Centurion",
+      "baseSizeMM": 40,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 6,
+        "WS": 5,
+        "BS": 5,
+        "S": 4,
+        "T": 5,
+        "W": 4,
+        "I": 5,
+        "A": 4,
+        "LD": 9,
+        "CL": 8,
+        "WP": 8,
+        "IN": 8,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Tartaros Centurion",
+      "baseSizeMM": 40,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 5,
+        "BS": 5,
+        "S": 4,
+        "T": 5,
+        "W": 4,
+        "I": 5,
+        "A": 4,
+        "LD": 9,
+        "CL": 8,
+        "WP": 8,
+        "IN": 8,
+        "SAV": 2,
+        "INV": 5
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "combi-bolter",
+    "power-weapon"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "This Model may have its combi-bolter exchanged for one volkite charger for Free or for one item from the Legion Combi-weapons list.",
+      "removes": [
+        "combi-bolter"
+      ],
+      "adds": [
+        "volkite-charger-for-free-or-for-one-item-from-the-legion-combi-weapons-list"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "exchange",
+      "description": "This Model may have its power weapon exchanged for one item from the Legion Terminator Melee Weapons list.",
+      "removes": [
+        "power-weapon"
+      ],
+      "adds": [
+        "item-from-the-legion-terminator-melee-weapons-list"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "exchange",
+      "description": "This Model may have its combi-bolter and power weapon exchanged for one pair of lightning claws for +5 Points.",
+      "removes": [
+        "combi-bolter-and-power-weapon"
+      ],
+      "adds": [
+        "pair-lightning-claws"
+      ],
+      "pointsCost": 5,
+      "scope": "one-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Officer of the Line",
+      "value": "2"
+    },
+    {
+      "name": "Bulky",
+      "value": "2"
+    },
+    {
+      "name": "Implacable Advance"
+    },
+    {
+      "name": "Slow and Purposeful Tartaros Praetor"
+    },
+    {
+      "name": "Officer of the Line",
+      "value": "2"
+    },
+    {
+      "name": "Bulky",
+      "value": "2"
+    },
+    {
+      "name": "Implacable Advance"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Command",
+    "Heavy"
+  ]
+}

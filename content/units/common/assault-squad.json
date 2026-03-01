@@ -1,0 +1,224 @@
+{
+  "id": "assault-squad",
+  "name": "Assault Squad",
+  "titles": "Assault Squad",
+  "lore": "Jump pack-equipped assault squads are rapid-attack forces whose wargear is optimised towards close quarter fighting and hit-and-run tactics. The use of jump packs allows assault squads to move with great speed across the battlefileld and impact the enemy line with savage force, leaping past intervening terrain and open defences to engage their adversaries in bloody melee. Jump pack-equipped assault squads are not embraced to the same extent by all of the Legions for reasons of combat doctrine, temperament or simple resource difficulties, with the Raven Guard and Night Lords being among their greatest proponents.",
+  "basePoints": 140,
+  "battlefieldRole": "Troops",
+  "modelDefinitions": [
+    {
+      "name": "Assault Sergeant",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 12,
+        "WS": 4,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 1,
+        "I": 4,
+        "A": 2,
+        "LD": 8,
+        "CL": 7,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 3,
+        "INV": null
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Assault Legionary",
+      "baseSizeMM": 32,
+      "countInBase": 9,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 12,
+        "WS": 4,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 1,
+        "I": 4,
+        "A": 2,
+        "LD": 7,
+        "CL": 7,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 3,
+        "INV": null
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 10,
+  "maxModels": 20,
+  "pointsPerAdditionalModel": 12,
+  "defaultWargear": [
+    "bolt-pistol",
+    "chainsword",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "The Assault Sergeant in this Unit may have its chainsword and/or bolt pistol exchanged for one item each from the Legion Sergeant Melee Weapons list.",
+      "removes": [
+        "chainsword-and-or-bolt-pistol"
+      ],
+      "adds": [
+        "item-each-from-the-legion-sergeant-melee-weapons-list"
+      ],
+      "pointsCost": 0,
+      "scope": "leader"
+    },
+    {
+      "type": "exchange",
+      "description": "The Assault Sergeant in this Unit may have its bolt pistol exchanged for one disintegrator pistol for +5 Points or one item from the Legion Pistols list.",
+      "removes": [
+        "bolt-pistol"
+      ],
+      "adds": [
+        "disintegrator-pistol-for-5-points-or-one-item-from-the-legion-pistols-list"
+      ],
+      "pointsCost": 0,
+      "scope": "leader"
+    },
+    {
+      "type": "exchange",
+      "description": "The Assault Sergeant in this Unit may have its bolt pistol and chainsword , or its combat shield and chainsword, exchanged for one pair of lightning claws for +10 Points.",
+      "removes": [
+        "bolt-pistol-and-chainsword-or-its-combat-shield-and-chainsword"
+      ],
+      "adds": [
+        "pair-lightning-claws"
+      ],
+      "pointsCost": 10,
+      "scope": "leader"
+    },
+    {
+      "type": "add",
+      "description": "The Assault Sergeant in this Unit may have melta bombs selected for it for +10 Points.",
+      "adds": [
+        "melta-bombs-selected-for-it"
+      ],
+      "pointsCost": 10,
+      "scope": "leader"
+    },
+    {
+      "type": "exchange",
+      "description": "Every Model in this Unit may have its bolt pistol exchanged for a combat shield for +2 Points per Model.",
+      "removes": [
+        "bolt-pistol"
+      ],
+      "adds": [
+        "a-combat-shield-for-2-points-per-model"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its chainsword exchanged for one chainaxe for Free.",
+      "removes": [
+        "chainsword"
+      ],
+      "adds": [
+        "chainaxe"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "For every five Models in this Unit, one Assault Legionary in this Unit may have one of the following options selected for it:",
+      "adds": [
+        "one-of-the-following-options-selected-for-it"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Have its chainsword exchanged for one power weapon for +10 Points per Model.",
+      "adds": [
+        "have-its-chainsword-exchanged-for-one-power-weapon"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Have its chainsword exchanged for one charnabal sabre for +5 Points per Model.",
+      "adds": [
+        "have-its-chainsword-exchanged-for-one-charnabal-sabre"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Have its chainsword and bolt pistol , or its combat shield and chainsword, exchanged for one heavy chainsword for +5 Points per Model.",
+      "adds": [
+        "have-its-chainsword-and-bolt-pistol-or-its-combat-shield-and-chainsword-exchanged-for-one-heavy-chainsword"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "For every five Models in this Unit, two Assault Legionaries in this Unit may have their chainsword and bolt pistol , or their combat shield and chainsword, exchanged for one heavy chainaxe for +5 Points per Model.",
+      "removes": [
+        "chainsword-and-bolt-pistol-or-their-combat-shield-and-chainsword"
+      ],
+      "adds": [
+        "heavy-chainaxe-for-5-points-per-model"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "For every five Models in this Unit, one Assault Legionary in this Unit may have its bolt pistol exchanged for one item from the Legion Pistols list.",
+      "removes": [
+        "bolt-pistol"
+      ],
+      "adds": [
+        "item-from-the-legion-pistols-list"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Bulky",
+      "value": "2"
+    },
+    {
+      "name": "Deep Strike"
+    },
+    {
+      "name": "Vanguard",
+      "value": "2"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Sergeant",
+    "Antigrav"
+  ]
+}

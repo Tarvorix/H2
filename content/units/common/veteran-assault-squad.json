@@ -1,0 +1,194 @@
+{
+  "id": "veteran-assault-squad",
+  "name": "Veteran Assault Squad",
+  "titles": "Veteran Assault Squad",
+  "lore": "Exceptional and experienced fighters within the ranks of the Space Marine Legions are often handed together to form elite units, to which other warriors can aspire to ascend to, and from which future commanders are drawn. These warriors often have their pick of the armoury, able to select from a wide variety of killing tools, as well as Warhawk jump packs, allowing them to best leverage their skill at arms. Deployed at the spearhead of assaults, such veterans are given a degree of tactical freedom, allowing them to seek out the most steadfast foes, break enemy defensive positions or overrun isolated pockets of enemy combatants.",
+  "basePoints": 120,
+  "battlefieldRole": "Elites",
+  "modelDefinitions": [
+    {
+      "name": "Veteran Assault Sergeant",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 12,
+        "WS": 5,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 2,
+        "I": 4,
+        "A": 3,
+        "LD": 8,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 3,
+        "INV": null
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Assault Veteran",
+      "baseSizeMM": 32,
+      "countInBase": 4,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 12,
+        "WS": 5,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 2,
+        "I": 4,
+        "A": 3,
+        "LD": 8,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 3,
+        "INV": null
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 5,
+  "maxModels": 10,
+  "pointsPerAdditionalModel": 22,
+  "defaultWargear": [
+    "bolt-pistol",
+    "chainsword",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its chainsword exchanged for one item from the Legion Sergeant Melee Weapons list.",
+      "removes": [
+        "chainsword"
+      ],
+      "adds": [
+        "item-from-the-legion-sergeant-melee-weapons-list"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its bolt pistol exchanged for one combat shield for +2 Points per Model or one item from the Legion Pistols list.",
+      "removes": [
+        "bolt-pistol"
+      ],
+      "adds": [
+        "combat-shield-for-2-points-per-model-or-one-item-from-the-legion-pistols-list"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "The Veteran Assault Sergeant in this Unit may have its bolt pistol exchanged for one disintegrator pistol for +5 Points.",
+      "removes": [
+        "bolt-pistol"
+      ],
+      "adds": [
+        "disintegrator-pistol"
+      ],
+      "pointsCost": 5,
+      "scope": "leader"
+    },
+    {
+      "type": "add",
+      "description": "The Veteran Assault Sergeant may have melta bombs selected for it for +10 Points.",
+      "adds": [
+        "melta-bombs-selected-for-it"
+      ],
+      "pointsCost": 10,
+      "scope": "leader"
+    },
+    {
+      "type": "exchange",
+      "description": "For every five Models in this Unit, one Assault Veteran in this Unit may have its bolt pistol exchanged for one disintegrator pistol for +5 Points per Model.",
+      "removes": [
+        "bolt-pistol"
+      ],
+      "adds": [
+        "disintegrator-pistol-for-5-points-per-model"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its bolt pistol and chainsword exchanged for one pair of lightning claws for +10 Points per Model.",
+      "removes": [
+        "bolt-pistol-and-chainsword"
+      ],
+      "adds": [
+        "pair-of-lightning-claws-for-10-points-per-model"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "For every five Models in this Unit, two Assault Veterans in this Unit may have their chainsword exchanged for one of the following:",
+      "removes": [
+        "chainsword"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Heavy chainaxe +5 Points per Model",
+      "adds": [
+        "heavy-chainaxe"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Heavy chainsword +5 Points per Model",
+      "adds": [
+        "heavy-chainsword"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Bulky",
+      "value": "2"
+    },
+    {
+      "name": "Deep Strike"
+    },
+    {
+      "name": "Vanguard",
+      "value": "3"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Sergeant",
+    "Antigrav"
+  ]
+}

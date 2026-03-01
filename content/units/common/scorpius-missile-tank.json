@@ -1,0 +1,104 @@
+{
+  "id": "scorpius-missile-tank",
+  "name": "Scorpius Missile Tank",
+  "titles": "Scorpius Missile Tank",
+  "lore": "The Scorpius was a pattern of armoured vehicle that had entered service during the Great Crusade, having been created at the behest of the Space Wolves Legion to provide indirect fire support for assault actions via its advanced missile launcher systems. Fighting alongside Legion Predators, with which it shares many common armour and drive systems, the Scorpius proved itself well-suited to such high intensity operations and had been approved for service across the entire Legiones Astartes before the outbreak of the Horus Heresy.",
+  "basePoints": 120,
+  "battlefieldRole": "Armour",
+  "modelDefinitions": [
+    {
+      "name": "Scorpius",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 10,
+        "BS": 4,
+        "frontArmour": 12,
+        "sideArmour": 11,
+        "rearArmour": 10,
+        "HP": 5,
+        "transportCapacity": 0
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "turret-mounted-scorpius-missile-launcher",
+    "two-pintle-mounted-bolters"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "This Model may have one of its Pintle Mounted bolters exchanged for one item from the Legion Pintle Weapons list.",
+      "removes": [
+        "have-one-of-its-pintle-mounted-bolters"
+      ],
+      "adds": [
+        "item-from-the-legion-pintle-weapons-list"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "This Model may have one of each of the following selected for it:",
+      "adds": [
+        "one-of-each-of-the-following-selected-for-it"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "One Hull (Front) Mounted hunter-killer missile +5 Points",
+      "adds": [
+        "hull-front-mounted-hunter-killer-missile"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Searchlights +5 Points",
+      "adds": [
+        "searchlights"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Dozer blade +5 Points",
+      "adds": [
+        "dozer-blade"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "None"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    },
+    {
+      "category": "Custom",
+      "value": "Smokescreen"
+    }
+  ],
+  "unitType": "Vehicle",
+  "unitSubTypes": []
+}

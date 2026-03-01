@@ -1,0 +1,180 @@
+{
+  "id": "cataphractii-terminator-squad",
+  "name": "Cataphractii Terminator Squad",
+  "titles": "Cataphractii Terminator Squad",
+  "lore": "One of the first issued Tactical Dreadnought Armour patterns, Cataphractii suits are heavily protected with slablike ceramite pauldrons housing additional shield generators, augmenting the toughness of even a Legiones Astartes warrior. The armour’s design has the unfortunate side effect of overstraining its exoskeleton and slowing the wearer considerably. This deficiency is seen as a weakness by some Legions and has led to the pattern’s declining use in their ranks. Yet, at the outbreak of the Horus Heresy, all Legions still maintained significant numbers of Cataphractii Terminators among their ranks.",
+  "basePoints": 150,
+  "battlefieldRole": "Heavy Assault",
+  "modelDefinitions": [
+    {
+      "name": "Cataphractii Terminator Sergeant",
+      "baseSizeMM": 40,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 6,
+        "WS": 4,
+        "BS": 4,
+        "S": 4,
+        "T": 5,
+        "W": 2,
+        "I": 4,
+        "A": 3,
+        "LD": 8,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Cataphractii Terminator",
+      "baseSizeMM": 40,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 6,
+        "WS": 4,
+        "BS": 4,
+        "S": 4,
+        "T": 5,
+        "W": 2,
+        "I": 4,
+        "A": 2,
+        "LD": 8,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 5,
+  "maxModels": 12,
+  "pointsPerAdditionalModel": 30,
+  "defaultWargear": [
+    "volkite-charger",
+    "power-weapon"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its volkite charger exchanged for one combi-bolter for Free, or for one item from the Legion Combi-weapons list.",
+      "removes": [
+        "volkite-charger"
+      ],
+      "adds": [
+        "combi-bolter-for-free-or-for-one-item-from-the-legion-combi-weapons-list"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its power weapon exchanged for one item from the Legion Terminator Melee Weapons list.",
+      "removes": [
+        "power-weapon"
+      ],
+      "adds": [
+        "item-from-the-legion-terminator-melee-weapons-list"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its volkite charger and power weapon exchanged for one pair of lightning claws for +10 Points per Model.",
+      "removes": [
+        "volkite-charger-and-power-weapon"
+      ],
+      "adds": [
+        "pair-of-lightning-claws-for-10-points-per-model"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "The Cataphractii Terminator Sergeant in this Unit may have one grenade harness selected for it for +5 Points.",
+      "adds": [
+        "one-grenade-harness-selected-for-it"
+      ],
+      "pointsCost": 5,
+      "scope": "leader"
+    },
+    {
+      "type": "exchange",
+      "description": "For every five Models in this Unit, one Cataphractii Terminator in this Unit may have its volkite charger exchanged for one of the following:",
+      "removes": [
+        "volkite-charger"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Heavy flamer +5 Points per Model",
+      "adds": [
+        "heavy-flamer"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Reaper autocannon +15 Points per Model",
+      "adds": [
+        "reaper-autocannon"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Plasma blaster +10 Points per Model",
+      "adds": [
+        "plasma-blaster"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Bulky",
+      "value": "2"
+    },
+    {
+      "name": "Implacable Advance"
+    },
+    {
+      "name": "Slow and Purposeful"
+    },
+    {
+      "name": "Vanguard",
+      "value": "3"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Sergeant",
+    "Heavy"
+  ]
+}

@@ -1,0 +1,174 @@
+{
+  "id": "saturnine-dreadnought",
+  "name": "Saturnine Dreadnought",
+  "titles": "Saturnine Dreadnought",
+  "lore": "An extension of the technology utilised to develop the standardised Saturnine Terminator armour, this Dreadnought chassis requires vast generators to power its potent weaponry and complex energy shielding. Standing taller than even the Leviathan Siege Dreadnoughts, those interred within the bulky frame of a Saturnine Dreadnought are required to be of an especially disciplined mind, attuned beyond even the requirements of other Legion Dreadnought chassis. Should the incumbent be able to unlock its full potential, there is little on the battlefield that can stand before its wrath.",
+  "basePoints": 340,
+  "battlefieldRole": "War-Engine",
+  "modelDefinitions": [
+    {
+      "name": "Saturnine Dreadnought",
+      "baseSizeMM": 100,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 6,
+        "WS": 4,
+        "BS": 4,
+        "S": 8,
+        "T": 8,
+        "W": 8,
+        "I": 3,
+        "A": 2,
+        "LD": 12,
+        "CL": 10,
+        "WP": 7,
+        "IN": 5,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "disintegrator-cannon",
+    "heavy-plasma-bombard",
+    "two-photonic-incinerators",
+    "thermal-diffraction-field"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "This Model may have its heavy plasma bombard exchanged for one of the following:",
+      "removes": [
+        "heavy-plasma-bombard"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "Disintegrator cannon +10 Points",
+      "adds": [
+        "disintegrator-cannon"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Inversion beamer +10 Points",
+      "adds": [
+        "inversion-beamer-short"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Graviton pulveriser +10 Points",
+      "adds": [
+        "graviton-pulveriser"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "This Model may have its disintegrator cannon exchanged for one of the following:",
+      "removes": [
+        "disintegrator-cannon"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Heavy plasma bombard Free",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Inversion beamer Free",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Graviton pulveriser Free",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "Both of this Model’s photonic incinerators may be exchanged for one of the following:",
+      "removes": [
+        "be"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "Two concussive resonators +10 Points",
+      "adds": [
+        "two-concussive-resonators"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Two heavy particle shredders +10 Points",
+      "adds": [
+        "two-heavy-particle-shredders"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Bulky",
+      "value": "8"
+    },
+    {
+      "name": "Explodes",
+      "value": "4+"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    },
+    {
+      "category": "Custom",
+      "value": "Smokescreen"
+    }
+  ],
+  "unitType": "Walker",
+  "unitSubTypes": [
+    "Heavy"
+  ]
+}

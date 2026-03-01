@@ -1,0 +1,106 @@
+{
+  "id": "sicaran-venator",
+  "name": "Sicaran Venator",
+  "titles": "Sicaran Venator",
+  "lore": "The Sicaran Venator replaces the turret mounted armaments of the Sicaran with a powerful neutron laser, which, when utilised with the speed and manoeuvrability provided by the advanced chassis and drivetrain of the chassis, results in a formidable tank destroyer weapon. Despite the relative rarity of the vehicles, their capabilities ensured they were ever in great demand as Legion commanders came to rely on their potent combination of durability, speed and firepower to prevail where lesser Predators or Vindicators could not.",
+  "basePoints": 170,
+  "battlefieldRole": "Armour",
+  "modelDefinitions": [
+    {
+      "name": "Sicaran Venator",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 14,
+        "BS": 4,
+        "frontArmour": 13,
+        "sideArmour": 12,
+        "rearArmour": 12,
+        "HP": 6,
+        "transportCapacity": 0
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "centreline-mounted-neutron-beam-laser",
+    "turret-mounted-heavy-bolter",
+    "two-sponson-mounted-heavy-bolters"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "This Model may have both Sponson Mounted heavy bolters exchanged for one item from the Legion Sponson Weapons list.",
+      "removes": [
+        "have-both-sponson-mounted-heavy-bolters"
+      ],
+      "adds": [
+        "item-from-the-legion-sponson-weapons-list"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "This Model may have one item from the Legion Pintle Weapons list selected for it.",
+      "adds": [
+        "one-item-from-the-legion-pintle-weapons-list-selected-for-it"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "This Model may have one of each of the following selected for it:",
+      "adds": [
+        "one-of-each-of-the-following-selected-for-it"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "One Hull (Front) Mounted hunter-killer missile +5 Points",
+      "adds": [
+        "hull-front-mounted-hunter-killer-missile"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Searchlights +5 Points",
+      "adds": [
+        "searchlights"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Explodes",
+      "value": "5+"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    },
+    {
+      "category": "Custom",
+      "value": "Smokescreen"
+    }
+  ],
+  "unitType": "Vehicle",
+  "unitSubTypes": []
+}

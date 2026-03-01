@@ -1,0 +1,78 @@
+{
+  "id": "thunderhawk-gunship",
+  "name": "Thunderhawk Gunship",
+  "titles": "Thunderhawk Gunship",
+  "lore": "The Thunderhawk Gunship was a development of the later Great Crusade, intended to bridge the gap in size and capacity between smaller designs such as the Storm Eagle and the larger and more costly Stormbird. Designed to operate in atmosphere and void space, it combines the roles of orbital troop lander and heavy gunship, and proved a highly successful addition to a Legion’s fleet. With the outbreak of the wars of the Horus Heresy, both sides ramped up production of Thunderhawks to meet the ongoing demands of the war.",
+  "basePoints": 685,
+  "battlefieldRole": "Armour",
+  "modelDefinitions": [
+    {
+      "name": "Thunderhawk",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 18,
+        "BS": 4,
+        "frontArmour": 13,
+        "sideArmour": 13,
+        "rearArmour": 13,
+        "HP": 18,
+        "transportCapacity": 32
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "centreline-mounted-turbo-laser-destructor",
+    "two-turret-mounted-twin-heavy-bolters",
+    "two-sponson-mounted-twin-heavy-bolters",
+    "two-hull-front-mounted-lascannon",
+    "six-centreline-mounted-hellstrike-missiles"
+  ],
+  "wargearOptions": [],
+  "specialRules": [
+    {
+      "name": "Thunderhawk Transport Bay"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    },
+    {
+      "category": "Custom",
+      "value": "Smokescreen"
+    }
+  ],
+  "unitType": "Vehicle",
+  "unitSubTypes": [
+    "Transport",
+    "SuperHeavy",
+    "Flyer"
+  ],
+  "accessPoints": [
+    {
+      "name": "- If this Model does not have a base",
+      "relativePosition": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "name": "it is considered to have Access Points on all Facings.",
+      "relativePosition": {
+        "x": 2,
+        "y": 0
+      }
+    }
+  ]
+}

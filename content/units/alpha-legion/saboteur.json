@@ -1,0 +1,86 @@
+{
+  "id": "saboteur",
+  "name": "Saboteur",
+  "titles": "Saboteur",
+  "lore": "The Saboteur cadres specialise in covert infiltration, assassination and sabotage operations, arts usually considered beneath the Legiones Astartes but at which the Alpha Legion has always excelled. Saboteurs often walk among their foes in plain sight, disguised as an ally, all the while setting explosive traps, misdirecting enemy forces or cutting down isolated sentries, preparing the way for the assault of the Legion proper. With this work complete, they will support their brethren’s onslaught with blasts of their potent banestrike shotguns, carefully placed explosive charges and killing strikes of their power daggers.",
+  "basePoints": 95,
+  "battlefieldRole": "Command",
+  "modelDefinitions": [
+    {
+      "name": "Saboteur",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 5,
+        "BS": 5,
+        "S": 4,
+        "T": 4,
+        "W": 3,
+        "I": 5,
+        "A": 4,
+        "LD": 8,
+        "CL": 8,
+        "WP": 7,
+        "IN": 8,
+        "SAV": 2,
+        "INV": 5
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "banestrike-shotgun",
+    "power-dagger",
+    "bolt-pistol",
+    "frag-grenades",
+    "krak-grenades",
+    "melta-bombs",
+    "venom-spheres"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "This Model may have its bolt pistol exchanged for one item from the Legion Pistols list.",
+      "removes": [
+        "bolt-pistol"
+      ],
+      "adds": [
+        "item-from-the-legion-pistols-list"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "False Colours"
+    },
+    {
+      "name": "Infiltrate",
+      "value": "6"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Faction",
+      "value": "Alpha Legion"
+    },
+    {
+      "category": "Custom",
+      "value": "Smokescreen"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Skirmish"
+  ]
+}

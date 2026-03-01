@@ -1,0 +1,118 @@
+{
+  "id": "heavy-support-squad",
+  "name": "Heavy Support Squad",
+  "titles": "Heavy Support Squad",
+  "lore": "Heavy support squads provide the Legions’ infantry with mobile, Space Marine-portable firepower sufficient to bring down hordes of enemy troops or smash armoured vehicles apart in withering hails of weapons fire. Although tanks and field artillery outrange and outgun heavy support squads in most cases - as well as of course often being much more heavily protected by armour plate - heavy support squads have all the flexibility of the infantryman to their advantage, and are able to disperse in terrain, climb heights to attain better fields of fire, and go where a battle tank or even a Dreadnought cannot.",
+  "basePoints": 50,
+  "battlefieldRole": "Support",
+  "modelDefinitions": [
+    {
+      "name": "Sergeant",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 7,
+        "WS": 4,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 1,
+        "I": 4,
+        "A": 1,
+        "LD": 8,
+        "CL": 7,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 3,
+        "INV": null
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Legionary",
+      "baseSizeMM": 32,
+      "countInBase": 4,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 7,
+        "WS": 4,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 1,
+        "I": 4,
+        "A": 1,
+        "LD": 7,
+        "CL": 7,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 3,
+        "INV": null
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 5,
+  "maxModels": 10,
+  "pointsPerAdditionalModel": 10,
+  "defaultWargear": [
+    "bolt-pistol",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [
+    {
+      "type": "upgrade",
+      "description": "Every Model in this Unit must have one item from the Legion Heavy Weapons list selected for it. Every Model in this Unit must have the same item selected for it.",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "The Sergeant in this Unit may have one item from the Legion Sergeant Melee Weapons list selected for it.",
+      "adds": [
+        "one-item-from-the-legion-sergeant-melee-weapons-list-selected-for-it"
+      ],
+      "pointsCost": 0,
+      "scope": "leader"
+    },
+    {
+      "type": "add",
+      "description": "One Legionary in this Unit may have one vexilla selected for it for +10 Points.",
+      "adds": [
+        "one-vexilla-selected-for-it"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Up to two Legionaries in this Unit may each have one item from the Legion Equipment list selected for them.",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Support Unit",
+      "value": "1"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Sergeant"
+  ]
+}

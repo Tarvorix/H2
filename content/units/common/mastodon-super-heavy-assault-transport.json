@@ -1,0 +1,109 @@
+{
+  "id": "mastodon-super-heavy-assault-transport",
+  "name": "Mastodon Super Heavy Assault Transport",
+  "titles": "Mastodon Super-Heavy Assault Transport",
+  "lore": "The Mastodon is one of the heaviest assault transports in the arsenal of the Legiones Astartes and one reserved for use against the most heavily fortified positions. Several times the size of a Land Raider, it can convey over forty Space Marines through the most perilous of battlefields and protect them even from enemy Titans. The Mastodon’s primary role is to deliver these troops directly into the breach created with the siege melta array mounted on its armoured prow. Few fortifications can withstand this fearsome weapon, the Legionaries passing through the melted stone and steel directly into the heart of the enemy position.",
+  "basePoints": 600,
+  "battlefieldRole": "Armour",
+  "modelDefinitions": [
+    {
+      "name": "Mastodon",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 10,
+        "BS": 4,
+        "frontArmour": 14,
+        "sideArmour": 14,
+        "rearArmour": 14,
+        "HP": 20,
+        "transportCapacity": 42
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "centreline-mounted-siege-melta-array",
+    "turret-mounted-skyreaper-battery"
+  ],
+  "wargearOptions": [
+    {
+      "type": "upgrade",
+      "description": "This Model must have two items from the Legion Sponson Weapons list selected for it.",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "This Model may have one of each of the following selected for it:",
+      "adds": [
+        "one-of-each-of-the-following-selected-for-it"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "One Hull (Front) Mounted hunter-killer missile +5 Points",
+      "adds": [
+        "hull-front-mounted-hunter-killer-missile"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Searchlights +5 Points",
+      "adds": [
+        "searchlights"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Assault Vehicle"
+    },
+    {
+      "name": "Mastodon Transport Bay"
+    },
+    {
+      "name": "Void Shields",
+      "value": "2"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    },
+    {
+      "category": "Custom",
+      "value": "Smokescreen"
+    }
+  ],
+  "unitType": "Vehicle",
+  "unitSubTypes": [
+    "Transport",
+    "SuperHeavy"
+  ],
+  "accessPoints": [
+    {
+      "name": "- This Model has one Access Point on the Rear Facing and one Access Point on the Front Facing.",
+      "relativePosition": {
+        "x": 0,
+        "y": 0
+      }
+    }
+  ]
+}

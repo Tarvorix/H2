@@ -1,0 +1,190 @@
+{
+  "id": "dreadwing-interemptors",
+  "name": "Dreadwing Interemptors",
+  "titles": "Dreadwing Interemptors",
+  "lore": "Even among the brethren of the infamous Dreadwing, the Interemptors are a grim breed, dedicated as they are to a singular purpose - the utter annihilation of the enemy. When the Interemptors attack, they leave behind no trace of those they conquer - no bodies, no ruins, nothing. They take no trophies of their victories and tell no tales of those that have fallen before them, those consigned to death at their hands are forgotten forever. They are the Lion’s ultimate sanction, his final curse for those foolish enough to stand against the First Legion.",
+  "basePoints": 125,
+  "battlefieldRole": "Support",
+  "modelDefinitions": [
+    {
+      "name": "Interemptor Praefectus",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 7,
+        "WS": 4,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 1,
+        "I": 4,
+        "A": 1,
+        "LD": 9,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 3,
+        "INV": null
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Interemptor",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 4,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 1,
+        "I": 4,
+        "A": 1,
+        "LD": 8,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 3,
+        "INV": null
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 2,
+  "maxModels": 7,
+  "pointsPerAdditionalModel": 20,
+  "defaultWargear": [
+    "plasma-burner",
+    "bolt-pistol",
+    "frag-grenades",
+    "krak-grenades",
+    "rad-grenades"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "For every five Models in this Unit, one Interemptor’s plasma burner may be exchanged for one of the following:",
+      "removes": [
+        "be"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Destroyer missile launcher with rad missiles and stasis missiles +15 Points per Model",
+      "adds": [
+        "destroyer-missile-launcher-with-rad-missiles-and-stasis-missiles"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Plasma incinerator +15 Points per Model",
+      "adds": [
+        "plasma-incinerator"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "One Interemptor in this Unit may have one vexilla selected for it for +10 Points.",
+      "adds": [
+        "one-vexilla-selected-for-it"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Up to two Interemptors in this Unit may each have one item from the Legion Equipment list selected for them.",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "The Interemptor Praefectus in this Unit may have any of the following selected for it:",
+      "adds": [
+        "any-of-the-following-selected-for-it"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Melta bombs +10 Points",
+      "adds": [
+        "melta-bombs"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Phosphex bombs +10 Points",
+      "adds": [
+        "phosphex-bombs"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Bitter Duty"
+    },
+    {
+      "name": "Support Unit",
+      "value": "1"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Faction",
+      "value": "Dark Angels"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Sergeant"
+  ],
+  "dedicatedWeapons": [
+    {
+      "id": "dreadwing-interemptors-rad-missile",
+      "name": "- Rad missile",
+      "category": "ranged",
+      "profile": {
+        "range": 24,
+        "hasTemplate": false,
+        "firepower": 2,
+        "rangedStrength": 4,
+        "ap": 3,
+        "damage": 1,
+        "specialRules": [
+          {
+            "name": "Poisoned",
+            "value": "2+"
+          },
+          {
+            "name": "Phage",
+            "value": "T"
+          }
+        ],
+        "traits": []
+      }
+    }
+  ]
+}

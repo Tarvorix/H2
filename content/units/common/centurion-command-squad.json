@@ -1,0 +1,248 @@
+{
+  "id": "centurion-command-squad",
+  "name": "Centurion Command Squad",
+  "titles": "Centurion Command Squad",
+  "lore": "Many lower-ranking officers were accompanied into battle by a cadre of trusted warriors from their company. Some chose to utilise their most experienced veteran squad in this role, while others might keep a close circle of experienced warriors by their side on a more permanent posting. Such warriors were expected to provide personal protection, as well as fulfilling adjutant and advisory roles. Many of the finest unsung units of the Horus Heresy took on this duty, adding this honour to a record of reliable service spanning decades of warfare.",
+  "basePoints": 85,
+  "battlefieldRole": "Retinue",
+  "modelDefinitions": [
+    {
+      "name": "Veteran Champion",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 7,
+        "WS": 5,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 2,
+        "I": 4,
+        "A": 3,
+        "LD": 8,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 3,
+        "INV": null
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Veteran",
+      "baseSizeMM": 32,
+      "countInBase": 4,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 5,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 2,
+        "I": 4,
+        "A": 3,
+        "LD": 8,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 3,
+        "INV": null
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 5,
+  "maxModels": 10,
+  "pointsPerAdditionalModel": 15,
+  "defaultWargear": [
+    "bolter",
+    "bolt-pistol",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its bolter exchanged for one item from the Legion Combi-weapons list, one item from the Legion Sergeant Melee Weapons list or one of the following:",
+      "removes": [
+        "bolter"
+      ],
+      "adds": [
+        "item-from-the-legion-combi-weapons-list-one-item-from-the-legion-sergeant-melee-weapons-list-or-one-of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Astartes shotgun +2 Points per Model",
+      "adds": [
+        "astartes-shotgun"
+      ],
+      "pointsCost": 2,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Disintegrator rifle +5 Points per Model",
+      "adds": [
+        "disintegrator-rifle"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Volkite charger +2 Points per Model",
+      "adds": [
+        "volkite-charger"
+      ],
+      "pointsCost": 2,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit whose bolter has been exchanged for an item from the Legion Sergeant Melee Weapons list may have its bolt pistol exchanged for one combat shield for +2 Points per Model.",
+      "removes": [
+        "bolt-pistol"
+      ],
+      "adds": [
+        "combat-shield-for-2-points-per-model"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its bolt pistol exchanged for one item from the Legion Pistols list.",
+      "removes": [
+        "bolt-pistol"
+      ],
+      "adds": [
+        "item-from-the-legion-pistols-list"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "For every five Models in this Unit, one Veteran in this Unit may have its bolter exchanged for one item from the Legion Special Weapons list or one item from the Legion Heavy Weapons list.",
+      "removes": [
+        "bolter"
+      ],
+      "adds": [
+        "item-from-the-legion-special-weapons-list-or-one-item-from-the-legion-heavy-weapons-list"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "The Veteran Champion in this Unit may have its bolt pistol exchanged for one disintegrator pistol for +5 Points.",
+      "removes": [
+        "bolt-pistol"
+      ],
+      "adds": [
+        "disintegrator-pistol"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its bolter and bolt pistol exchanged for one pair of lightning claws for +10 Points per Model.",
+      "removes": [
+        "bolter-and-bolt-pistol"
+      ],
+      "adds": [
+        "pair-of-lightning-claws-for-10-points-per-model"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Any Model in this Unit with a bolter may have one of the following selected for it:",
+      "adds": [
+        "one-of-the-following-selected-for-it"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Bayonet +1 Point per Model",
+      "adds": [
+        "bayonet"
+      ],
+      "pointsCost": 1,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Chain bayonet +2 Points per Model",
+      "adds": [
+        "chain-bayonet"
+      ],
+      "pointsCost": 2,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "One Veteran in this Unit may have one of the following selected for it:",
+      "adds": [
+        "one-of-the-following-selected-for-it"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Vexilla +10 Points",
+      "adds": [
+        "vexilla"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Company standard +20 Points",
+      "adds": [
+        "company-standard"
+      ],
+      "pointsCost": 20,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Up to two Veterans in this Unit may have one item from the Legion Equipment list selected for them.",
+      "adds": [
+        "one-item-from-the-legion-equipment-list-selected-for-them"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "None"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Sergeant"
+  ]
+}

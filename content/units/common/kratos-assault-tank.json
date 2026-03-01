@@ -1,0 +1,192 @@
+{
+  "id": "kratos-assault-tank",
+  "name": "Kratos Assault Tank",
+  "titles": "Kratos Assault Tank",
+  "lore": "The Kratos is based on an Ancient Terran pattern, used in large numbers during the Unification of Old Earth. After the Emperor’s treaty was signed with the Lords of Mars, the Kratos was redesigned to serve as the spearhead of the Great Crusade, a line-breaker and foe hammer. Though slow, it is all but impervious to enemy weapons fire and its steady advance was the core of many Space Marine victories during the long years of the Great Crusade. In latter years, the Kratos fell out of favour as the Legions embraced a more mobile style of war, though the ancient war engine lost none of its legendary tenacity.",
+  "basePoints": 280,
+  "battlefieldRole": "Armour",
+  "modelDefinitions": [
+    {
+      "name": "Kratos",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 8,
+        "BS": 4,
+        "frontArmour": 14,
+        "sideArmour": 14,
+        "rearArmour": 14,
+        "HP": 10,
+        "transportCapacity": 0
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "turret-mounted-kratos-battlecannon",
+    "co-axial-kratos-battlecannon-mounted-autocannon",
+    "hull-front-left-mounted-heavy-bolter",
+    "hull-front-right-mounted-heavy-bolter",
+    "two-sponson-mounted-heavy-bolters"
+  ],
+  "wargearOptions": [
+    {
+      "type": "add",
+      "description": "This Model may have flashburn shells selected for its Turret Mounted Kratos battlecannon at a cost of +10 Points.",
+      "adds": [
+        "flashburn-shells-selected-for-its-turret-mounted-kratos-battlecannon-at-a-cost-of-10-points"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "exchange",
+      "description": "This Model may have its Turret Mounted Kratos battlecannon exchanged for one of the following:",
+      "removes": [
+        "turret-mounted-kratos-battlecannon"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Turret Mounted volkite cardanelle Free",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Turret Mounted melta blast-gun +30 Points",
+      "adds": [
+        "turret-mounted-melta-blast-gun"
+      ],
+      "pointsCost": 30,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "This Model may have its Hull (Front, Left) Mounted heavy bolter and its Hull (Front, Right) Mounted heavy bolter exchanged for one of the following:",
+      "removes": [
+        "hull-front-left-mounted-heavy-bolter-and-its-hull-front-right-mounted-heavy-bolter"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "Hull (Front, Right) Mounted volkite caliver and Hull (Front, Left) Mounted volkite caliver +5 Points",
+      "adds": [
+        "hull-front-right-mounted-volkite-caliver-and-hull-front-left-mounted-volkite-caliver"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Hull (Front, Right) Mounted autocannon and Hull (Front, Left) Mounted autocannon +10 Points",
+      "adds": [
+        "hull-front-right-mounted-autocannon-and-hull-front-left-mounted-autocannon"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Hull (Front, Right) Mounted lascannon and Hull (Front, Left) Mounted lascannon +25 Points",
+      "adds": [
+        "hull-front-right-mounted-lascannon-and-hull-front-left-mounted-lascannon"
+      ],
+      "pointsCost": 25,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "This Model may have both Sponson Mounted heavy bolters exchanged for one item from the Legion Sponson Weapons list.",
+      "removes": [
+        "have-both-sponson-mounted-heavy-bolters"
+      ],
+      "adds": [
+        "item-from-the-legion-sponson-weapons-list"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "This Model may have one item from the Legion Pintle Weapons list selected for it.",
+      "adds": [
+        "one-item-from-the-legion-pintle-weapons-list-selected-for-it"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "This Model may have one of each of the following selected for it:",
+      "adds": [
+        "one-of-each-of-the-following-selected-for-it"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "One Turret Mounted hunter-killer missile +5 Points",
+      "adds": [
+        "turret-mounted-hunter-killer-missile"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Searchlights +5 Points",
+      "adds": [
+        "searchlights"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Dozer blade +5 Points",
+      "adds": [
+        "dozer-blade"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "None"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    },
+    {
+      "category": "Custom",
+      "value": "Smokescreen"
+    }
+  ],
+  "unitType": "Vehicle",
+  "unitSubTypes": []
+}

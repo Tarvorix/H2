@@ -1,0 +1,101 @@
+{
+  "id": "exodus",
+  "name": "Exodus",
+  "titles": "Exodus The One who is Many, The Assassin",
+  "lore": "None can say whether Exodus is a single individual or one of several supremely skilled assassins. Certainly the name, or coded identifier ‘Exodus’, has appeared in multiple vox-chains and order logs in many different war zones, sometimes contemporaneously. This in itself is unlikely to be accidental given the Alpha Legion’s mastery of deception in all its forms. Whatever the truth, Exodus ranks amongst the most skilled killers. So adept is Exodus that he is said to rival even the marksmen of Clade Vindicate in his ability to insinuate himself into position and deliver the killing shot at the pivotal moment in a campaign.",
+  "basePoints": 165,
+  "battlefieldRole": "Elites",
+  "modelDefinitions": [
+    {
+      "name": "Exodus",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 4,
+        "BS": 8,
+        "S": 4,
+        "T": 4,
+        "W": 3,
+        "I": 5,
+        "A": 2,
+        "LD": 9,
+        "CL": 10,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 3,
+        "INV": 5
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "the-instrument",
+    "bolt-pistol",
+    "power-dagger",
+    "venom-spheres",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [],
+  "specialRules": [
+    {
+      "name": "Shrouded",
+      "value": "5+"
+    },
+    {
+      "name": "Infiltrate",
+      "value": "9"
+    },
+    {
+      "name": "Lone Killer"
+    },
+    {
+      "name": "Precision",
+      "value": "4+"
+    },
+    {
+      "name": "Support Unit",
+      "value": "1"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Faction",
+      "value": "Alpha Legion"
+    },
+    {
+      "category": "Custom",
+      "value": "Smokescreen"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Light"
+  ],
+  "dedicatedWeapons": [
+    {
+      "id": "exodus-rapid-shot",
+      "name": "- Rapid shot",
+      "category": "ranged",
+      "profile": {
+        "range": 24,
+        "hasTemplate": false,
+        "firepower": 3,
+        "rangedStrength": 6,
+        "ap": 3,
+        "damage": 1,
+        "specialRules": [],
+        "traits": []
+      }
+    }
+  ]
+}

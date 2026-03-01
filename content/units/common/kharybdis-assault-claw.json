@@ -1,0 +1,62 @@
+{
+  "id": "kharybdis-assault-claw",
+  "name": "Kharybdis Assault Claw",
+  "titles": "Kharybdis Assault Claw",
+  "lore": "Employed by many Legions as their primary ship-to-ship assault craft, the Kharybdis is a monstrous drop pod capable of carrying large assault forces through the void and mounting significant firepower to blast a path through defending small craft. The arrival of a flight of these ominous craft, boarding hooks extended as they approach their target, signals the end for the crew of any vessel that dares oppose the Legiones Astartes. Outside of void war, the Kharybdis also serves as a drop ship, capable of both controlled descent and powered take-off from a planetary surface.",
+  "basePoints": 235,
+  "battlefieldRole": "Heavy Transport",
+  "modelDefinitions": [
+    {
+      "name": "Kharybdis Assault Claw",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 14,
+        "BS": 4,
+        "frontArmour": 12,
+        "sideArmour": 12,
+        "rearArmour": 12,
+        "HP": 8,
+        "transportCapacity": 22
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "turret-mounted-kharybdis-missile-launcher"
+  ],
+  "wargearOptions": [],
+  "specialRules": [
+    {
+      "name": "Heavy Drop Transport"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    }
+  ],
+  "unitType": "Vehicle",
+  "unitSubTypes": [
+    "Flyer",
+    "Transport"
+  ],
+  "accessPoints": [
+    {
+      "name": "- This Model has Access Points on all Facings.",
+      "relativePosition": {
+        "x": 0,
+        "y": 0
+      }
+    }
+  ]
+}

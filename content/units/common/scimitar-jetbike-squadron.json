@@ -1,0 +1,164 @@
+{
+  "id": "scimitar-jetbike-squadron",
+  "name": "Scimitar Jetbike Squadron",
+  "titles": "Scimitar Jetbike Squadron",
+  "lore": "Scimitar jetbike squadrons are feared strike units which use sophisticated and powerful jetbikes as mounts. These grav-impellor assisted, jet engine-propelled craft are more akin to compact aircraft than ground bikes and are able to maintain great speeds for extended periods of low-altitude flight. Their lift-strength is sufficient not only to carry a heavily armoured Space Marine and his wargear aloft, but also a variety of heavy weapons mounts and stocks of ammunition, giving these swift hunters extremely potent firepower.",
+  "basePoints": 95,
+  "battlefieldRole": "Fast Attack",
+  "modelDefinitions": [
+    {
+      "name": "Scimitar Sergeant",
+      "baseSizeMM": 60,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 16,
+        "WS": 4,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 2,
+        "I": 4,
+        "A": 1,
+        "LD": 8,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 3,
+        "INV": null
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Scimitar Hunter",
+      "baseSizeMM": 60,
+      "countInBase": 2,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 16,
+        "WS": 4,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 2,
+        "I": 4,
+        "A": 1,
+        "LD": 7,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 3,
+        "INV": null
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 3,
+  "maxModels": 10,
+  "pointsPerAdditionalModel": 30,
+  "defaultWargear": [
+    "bolt-pistol",
+    "chainsword",
+    "heavy-bolter",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [
+    {
+      "type": "add",
+      "description": "One Scimitar Hunter in this Unit may have one augury scanner selected for it for +10 Points.",
+      "adds": [
+        "one-augury-scanner-selected-for-it"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "The Scimitar Sergeant in this Unit may have its chainsword exchanged for one item from the Legion Sergeant Melee Weapons list.",
+      "removes": [
+        "chainsword"
+      ],
+      "adds": [
+        "item-from-the-legion-sergeant-melee-weapons-list"
+      ],
+      "pointsCost": 0,
+      "scope": "leader"
+    },
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its bolt pistol exchanged for one item from the Legion Pistols list.",
+      "removes": [
+        "bolt-pistol"
+      ],
+      "adds": [
+        "item-from-the-legion-pistols-list"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its heavy bolter exchanged for one of the following:",
+      "removes": [
+        "heavy-bolter"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Volkite culverin +5 Points per Model",
+      "adds": [
+        "volkite-culverin"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Multi-melta +15 Points per Model",
+      "adds": [
+        "multi-melta"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Plasma cannon +10 Points per Model",
+      "adds": [
+        "plasma-cannon"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Bulky",
+      "value": "3"
+    },
+    {
+      "name": "Deep Strike"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    }
+  ],
+  "unitType": "Cavalry",
+  "unitSubTypes": [
+    "Sergeant",
+    "Antigrav"
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "id": "xiphon-interceptor",
+  "name": "Xiphon Interceptor",
+  "titles": "Xiphon Interceptor",
+  "lore": "The Xiphon Interceptor is a void/atmospheric combat craft with an ancient lineage with examples of its predecessors having been found in use by lost human enclaves. The performance of the variants that found use in the Legions generated such extreme gravitic forces in flight that the enhanced physiology of a Space Marine was a prerequisite of a pilot. Although armed with a specific and specialised combination of armaments, the Xiphon’s strictly defined combat role as an air-to-air interceptor called for little else.",
+  "basePoints": 120,
+  "battlefieldRole": "Fast Attack",
+  "modelDefinitions": [
+    {
+      "name": "Xiphon",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 20,
+        "BS": 4,
+        "frontArmour": 11,
+        "sideArmour": 11,
+        "rearArmour": 11,
+        "HP": 5,
+        "transportCapacity": 0
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "two-centreline-mounted-twin-lascannon",
+    "centreline-mounted-rotary-missile-launcher"
+  ],
+  "wargearOptions": [],
+  "specialRules": [
+    {
+      "name": "None"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    },
+    {
+      "category": "Custom",
+      "value": "Interceptor"
+    }
+  ],
+  "unitType": "Vehicle",
+  "unitSubTypes": [
+    "Flyer"
+  ]
+}

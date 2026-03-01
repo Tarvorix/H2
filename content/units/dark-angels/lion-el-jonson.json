@@ -1,0 +1,157 @@
+{
+  "id": "lion-el-jonson",
+  "name": "Lion El Jonson",
+  "titles": "Lion El’Jonson The First Primarch, The Lion, The Son of the Forest, Primarch of the Dark Angels",
+  "lore": "Lion El’Jonson was regarded as the most pragmatic and ruthlessly efficient commander of the Great Crusade. His was the task of rooting out those threats which the Imperium most feared, and he undertook it with peerless valour. Perhaps this quality was moulded into the Lion in his formative years, where he grew and learned to survive alone in the trackless, monster-haunted forests of Caliban. There the young Primarch faced a constant struggle against nigh-insurmountable odds which taught him that to hesitate once committed led only to death, while stoic determination brought victory. This philosophy marks his grim command of the First Legion - action without delay and relentlessness without reservation. During the Great Crusade, under his command, the remorseless Dark Angels acted not for glory and honours but only for victory, to vanquish their foes and to leave the enemies of Mankind in quiet and forgotten ruin. Untouched by the dark plots of Horus, the Lion would return from his long exile beyond the edge of the empire with the same brutal determination and vengeful fervour, turned now against those he had once named brother.",
+  "basePoints": 460,
+  "battlefieldRole": "Warlord",
+  "modelDefinitions": [
+    {
+      "name": "Lion El’Jonson",
+      "baseSizeMM": 40,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 8,
+        "WS": 8,
+        "BS": 6,
+        "S": 7,
+        "T": 6,
+        "W": 6,
+        "I": 7,
+        "A": 7,
+        "LD": 12,
+        "CL": 10,
+        "WP": 10,
+        "IN": 10,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "the-lion-sword",
+    "the-fusil-actinaeus",
+    "stasis-grenades",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "This Model may have its The Lion Sword exchanged for one The Wolf Blade for Free.",
+      "removes": [
+        "the-lion-sword"
+      ],
+      "adds": [
+        "the-wolf-blade"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Sire of the Dark Angels"
+    },
+    {
+      "name": "Bulky",
+      "value": "4"
+    },
+    {
+      "name": "The Lion’s Choler"
+    },
+    {
+      "name": "Eternal Warrior",
+      "value": "2"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Allegiance",
+      "value": "Loyalist"
+    },
+    {
+      "category": "Faction",
+      "value": "Dark Angels"
+    },
+    {
+      "category": "Custom",
+      "value": "Master of the Legion"
+    }
+  ],
+  "unitType": "Paragon",
+  "unitSubTypes": [
+    "Unique"
+  ],
+  "dedicatedWeapons": [
+    {
+      "id": "lion-el-jonson-the-lion-sword",
+      "name": "The Lion Sword",
+      "category": "melee",
+      "profile": {
+        "initiativeModifier": "I",
+        "attacksModifier": "A",
+        "strengthModifier": {
+          "op": "add",
+          "value": 2
+        },
+        "ap": 2,
+        "damage": 3,
+        "specialRules": [],
+        "traits": []
+      }
+    },
+    {
+      "id": "lion-el-jonson-the-fusil-actinaeus",
+      "name": "The Fusil Actinaeus",
+      "category": "ranged",
+      "profile": {
+        "range": 18,
+        "hasTemplate": false,
+        "firepower": 2,
+        "rangedStrength": 7,
+        "ap": 3,
+        "damage": 2,
+        "specialRules": [
+          {
+            "name": "Breaching",
+            "value": "4+"
+          }
+        ],
+        "traits": []
+      }
+    },
+    {
+      "id": "lion-el-jonson-the-wolf-blade",
+      "name": "The Wolf Blade",
+      "category": "melee",
+      "profile": {
+        "initiativeModifier": "I",
+        "attacksModifier": "A",
+        "strengthModifier": "S",
+        "ap": 3,
+        "damage": 1,
+        "specialRules": [
+          {
+            "name": "Shred",
+            "value": "4+"
+          },
+          {
+            "name": "Breaching",
+            "value": "4+"
+          },
+          {
+            "name": "Reaping Blow",
+            "value": "2"
+          }
+        ],
+        "traits": []
+      }
+    }
+  ]
+}

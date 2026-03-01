@@ -1,0 +1,34 @@
+{
+  "name": "hh-digital",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Horus Heresy: Age of Darkness — Digital Port",
+  "scripts": {
+    "build": "pnpm -r build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "content:build": "node tools/content-build.mjs",
+    "content:validate": "node tools/content-validate.mjs",
+    "headless:build": "pnpm --filter @hh/headless build",
+    "headless:run": "node --loader ./tools/esm-js-extension-loader.mjs packages/headless/dist/cli.js",
+    "lint": "eslint 'packages/*/src/**/*.{ts,tsx}'",
+    "lint:fix": "eslint 'packages/*/src/**/*.{ts,tsx}' --fix",
+    "format": "prettier --write 'packages/*/src/**/*.{ts,tsx,json}'",
+    "format:check": "prettier --check 'packages/*/src/**/*.{ts,tsx,json}'",
+    "clean": "pnpm -r exec rm -rf dist .tsbuildinfo",
+    "dev": "pnpm --filter @hh/ui dev",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "eslint": "^9.0.0",
+    "prettier": "^3.4.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

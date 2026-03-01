@@ -1,0 +1,1226 @@
+/**
+ * Game Reducer
+ *
+ * Manages the complete GameUIState for a game session.
+ * Handles pre-game flow (army load, terrain setup, deployment),
+ * game actions (movement, shooting, assault, reactions),
+ * and UI state (selection, camera, overlays, combat log, dice animation).
+ *
+ * All game-logic mutations flow through the engine's processCommand().
+ * The reducer translates UI actions → engine commands → updated state.
+ */
+
+import type { Position, ArmyList, GameState } from '@hh/types';
+import type { CommandResult } from '@hh/engine';
+import { findMission, getProfileById } from '@hh/data';
+import type { ArmyConfig, UnitSelection } from './types';
+import {
+  executeCommand,
+  buildMoveCommand,
+  buildRushCommand,
+  buildShootingCommand,
+  buildChargeCommand,
+  buildReactionCommand,
+  buildDeclineReactionCommand,
+  buildEndPhaseCommand,
+  buildEndSubPhaseCommand,
+  buildDeclareChallengeCommand,
+  buildSelectGambitCommand,
+  buildSelectAftermathCommand,
+  buildResolveFightCommand,
+  buildAcceptChallengeCommand,
+  buildDeclineChallengeCommand,
+  buildResolveShootingCasualtiesCommand,
+  eventsToLogEntries,
+  extractGhostTrails,
+  extractLatestDiceRoll,
+} from './command-bridge';
+import type {
+  GameUIState,
+  GameUIAction,
+} from './types';
+import {
+  GameUIPhase,
+  createInitialGameUIState,
+  createDefaultDeploymentState,
+} from './types';
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function screenToWorld(
+  camera: { offsetX: number; offsetY: number; zoom: number },
+  screenX: number,
+  screenY: number,
+): Position {
+  return {
+    x: (screenX - camera.offsetX) / camera.zoom,
+    y: (screenY - camera.offsetY) / camera.zoom,
+  };
+}
+
+function clampZoom(zoom: number): number {
+  return Math.max(4, Math.min(40, zoom));
+}
+
+function applySetupDeploymentPlacement(
+  gameState: GameState,
+  unitId: string,
+  modelPositions: { modelId: string; position: Position }[],
+): { gameState: GameState | null; error: string | null } {
+  const armyIndex = gameState.armies.findIndex(army =>
+    army.units.some(unit => unit.id === unitId),
+  );
+  if (armyIndex < 0) {
+    return {
+      gameState: null,
+      error: `Deployment failed: unit "${unitId}" was not found in game state.`,
+    };
+  }
+
+  const army = gameState.armies[armyIndex];
+  const unitIndex = army.units.findIndex(unit => unit.id === unitId);
+  if (unitIndex < 0) {
+    return {
+      gameState: null,
+      error: `Deployment failed: unit "${unitId}" index could not be resolved.`,
+    };
+  }
+
+  const unit = army.units[unitIndex];
+  const aliveModels = unit.models.filter(model => !model.isDestroyed);
+  const positionByModelId = new Map<string, Position>();
+
+  for (const placement of modelPositions) {
+    if (positionByModelId.has(placement.modelId)) {
+      return {
+        gameState: null,
+        error: `Deployment failed: duplicate model placement for "${placement.modelId}".`,
+      };
+    }
+    positionByModelId.set(placement.modelId, placement.position);
+  }
+
+  for (const model of aliveModels) {
+    if (!positionByModelId.has(model.id)) {
+      return {
+        gameState: null,
+        error: `Deployment failed: missing position for model "${model.id}".`,
+      };
+    }
+  }
+
+  if (positionByModelId.size !== aliveModels.length) {
+    return {
+      gameState: null,
+      error: `Deployment failed: expected ${aliveModels.length} model positions, received ${positionByModelId.size}.`,
+    };
+  }
+
+  const updatedModels = unit.models.map((model) => {
+    const placement = positionByModelId.get(model.id);
+    return placement ? { ...model, position: placement } : model;
+  });
+
+  const updatedUnit = {
+    ...unit,
+    models: updatedModels,
+    isDeployed: true,
+    isInReserves: false,
+  };
+
+  const updatedUnits = [...army.units];
+  updatedUnits[unitIndex] = updatedUnit;
+
+  const updatedArmies = [...gameState.armies];
+  updatedArmies[armyIndex] = {
+    ...army,
+    units: updatedUnits,
+  };
+
+  return {
+    gameState: {
+      ...gameState,
+      armies: updatedArmies as typeof gameState.armies,
+    },
+    error: null,
+  };
+}
+
+/**
+ * Apply an engine command to the game state.
+ * Returns the updated GameUIState with new game state, log entries, ghost trails, and dice animation.
+ */
+function applyEngineCommand(
+  state: GameUIState,
+  command: import('@hh/types').GameCommand,
+): GameUIState {
+  if (!state.gameState) {
+    return {
+      ...state,
+      notifications: [
+        ...state.notifications,
+        {
+          message: `Engine command "${command.type}" dropped: game state not initialized`,
+          type: 'error' as const,
+          timestamp: Date.now(),
+          duration: 5000,
+        },
+      ],
+    };
+  }
+
+  const result: CommandResult = executeCommand(state.gameState, command);
+
+  if (!result.accepted) {
+    return {
+      ...state,
+      lastCommandResult: result,
+      lastErrors: result.errors,
+      notifications: [
+        ...state.notifications,
+        {
+          message: result.errors.map(e => e.message).join('; ') || 'Command rejected',
+          type: 'error' as const,
+          timestamp: Date.now(),
+          duration: 4000,
+        },
+      ],
+    };
+  }
+
+  // Convert events to combat log entries
+  const newLogEntries = eventsToLogEntries(result.events, result.state);
+
+  // Extract ghost trails from movement events
+  const newGhostTrails = extractGhostTrails(result.events);
+
+  // Extract dice roll for animation
+  const diceRoll = extractLatestDiceRoll(result.events);
+
+  // Check if game is over
+  const newUIPhase = result.state.isGameOver ? GameUIPhase.GameOver : state.uiPhase;
+
+  // Check if reaction is pending — update flow state
+  let flowState = state.flowState;
+  if (result.state.awaitingReaction && result.state.pendingReaction) {
+    flowState = {
+      type: 'reaction',
+      step: {
+        step: 'prompt',
+        pendingReaction: result.state.pendingReaction,
+      },
+    };
+  } else if (state.flowState.type === 'reaction' && !result.state.awaitingReaction) {
+    // Reaction was resolved — return to idle
+    flowState = { type: 'idle' };
+  }
+
+  return {
+    ...state,
+    gameState: result.state,
+    uiPhase: newUIPhase,
+    combatLog: [...state.combatLog, ...newLogEntries],
+    ghostTrails: [...state.ghostTrails, ...newGhostTrails],
+    diceAnimation: diceRoll
+      ? { isVisible: true, roll: diceRoll, startTime: Date.now(), duration: 3000 }
+      : state.diceAnimation,
+    flowState,
+    lastCommandResult: result,
+    lastErrors: [],
+  };
+}
+
+// ─── Reducer ─────────────────────────────────────────────────────────────────
+
+export function gameReducer(
+  state: GameUIState,
+  action: GameUIAction,
+): GameUIState {
+  switch (action.type) {
+    // ── Pre-Game Flow ─────────────────────────────────────────────────────
+    case 'SET_UI_PHASE':
+      return { ...state, uiPhase: action.phase };
+
+    case 'SET_ARMY_CONFIG':
+      return {
+        ...state,
+        armyConfigs: action.playerIndex === 0
+          ? [action.config, state.armyConfigs[1]]
+          : [state.armyConfigs[0], action.config],
+      };
+
+    case 'LOAD_PRESET_ARMY':
+      return {
+        ...state,
+        armyConfigs: action.playerIndex === 0
+          ? [action.preset.config, state.armyConfigs[1]]
+          : [state.armyConfigs[0], action.preset.config],
+      };
+
+    case 'CONFIRM_ARMIES': {
+      if (!state.armyConfigs[0] || !state.armyConfigs[1]) return state;
+      return {
+        ...state,
+        uiPhase: GameUIPhase.MissionSelect,
+      };
+    }
+
+    // ── Army Builder ──────────────────────────────────────────────────────
+    case 'SET_ARMY_BUILDER_PLAYER':
+      return {
+        ...state,
+        armyBuilder: {
+          ...state.armyBuilder,
+          editingPlayerIndex: action.playerIndex,
+          activeDetachmentIndex: null,
+          activeSlotId: null,
+        },
+      };
+
+    case 'SET_ARMY_LIST':
+      return {
+        ...state,
+        armyBuilder: {
+          ...state.armyBuilder,
+          armyLists: action.playerIndex === 0
+            ? [action.armyList, state.armyBuilder.armyLists[1]]
+            : [state.armyBuilder.armyLists[0], action.armyList],
+        },
+      };
+
+    case 'SET_ARMY_VALIDATION':
+      return {
+        ...state,
+        armyBuilder: {
+          ...state.armyBuilder,
+          validationResults: action.playerIndex === 0
+            ? [action.result, state.armyBuilder.validationResults[1]]
+            : [state.armyBuilder.validationResults[0], action.result],
+        },
+      };
+
+    case 'SET_ACTIVE_DETACHMENT':
+      return {
+        ...state,
+        armyBuilder: {
+          ...state.armyBuilder,
+          activeDetachmentIndex: action.index,
+        },
+      };
+
+    case 'SET_ACTIVE_SLOT':
+      return {
+        ...state,
+        armyBuilder: {
+          ...state.armyBuilder,
+          activeSlotId: action.slotId,
+        },
+      };
+
+    case 'SET_UNIT_SEARCH_FILTER':
+      return {
+        ...state,
+        armyBuilder: {
+          ...state.armyBuilder,
+          unitSearchFilter: action.filter,
+        },
+      };
+
+    case 'SET_RITE_OF_WAR':
+      return {
+        ...state,
+        armyBuilder: {
+          ...state.armyBuilder,
+          selectedRiteIds: action.playerIndex === 0
+            ? [action.riteId, state.armyBuilder.selectedRiteIds[1]]
+            : [state.armyBuilder.selectedRiteIds[0], action.riteId],
+        },
+      };
+
+    case 'CONFIRM_ARMY_BUILDER': {
+      const bothBuilt = state.armyBuilder.armyLists[0] !== null && state.armyBuilder.armyLists[1] !== null;
+      if (!bothBuilt) {
+        return { ...state, uiPhase: GameUIPhase.ArmyLoad };
+      }
+
+      // Convert ArmyList → ArmyConfig for downstream screens
+      const convertArmyListToConfig = (armyList: ArmyList, playerIndex: number): ArmyConfig => {
+        const unitSelections: UnitSelection[] = [];
+        for (const detachment of armyList.detachments) {
+          for (const unit of detachment.units) {
+            const profile = getProfileById(unit.profileId);
+            unitSelections.push({
+              profileId: unit.profileId,
+              name: profile?.name ?? unit.profileId,
+              modelCount: unit.modelCount,
+              pointsCost: unit.totalPoints,
+              wargearOptions: unit.selectedOptions.map(o => o.optionIndex),
+            });
+          }
+        }
+        return {
+          playerIndex,
+          playerName: armyList.playerName,
+          faction: armyList.faction,
+          allegiance: armyList.allegiance,
+          pointsLimit: armyList.pointsLimit,
+          unitSelections,
+        };
+      };
+
+      const config0 = convertArmyListToConfig(state.armyBuilder.armyLists[0]!, 0);
+      const config1 = convertArmyListToConfig(state.armyBuilder.armyLists[1]!, 1);
+
+      return {
+        ...state,
+        armyConfigs: [config0, config1],
+        uiPhase: GameUIPhase.MissionSelect,
+      };
+    }
+
+    case 'ADD_UNIT_TO_DETACHMENT': {
+      const armyList = state.armyBuilder.armyLists[action.playerIndex];
+      if (!armyList) return state;
+      const detachment = armyList.detachments[action.detachmentIndex];
+      if (!detachment) return state;
+
+      const updatedDetachment = {
+        ...detachment,
+        units: [...detachment.units, action.unit],
+      };
+      const updatedDetachments = [...armyList.detachments];
+      updatedDetachments[action.detachmentIndex] = updatedDetachment;
+
+      const newTotalPoints = updatedDetachments.reduce(
+        (sum, d) => sum + d.units.reduce((s, u) => s + u.totalPoints, 0),
+        0,
+      );
+
+      const updatedArmyList: ArmyList = {
+        ...armyList,
+        detachments: updatedDetachments,
+        totalPoints: newTotalPoints,
+      };
+
+      return {
+        ...state,
+        armyBuilder: {
+          ...state.armyBuilder,
+          armyLists: action.playerIndex === 0
+            ? [updatedArmyList, state.armyBuilder.armyLists[1]]
+            : [state.armyBuilder.armyLists[0], updatedArmyList],
+        },
+      };
+    }
+
+    case 'REMOVE_UNIT_FROM_DETACHMENT': {
+      const armyList = state.armyBuilder.armyLists[action.playerIndex];
+      if (!armyList) return state;
+      const detachment = armyList.detachments[action.detachmentIndex];
+      if (!detachment) return state;
+
+      const updatedDetachment = {
+        ...detachment,
+        units: detachment.units.filter(u => u.id !== action.unitId),
+      };
+      const updatedDetachments = [...armyList.detachments];
+      updatedDetachments[action.detachmentIndex] = updatedDetachment;
+
+      const newTotalPoints = updatedDetachments.reduce(
+        (sum, d) => sum + d.units.reduce((s, u) => s + u.totalPoints, 0),
+        0,
+      );
+
+      const updatedArmyList: ArmyList = {
+        ...armyList,
+        detachments: updatedDetachments,
+        totalPoints: newTotalPoints,
+      };
+
+      return {
+        ...state,
+        armyBuilder: {
+          ...state.armyBuilder,
+          armyLists: action.playerIndex === 0
+            ? [updatedArmyList, state.armyBuilder.armyLists[1]]
+            : [state.armyBuilder.armyLists[0], updatedArmyList],
+        },
+      };
+    }
+
+    // ── Mission Select ────────────────────────────────────────────────────
+    case 'SELECT_MISSION':
+      return {
+        ...state,
+        missionSelect: {
+          ...state.missionSelect,
+          selectedMissionId: action.missionId,
+        },
+      };
+
+    case 'SELECT_DEPLOYMENT_MAP':
+      return {
+        ...state,
+        missionSelect: {
+          ...state.missionSelect,
+          selectedDeploymentMap: action.deploymentMap,
+        },
+      };
+
+    case 'CONFIRM_MISSION': {
+      if (!state.missionSelect.selectedMissionId || !state.missionSelect.selectedDeploymentMap) {
+        return state;
+      }
+      return {
+        ...state,
+        missionSelect: {
+          ...state.missionSelect,
+          confirmed: true,
+        },
+        uiPhase: GameUIPhase.TerrainSetup,
+      };
+    }
+
+    // ── Objective Placement ───────────────────────────────────────────────
+    case 'SET_OBJECTIVE_POSITION':
+      return {
+        ...state,
+        objectivePlacement: {
+          ...state.objectivePlacement,
+          pendingPosition: action.position,
+        },
+      };
+
+    case 'CONFIRM_OBJECTIVE_PLACEMENT': {
+      const op = state.objectivePlacement;
+      if (!op.pendingPosition) return state;
+
+      const newObjective = {
+        id: `obj-placed-${op.placedObjectives.length}`,
+        position: op.pendingPosition,
+        vpValue: 2,
+        currentVpValue: 2,
+        isRemoved: false,
+        label: `Objective ${op.placedObjectives.length + 1}`,
+      };
+
+      const newPlaced = [...op.placedObjectives, newObjective];
+      const nextPlayer = op.placingPlayerIndex === 0 ? 1 : 0;
+
+      return {
+        ...state,
+        objectivePlacement: {
+          ...op,
+          placedObjectives: newPlaced,
+          placingPlayerIndex: nextPlayer,
+          pendingPosition: null,
+        },
+      };
+    }
+
+    case 'UNDO_OBJECTIVE_PLACEMENT': {
+      const op = state.objectivePlacement;
+      if (op.placedObjectives.length === 0) return state;
+
+      return {
+        ...state,
+        objectivePlacement: {
+          ...op,
+          placedObjectives: op.placedObjectives.slice(0, -1),
+          pendingPosition: null,
+        },
+      };
+    }
+
+    case 'CONFIRM_ALL_OBJECTIVES':
+      return {
+        ...state,
+        uiPhase: GameUIPhase.Deployment,
+        deployment: createDefaultDeploymentState(),
+      };
+
+    // ── Terrain Setup ─────────────────────────────────────────────────────
+    case 'ADD_TERRAIN':
+      return { ...state, terrain: [...state.terrain, action.terrain] };
+
+    case 'REMOVE_TERRAIN':
+      return { ...state, terrain: state.terrain.filter(t => t.id !== action.terrainId) };
+
+    case 'CONFIRM_TERRAIN': {
+      // Look up mission to determine objective placement
+      const mission = state.missionSelect.selectedMissionId
+        ? findMission(state.missionSelect.selectedMissionId)
+        : null;
+
+      if (mission && mission.objectivePlacement.kind === 'fixed') {
+        // Fixed objectives: place them automatically, skip to Deployment
+        const fixedObjectives = mission.objectivePlacement.objectives.map((obj, i) => ({
+          id: `obj-fixed-${i}`,
+          position: obj.position,
+          vpValue: obj.vpValue,
+          currentVpValue: obj.vpValue,
+          isRemoved: false,
+          label: obj.label,
+        }));
+        return {
+          ...state,
+          objectivePlacement: {
+            ...state.objectivePlacement,
+            placedObjectives: fixedObjectives,
+            totalToPlace: fixedObjectives.length,
+          },
+          uiPhase: GameUIPhase.Deployment,
+          deployment: createDefaultDeploymentState(),
+        };
+      }
+
+      if (mission && mission.objectivePlacement.kind === 'alternating') {
+        return {
+          ...state,
+          objectivePlacement: {
+            placingPlayerIndex: 0,
+            placedObjectives: [],
+            totalToPlace: mission.objectivePlacement.count,
+            pendingPosition: null,
+          },
+          uiPhase: GameUIPhase.ObjectivePlacement,
+        };
+      }
+
+      if (mission && mission.objectivePlacement.kind === 'symmetric') {
+        return {
+          ...state,
+          objectivePlacement: {
+            placingPlayerIndex: 0,
+            placedObjectives: [],
+            totalToPlace: mission.objectivePlacement.pairsCount * 2,
+            pendingPosition: null,
+          },
+          uiPhase: GameUIPhase.ObjectivePlacement,
+        };
+      }
+
+      // Fallback: no mission or unknown kind → go to Deployment
+      return {
+        ...state,
+        uiPhase: GameUIPhase.Deployment,
+        deployment: createDefaultDeploymentState(),
+      };
+    }
+
+    // ── Deployment ────────────────────────────────────────────────────────
+    case 'SELECT_ROSTER_UNIT':
+      return {
+        ...state,
+        deployment: {
+          ...state.deployment,
+          selectedRosterUnitId: action.unitId,
+          pendingModelPositions: [],
+        },
+      };
+
+    case 'PLACE_DEPLOYMENT_MODEL':
+      return {
+        ...state,
+        deployment: {
+          ...state.deployment,
+          pendingModelPositions: [
+            ...state.deployment.pendingModelPositions,
+            { modelId: action.modelId, position: action.position },
+          ],
+        },
+      };
+
+    case 'CONFIRM_UNIT_PLACEMENT': {
+      const dep = state.deployment;
+      if (!dep.selectedRosterUnitId) return state;
+
+      // During setup deployment, write placements directly into gameState.
+      // Engine deployUnit is Movement/Reserves-only and rejects setup-phase placement.
+      if (state.gameState) {
+        const placement = applySetupDeploymentPlacement(
+          state.gameState,
+          dep.selectedRosterUnitId,
+          dep.pendingModelPositions,
+        );
+
+        if (!placement.gameState) {
+          return {
+            ...state,
+            notifications: [
+              ...state.notifications,
+              {
+                message: placement.error ?? 'Deployment failed: unable to place unit.',
+                type: 'error' as const,
+                timestamp: Date.now(),
+                duration: 5000,
+              },
+            ],
+          };
+        }
+
+        const deployedUnitIds = dep.deployedUnitIds.includes(dep.selectedRosterUnitId)
+          ? dep.deployedUnitIds
+          : [...dep.deployedUnitIds, dep.selectedRosterUnitId];
+
+        return {
+          ...state,
+          gameState: placement.gameState,
+          deployment: {
+            ...dep,
+            deployedUnitIds,
+            selectedRosterUnitId: null,
+            pendingModelPositions: [],
+          },
+        };
+      }
+
+      return {
+        ...state,
+        deployment: {
+          ...dep,
+          deployedUnitIds: [...dep.deployedUnitIds, dep.selectedRosterUnitId],
+          selectedRosterUnitId: null,
+          pendingModelPositions: [],
+        },
+      };
+    }
+
+    case 'UNDO_UNIT_PLACEMENT':
+      return {
+        ...state,
+        deployment: {
+          ...state.deployment,
+          pendingModelPositions: state.deployment.pendingModelPositions.slice(0, -1),
+        },
+      };
+
+    case 'CONFIRM_DEPLOYMENT': {
+      const dep = state.deployment;
+      if (dep.deployingPlayerIndex === 0 && !dep.player1Confirmed) {
+        return {
+          ...state,
+          deployment: {
+            ...dep,
+            player1Confirmed: true,
+            deployingPlayerIndex: 1,
+            selectedRosterUnitId: null,
+            pendingModelPositions: [],
+          },
+        };
+      }
+      if (dep.deployingPlayerIndex === 1 && !dep.player2Confirmed) {
+        // Both confirmed — transition to Playing (only if gameState is initialized)
+        if (!state.gameState) {
+          return {
+            ...state,
+            notifications: [
+              ...state.notifications,
+              {
+                message: 'Cannot start game: game state not initialized. Please re-deploy.',
+                type: 'error' as const,
+                timestamp: Date.now(),
+                duration: 5000,
+              },
+            ],
+          };
+        }
+        return {
+          ...state,
+          deployment: { ...dep, player2Confirmed: true },
+          uiPhase: GameUIPhase.Playing,
+        };
+      }
+      return state;
+    }
+
+    // ── Game State Initialization ────────────────────────────────────────
+    case 'INIT_GAME_STATE':
+      return {
+        ...state,
+        gameState: action.gameState,
+      };
+
+    // ── Camera / Mouse ──────────────────────────────────────────────────
+    case 'SET_CAMERA':
+      return { ...state, camera: { ...state.camera, ...action.camera } };
+
+    case 'ZOOM_AT': {
+      const oldZoom = state.camera.zoom;
+      const zoomFactor = action.delta > 0 ? 0.9 : 1.1;
+      const newZoom = clampZoom(oldZoom * zoomFactor);
+      const worldX = (action.screenX - state.camera.offsetX) / oldZoom;
+      const worldY = (action.screenY - state.camera.offsetY) / oldZoom;
+      return {
+        ...state,
+        camera: {
+          zoom: newZoom,
+          offsetX: action.screenX - worldX * newZoom,
+          offsetY: action.screenY - worldY * newZoom,
+        },
+      };
+    }
+
+    case 'PAN_START':
+      return { ...state, isPanning: true, panStart: { x: action.screenX, y: action.screenY } };
+
+    case 'PAN_MOVE': {
+      if (!state.isPanning || !state.panStart) return state;
+      const dx = action.screenX - state.panStart.x;
+      const dy = action.screenY - state.panStart.y;
+      return {
+        ...state,
+        camera: {
+          ...state.camera,
+          offsetX: state.camera.offsetX + dx,
+          offsetY: state.camera.offsetY + dy,
+        },
+        panStart: { x: action.screenX, y: action.screenY },
+      };
+    }
+
+    case 'PAN_END':
+      return { ...state, isPanning: false, panStart: null };
+
+    case 'MOUSE_MOVE': {
+      const worldPos = screenToWorld(state.camera, action.screenX, action.screenY);
+      let newState = { ...state, mouseWorldPos: worldPos };
+
+      // Handle panning
+      if (state.isPanning && state.panStart) {
+        const dx = action.screenX - state.panStart.x;
+        const dy = action.screenY - state.panStart.y;
+        newState = {
+          ...newState,
+          camera: {
+            ...state.camera,
+            offsetX: state.camera.offsetX + dx,
+            offsetY: state.camera.offsetY + dy,
+          },
+          panStart: { x: action.screenX, y: action.screenY },
+        };
+      }
+
+      return newState;
+    }
+
+    case 'MOUSE_DOWN': {
+      // Right or middle click → pan
+      if (action.button === 1 || action.button === 2) {
+        return {
+          ...state,
+          isPanning: true,
+          panStart: { x: action.screenX, y: action.screenY },
+        };
+      }
+
+      // Left click — handled by flow-specific logic in components
+      return state;
+    }
+
+    case 'MOUSE_UP': {
+      if (state.isPanning) {
+        return { ...state, isPanning: false, panStart: null };
+      }
+      return state;
+    }
+
+    // ── Selection ───────────────────────────────────────────────────────
+    case 'SELECT_UNIT':
+      return { ...state, selectedUnitId: action.unitId };
+
+    case 'HOVER_UNIT':
+      return { ...state, hoveredUnitId: action.unitId };
+
+    case 'HOVER_MODEL':
+      return { ...state, hoveredModelId: action.modelId };
+
+    // ── Movement Flow ───────────────────────────────────────────────────
+    case 'START_MOVE_FLOW': {
+      if (!state.selectedUnitId) return state;
+      return {
+        ...state,
+        flowState: {
+          type: 'movement',
+          step: { step: 'selectDestination', unitId: state.selectedUnitId, isRush: false },
+        },
+        overlayVisibility: { ...state.overlayVisibility, movement: true },
+      };
+    }
+
+    case 'START_RUSH_FLOW': {
+      if (!state.selectedUnitId) return state;
+      return {
+        ...state,
+        flowState: {
+          type: 'movement',
+          step: { step: 'selectDestination', unitId: state.selectedUnitId, isRush: true },
+        },
+        overlayVisibility: { ...state.overlayVisibility, movement: true },
+      };
+    }
+
+    case 'SET_MOVE_DESTINATION': {
+      if (state.flowState.type !== 'movement') return state;
+      const moveStep = state.flowState.step;
+      if (moveStep.step !== 'selectDestination') return state;
+      return {
+        ...state,
+        flowState: {
+          type: 'movement',
+          step: {
+            step: 'confirmMove',
+            unitId: moveStep.unitId,
+            modelPositions: [{ modelId: action.modelId, position: action.position }],
+            isRush: moveStep.isRush,
+          },
+        },
+      };
+    }
+
+    case 'CONFIRM_MOVE': {
+      if (state.flowState.type !== 'movement') return state;
+      const moveStep = state.flowState.step;
+      if (moveStep.step === 'confirmMove') {
+        // Dispatch move commands for each model
+        let newState = state;
+        if (moveStep.isRush) {
+          newState = applyEngineCommand(newState, buildRushCommand(moveStep.unitId));
+        }
+        for (const mp of moveStep.modelPositions) {
+          newState = applyEngineCommand(newState, buildMoveCommand(mp.modelId, mp.position));
+        }
+        return {
+          ...newState,
+          flowState: { type: 'idle' },
+          selectedUnitId: null,
+          overlayVisibility: { ...newState.overlayVisibility, movement: false },
+        };
+      }
+      return state;
+    }
+
+    case 'CANCEL_MOVE':
+      return {
+        ...state,
+        flowState: { type: 'idle' },
+        overlayVisibility: { ...state.overlayVisibility, movement: false },
+      };
+
+    // ── Shooting Flow ───────────────────────────────────────────────────
+    case 'START_SHOOTING_FLOW': {
+      if (!state.selectedUnitId) return state;
+      return {
+        ...state,
+        flowState: {
+          type: 'shooting',
+          step: { step: 'selectTarget', attackerUnitId: state.selectedUnitId },
+        },
+        overlayVisibility: { ...state.overlayVisibility, los: true },
+      };
+    }
+
+    case 'SELECT_SHOOTING_TARGET': {
+      if (state.flowState.type !== 'shooting') return state;
+      const shootStep = state.flowState.step;
+      if (shootStep.step !== 'selectTarget') return state;
+      return {
+        ...state,
+        flowState: {
+          type: 'shooting',
+          step: {
+            step: 'selectWeapons',
+            attackerUnitId: shootStep.attackerUnitId,
+            targetUnitId: action.targetUnitId,
+            weaponSelections: [],
+          },
+        },
+      };
+    }
+
+    case 'SET_WEAPON_SELECTION': {
+      if (state.flowState.type !== 'shooting') return state;
+      const shootStep = state.flowState.step;
+      if (shootStep.step !== 'selectWeapons') return state;
+      // Update or add weapon selection for this model
+      const existing = shootStep.weaponSelections.filter(ws => ws.modelId !== action.selection.modelId);
+      return {
+        ...state,
+        flowState: {
+          type: 'shooting',
+          step: {
+            ...shootStep,
+            weaponSelections: [...existing, action.selection],
+          },
+        },
+      };
+    }
+
+    case 'CLEAR_WEAPON_SELECTION': {
+      if (state.flowState.type !== 'shooting') return state;
+      const shootStep = state.flowState.step;
+      if (shootStep.step !== 'selectWeapons') return state;
+      return {
+        ...state,
+        flowState: {
+          type: 'shooting',
+          step: {
+            ...shootStep,
+            weaponSelections: shootStep.weaponSelections.filter(ws => ws.modelId !== action.modelId),
+          },
+        },
+      };
+    }
+
+    case 'CONFIRM_SHOOTING': {
+      if (state.flowState.type !== 'shooting') return state;
+      const shootStep = state.flowState.step;
+      if (shootStep.step !== 'selectWeapons') return state;
+      if (shootStep.weaponSelections.length === 0) return state;
+
+      const newState = applyEngineCommand(
+        state,
+        buildShootingCommand(
+          shootStep.attackerUnitId,
+          shootStep.targetUnitId,
+          shootStep.weaponSelections,
+        ),
+      );
+      return {
+        ...newState,
+        flowState: {
+          type: 'shooting',
+          step: {
+            step: 'resolving',
+            attackerUnitId: shootStep.attackerUnitId,
+            targetUnitId: shootStep.targetUnitId,
+          },
+        },
+      };
+    }
+
+    case 'CANCEL_SHOOTING':
+      return {
+        ...state,
+        flowState: { type: 'idle' },
+        overlayVisibility: { ...state.overlayVisibility, los: false },
+      };
+
+    case 'RESOLVE_SHOOTING_CASUALTIES': {
+      const newState = applyEngineCommand(state, buildResolveShootingCasualtiesCommand());
+      return {
+        ...newState,
+        flowState: { type: 'idle' },
+        overlayVisibility: { ...newState.overlayVisibility, los: false },
+      };
+    }
+
+    // ── Assault Flow ────────────────────────────────────────────────────
+    case 'START_CHARGE_FLOW': {
+      if (!state.selectedUnitId) return state;
+      return {
+        ...state,
+        flowState: {
+          type: 'assault',
+          step: { step: 'selectTarget', chargingUnitId: state.selectedUnitId },
+        },
+      };
+    }
+
+    case 'SELECT_CHARGE_TARGET': {
+      if (state.flowState.type !== 'assault') return state;
+      const assaultStep = state.flowState.step;
+      if (assaultStep.step !== 'selectTarget') return state;
+      return {
+        ...state,
+        flowState: {
+          type: 'assault',
+          step: {
+            step: 'confirmCharge',
+            chargingUnitId: assaultStep.chargingUnitId,
+            targetUnitId: action.targetUnitId,
+          },
+        },
+      };
+    }
+
+    case 'CONFIRM_CHARGE': {
+      if (state.flowState.type !== 'assault') return state;
+      const assaultStep = state.flowState.step;
+      if (assaultStep.step !== 'confirmCharge') return state;
+
+      const newState = applyEngineCommand(
+        state,
+        buildChargeCommand(assaultStep.chargingUnitId, assaultStep.targetUnitId),
+      );
+      return {
+        ...newState,
+        flowState: {
+          type: 'assault',
+          step: {
+            step: 'resolving',
+            chargingUnitId: assaultStep.chargingUnitId,
+            targetUnitId: assaultStep.targetUnitId,
+          },
+        },
+      };
+    }
+
+    case 'CANCEL_CHARGE':
+      return { ...state, flowState: { type: 'idle' } };
+
+    case 'RESOLVE_FIGHT': {
+      const newState = applyEngineCommand(state, buildResolveFightCommand(action.combatId));
+      return { ...newState, flowState: { type: 'idle' } };
+    }
+
+    case 'SELECT_AFTERMATH': {
+      const newState = applyEngineCommand(
+        state,
+        buildSelectAftermathCommand(action.unitId, action.option),
+      );
+      return { ...newState, flowState: { type: 'idle' } };
+    }
+
+    // ── Reaction Flow ───────────────────────────────────────────────────
+    case 'SELECT_REACTION_UNIT': {
+      const newState = applyEngineCommand(
+        state,
+        buildReactionCommand(action.unitId, action.reactionType),
+      );
+      return { ...newState, flowState: { type: 'idle' } };
+    }
+
+    case 'DECLINE_REACTION': {
+      const newState = applyEngineCommand(state, buildDeclineReactionCommand());
+      return { ...newState, flowState: { type: 'idle' } };
+    }
+
+    // ── Challenge Flow ──────────────────────────────────────────────────
+    case 'DECLARE_CHALLENGE': {
+      const newState = applyEngineCommand(
+        state,
+        buildDeclareChallengeCommand(action.challengerModelId, action.targetModelId),
+      );
+      return newState;
+    }
+
+    case 'ACCEPT_CHALLENGE': {
+      const newState = applyEngineCommand(
+        state,
+        buildAcceptChallengeCommand(action.modelId),
+      );
+      return newState;
+    }
+
+    case 'DECLINE_CHALLENGE': {
+      const newState = applyEngineCommand(state, buildDeclineChallengeCommand());
+      return newState;
+    }
+
+    case 'SELECT_GAMBIT': {
+      const newState = applyEngineCommand(
+        state,
+        buildSelectGambitCommand(action.modelId, action.gambit),
+      );
+      return newState;
+    }
+
+    // ── Phase Control ───────────────────────────────────────────────────
+    case 'END_PHASE': {
+      const newState = applyEngineCommand(state, buildEndPhaseCommand());
+      return {
+        ...newState,
+        flowState: { type: 'idle' },
+        selectedUnitId: null,
+        ghostTrails: [], // Clear ghost trails at phase end
+      };
+    }
+
+    case 'END_SUB_PHASE': {
+      const newState = applyEngineCommand(state, buildEndSubPhaseCommand());
+      return {
+        ...newState,
+        flowState: { type: 'idle' },
+      };
+    }
+
+    // ── Engine Command (direct passthrough) ─────────────────────────────
+    case 'DISPATCH_ENGINE_COMMAND':
+      return applyEngineCommand(state, action.command);
+
+    // ── UI State Management ─────────────────────────────────────────────
+    case 'SET_FLOW_STATE':
+      return { ...state, flowState: action.flowState };
+
+    case 'ADD_COMBAT_LOG_ENTRY':
+      return { ...state, combatLog: [...state.combatLog, action.entry] };
+
+    case 'SET_COMBAT_LOG_FILTER':
+      return { ...state, combatLogFilter: action.filter };
+
+    case 'SHOW_DICE_ANIMATION':
+      return {
+        ...state,
+        diceAnimation: {
+          isVisible: true,
+          roll: action.roll,
+          startTime: Date.now(),
+          duration: 3000,
+        },
+      };
+
+    case 'HIDE_DICE_ANIMATION':
+      return {
+        ...state,
+        diceAnimation: { ...state.diceAnimation, isVisible: false },
+      };
+
+    case 'ADD_NOTIFICATION':
+      return {
+        ...state,
+        notifications: [
+          ...state.notifications,
+          { ...action.notification, timestamp: Date.now() },
+        ],
+      };
+
+    case 'DISMISS_NOTIFICATION':
+      return {
+        ...state,
+        notifications: state.notifications.filter(n => n.timestamp !== action.timestamp),
+      };
+
+    case 'CLEAR_GHOST_TRAILS':
+      return { ...state, ghostTrails: [] };
+
+    case 'TOGGLE_OVERLAY':
+      return {
+        ...state,
+        overlayVisibility: {
+          ...state.overlayVisibility,
+          [action.overlay]: !state.overlayVisibility[action.overlay],
+        },
+      };
+
+    // ── AI Opponent ────────────────────────────────────────────────────
+    case 'SET_AI_CONFIG':
+      return { ...state, aiConfig: action.config };
+
+    case 'AI_TURN_START':
+      return { ...state, aiThinking: true };
+
+    case 'AI_TURN_END':
+      return { ...state, aiThinking: false };
+
+    // ── Game Reset ──────────────────────────────────────────────────────
+    case 'NEW_GAME':
+      return createInitialGameUIState();
+
+    case 'RETURN_TO_MENU':
+      return createInitialGameUIState();
+
+    default:
+      return state;
+  }
+}

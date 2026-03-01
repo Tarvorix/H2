@@ -1,0 +1,125 @@
+{
+  "id": "storm-eagle",
+  "name": "Storm Eagle",
+  "titles": "Storm Eagle",
+  "lore": "The Storm Eagle assault gunship is one of the most numerous designs found in a Space Marine Legion airfleet. A tactical strike unit, its primary roles are orbital assault deployment of Legion forces and low-level ground attack. The Storm Eagle is a rugged and durable machine, heavily armed for its size, and considerably protected by armour plating, although it lacks the speed and manoeuvrability of true fighters. In operational use it proved itself an extremely flexible vehicle serving capably as a long range transport, orbital shuttle, scout and interceptor when called upon to do so in addition to its main battlefield roles.",
+  "basePoints": 200,
+  "battlefieldRole": "Fast Attack",
+  "modelDefinitions": [
+    {
+      "name": "Storm Eagle",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 18,
+        "BS": 4,
+        "frontArmour": 12,
+        "sideArmour": 12,
+        "rearArmour": 12,
+        "HP": 6,
+        "transportCapacity": 16
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "centreline-mounted-twin-heavy-bolter",
+    "centreline-mounted-vengeance-launcher",
+    "four-centreline-mounted-tempest-rockets"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "This Model may have its Centreline Mounted twin heavy bolter exchanged for one of the following:",
+      "removes": [
+        "centreline-mounted-twin-heavy-bolter"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "Centreline Mounted twin multi-melta +15 Points",
+      "adds": [
+        "centreline-mounted-twin-multi-melta"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Centreline Mounted cyclone missile launcher +10 Points",
+      "adds": [
+        "centreline-mounted-cyclone-missile-launcher"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "This Model may have its four Centreline Mounted tempest rockets exchanged for one of the following:",
+      "removes": [
+        "four-centreline-mounted-tempest-rockets"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "Four Centreline Mounted hunter-killer missiles +15 Points",
+      "adds": [
+        "four-centreline-mounted-hunter-killer-missiles"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Two Centreline Mounted twin lascannon +30 Points",
+      "adds": [
+        "two-centreline-mounted-twin-lascannon"
+      ],
+      "pointsCost": 30,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Assault Vehicle"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    }
+  ],
+  "unitType": "Vehicle",
+  "unitSubTypes": [
+    "Transport",
+    "Flyer"
+  ],
+  "accessPoints": [
+    {
+      "name": "- This Model has Access Points on all Facings.",
+      "relativePosition": {
+        "x": 0,
+        "y": 0
+      }
+    }
+  ]
+}

@@ -1,0 +1,86 @@
+{
+  "id": "herald",
+  "name": "Herald",
+  "titles": "Herald",
+  "lore": "As the wars of the Horus Heresy spread to consume the galaxy, billions fought and died under the banners of warlords they had never seen or heard first-hand, and even among those such as the Legiones Astartes, near-religious fervour became common for those artefacts touched by Primarch, Warmaster or Regent. On warfronts across the galaxy, Heralds stood proud and unwavering at the head of the Legion forces, carrying high icons given as a sign of authority and favour, and all knew that the words and deeds of these emissaries carried the highest authority.",
+  "basePoints": 100,
+  "battlefieldRole": "Command",
+  "modelDefinitions": [
+    {
+      "name": "Herald",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 5,
+        "BS": 5,
+        "S": 4,
+        "T": 4,
+        "W": 3,
+        "I": 5,
+        "A": 4,
+        "LD": 9,
+        "CL": 9,
+        "WP": 8,
+        "IN": 8,
+        "SAV": 2,
+        "INV": 5
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "power-weapon",
+    "bolt-pistol",
+    "frag-grenades",
+    "krak-grenades",
+    "icon-of-allegiance"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "This Model may have its power weapon exchanged for one power fist for +10 Points.",
+      "removes": [
+        "power-weapon"
+      ],
+      "adds": [
+        "power-fist"
+      ],
+      "pointsCost": 10,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "This Model may have melta bombs selected for it for +5 Points.",
+      "adds": [
+        "melta-bombs-selected-for-it"
+      ],
+      "pointsCost": 5,
+      "scope": "one-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Fear",
+      "value": "1"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Command"
+  ]
+}

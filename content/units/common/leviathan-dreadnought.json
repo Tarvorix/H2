@@ -1,0 +1,168 @@
+{
+  "id": "leviathan-dreadnought",
+  "name": "Leviathan Dreadnought",
+  "titles": "Leviathan Dreadnought",
+  "lore": "Developed in the highest secrecy not on Mars, but on Terra, the Leviathan is an alternative development of the highly successful Contemptor; the resources required to produce one being immense. The Leviathan placed an ultimately lethal strain upon its occupant, though this risk was deemed worthwhile for the destruction they wrought. During the Horus Heresy, Loyalists with access to Terra were able to obtain new chassis, although never many, while Traitors and isolated forces were reduced to marshalling their few Leviathans carefully or hunting down the relics of the dead from battlefields to be recommissioned.",
+  "basePoints": 220,
+  "battlefieldRole": "War-Engine",
+  "modelDefinitions": [
+    {
+      "name": "Leviathan Dreadnought",
+      "baseSizeMM": 80,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 6,
+        "WS": 4,
+        "BS": 4,
+        "S": 8,
+        "T": 8,
+        "W": 7,
+        "I": 4,
+        "A": 4,
+        "LD": 12,
+        "CL": 10,
+        "WP": 7,
+        "IN": 5,
+        "SAV": 2,
+        "INV": 5
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "two-heavy-flamers"
+  ],
+  "wargearOptions": [
+    {
+      "type": "upgrade",
+      "description": "This Model must have one of the following options selected for it:",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Two options from the following list:",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Leviathan siege claw and one meltagun Free",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Leviathan siege drill and one meltagun +5 Points each",
+      "adds": [
+        "leviathan-siege-drill-and-one-meltagun"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Grav-flux bombard +10 Points each",
+      "adds": [
+        "grav-flux-bombard"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Leviathan storm cannon +15 Points each",
+      "adds": [
+        "leviathan-storm-cannon"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Cyclonic melta lance +20 Points each",
+      "adds": [
+        "cyclonic-melta-lance"
+      ],
+      "pointsCost": 20,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "• Paired Leviathan siege claws and two meltaguns +5 Points",
+      "adds": [
+        "paired-leviathan-siege-claws-and-two-meltaguns"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "• Paired Leviathan siege drills and two meltaguns +5 Points This Model may also have any of the following options selected for it:",
+      "adds": [
+        "paired-leviathan-siege-drills-and-two-meltaguns"
+      ],
+      "pointsCost": 5,
+      "scope": "one-model"
+    },
+    {
+      "type": "exchange",
+      "description": "Both of this Model’s heavy flamers may be exchanged for two twin volkite calivers for +15 Points.",
+      "removes": [
+        "be"
+      ],
+      "adds": [
+        "two-twin-volkite-calivers"
+      ],
+      "pointsCost": 15,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "This Model may have one phosphex discharger selected for it for +20 Points.",
+      "adds": [
+        "one-phosphex-discharger-selected-for-it"
+      ],
+      "pointsCost": 20,
+      "scope": "one-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Bulky",
+      "value": "7"
+    },
+    {
+      "name": "Explodes",
+      "value": "5+"
+    },
+    {
+      "name": "Implacable Advance"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    },
+    {
+      "category": "Custom",
+      "value": "Smokescreen"
+    }
+  ],
+  "unitType": "Walker",
+  "unitSubTypes": [
+    "Heavy"
+  ]
+}

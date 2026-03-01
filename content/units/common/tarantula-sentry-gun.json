@@ -1,0 +1,119 @@
+{
+  "id": "tarantula-sentry-gun",
+  "name": "Tarantula Sentry Gun",
+  "titles": "Tarantula Sentry Gun",
+  "lore": "The Space Marine Legions, in particular, make use of Tarantulas in a forward deployment role and see them as entirely disposable assets, often utilising them in the thick of battle to defend a forward position, draw out enemy forces for attack or even to guard a withdrawal or pin an enemy force during a feint. To this end, Tarantulas may be dropped into forward positions on the battlelines immediately prior to suspected engagement via hovering servo-carriers or placed by reconnaissance forces under concealment to provide an unpleasant surprise for an attacker.",
+  "basePoints": 45,
+  "battlefieldRole": "Recon",
+  "modelDefinitions": [
+    {
+      "name": "Tarantula Sentry Gun",
+      "baseSizeMM": 32,
+      "countInBase": 2,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 0,
+        "BS": 4,
+        "frontArmour": 10,
+        "sideArmour": 10,
+        "rearArmour": 10,
+        "HP": 2,
+        "transportCapacity": 0
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 2,
+  "maxModels": 2,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "turret-mounted-twin-heavy-bolter"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its Turret Mounted twin heavy bolter exchanged for one of the following:",
+      "removes": [
+        "turret-mounted-twin-heavy-bolter"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Turret Mounted twin lascannon +20 Points per Model",
+      "adds": [
+        "turret-mounted-twin-lascannon"
+      ],
+      "pointsCost": 20,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Turret Mounted twin volkite culverin +15 Points per Model",
+      "adds": [
+        "turret-mounted-twin-volkite-culverin"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Turret Mounted sentry melta array +25 Points per Model",
+      "adds": [
+        "turret-mounted-sentry-melta-array"
+      ],
+      "pointsCost": 25,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Turret Mounted Hyperios missile launcher +15 Points per Model",
+      "adds": [
+        "turret-mounted-hyperios-missile-launcher"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Two Turret Mounted Orias frag missiles +15 Points per Model",
+      "adds": [
+        "two-turret-mounted-orias-frag-missiles"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Expendable",
+      "value": "3"
+    },
+    {
+      "name": "Infiltrate",
+      "value": "9"
+    },
+    {
+      "name": "Independent Sentries"
+    },
+    {
+      "name": "Automated Fire Protocols"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    }
+  ],
+  "unitType": "Vehicle",
+  "unitSubTypes": []
+}

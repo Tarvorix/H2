@@ -1,0 +1,133 @@
+{
+  "id": "glaive-super-heavy-special-weapons-tank",
+  "name": "Glaive Super Heavy Special Weapons Tank",
+  "titles": "Glaive Super-Heavy Special Weapons Tank",
+  "lore": "The Glaive is a super-heavy tank pattern based on the Fellblade, outfitted with a potent volkite carronade, a device of the Mechanicum whose design is said to have originated on Mars during the wars of the Age of Strife. It was not without acrimony that the Forge Lords agreed to the Emperor’s demand for a Legion tank to be created that utilised this weapon. The effort of constructing practicable numbers of super-heavy tanks around the volkite carronade is considered well worth the expenditure in resources required, for multiple targets are struck down by its ravening beam before even a portion of its energy is dissipated.",
+  "basePoints": 650,
+  "battlefieldRole": "Armour",
+  "modelDefinitions": [
+    {
+      "name": "Glaive",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 10,
+        "BS": 4,
+        "frontArmour": 14,
+        "sideArmour": 13,
+        "rearArmour": 12,
+        "HP": 18,
+        "transportCapacity": 0
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "turret-mounted-volkite-carronade",
+    "hull-front-mounted-twin-heavy-bolter",
+    "two-sponson-mounted-lascannon-arrays"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "This Model may have its Hull (Front) Mounted twin heavy bolter exchanged for one Hull (Front) Mounted twin heavy flamer for Free.",
+      "removes": [
+        "hull-front-mounted-twin-heavy-bolter"
+      ],
+      "adds": [
+        "hull-front-mounted-twin-heavy-flamer"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "exchange",
+      "description": "This Model may have both Sponson Mounted lascannon arrays exchanged for one of the following:",
+      "removes": [
+        "have-both-sponson-mounted-lascannon-arrays"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Two Sponson Mounted laser destroyers Free",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Two Sponson Mounted Gravis heavy bolter batteries Free",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "This Model may have one item from the Legion Pintle Weapons list selected for it.",
+      "adds": [
+        "one-item-from-the-legion-pintle-weapons-list-selected-for-it"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "This Model may have one of each of the following selected for it:",
+      "adds": [
+        "one-of-each-of-the-following-selected-for-it"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "One Hull (Front) Mounted hunter-killer missile +5 Points",
+      "adds": [
+        "hull-front-mounted-hunter-killer-missile"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Searchlights +5 Points",
+      "adds": [
+        "searchlights"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "None"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    },
+    {
+      "category": "Custom",
+      "value": "Smokescreen"
+    }
+  ],
+  "unitType": "Vehicle",
+  "unitSubTypes": [
+    "SuperHeavy"
+  ]
+}

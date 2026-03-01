@@ -1,0 +1,107 @@
+{
+  "id": "cerberus-heavy-tank-destroyer",
+  "name": "Cerberus Heavy Tank Destroyer",
+  "titles": "Cerberus Heavy Tank Destroyer",
+  "lore": "The Cerberus mounts a neutron laser battery and the sizable atomantic arc-reactors and radiation shielding needed to operate the weapon. This particular variant of neutron weaponry is a relic of the Dark Age of Technology and even when properly shielded, each shot fired floods the interior with exotic radiation. Few crews last for more than a few years before requiring extensive augmetic reconstruction yet, despite the terrible cost of its use, the neutron laser is one of the most effective anti-tank weapons available to the Space Marine Legions and even titan-class targets are vulnerable to the discharges of this weapon.",
+  "basePoints": 400,
+  "battlefieldRole": "Armour",
+  "modelDefinitions": [
+    {
+      "name": "Cerberus",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 10,
+        "BS": 4,
+        "frontArmour": 14,
+        "sideArmour": 14,
+        "rearArmour": 13,
+        "HP": 12,
+        "transportCapacity": 0
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "centreline-mounted-neutron-laser-battery",
+    "two-sponson-mounted-heavy-bolters"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "This Model may have both Sponson Mounted heavy bolters exchanged for one item from the Legion Sponson Weapons list.",
+      "removes": [
+        "have-both-sponson-mounted-heavy-bolters"
+      ],
+      "adds": [
+        "item-from-the-legion-sponson-weapons-list"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "This Model may have one item from the Legion Pintle Weapons list selected for it.",
+      "adds": [
+        "one-item-from-the-legion-pintle-weapons-list-selected-for-it"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "This Model may have one of each of the following selected for it:",
+      "adds": [
+        "one-of-each-of-the-following-selected-for-it"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "One Hull (Front) Mounted hunter-killer missile +5 Points",
+      "adds": [
+        "hull-front-mounted-hunter-killer-missile"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Searchlights +5 Points",
+      "adds": [
+        "searchlights"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Explodes",
+      "value": "4+"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    },
+    {
+      "category": "Custom",
+      "value": "Smokescreen"
+    }
+  ],
+  "unitType": "Vehicle",
+  "unitSubTypes": [
+    "SuperHeavy"
+  ]
+}

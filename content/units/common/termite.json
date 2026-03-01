@@ -1,0 +1,100 @@
+{
+  "id": "termite",
+  "name": "Termite",
+  "titles": "Termite",
+  "lore": "Originally designed on Terra for the task of rooting out burrowing xenos species, canny commanders quickly found use for the Termite assault drill for emerging beneath the foundations of enemy bastions or behind trench lines to lay waste to their defenders. The Termite is capable of bringing a full squad of warriors to the battlefield whilst bypassing enemy auspex and atmospheric scanners. Similar in design to the boarding torpedoes launched from starships, the Termite safely transports its passengers thanks to gyroscopic stabilisation harnesses which limit impact and acceleration trauma.",
+  "basePoints": 80,
+  "battlefieldRole": "Transport",
+  "modelDefinitions": [
+    {
+      "name": "Termite",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 6,
+        "BS": 4,
+        "frontArmour": 12,
+        "sideArmour": 12,
+        "rearArmour": 10,
+        "HP": 5,
+        "transportCapacity": 12
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "two-pintle-mounted-combi-bolters",
+    "centreline-mounted-melta-cutters"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "Both of this Model’s combi-bolters may be exchanged for one of the following:",
+      "removes": [
+        "be"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "Two Pintle Mounted twin volkite chargers +10 Points",
+      "adds": [
+        "two-pintle-mounted-twin-volkite-chargers"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Two Pintle Mounted heavy flamers +5 Points",
+      "adds": [
+        "two-pintle-mounted-heavy-flamers"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Light Transport"
+    },
+    {
+      "name": "Deep Strike"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    },
+    {
+      "category": "Custom",
+      "value": "Smokescreen"
+    }
+  ],
+  "unitType": "Vehicle",
+  "unitSubTypes": [
+    "Transport"
+  ],
+  "accessPoints": [
+    {
+      "name": "- This Model has Access Points on both Side Facings.",
+      "relativePosition": {
+        "x": 0,
+        "y": 0
+      }
+    }
+  ]
+}

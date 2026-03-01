@@ -1,0 +1,55 @@
+{
+  "id": "araknae-quad-accelerator-platform",
+  "name": "Araknae Quad Accelerator Platform",
+  "titles": "Araknae Quad Accelerator Platform",
+  "lore": "Deployable fortifications were used by the Space Marine Legions, comprising of a number of standardised modular components that could be dropped from orbiting vessels and rapidly assembled into networks of defences and support structures that would form the footholds upon which the advance of the Legion was made. Primary amongst these components were gun emplacements mounted with versatile cannon arrays, intended to provide a beaten zone spanning both the land and the air, holding back the advance of the enemy and allowing other Legionary assets to establish their own positions deep in the heart of contested territory.",
+  "basePoints": 125,
+  "battlefieldRole": "Support",
+  "modelDefinitions": [
+    {
+      "name": "Quad Accelerator Platform",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 0,
+        "BS": 4,
+        "frontArmour": 12,
+        "sideArmour": 12,
+        "rearArmour": 12,
+        "HP": 5,
+        "transportCapacity": 0
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "turret-mounted-quad-accelerator-autocannon",
+    "atomantic-pavise"
+  ],
+  "wargearOptions": [],
+  "specialRules": [
+    {
+      "name": "Gun Emplacement"
+    },
+    {
+      "name": "Explodes",
+      "value": "4+"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    }
+  ],
+  "unitType": "Vehicle",
+  "unitSubTypes": []
+}

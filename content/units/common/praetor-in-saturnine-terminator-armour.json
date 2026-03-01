@@ -1,0 +1,104 @@
+{
+  "id": "praetor-in-saturnine-terminator-armour",
+  "name": "Praetor in Saturnine Terminator Armour",
+  "titles": "Praetor in Saturnine Terminator Armour",
+  "lore": "Rather than relying on the tried-and-tested patterns of armour they have utilised throughout their service, some praetors instead take to the field in prototype or experimental plate, such as the Saturnine patterns. Upon their approval and wider distribution, these warriors display exemplary knowledge of its benefits and drawbacks, leading their companies into the deadliest fighting protected by the very best wargear the Legions have to offer. Pairing this superior protection with weaponry able to shatter even the might)’ Dreadnought chassis, such commanders become a true colossus of battle.",
+  "basePoints": 200,
+  "battlefieldRole": "High Command",
+  "modelDefinitions": [
+    {
+      "name": "Saturnine Praetor",
+      "baseSizeMM": 50,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 5,
+        "WS": 6,
+        "BS": 5,
+        "S": 4,
+        "T": 6,
+        "W": 6,
+        "I": 4,
+        "A": 4,
+        "LD": 10,
+        "CL": 9,
+        "WP": 9,
+        "IN": 9,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "saturnine-war-axe",
+    "saturnine-disruption-fist",
+    "thermal-diffraction-field"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "This Model may have its Saturnine war axe or Saturnine disruption fist exchanged for one Saturnine concussion hammer for +10 Points.",
+      "removes": [
+        "saturnine-war-axe-or-saturnine-disruption-fist"
+      ],
+      "adds": [
+        "saturnine-concussion-hammer"
+      ],
+      "pointsCost": 10,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "This Model may have a plasma blaster selected for it for +10 Points.",
+      "adds": [
+        "plasma-blaster-selected-for-it"
+      ],
+      "pointsCost": 10,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "This Model may have a Saturnine teleportation transponder selected for it for +60 Points.",
+      "adds": [
+        "saturnine-teleportation-transponder-selected-for-it"
+      ],
+      "pointsCost": 60,
+      "scope": "one-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Bulky",
+      "value": "4"
+    },
+    {
+      "name": "Implacable Advance"
+    },
+    {
+      "name": "Slow and Purposeful"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    },
+    {
+      "category": "Custom",
+      "value": "Master of the Legion"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Command",
+    "Heavy"
+  ]
+}

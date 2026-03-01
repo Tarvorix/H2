@@ -1,0 +1,518 @@
+{
+  "alpharius": {
+    "path": "content/units/alpha-legion/alpharius.json",
+    "role": "Warlord",
+    "legionTags": [
+      "alpha-legion"
+    ]
+  },
+  "angron": {
+    "path": "content/units/world-eaters/angron.json",
+    "role": "Warlord",
+    "legionTags": [
+      "world-eaters"
+    ]
+  },
+  "angron-transfigured": {
+    "path": "content/units/world-eaters/angron-transfigured.json",
+    "role": "Warlord",
+    "legionTags": [
+      "world-eaters"
+    ]
+  },
+  "apothecary": {
+    "path": "content/units/common/apothecary.json",
+    "role": "Support",
+    "legionTags": []
+  },
+  "araknae-quad-accelerator-platform": {
+    "path": "content/units/common/araknae-quad-accelerator-platform.json",
+    "role": "Support",
+    "legionTags": []
+  },
+  "armillus-dynat": {
+    "path": "content/units/alpha-legion/armillus-dynat.json",
+    "role": "High Command",
+    "legionTags": [
+      "alpha-legion"
+    ]
+  },
+  "arquitor-bombard": {
+    "path": "content/units/common/arquitor-bombard.json",
+    "role": "Armour",
+    "legionTags": []
+  },
+  "assault-squad": {
+    "path": "content/units/common/assault-squad.json",
+    "role": "Troops",
+    "legionTags": []
+  },
+  "breacher-squad": {
+    "path": "content/units/common/breacher-squad.json",
+    "role": "Troops",
+    "legionTags": []
+  },
+  "cataphractii-terminator-command-squad": {
+    "path": "content/units/common/cataphractii-terminator-command-squad.json",
+    "role": "Retinue",
+    "legionTags": []
+  },
+  "cataphractii-terminator-squad": {
+    "path": "content/units/common/cataphractii-terminator-squad.json",
+    "role": "Heavy Assault",
+    "legionTags": []
+  },
+  "centurion": {
+    "path": "content/units/common/centurion.json",
+    "role": "Command",
+    "legionTags": []
+  },
+  "centurion-command-squad": {
+    "path": "content/units/common/centurion-command-squad.json",
+    "role": "Retinue",
+    "legionTags": []
+  },
+  "centurion-in-terminator-armour": {
+    "path": "content/units/common/centurion-in-terminator-armour.json",
+    "role": "Command",
+    "legionTags": []
+  },
+  "cerberus-heavy-tank-destroyer": {
+    "path": "content/units/common/cerberus-heavy-tank-destroyer.json",
+    "role": "Armour",
+    "legionTags": []
+  },
+  "chaplain": {
+    "path": "content/units/common/chaplain.json",
+    "role": "Command",
+    "legionTags": []
+  },
+  "contemptor-dreadnought": {
+    "path": "content/units/common/contemptor-dreadnought.json",
+    "role": "War-Engine",
+    "legionTags": []
+  },
+  "corswain": {
+    "path": "content/units/dark-angels/corswain.json",
+    "role": "High Command",
+    "legionTags": [
+      "dark-angels"
+    ]
+  },
+  "damocles-command-rhino": {
+    "path": "content/units/common/damocles-command-rhino.json",
+    "role": "Command",
+    "legionTags": []
+  },
+  "deathstorm-drop-pod": {
+    "path": "content/units/common/deathstorm-drop-pod.json",
+    "role": "Support",
+    "legionTags": []
+  },
+  "deathwing-companion-detachment": {
+    "path": "content/units/dark-angels/deathwing-companion-detachment.json",
+    "role": "Retinue",
+    "legionTags": [
+      "dark-angels"
+    ]
+  },
+  "deredeo-dreadnought": {
+    "path": "content/units/common/deredeo-dreadnought.json",
+    "role": "War-Engine",
+    "legionTags": []
+  },
+  "despoiler-squad": {
+    "path": "content/units/common/despoiler-squad.json",
+    "role": "Troops",
+    "legionTags": []
+  },
+  "dreadclaw-drop-pod": {
+    "path": "content/units/common/dreadclaw-drop-pod.json",
+    "role": "Heavy Transport",
+    "legionTags": []
+  },
+  "dreadnought-drop-pod": {
+    "path": "content/units/common/dreadnought-drop-pod.json",
+    "role": "Heavy Transport",
+    "legionTags": []
+  },
+  "dreadwing-interemptors": {
+    "path": "content/units/dark-angels/dreadwing-interemptors.json",
+    "role": "Support",
+    "legionTags": [
+      "dark-angels"
+    ]
+  },
+  "drop-pod": {
+    "path": "content/units/common/drop-pod.json",
+    "role": "Transport",
+    "legionTags": []
+  },
+  "esoterist": {
+    "path": "content/units/common/esoterist.json",
+    "role": "Command",
+    "legionTags": []
+  },
+  "exodus": {
+    "path": "content/units/alpha-legion/exodus.json",
+    "role": "Elites",
+    "legionTags": [
+      "alpha-legion"
+    ]
+  },
+  "falchion-super-heavy-tank-destroyer": {
+    "path": "content/units/common/falchion-super-heavy-tank-destroyer.json",
+    "role": "Armour",
+    "legionTags": []
+  },
+  "fellblade-super-heavy-battle-tank": {
+    "path": "content/units/common/fellblade-super-heavy-battle-tank.json",
+    "role": "Armour",
+    "legionTags": []
+  },
+  "fire-raptor": {
+    "path": "content/units/common/fire-raptor.json",
+    "role": "Fast Attack",
+    "legionTags": []
+  },
+  "glaive-super-heavy-special-weapons-tank": {
+    "path": "content/units/common/glaive-super-heavy-special-weapons-tank.json",
+    "role": "Armour",
+    "legionTags": []
+  },
+  "headhunter-kill-team": {
+    "path": "content/units/alpha-legion/headhunter-kill-team.json",
+    "role": "Elites",
+    "legionTags": [
+      "alpha-legion"
+    ]
+  },
+  "heavy-support-squad": {
+    "path": "content/units/common/heavy-support-squad.json",
+    "role": "Support",
+    "legionTags": []
+  },
+  "herald": {
+    "path": "content/units/common/herald.json",
+    "role": "Command",
+    "legionTags": []
+  },
+  "inner-circle-knights-cenobium": {
+    "path": "content/units/dark-angels/inner-circle-knights-cenobium.json",
+    "role": "Elites",
+    "legionTags": [
+      "dark-angels"
+    ]
+  },
+  "javelin-squadron": {
+    "path": "content/units/common/javelin-squadron.json",
+    "role": "Fast Attack",
+    "legionTags": []
+  },
+  "kh-rn-the-bloody": {
+    "path": "content/units/world-eaters/kh-rn-the-bloody.json",
+    "role": "High Command",
+    "legionTags": [
+      "world-eaters"
+    ]
+  },
+  "kharybdis-assault-claw": {
+    "path": "content/units/common/kharybdis-assault-claw.json",
+    "role": "Heavy Transport",
+    "legionTags": []
+  },
+  "kratos-assault-tank": {
+    "path": "content/units/common/kratos-assault-tank.json",
+    "role": "Armour",
+    "legionTags": []
+  },
+  "land-raider-carrier": {
+    "path": "content/units/common/land-raider-carrier.json",
+    "role": "Heavy Transport",
+    "legionTags": []
+  },
+  "land-raider-explorator": {
+    "path": "content/units/common/land-raider-explorator.json",
+    "role": "Recon",
+    "legionTags": []
+  },
+  "land-speeder-squadron": {
+    "path": "content/units/common/land-speeder-squadron.json",
+    "role": "Fast Attack",
+    "legionTags": []
+  },
+  "legion-champion": {
+    "path": "content/units/common/legion-champion.json",
+    "role": "Command",
+    "legionTags": []
+  },
+  "lernaean-terminator-squad": {
+    "path": "content/units/alpha-legion/lernaean-terminator-squad.json",
+    "role": "Elites",
+    "legionTags": [
+      "alpha-legion"
+    ]
+  },
+  "leviathan-dreadnought": {
+    "path": "content/units/common/leviathan-dreadnought.json",
+    "role": "War-Engine",
+    "legionTags": []
+  },
+  "librarian": {
+    "path": "content/units/common/librarian.json",
+    "role": "Command",
+    "legionTags": []
+  },
+  "lion-el-jonson": {
+    "path": "content/units/dark-angels/lion-el-jonson.json",
+    "role": "Warlord",
+    "legionTags": [
+      "dark-angels"
+    ]
+  },
+  "lotara-sarrin": {
+    "path": "content/units/world-eaters/lotara-sarrin.json",
+    "role": "Command",
+    "legionTags": [
+      "world-eaters"
+    ]
+  },
+  "marduk-sedras": {
+    "path": "content/units/dark-angels/marduk-sedras.json",
+    "role": "High Command",
+    "legionTags": [
+      "dark-angels"
+    ]
+  },
+  "master-of-signals": {
+    "path": "content/units/common/master-of-signals.json",
+    "role": "Command",
+    "legionTags": []
+  },
+  "mastodon-super-heavy-assault-transport": {
+    "path": "content/units/common/mastodon-super-heavy-assault-transport.json",
+    "role": "Armour",
+    "legionTags": []
+  },
+  "moritat": {
+    "path": "content/units/common/moritat.json",
+    "role": "Command",
+    "legionTags": []
+  },
+  "optae": {
+    "path": "content/units/common/optae.json",
+    "role": "Command",
+    "legionTags": []
+  },
+  "outrider-squadron": {
+    "path": "content/units/common/outrider-squadron.json",
+    "role": "Recon",
+    "legionTags": []
+  },
+  "overseer": {
+    "path": "content/units/common/overseer.json",
+    "role": "Command",
+    "legionTags": []
+  },
+  "praetor": {
+    "path": "content/units/common/praetor.json",
+    "role": "High Command",
+    "legionTags": []
+  },
+  "praetor-in-saturnine-terminator-armour": {
+    "path": "content/units/common/praetor-in-saturnine-terminator-armour.json",
+    "role": "High Command",
+    "legionTags": []
+  },
+  "praetor-in-terminator-armour": {
+    "path": "content/units/common/praetor-in-terminator-armour.json",
+    "role": "High Command",
+    "legionTags": []
+  },
+  "praetorian-command-squad": {
+    "path": "content/units/common/praetorian-command-squad.json",
+    "role": "Retinue",
+    "legionTags": []
+  },
+  "praetorian-command-squad-with-jump-packs": {
+    "path": "content/units/common/praetorian-command-squad-with-jump-packs.json",
+    "role": "Retinue",
+    "legionTags": []
+  },
+  "praevian": {
+    "path": "content/units/common/praevian.json",
+    "role": "Command",
+    "legionTags": []
+  },
+  "predator": {
+    "path": "content/units/common/predator.json",
+    "role": "Armour",
+    "legionTags": []
+  },
+  "rampager-squad": {
+    "path": "content/units/world-eaters/rampager-squad.json",
+    "role": "Heavy Assault",
+    "legionTags": [
+      "world-eaters"
+    ]
+  },
+  "rapier-battery": {
+    "path": "content/units/common/rapier-battery.json",
+    "role": "Support",
+    "legionTags": []
+  },
+  "reconnaissance-squad": {
+    "path": "content/units/common/reconnaissance-squad.json",
+    "role": "Recon",
+    "legionTags": []
+  },
+  "red-butchers": {
+    "path": "content/units/world-eaters/red-butchers.json",
+    "role": "Elites",
+    "legionTags": [
+      "world-eaters"
+    ]
+  },
+  "rhino": {
+    "path": "content/units/common/rhino.json",
+    "role": "Transport",
+    "legionTags": []
+  },
+  "saboteur": {
+    "path": "content/units/alpha-legion/saboteur.json",
+    "role": "Command",
+    "legionTags": [
+      "alpha-legion"
+    ]
+  },
+  "sabre": {
+    "path": "content/units/common/sabre.json",
+    "role": "Recon",
+    "legionTags": []
+  },
+  "saturnine-dreadnought": {
+    "path": "content/units/common/saturnine-dreadnought.json",
+    "role": "War-Engine",
+    "legionTags": []
+  },
+  "saturnine-terminator-squad": {
+    "path": "content/units/common/saturnine-terminator-squad.json",
+    "role": "Heavy Assault",
+    "legionTags": []
+  },
+  "scimitar-jetbike-squadron": {
+    "path": "content/units/common/scimitar-jetbike-squadron.json",
+    "role": "Fast Attack",
+    "legionTags": []
+  },
+  "scorpius-missile-tank": {
+    "path": "content/units/common/scorpius-missile-tank.json",
+    "role": "Armour",
+    "legionTags": []
+  },
+  "seeker-squad": {
+    "path": "content/units/common/seeker-squad.json",
+    "role": "Elites",
+    "legionTags": []
+  },
+  "sicaran": {
+    "path": "content/units/common/sicaran.json",
+    "role": "Armour",
+    "legionTags": []
+  },
+  "sicaran-venator": {
+    "path": "content/units/common/sicaran-venator.json",
+    "role": "Armour",
+    "legionTags": []
+  },
+  "siege-breaker": {
+    "path": "content/units/common/siege-breaker.json",
+    "role": "Command",
+    "legionTags": []
+  },
+  "sokar-stormbird": {
+    "path": "content/units/common/sokar-stormbird.json",
+    "role": "Armour",
+    "legionTags": []
+  },
+  "spartan": {
+    "path": "content/units/common/spartan.json",
+    "role": "Heavy Transport",
+    "legionTags": []
+  },
+  "storm-eagle": {
+    "path": "content/units/common/storm-eagle.json",
+    "role": "Fast Attack",
+    "legionTags": []
+  },
+  "tactical-squad": {
+    "path": "content/units/common/tactical-squad.json",
+    "role": "Troops",
+    "legionTags": []
+  },
+  "tactical-support-squad": {
+    "path": "content/units/common/tactical-support-squad.json",
+    "role": "Support",
+    "legionTags": []
+  },
+  "tarantula-sentry-gun": {
+    "path": "content/units/common/tarantula-sentry-gun.json",
+    "role": "Recon",
+    "legionTags": []
+  },
+  "tartaros-terminator-command-squad": {
+    "path": "content/units/common/tartaros-terminator-command-squad.json",
+    "role": "Retinue",
+    "legionTags": []
+  },
+  "tartaros-terminator-squad": {
+    "path": "content/units/common/tartaros-terminator-squad.json",
+    "role": "Heavy Assault",
+    "legionTags": []
+  },
+  "techmarine": {
+    "path": "content/units/common/techmarine.json",
+    "role": "Support",
+    "legionTags": []
+  },
+  "termite": {
+    "path": "content/units/common/termite.json",
+    "role": "Transport",
+    "legionTags": []
+  },
+  "thunderhawk-gunship": {
+    "path": "content/units/common/thunderhawk-gunship.json",
+    "role": "Armour",
+    "legionTags": []
+  },
+  "typhon-heavy-siege-tank": {
+    "path": "content/units/common/typhon-heavy-siege-tank.json",
+    "role": "Armour",
+    "legionTags": []
+  },
+  "veteran-assault-squad": {
+    "path": "content/units/common/veteran-assault-squad.json",
+    "role": "Elites",
+    "legionTags": []
+  },
+  "veteran-tactical-squad": {
+    "path": "content/units/common/veteran-tactical-squad.json",
+    "role": "Elites",
+    "legionTags": []
+  },
+  "vigilator": {
+    "path": "content/units/common/vigilator.json",
+    "role": "Command",
+    "legionTags": []
+  },
+  "vindicator-siege-tank": {
+    "path": "content/units/common/vindicator-siege-tank.json",
+    "role": "Armour",
+    "legionTags": []
+  },
+  "xiphon-interceptor": {
+    "path": "content/units/common/xiphon-interceptor.json",
+    "role": "Fast Attack",
+    "legionTags": []
+  }
+}

@@ -1,0 +1,212 @@
+{
+  "id": "land-speeder-squadron",
+  "name": "Land Speeder Squadron",
+  "titles": "Land Speeder Squadron",
+  "lore": "Land Speeders are high-speed reconnaissance and rapid-attack skimmers that utilise antigravity technology to achieve extraordinary battlefield mobility’ and speed. As lightly armoured two-man craft, they rely more on their extreme manoeuvrability and speed for survival than durability, and provide a Space Marine force with a flexible core of rapidly deployable firepower and make for highly able tank hunters and close air support units. As a result, formations of Land Speeders are often called upon to operate as a rapid-reaction force, held in reserve to quickly intercept enemy counter-attacks.",
+  "basePoints": 50,
+  "battlefieldRole": "Fast Attack",
+  "modelDefinitions": [
+    {
+      "name": "Land Speeder",
+      "baseSizeMM": 60,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 16,
+        "WS": 4,
+        "BS": 4,
+        "S": 4,
+        "T": 5,
+        "W": 3,
+        "I": 4,
+        "A": 2,
+        "LD": 8,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 3,
+        "INV": null
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 5,
+  "pointsPerAdditionalModel": 50,
+  "defaultWargear": [
+    "heavy-bolter",
+    "augury-scanner"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its heavy bolter exchanged for one of the following:",
+      "removes": [
+        "heavy-bolter"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Heavy flamer Free",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Havoc launcher +5 Points per Model",
+      "adds": [
+        "havoc-launcher"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Multi-melta +20 Points per Model",
+      "adds": [
+        "multi-melta"
+      ],
+      "pointsCost": 20,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Volkite culverin +5 Points per Model",
+      "adds": [
+        "volkite-culverin"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Plasma cannon +10 Points per Model",
+      "adds": [
+        "plasma-cannon"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Graviton gun +10 Points per Model",
+      "adds": [
+        "graviton-gun"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its augury scanner exchanged for one of the following:",
+      "removes": [
+        "augury-scanner"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Heavy flamer Free",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Heavy bolter Free",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Havoc launcher Free",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Multi-melta +20 Points per Model",
+      "adds": [
+        "multi-melta"
+      ],
+      "pointsCost": 20,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Volkite culverin +5 Points per Model",
+      "adds": [
+        "volkite-culverin"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Plasma cannon +10 Points per Model",
+      "adds": [
+        "plasma-cannon"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Graviton gun +10 Points per Model",
+      "adds": [
+        "graviton-gun"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Any Model in this Unit may have up to two hunter-killer missiles selected for it for +5 Points each.",
+      "adds": [
+        "up-to-two-hunter-killer-missiles-selected-for-it-for-5-points-each"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Bulky",
+      "value": "4"
+    },
+    {
+      "name": "Deep Strike"
+    },
+    {
+      "name": "Firing Protocols",
+      "value": "2"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    }
+  ],
+  "unitType": "Cavalry",
+  "unitSubTypes": [
+    "Skirmish",
+    "Antigrav"
+  ]
+}

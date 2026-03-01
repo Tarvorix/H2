@@ -1,0 +1,227 @@
+{
+  "id": "lernaean-terminator-squad",
+  "name": "Lernaean Terminator Squad",
+  "titles": "Lernaean Terminator Squad",
+  "lore": "The Lernaeans are, like the beast that is their namesake and the icon of the Legion, an unformed legend and the object of shrouded dread. They are the grinding jaws of the many-headed Hydra, the furious assault from the unexpected quarter. And like the beast of myth, they are all but impossible to slay. The Lernaeans are clad in Cataphractii plate chased with baroque finer)’ and are armed with volkite chargers, making them fearsome close assault and spearhead units against which few enemies can stand. Having secured their objective, they hold it stubbornly like the great beast with its jaws clamped firmly about its doomed prey.",
+  "basePoints": 250,
+  "battlefieldRole": "Elites",
+  "modelDefinitions": [
+    {
+      "name": "Harrower",
+      "baseSizeMM": 40,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 6,
+        "WS": 5,
+        "BS": 4,
+        "S": 4,
+        "T": 5,
+        "W": 2,
+        "I": 4,
+        "A": 4,
+        "LD": 9,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Lernaean",
+      "baseSizeMM": 40,
+      "countInBase": 4,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 6,
+        "WS": 5,
+        "BS": 4,
+        "S": 4,
+        "T": 5,
+        "W": 2,
+        "I": 4,
+        "A": 3,
+        "LD": 8,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 5,
+  "maxModels": 10,
+  "pointsPerAdditionalModel": 45,
+  "defaultWargear": [
+    "volkite-charger",
+    "power-axe"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its volkite charger exchanged for one combi-bolter for Free or for one item from the Legion Combi-weapons list.",
+      "removes": [
+        "volkite-charger"
+      ],
+      "adds": [
+        "combi-bolter-for-free-or-for-one-item-from-the-legion-combi-weapons-list"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its power axe exchanged for one of the following:",
+      "removes": [
+        "power-axe"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Power maul Free",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Lightning claw +5 Points",
+      "adds": [
+        "lightning-claw"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Power fist +10 Points",
+      "adds": [
+        "power-fist"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Chainfist +10 Points",
+      "adds": [
+        "chainfist"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Thunder hammer +10 Points",
+      "adds": [
+        "thunder-hammer"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its volkite charger and power axe exchanged for one pair of lightning claws for +10 Points.",
+      "removes": [
+        "volkite-charger-and-power-axe"
+      ],
+      "adds": [
+        "pair-lightning-claws"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "For every five Models in this Unit, one Lernaean in this Unit may have its volkite charger exchanged for one of the following:",
+      "removes": [
+        "volkite-charger"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Heavy flamer +10 Points per Model",
+      "adds": [
+        "heavy-flamer"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Conversion beam cannon +15 Points per Model",
+      "adds": [
+        "conversion-beam-cannon-short"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Reaper autocannon +15 Points per Model",
+      "adds": [
+        "reaper-autocannon"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Plasma blaster +10 Points per Model",
+      "adds": [
+        "plasma-blaster"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Bulky",
+      "value": "2"
+    },
+    {
+      "name": "Line",
+      "value": "1"
+    },
+    {
+      "name": "Implacable Advance"
+    },
+    {
+      "name": "Slow and Purposeful"
+    },
+    {
+      "name": "Hatred",
+      "value": "Legiones Astartes"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Faction",
+      "value": "Alpha Legion"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Sergeant",
+    "Heavy"
+  ]
+}

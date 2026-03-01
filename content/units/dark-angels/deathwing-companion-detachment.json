@@ -1,0 +1,184 @@
+{
+  "id": "deathwing-companion-detachment",
+  "name": "Deathwing Companion Detachment",
+  "titles": "Deathwing Companion Detachment",
+  "lore": "The finest warriors arid longest-serving veterans among the Deathwing form the ranks of the Companions, each such detachment sworn by the most stringent oaths to ensure the survival of those officers placed under their charge. Most famous among the Companions are those that have taken a death-blow meant for their ward and survived. Such warriors are granted the right to recolour their night dark armour in bone-white armour in recognition of their selfless devotion to the Legion, often choosing to mark the plate that took such a strike in remembrance of this deed.",
+  "basePoints": 175,
+  "battlefieldRole": "Retinue",
+  "modelDefinitions": [
+    {
+      "name": "Deathwing Oathbearer",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 7,
+        "WS": 5,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 2,
+        "I": 4,
+        "A": 3,
+        "LD": 8,
+        "CL": 8,
+        "WP": 8,
+        "IN": 8,
+        "SAV": 2,
+        "INV": 5
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Deathwing Companion",
+      "baseSizeMM": 32,
+      "countInBase": 4,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 5,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 2,
+        "I": 4,
+        "A": 3,
+        "LD": 9,
+        "CL": 8,
+        "WP": 8,
+        "IN": 8,
+        "SAV": 2,
+        "INV": null
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 5,
+  "maxModels": 10,
+  "pointsPerAdditionalModel": 30,
+  "defaultWargear": [
+    "calibanite-warblade",
+    "bolter",
+    "bolt-pistol",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its Calibanite warblade exchanged for one of the following:",
+      "removes": [
+        "calibanite-warblade"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Power fist +5 Points per Model",
+      "adds": [
+        "power-fist"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Terranic greatsword +5 Points per Model",
+      "adds": [
+        "terranic-greatsword"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its bolter exchanged for one Cytheron pattern aegis for +10 Points per Model.",
+      "removes": [
+        "bolter"
+      ],
+      "adds": [
+        "cytheron-pattern-aegis-for-10-points-per-model"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its bolt pistol exchanged for one plasma pistol for +10 Points per Model.",
+      "removes": [
+        "bolt-pistol"
+      ],
+      "adds": [
+        "plasma-pistol-for-10-points-per-model"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Every Model in this Unit may have melta bombs selected for them for +25 Points.",
+      "adds": [
+        "melta-bombs-selected-for-them"
+      ],
+      "pointsCost": 25,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Any Model in this Unit with a bolter may have one of the following selected for it: Bayonet +1 Point per Model Chain bayonet +2 Points per Model",
+      "adds": [
+        "one-of-the-following-selected-for-it-bayonet-1-point-per-model-chain-bayonet-2-points-per-model"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its bolter exchanged for one item from the Legion Combi-weapons list.",
+      "removes": [
+        "bolter"
+      ],
+      "adds": [
+        "item-from-the-legion-combi-weapons-list"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "One Deathwing Companion in this Unit may have one vexilla selected for it for +10 Points.",
+      "adds": [
+        "one-vexilla-selected-for-it"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Eternal Warrior",
+      "value": "1"
+    },
+    {
+      "name": "Companions"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Faction",
+      "value": "Dark Angels"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Sergeant"
+  ]
+}

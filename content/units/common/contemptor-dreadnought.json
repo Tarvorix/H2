@@ -1,0 +1,247 @@
+{
+  "id": "contemptor-dreadnought",
+  "name": "Contemptor Dreadnought",
+  "titles": "Contemptor Dreadnought",
+  "lore": "At the outbreak of the Horus Heresy, the Contemptor was a relatively recent design that incorporated not only traditional Dreadnought technologies, but arcane systems drawn from the ancient and guarded lore of the Legio Cybernetica of the Mechanicum. Principal among these is a compact atomantic arc reactor more powerful by far than anything of its size in Imperial manufacture. The abundance of energy it generates can be used to grant the Dreadnought frame speed and strength as well as power defensive energy field systems to further increase its battlefield durability.",
+  "basePoints": 150,
+  "battlefieldRole": "War-Engine",
+  "modelDefinitions": [
+    {
+      "name": "Contemptor Dreadnought",
+      "baseSizeMM": 60,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 8,
+        "WS": 4,
+        "BS": 4,
+        "S": 7,
+        "T": 7,
+        "W": 6,
+        "I": 4,
+        "A": 4,
+        "LD": 12,
+        "CL": 10,
+        "WP": 7,
+        "IN": 5,
+        "SAV": 2,
+        "INV": 5
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "none"
+  ],
+  "wargearOptions": [
+    {
+      "type": "upgrade",
+      "description": "This Model must have one of the following options selected for it:",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Two options from the following list:",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Gravis power fist and one combi-bolter +5 Points each",
+      "adds": [
+        "gravis-power-fist-and-one-combi-bolter"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Gravis chainfist and one combi-bolter +5 Points each",
+      "adds": [
+        "gravis-chainfist-and-one-combi-bolter"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Gravis bolt cannon Free",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Gravis melta cannon +15 Points each",
+      "adds": [
+        "gravis-melta-cannon"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Gravis autocannon +10 Points each",
+      "adds": [
+        "gravis-autocannon"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Gravis plasma cannon +10 Points each",
+      "adds": [
+        "gravis-plasma-cannon"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Conversion beam cannon +20 Points each",
+      "adds": [
+        "conversion-beam-cannon-short"
+      ],
+      "pointsCost": 20,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Twin volkite culverin +15 Points each",
+      "adds": [
+        "twin-volkite-culverin"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Kheres assault cannon +15 Points each",
+      "adds": [
+        "kheres-assault-cannon"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Twin lascannon +15 Points each",
+      "adds": [
+        "twin-lascannon"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "• Paired Gravis power fists and two combi-bolters +5 Points",
+      "adds": [
+        "paired-gravis-power-fists-and-two-combi-bolters"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "• Paired Gravis chainfists and two combi-bolters +5 Points This Model may also have any of the following options selected for it:",
+      "adds": [
+        "paired-gravis-chainfists-and-two-combi-bolters"
+      ],
+      "pointsCost": 5,
+      "scope": "one-model"
+    },
+    {
+      "type": "exchange",
+      "description": "Each of this Model’s combi-bolters may be exchanged for one of the following:",
+      "removes": [
+        "be"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "Heavy flamer +5 Points each",
+      "adds": [
+        "heavy-flamer"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Plasma blaster +10 Points each",
+      "adds": [
+        "plasma-blaster"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Graviton gun +10 Points each",
+      "adds": [
+        "graviton-gun"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Meltagun +5 Points each",
+      "adds": [
+        "meltagun"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "This Model may have one havoc launcher selected for it for +5 Points.",
+      "adds": [
+        "one-havoc-launcher-selected-for-it"
+      ],
+      "pointsCost": 5,
+      "scope": "one-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Bulky",
+      "value": "6"
+    },
+    {
+      "name": "Explodes",
+      "value": "5+"
+    },
+    {
+      "name": "Implacable Advance"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    },
+    {
+      "category": "Custom",
+      "value": "Smokescreen"
+    }
+  ],
+  "unitType": "Walker",
+  "unitSubTypes": []
+}

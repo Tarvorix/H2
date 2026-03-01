@@ -1,0 +1,67 @@
+{
+  "id": "drop-pod",
+  "name": "Drop Pod",
+  "titles": "Drop Pod",
+  "lore": "Drop pods are self-contained, recoverable orbital descent capsides, each designed to carry a squad of Space Marines (with modified versions fitted to carry Dreadnoughts and other gear). They are used for surprise attacks and combat drops into the midst of active war zones, with Space Marine warships showering them down like ordnance from the edge of space towards their target. Drop pods are armoured and reinforced to withstand the rigours of re-entry (and ground fire to some extent), but their only true defence is speed and unaugmented humans have little chance of surviving flight and landing within one.",
+  "basePoints": 50,
+  "battlefieldRole": "Transport",
+  "modelDefinitions": [
+    {
+      "name": "Drop Pod",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 0,
+        "BS": 2,
+        "frontArmour": 12,
+        "sideArmour": 12,
+        "rearArmour": 12,
+        "HP": 4,
+        "transportCapacity": 10
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "pintle-mounted-combi-bolter"
+  ],
+  "wargearOptions": [],
+  "specialRules": [
+    {
+      "name": "Light Transport"
+    },
+    {
+      "name": "Orbital Assault Vehicle"
+    },
+    {
+      "name": "Impact Reactive Doors"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    }
+  ],
+  "unitType": "Vehicle",
+  "unitSubTypes": [
+    "Transport"
+  ],
+  "accessPoints": [
+    {
+      "name": "- This Model has Access Points on all Facings.",
+      "relativePosition": {
+        "x": 0,
+        "y": 0
+      }
+    }
+  ]
+}

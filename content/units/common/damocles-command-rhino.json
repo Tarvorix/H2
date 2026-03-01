@@ -1,0 +1,125 @@
+{
+  "id": "damocles-command-rhino",
+  "name": "Damocles Command Rhino",
+  "titles": "Damocles Command Rhino",
+  "lore": "Equipped with advanced communication, cognis analysis and tracking equipment, including a powerful orbital-interface secure vox-transceiver, the Damocles is designed principally as a command and control vehicle to serve as a direct and all but unbreakable link between a Space Marine Legion formation in the field and its brethren elsewhere within the war zone and in high orbit above during planetary operations. Using these systems, skilled crew are able to read the ebb and flow of battle, call in reinforcements, and ward off enemy forces through signal interference and interdiction targeting.",
+  "basePoints": 120,
+  "battlefieldRole": "Command",
+  "modelDefinitions": [
+    {
+      "name": "Damocles Command Rhino",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 12,
+        "BS": 4,
+        "frontArmour": 12,
+        "sideArmour": 11,
+        "rearArmour": 10,
+        "HP": 5,
+        "transportCapacity": 6
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "two-pintle-mounted-bolters",
+    "command-vox-relay"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "Each of this Model’s Pintle Mounted bolters may be exchanged for one Pintle Mounted combi-bolter for +5 Points each.",
+      "removes": [
+        "be"
+      ],
+      "adds": [
+        "pintle-mounted-combi-bolter-for-5-points-each"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "exchange",
+      "description": "One of this Model’s Pintle Mounted bolters may be exchanged for one item from the Legion Pintle Weapons list.",
+      "removes": [
+        "be"
+      ],
+      "adds": [
+        "item-from-the-legion-pintle-weapons-list"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "This Model may have one of each of the following selected for it:",
+      "adds": [
+        "one-of-each-of-the-following-selected-for-it"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "Searchlight +5 Points",
+      "adds": [
+        "searchlight"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Hull (Front) Mounted hunter-killer missile +10 Points",
+      "adds": [
+        "hull-front-mounted-hunter-killer-missile"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Light Transport"
+    },
+    {
+      "name": "Auto-repair",
+      "value": "5+"
+    },
+    {
+      "name": "Mobile Command Vehicle"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    },
+    {
+      "category": "Custom",
+      "value": "Smokescreen"
+    }
+  ],
+  "unitType": "Vehicle",
+  "unitSubTypes": [
+    "Transport"
+  ],
+  "accessPoints": [
+    {
+      "name": "- This Model has Access Points on both Side Facings and the Rear Facing.",
+      "relativePosition": {
+        "x": 0,
+        "y": 0
+      }
+    }
+  ]
+}

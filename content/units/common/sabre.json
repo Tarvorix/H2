@@ -1,0 +1,148 @@
+{
+  "id": "sabre",
+  "name": "Sabre",
+  "titles": "Sabre",
+  "lore": "Fast, rugged and heavily armed, the Sabre serves as a strike tank, attacking key enemy targets and destroying them long before they can pose a threat. Fitted with a number of advanced weapons systems, from rapid fire autocannon to exotic beam weapons, there were few foes that could resist the firepower of these swift hunters. Once the foe is annihilated, the speed of these fleet vehicles allows them to evade any counter-attack and reposition to strike at the vulnerable flanks of the enemy army, keeping the heavy armour suppressed as the Space Marine infantry advances to crush the foes of the Emperor.",
+  "basePoints": 80,
+  "battlefieldRole": "Recon",
+  "modelDefinitions": [
+    {
+      "name": "Sabre",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 16,
+        "BS": 4,
+        "frontArmour": 12,
+        "sideArmour": 11,
+        "rearArmour": 10,
+        "HP": 4,
+        "transportCapacity": 0
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "centreline-mounted-anvilus-snub-autocannon",
+    "hull-front-mounted-heavy-bolter"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "This Model may have its Centreline Mounted Anvilus snub autocannon exchanged for one of the following:",
+      "removes": [
+        "centreline-mounted-anvilus-snub-autocannon"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "Centreline Mounted neutron blaster +10 Points",
+      "adds": [
+        "centreline-mounted-neutron-blaster"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Centreline Mounted volkite saker Free",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "This Model may have its Hull (Front) Mounted heavy bolter exchanged for one of the following:",
+      "removes": [
+        "hull-front-mounted-heavy-bolter"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "Hull (Front) Mounted multi-melta +25 Points",
+      "adds": [
+        "hull-front-mounted-multi-melta"
+      ],
+      "pointsCost": 25,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Hull (Front) Mounted volkite culverin +15 Points",
+      "adds": [
+        "hull-front-mounted-volkite-culverin"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Hull (Front) Mounted heavy flamer Free",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "This Model may have one item from the Legion Pintle Weapons list selected for it.",
+      "adds": [
+        "one-item-from-the-legion-pintle-weapons-list-selected-for-it"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "This Model may have searchlights selected for it for +5 Points.",
+      "adds": [
+        "searchlights-selected-for-it"
+      ],
+      "pointsCost": 5,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "This Model may have up to four Hull (Front) Mounted Sabre missiles selected for it for +5 Points each.",
+      "adds": [
+        "up-to-four-hull-front-mounted-sabre-missiles-selected-for-it-for-5-points-each"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Outflank"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    },
+    {
+      "category": "Custom",
+      "value": "Smokescreen"
+    }
+  ],
+  "unitType": "Vehicle",
+  "unitSubTypes": []
+}

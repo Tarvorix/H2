@@ -1,0 +1,139 @@
+{
+  "id": "praetor-in-terminator-armour",
+  "name": "Praetor in Terminator Armour",
+  "titles": "Praetor in Terminator Armour",
+  "lore": "Amongst the greatest commanders of their Legions, seasoned by years of war and masters of front-line combat, praetors that choose to march to battle clad in Terminator armour place great value in its enhanced resilience, capable as it is of stoically weathering even the heaviest of incoming fire. Massively armoured and bearing its own powerful weaponry, Terminator plate is favoured by those warlords that are often engaged in the thickest fighting, leading their warriors into the most perilous war zones as part of precise and overwhelming attacks against strategically vital targets.",
+  "basePoints": 145,
+  "battlefieldRole": "High Command",
+  "modelDefinitions": [
+    {
+      "name": "Cataphractii Praetor",
+      "baseSizeMM": 40,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 6,
+        "WS": 6,
+        "BS": 5,
+        "S": 4,
+        "T": 5,
+        "W": 5,
+        "I": 5,
+        "A": 5,
+        "LD": 10,
+        "CL": 9,
+        "WP": 9,
+        "IN": 9,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Tartaros Praetor",
+      "baseSizeMM": 40,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 6,
+        "BS": 5,
+        "S": 4,
+        "T": 5,
+        "W": 5,
+        "I": 5,
+        "A": 5,
+        "LD": 10,
+        "CL": 9,
+        "WP": 9,
+        "IN": 9,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "combi-bolter",
+    "power-weapon"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "This Model may have its combi-bolter exchanged for one volkite charger for Free, or for one item from the Legion Combi-weapons list.",
+      "removes": [
+        "combi-bolter"
+      ],
+      "adds": [
+        "volkite-charger-for-free-or-for-one-item-from-the-legion-combi-weapons-list"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "exchange",
+      "description": "This Model may have its power weapon exchanged for one paragon blade for +15 Points, or for one item from the Legion Terminator Melee Weapons list.",
+      "removes": [
+        "power-weapon"
+      ],
+      "adds": [
+        "paragon-blade-for-15-points-or-for-one-item-from-the-legion-terminator-melee-weapons-list"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "exchange",
+      "description": "This Model may have its combi-bolter and power weapon exchanged for one pair of lightning claws for +5 Points.",
+      "removes": [
+        "combi-bolter-and-power-weapon"
+      ],
+      "adds": [
+        "pair-lightning-claws"
+      ],
+      "pointsCost": 5,
+      "scope": "one-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Bulky",
+      "value": "2"
+    },
+    {
+      "name": "Implacable Advance"
+    },
+    {
+      "name": "Slow and Purposeful Tartaros Praetor"
+    },
+    {
+      "name": "Bulky",
+      "value": "2"
+    },
+    {
+      "name": "Implacable Advance"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    },
+    {
+      "category": "Custom",
+      "value": "Master of the Legion"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Command",
+    "Heavy"
+  ]
+}

@@ -1,0 +1,149 @@
+{
+  "id": "cataphractii-terminator-command-squad",
+  "name": "Cataphractii Terminator Command Squad",
+  "titles": "Cataphractii Terminator Command Squad",
+  "lore": "Many command squads go to war clad in Cataphractii Terminator armour, using its sheer bulk and durability to protect the life of their commander. Able to withstand even the most vicious blows and bearing the finest weaponry in the Legion’s armoury, these exemplary warriors embody the finest qualities of the Legiones Astartes, valiantly spearheading assaults into the most hazardous of war zones holding the Legion’s banners high. As one of the earliest marks of Terminator armour to be issued to the Legions, many veteran Legionaries prefer the familiarity of this mark in battle over more recent introductions.",
+  "basePoints": 140,
+  "battlefieldRole": "Retinue",
+  "modelDefinitions": [
+    {
+      "name": "Cataphractii Chosen Champion",
+      "baseSizeMM": 40,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 6,
+        "WS": 5,
+        "BS": 4,
+        "S": 4,
+        "T": 5,
+        "W": 2,
+        "I": 4,
+        "A": 4,
+        "LD": 8,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Cataphractii Chosen",
+      "baseSizeMM": 40,
+      "countInBase": 2,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 6,
+        "WS": 5,
+        "BS": 4,
+        "S": 4,
+        "T": 5,
+        "W": 2,
+        "I": 4,
+        "A": 3,
+        "LD": 8,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 3,
+  "maxModels": 12,
+  "pointsPerAdditionalModel": 40,
+  "defaultWargear": [
+    "volkite-charger",
+    "power-weapon"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its volkite charger exchanged for one combi-bolter for Free, or for one item from the Legion Combi-weapons list.",
+      "removes": [
+        "volkite-charger"
+      ],
+      "adds": [
+        "combi-bolter-for-free-or-for-one-item-from-the-legion-combi-weapons-list"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its power weapon exchanged for one item from the Legion Terminator Melee Weapons list.",
+      "removes": [
+        "power-weapon"
+      ],
+      "adds": [
+        "item-from-the-legion-terminator-melee-weapons-list"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its volkite charger and power weapon exchanged for one pair of lightning claws for +10 Points per Model.",
+      "removes": [
+        "volkite-charger-and-power-weapon"
+      ],
+      "adds": [
+        "pair-of-lightning-claws-for-10-points-per-model"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "The Cataphractii Chosen Champion in this Unit may have one grenade harness selected for it for +5 Points.",
+      "adds": [
+        "one-grenade-harness-selected-for-it"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "One Cataphractii Chosen in this Unit may have its volkite charger exchanged for one Legion standard for +20 Points.",
+      "removes": [
+        "volkite-charger"
+      ],
+      "adds": [
+        "legion-standard"
+      ],
+      "pointsCost": 20,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Bulky",
+      "value": "2"
+    },
+    {
+      "name": "Implacable Advance"
+    },
+    {
+      "name": "Slow and Purposeful"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Sergeant",
+    "Heavy"
+  ]
+}

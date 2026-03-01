@@ -1,0 +1,124 @@
+{
+  "id": "angron",
+  "name": "Angron",
+  "titles": "Angron Primarch of the World Eaters, The Red Angel, Slaughterer of Nations, the Undefeated",
+  "lore": "Angron, most bloody-handed and savage of the Primarchs, was the master of the World Eaters Legion. In his youth cast upon a world of brutal oppression, he was enslaved and surgically mutilated to become a gladiator in the games of death, where he became the undefeated lord of the red sands, a killer without peer. After leading a doomed slave revolt, the Emperor saved him from dying with his rebellion and placed him at the head of his Legion, but Angron never forgave the Emperor for the death of his followers, nor was any love lost between him and his fellow Primarchs. When Horus began his rebellion, Angron was quick to join in his treachery, but his only true master was the rage and bloodlust within him.",
+  "basePoints": 450,
+  "battlefieldRole": "Warlord",
+  "modelDefinitions": [
+    {
+      "name": "Angron",
+      "baseSizeMM": 40,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 8,
+        "WS": 8,
+        "BS": 6,
+        "S": 6,
+        "T": 6,
+        "W": 6,
+        "I": 6,
+        "A": 6,
+        "LD": 12,
+        "CL": 10,
+        "WP": 10,
+        "IN": 10,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "gorefather-gorechild",
+    "the-spite-furnace",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [],
+  "specialRules": [
+    {
+      "name": "Sire of the World Eaters"
+    },
+    {
+      "name": "Bulky",
+      "value": "4"
+    },
+    {
+      "name": "Impact",
+      "value": "S"
+    },
+    {
+      "name": "Lord of the Red Sands"
+    },
+    {
+      "name": "Eternal Warrior",
+      "value": "2"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Allegiance",
+      "value": "Traitor"
+    },
+    {
+      "category": "Faction",
+      "value": "World Eaters"
+    },
+    {
+      "category": "Custom",
+      "value": "Master of the Legion"
+    }
+  ],
+  "unitType": "Paragon",
+  "unitSubTypes": [
+    "Unique"
+  ],
+  "dedicatedWeapons": [
+    {
+      "id": "angron-gorefather-gorechild",
+      "name": "Gorefather & Gorechild",
+      "category": "melee",
+      "profile": {
+        "initiativeModifier": "I",
+        "attacksModifier": {
+          "op": "add",
+          "value": 1
+        },
+        "strengthModifier": "S",
+        "ap": 2,
+        "damage": 2,
+        "specialRules": [
+          {
+            "name": "Critical Hit",
+            "value": "6+"
+          },
+          {
+            "name": "Shred",
+            "value": "5+"
+          }
+        ],
+        "traits": []
+      }
+    },
+    {
+      "id": "angron-the-spite-furnace",
+      "name": "The Spite Furnace",
+      "category": "ranged",
+      "profile": {
+        "range": 12,
+        "hasTemplate": false,
+        "firepower": 2,
+        "rangedStrength": 7,
+        "ap": 2,
+        "damage": 2,
+        "specialRules": [],
+        "traits": []
+      }
+    }
+  ]
+}

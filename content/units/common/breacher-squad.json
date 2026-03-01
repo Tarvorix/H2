@@ -1,0 +1,172 @@
+{
+  "id": "breacher-squad",
+  "name": "Breacher Squad",
+  "titles": "Breacher Squad",
+  "lore": "The most hazardous spheres of warfare such as boarding actions and the first wave of attackers into a breached fortress domain can prove lethal beyond endurance, even for the warriors of the Legiones Astartes. For this reason, since the early days of the Great Crusade, specialised wargear and tactics have been under continuous development including the use of heavy ablative shields to resist enemy fire and specialised weaponry to bypass bulkheads and shatter strongpoints. Breacher squads are the fruit of this development, with all Legions utilising them across many theatres of war.",
+  "basePoints": 140,
+  "battlefieldRole": "Troops",
+  "modelDefinitions": [
+    {
+      "name": "Breacher Sergeant",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 7,
+        "WS": 4,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 1,
+        "I": 4,
+        "A": 1,
+        "LD": 8,
+        "CL": 7,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 3,
+        "INV": 5
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Breacher Legionary",
+      "baseSizeMM": 32,
+      "countInBase": 9,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 7,
+        "WS": 4,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 1,
+        "I": 4,
+        "A": 1,
+        "LD": 7,
+        "CL": 7,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 3,
+        "INV": 5
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 10,
+  "maxModels": 20,
+  "pointsPerAdditionalModel": 12,
+  "defaultWargear": [
+    "bolter",
+    "bolt-pistol",
+    "boarding-shield",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "The Breacher Sergeant in this Unit may have its bolter exchanged for one item from the Legion Sergeant Melee Weapons list or one item from the Legion Combi-weapons list.",
+      "removes": [
+        "bolter"
+      ],
+      "adds": [
+        "item-from-the-legion-sergeant-melee-weapons-list-or-one-item-from-the-legion-combi-weapons-list"
+      ],
+      "pointsCost": 0,
+      "scope": "leader"
+    },
+    {
+      "type": "exchange",
+      "description": "The Breacher Sergeant in this Unit may have its bolt pistol exchanged for one item from the Legion Pistols list.",
+      "removes": [
+        "bolt-pistol"
+      ],
+      "adds": [
+        "item-from-the-legion-pistols-list"
+      ],
+      "pointsCost": 0,
+      "scope": "leader"
+    },
+    {
+      "type": "add",
+      "description": "The Breacher Sergeant in this Unit may have melta bombs selected for it for +10 Points.",
+      "adds": [
+        "melta-bombs-selected-for-it"
+      ],
+      "pointsCost": 10,
+      "scope": "leader"
+    },
+    {
+      "type": "add",
+      "description": "One Breacher Legionary in this Unit may have one vexilla selected for it for +10 Points.",
+      "adds": [
+        "one-vexilla-selected-for-it"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Up to two Breacher Legionaries in this Unit may each have one item from the Legion Equipment list selected for them.",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "For every five Models in this Unit, one Breacher Legionary in this Unit may have its bolter exchanged for one of the following:",
+      "removes": [
+        "bolter"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Graviton gun +10 Points per Model",
+      "adds": [
+        "graviton-gun"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Lascutter +10 Points per Model",
+      "adds": [
+        "lascutter"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Line",
+      "value": "1"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    },
+    {
+      "category": "Custom",
+      "value": "Shield"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Sergeant",
+    "Heavy"
+  ]
+}

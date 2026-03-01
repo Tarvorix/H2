@@ -1,0 +1,196 @@
+{
+  "id": "optae",
+  "name": "Optae",
+  "titles": "Optae",
+  "lore": "Even formations as vast as the Legions Astartes could not be everywhere at once and so lower-ranking warriors such as these were often entrusted with command over actions that did not require a higher-ranked officer, such as routine subjugation or garrison duties. Given a brevet command in such actions, or following the death of their immediate superior, optae had a number of different titles among the varied Legiones Astartes, from adjutant to lieutenant to dominar. Despite these less glamorous theatres of battle, each knew that their performance would be judged when an opportunity for promotion manifested.",
+  "basePoints": 50,
+  "battlefieldRole": "Command",
+  "modelDefinitions": [
+    {
+      "name": "Optae",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 5,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 2,
+        "I": 5,
+        "A": 3,
+        "LD": 9,
+        "CL": 8,
+        "WP": 8,
+        "IN": 8,
+        "SAV": 3,
+        "INV": null
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Optae with Jump Pack",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 12,
+        "WS": 5,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 2,
+        "I": 5,
+        "A": 3,
+        "LD": 9,
+        "CL": 8,
+        "WP": 8,
+        "IN": 8,
+        "SAV": 3,
+        "INV": null
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "bolter",
+    "bolt-pistol",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "This Model may have its bolter and/or bolt pistol exchanged for one item from the Legion Sergeant Melee Weapons list.",
+      "removes": [
+        "bolter-and-or-bolt-pistol"
+      ],
+      "adds": [
+        "item-from-the-legion-sergeant-melee-weapons-list"
+      ],
+      "pointsCost": 0,
+      "scope": "leader"
+    },
+    {
+      "type": "exchange",
+      "description": "This Model may have its bolter exchanged for one item from the Legion Combi-weapons list or for one of the following:",
+      "removes": [
+        "bolter"
+      ],
+      "adds": [
+        "item-from-the-legion-combi-weapons-list-or-for-one-of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "Astartes shotgun +2 Points",
+      "adds": [
+        "astartes-shotgun"
+      ],
+      "pointsCost": 2,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Volkite charger +2 Points",
+      "adds": [
+        "volkite-charger"
+      ],
+      "pointsCost": 2,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "This Model may have its bolt pistol exchanged for one disintegrator pistol for +5 Points or one item from the Legion Pistols list.",
+      "removes": [
+        "bolt-pistol"
+      ],
+      "adds": [
+        "disintegrator-pistol-for-5-points-or-one-item-from-the-legion-pistols-list"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "exchange",
+      "description": "This Model may have its bolter and bolt pistol exchanged for one pair of lightning claws for +20 Points.",
+      "removes": [
+        "bolter-and-bolt-pistol"
+      ],
+      "adds": [
+        "pair-lightning-claws"
+      ],
+      "pointsCost": 20,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "This Model may have melta bombs selected for it for +5 Points.",
+      "adds": [
+        "melta-bombs-selected-for-it"
+      ],
+      "pointsCost": 5,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "This Model with a bolter may have one of the following selected for it:",
+      "adds": [
+        "one-of-the-following-selected-for-it"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "Bayonet +1 Point",
+      "adds": [
+        "bayonet"
+      ],
+      "pointsCost": 1,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Chain bayonet +2 Points",
+      "adds": [
+        "chain-bayonet"
+      ],
+      "pointsCost": 2,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "None Optae with Jump Pack"
+    },
+    {
+      "name": "Bulky",
+      "value": "2"
+    },
+    {
+      "name": "Deep Strike"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Command",
+    "Antigrav"
+  ]
+}

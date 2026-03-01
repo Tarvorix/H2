@@ -1,0 +1,19 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "jsx": "react-jsx",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "noEmit": true
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "references": [
+    { "path": "../types" },
+    { "path": "../engine" },
+    { "path": "../geometry" },
+    { "path": "../data" },
+    { "path": "../ai" },
+    { "path": "../army-builder" }
+  ]
+}

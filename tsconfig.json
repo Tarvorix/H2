@@ -1,0 +1,32 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "composite": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "exactOptionalPropertyTypes": false
+  },
+  "references": [
+    { "path": "./packages/types" },
+    { "path": "./packages/engine" },
+    { "path": "./packages/geometry" },
+    { "path": "./packages/data" },
+    { "path": "./packages/army-builder" },
+    { "path": "./packages/ai" },
+    { "path": "./packages/headless" },
+    { "path": "./packages/ui" }
+  ]
+}

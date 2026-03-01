@@ -1,0 +1,161 @@
+{
+  "id": "spartan",
+  "name": "Spartan",
+  "titles": "Spartan",
+  "lore": "The Spartan is a huge armoured conveyer whose purpose is to carry a large contingent of troops into the heart of the enemy, weathering weapons fire that would be the death of any lesser vehicle. Its armament is potent, with most bearing quad lascannon or laser destroyers, while the Prometheus variant mounts quad heavy bolter arrays to devastate enemy infantry. The Spartan takes pride of place in the armouries of many Legions, although its size and the scale of materials required to produce it - which exceeds that of even super-heavy tanks - makes it far less common than the Land Raider in operations.",
+  "basePoints": 400,
+  "battlefieldRole": "Heavy Transport",
+  "modelDefinitions": [
+    {
+      "name": "Spartan",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 10,
+        "BS": 4,
+        "frontArmour": 14,
+        "sideArmour": 14,
+        "rearArmour": 14,
+        "HP": 10,
+        "transportCapacity": 26
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "two-sponson-mounted-lascannon-arrays",
+    "hull-front-mounted-twin-heavy-bolter"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "This Model may have both its Sponson Mounted lascannon arrays exchanged for one of the following:",
+      "removes": [
+        "have-both-its-sponson-mounted-lascannon-arrays"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Two Sponson Mounted laser destroyers Free",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Two Sponson Mounted Gravis heavy bolter battery Free",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "This Model may have its Hull (Front) Mounted twin heavy bolter exchanged for one of the following:",
+      "removes": [
+        "hull-front-mounted-twin-heavy-bolter"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Hull (Front) Mounted twin heavy flamer Free",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Hull (Front) Mounted twin lascannon +10 Points",
+      "adds": [
+        "hull-front-mounted-twin-lascannon"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "This Model may have one item from the Legion Pintle Weapons list selected for it.",
+      "adds": [
+        "one-item-from-the-legion-pintle-weapons-list-selected-for-it"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "This Model may have one of each of the following selected for it:",
+      "adds": [
+        "one-of-each-of-the-following-selected-for-it"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "One Hull (Front) Mounted hunter-killer missile +5 Points",
+      "adds": [
+        "hull-front-mounted-hunter-killer-missile"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Searchlights +5 Points",
+      "adds": [
+        "searchlights"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Assault Vehicle"
+    },
+    {
+      "name": "Auto-repair",
+      "value": "4+"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    },
+    {
+      "category": "Custom",
+      "value": "Smokescreen"
+    }
+  ],
+  "unitType": "Vehicle",
+  "unitSubTypes": [
+    "Transport"
+  ],
+  "accessPoints": [
+    {
+      "name": "- This Model has Access Points on both Side Facings and the Front Facing.",
+      "relativePosition": {
+        "x": 0,
+        "y": 0
+      }
+    }
+  ]
+}

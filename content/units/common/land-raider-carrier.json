@@ -1,0 +1,135 @@
+{
+  "id": "land-raider-carrier",
+  "name": "Land Raider Carrier",
+  "titles": "Land Raider Carrier",
+  "lore": "The Land Raider is a masterwork that heralds back to the lost Dark Age of Technology, and since the rediscovery of its STC in the vaults of Mars, several patterns have been established in widespread use varying the balance of its battlefield role from armoured explorer, command and control vehicle, to assault carrier. Despite maintaining many aspects of the original design some of these variants displeased the Forge Lords that oversaw their production, in particular the assault carrier variants, which were viewed as incorporating aberrant diversions that detracted from the purity of the original template.",
+  "basePoints": 265,
+  "battlefieldRole": "Heavy Transport",
+  "modelDefinitions": [
+    {
+      "name": "Land Raider Carrier",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 10,
+        "BS": 4,
+        "frontArmour": 14,
+        "sideArmour": 14,
+        "rearArmour": 14,
+        "HP": 8,
+        "transportCapacity": 12
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "two-sponson-mounted-twin-lascannon",
+    "hull-front-twin-heavy-bolter"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "This Model may have its Hull (Front) Mounted twin heavy bolter exchanged for one of the following:",
+      "removes": [
+        "hull-front-mounted-twin-heavy-bolter"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Hull (Front) Mounted twin heavy flamer Free",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Hull (Front) Mounted twin lascannon +10 Points",
+      "adds": [
+        "hull-front-mounted-twin-lascannon"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "This Model may have one item from the Legion Pintle Weapons list selected for it.",
+      "adds": [
+        "one-item-from-the-legion-pintle-weapons-list-selected-for-it"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "This Model may have one of each of the following selected for it:",
+      "adds": [
+        "one-of-each-of-the-following-selected-for-it"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "One Hull (Front) Mounted hunter-killer missile +5 Points",
+      "adds": [
+        "hull-front-mounted-hunter-killer-missile"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Searchlights +5 Points",
+      "adds": [
+        "searchlights"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Assault Vehicle"
+    },
+    {
+      "name": "Auto-repair",
+      "value": "5+"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    },
+    {
+      "category": "Custom",
+      "value": "Smokescreen"
+    }
+  ],
+  "unitType": "Vehicle",
+  "unitSubTypes": [
+    "Transport"
+  ],
+  "accessPoints": [
+    {
+      "name": "- This Model has Access Points on both Side Facings and the Front Facing.",
+      "relativePosition": {
+        "x": 0,
+        "y": 0
+      }
+    }
+  ]
+}

@@ -1,0 +1,285 @@
+/* ─── Debug Visualizer Layout ──────────────────────────────────────────────── */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  overflow: hidden;
+  background: #0a0a1a;
+  color: #e0e0e0;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', 'Monaco', monospace;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+#root {
+  width: 100vw;
+  height: 100vh;
+}
+
+/* ─── App Grid Layout ──────────────────────────────────────────────────────── */
+
+.app-layout {
+  display: grid;
+  grid-template-rows: 44px 1fr;
+  grid-template-columns: 1fr 280px;
+  grid-template-areas:
+    "toolbar toolbar"
+    "canvas  panel";
+  width: 100%;
+  height: 100%;
+}
+
+/* ─── Toolbar ──────────────────────────────────────────────────────────────── */
+
+.toolbar {
+  grid-area: toolbar;
+  background: #16213e;
+  border-bottom: 1px solid #1e3a5f;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  gap: 8px;
+  overflow-x: auto;
+}
+
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.toolbar-separator {
+  width: 1px;
+  height: 24px;
+  background: #1e3a5f;
+  margin: 0 4px;
+}
+
+.toolbar-label {
+  font-size: 11px;
+  color: #8899aa;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.toolbar-btn {
+  background: #1e3a5f;
+  border: 1px solid #2a4a6f;
+  color: #c0d0e0;
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.toolbar-btn:hover {
+  background: #2a4a6f;
+}
+
+.toolbar-btn.active {
+  background: #2563eb;
+  border-color: #3b82f6;
+  color: #ffffff;
+}
+
+.toolbar-select {
+  background: #1e3a5f;
+  border: 1px solid #2a4a6f;
+  color: #c0d0e0;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.toolbar-select:focus {
+  outline: 1px solid #3b82f6;
+}
+
+/* ─── Canvas Container ─────────────────────────────────────────────────────── */
+
+.canvas-container {
+  grid-area: canvas;
+  position: relative;
+  overflow: hidden;
+  background: #0a0a1a;
+}
+
+.canvas-container canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* ─── Info Panel ───────────────────────────────────────────────────────────── */
+
+.info-panel {
+  grid-area: panel;
+  background: #0f0f23;
+  border-left: 1px solid #1e3a5f;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+.panel-section {
+  margin-bottom: 16px;
+}
+
+.panel-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #6b7fa0;
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #1e2a3f;
+}
+
+.panel-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 3px 0;
+  font-size: 12px;
+}
+
+.panel-row-label {
+  color: #8899aa;
+}
+
+.panel-row-value {
+  color: #e0e0e0;
+  font-weight: 500;
+}
+
+.panel-row-value.success {
+  color: #22c55e;
+}
+
+.panel-row-value.error {
+  color: #ef4444;
+}
+
+/* ─── Overlay Controls ─────────────────────────────────────────────────────── */
+
+.overlay-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.overlay-checkbox input[type="checkbox"] {
+  accent-color: #3b82f6;
+  cursor: pointer;
+}
+
+/* ─── Terrain Editor ───────────────────────────────────────────────────────── */
+
+.terrain-list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 6px;
+  margin-bottom: 4px;
+  background: #1a1a2e;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.terrain-list-item .terrain-name {
+  color: #c0d0e0;
+}
+
+.terrain-list-item .terrain-type {
+  color: #6b7fa0;
+  font-size: 11px;
+}
+
+.terrain-remove-btn {
+  background: transparent;
+  border: 1px solid #4a1a1a;
+  color: #ef4444;
+  padding: 2px 6px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 11px;
+  font-family: inherit;
+}
+
+.terrain-remove-btn:hover {
+  background: #4a1a1a;
+}
+
+/* ─── Input Controls ───────────────────────────────────────────────────────── */
+
+.panel-input {
+  background: #1a1a2e;
+  border: 1px solid #2a3a4f;
+  color: #e0e0e0;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 12px;
+  width: 100%;
+}
+
+.panel-input:focus {
+  outline: 1px solid #3b82f6;
+}
+
+.panel-range {
+  width: 100%;
+  accent-color: #3b82f6;
+}
+
+/* ─── Radio Group ──────────────────────────────────────────────────────────── */
+
+.radio-group {
+  display: flex;
+  gap: 12px;
+  padding: 4px 0;
+}
+
+.radio-group label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.radio-group input[type="radio"] {
+  accent-color: #3b82f6;
+  cursor: pointer;
+}
+
+/* ─── Scrollbar Styling ────────────────────────────────────────────────────── */
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0a0a1a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2a3a4f;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3a4a5f;
+}

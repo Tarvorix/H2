@@ -1,0 +1,147 @@
+{
+  "id": "rapier-battery",
+  "name": "Rapier Battery",
+  "titles": "Rapier Battery",
+  "lore": "One of a number of similar designs utilised by the Imperium’s armed forces, Rapier carriers are semi-automated tracked weapons carriers with on-board targeting systems and power generators. Designed to mount support weaponry too large and cumbersome for even the superhuman strength of a Space Marine to carry, the Rapier’s relatively small size and mobility makes it a perfect support weapon both in defence and offence where larger field artillery and armoured vehicles cannot go due to their size or weight.",
+  "basePoints": 40,
+  "battlefieldRole": "Support",
+  "modelDefinitions": [
+    {
+      "name": "Legionary",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 7,
+        "WS": 4,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 1,
+        "I": 4,
+        "A": 1,
+        "LD": 7,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 3,
+        "INV": null
+      },
+      "isLeader": true,
+      "defaultWargear": [
+        "bolter",
+        "bolt-pistol",
+        "frag-grenades",
+        "krak-grenades-rapier-carrier",
+        "gravis-heavy-bolter-battery"
+      ]
+    },
+    {
+      "name": "Rapier Carrier",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 1,
+        "BS": 4,
+        "S": 4,
+        "T": 6,
+        "W": 2,
+        "I": 1,
+        "A": 0,
+        "LD": 1,
+        "CL": 1,
+        "WP": 1,
+        "IN": 1,
+        "SAV": 3,
+        "INV": null
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 4,
+  "pointsPerAdditionalModel": 40,
+  "defaultWargear": [],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "Each Rapier Carrier in this Unit may have its Gravis heavy bolter battery exchanged for one of the following:",
+      "removes": [
+        "gravis-heavy-bolter-battery"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Laser destroyer +25 Points per Model",
+      "adds": [
+        "laser-destroyer"
+      ],
+      "pointsCost": 25,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Graviton cannon +20 Points per Model",
+      "adds": [
+        "graviton-cannon"
+      ],
+      "pointsCost": 20,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Quad launcher +20 Points per Model",
+      "adds": [
+        "quad-launcher"
+      ],
+      "pointsCost": 20,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "If your Army includes a Siege Breaker Model with the same Faction Trait as the Models in this Unit, any Rapier Carrier with a quad launcher in this Unit may also have phosphex canister shot for +15 Points per Model.",
+      "adds": [
+        "if-your-army-includes-a-siege-breaker-model-with-the-same-faction-trait-as-the-models-in-this-unit-any-rapier-carrier-with-a-quad-launcher-in-this-unit-may-also-have-phosphex-canister-shot"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Rapier Crew"
+    },
+    {
+      "name": "Bulky",
+      "value": "3) (Rapier Carrier only"
+    },
+    {
+      "name": "Slow and Purposeful"
+    },
+    {
+      "name": "Support Unit",
+      "value": "1"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Sergeant"
+  ]
+}

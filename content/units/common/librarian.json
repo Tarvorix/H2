@@ -1,0 +1,140 @@
+{
+  "id": "librarian",
+  "name": "Librarian",
+  "titles": "Librarian",
+  "lore": "For many years the Legions maintained cadres of battle-psykers in their ranks, warriors who fused these esoteric powers with a Space Marine’s superhuman physical power. But there were many within the Imperium’s hierarchy who were troubled by such dangerous and unstable potential, and after dark events in the Great Crusade’s later period, such adepts were forbidden from the use of their arts and arcane lore. Despite this, as the Horus Heresy ground on, many either took it upon themselves to unleash their powers in times of need, or reluctantly or willingly at the dispensation of their Primarch.",
+  "basePoints": 85,
+  "battlefieldRole": "Command",
+  "modelDefinitions": [
+    {
+      "name": "Librarian",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 5,
+        "BS": 5,
+        "S": 4,
+        "T": 4,
+        "W": 3,
+        "I": 5,
+        "A": 4,
+        "LD": 8,
+        "CL": 7,
+        "WP": 9,
+        "IN": 8,
+        "SAV": 2,
+        "INV": 5
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "force-weapon",
+    "bolt-pistol",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "This Model may have its bolt pistol exchanged for one item from the Legion Pistols list.",
+      "removes": [
+        "bolt-pistol"
+      ],
+      "adds": [
+        "item-from-the-legion-pistols-list"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "This Model may have up to two of the following Psychic Disciplines selected for it:",
+      "adds": [
+        "up-to-two-of-the-following-psychic-disciplines-selected-for-it"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "Biomancy +20 Points",
+      "adds": [
+        "biomancy"
+      ],
+      "pointsCost": 20,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Pyromancy +10 Points",
+      "adds": [
+        "pyromancy"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Telekinesis +20 Points",
+      "adds": [
+        "telekinesis"
+      ],
+      "pointsCost": 20,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Divination +20 Points",
+      "adds": [
+        "divination"
+      ],
+      "pointsCost": 20,
+      "scope": "any-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Thaumaturgy Free",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Telepathy +10 Points",
+      "adds": [
+        "telepathy"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "None"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    },
+    {
+      "category": "Custom",
+      "value": "Psyker"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Command"
+  ]
+}

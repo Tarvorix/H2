@@ -1,0 +1,132 @@
+{
+  "id": "deredeo-dreadnought",
+  "name": "Deredeo Dreadnought",
+  "titles": "Deredeo Dreadnought",
+  "lore": "The Deredeo pattern Dreadnought was an expansion of the same project which gave birth to the first Legiones Astartes Dreadnoughts. It shares many systems with the Contemptor class, but rather than being a general assault unit, the Deredeo is a heavy weapons platform, intended to combine superior firepower with the flexibility and durability of a Dreadnought chassis. Deployed in limited numbers to each of the Legions, the Deredeo was treated as a specialist unit as it proved highly resource intensive to produce and maintain, but its undoubted survivability and killing power saw this deemed worthwhile.",
+  "basePoints": 190,
+  "battlefieldRole": "War-Engine",
+  "modelDefinitions": [
+    {
+      "name": "Deredeo Dreadnought",
+      "baseSizeMM": 80,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 4,
+        "BS": 4,
+        "S": 6,
+        "T": 7,
+        "W": 6,
+        "I": 4,
+        "A": 2,
+        "LD": 12,
+        "CL": 10,
+        "WP": 7,
+        "IN": 5,
+        "SAV": 2,
+        "INV": 5
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "anvilus-autocannon-battery",
+    "twin-heavy-bolter",
+    "aiolos-missile-launcher"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "This Model may have its Anvilus autocannon battery exchanged for one of the following:",
+      "removes": [
+        "anvilus-autocannon-battery"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "Hellfire plasma cannonade +15 Points",
+      "adds": [
+        "hellfire-plasma-cannonade"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Arachnus heavy lascannon battery +25 Points",
+      "adds": [
+        "arachnus-heavy-lascannon-battery"
+      ],
+      "pointsCost": 25,
+      "scope": "any-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Volkite falconet Free",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "This Model may have its Aiolos missile launcher exchanged for four Boreas air defence missile for Free.",
+      "removes": [
+        "aiolos-missile-launcher"
+      ],
+      "adds": [
+        "four-boreas-air-defence-missile"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "exchange",
+      "description": "This Model may have its twin heavy bolter exchanged for one twin heavy flamer for Free.",
+      "removes": [
+        "twin-heavy-bolter"
+      ],
+      "adds": [
+        "twin-heavy-flamer"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Bulky",
+      "value": "7"
+    },
+    {
+      "name": "Explodes",
+      "value": "5+"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    },
+    {
+      "category": "Custom",
+      "value": "Smokescreen"
+    }
+  ],
+  "unitType": "Walker",
+  "unitSubTypes": [
+    "Heavy"
+  ]
+}

@@ -1,0 +1,62 @@
+{
+  "id": "dreadclaw-drop-pod",
+  "name": "Dreadclaw Drop Pod",
+  "titles": "Dreadclaw Drop Pod",
+  "lore": "Developed alongside the more common Legion drop pod in general service, specifically designed Dreadnought drop pods are somewhat larger than the standard drop pods of the Legiones Astartes and have a more powerful engine, allowing for a dangerously meteoric descent to the battlefield. This serves to protect their cargo during approach and allow it to strike with unprecedented speed. The stresses involved, however, are such that only the heavily armoured and protected shell of a Dreadnought could hope to survive the descent and impact with the ground without being wrecked or pulverised.",
+  "basePoints": 115,
+  "battlefieldRole": "Heavy Transport",
+  "modelDefinitions": [
+    {
+      "name": "Dreadclaw Drop Pod",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 15,
+        "BS": 4,
+        "frontArmour": 12,
+        "sideArmour": 12,
+        "rearArmour": 12,
+        "HP": 5,
+        "transportCapacity": 12
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "none"
+  ],
+  "wargearOptions": [],
+  "specialRules": [
+    {
+      "name": "Drop Transport"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    }
+  ],
+  "unitType": "Vehicle",
+  "unitSubTypes": [
+    "Flyer",
+    "Transport"
+  ],
+  "accessPoints": [
+    {
+      "name": "- This Model has Access Points on all Facings.",
+      "relativePosition": {
+        "x": 0,
+        "y": 0
+      }
+    }
+  ]
+}

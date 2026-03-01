@@ -1,0 +1,69 @@
+{
+  "id": "armillus-dynat",
+  "name": "Armillus Dynat",
+  "titles": "Armillus Dynat Harrowmaster, Griefbringer, Instar-nine",
+  "lore": "Little can be said for certain about the origins or character of the Alpha Legion commander known as Armillus Dynat (whose name itself may be an artificial construction using mimetic factors from several different dead Terran dialects meaning approximately ’The fallen prince/false prophet who destroys with power’). Pictorial reference for this officer is only available thanks to the recordings of Ultramarines-attached Remembrancers present at the Palcine War Council, where Dynat is recorded as having sparred with Marius Gage over the conduct of the war after the Ultramarines’ repulsed attack during the Battle of Asama Bay.",
+  "basePoints": 185,
+  "battlefieldRole": "High Command",
+  "modelDefinitions": [
+    {
+      "name": "Armillus Dynat",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 6,
+        "BS": 5,
+        "S": 4,
+        "T": 4,
+        "W": 4,
+        "I": 5,
+        "A": 5,
+        "LD": 10,
+        "CL": 9,
+        "WP": 8,
+        "IN": 8,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "the-prince-and-the-prophet",
+    "bolt-pistol",
+    "frag-grenades",
+    "krak-grenades",
+    "venom-spheres",
+    "phosphex-bombs"
+  ],
+  "wargearOptions": [],
+  "specialRules": [
+    {
+      "name": "Harrowmaster"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Faction",
+      "value": "Alpha Legion"
+    },
+    {
+      "category": "Custom",
+      "value": "Master of the Legion"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Unique",
+    "Command"
+  ]
+}

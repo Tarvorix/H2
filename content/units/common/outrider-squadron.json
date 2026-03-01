@@ -1,0 +1,156 @@
+{
+  "id": "outrider-squadron",
+  "name": "Outrider Squadron",
+  "titles": "Outrider Squadron",
+  "lore": "Outriders are mechanised Space Marine reconnaissance squads who take to the field mounted on ruggedly constructed, all-terrain armoured ground bikes and scramblers. Used for scouting missions as well as rapid encirclement and hit-and-run attacks behind enemy lines, the chief advantage of the Outriders is speed, their bikes enabling them to cover ground far quicker than infantry and go where heavier vehicles cannot. Rather than precision long ranged weaponry, Outriders mount rapid-fire weaponry, destroying their foes in devastating swift attacks.",
+  "basePoints": 85,
+  "battlefieldRole": "Recon",
+  "modelDefinitions": [
+    {
+      "name": "Outrider Sergeant",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 14,
+        "WS": 4,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 2,
+        "I": 4,
+        "A": 1,
+        "LD": 8,
+        "CL": 8,
+        "WP": 7,
+        "IN": 6,
+        "SAV": 3,
+        "INV": null
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Outrider",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 14,
+        "WS": 4,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 2,
+        "I": 4,
+        "A": 1,
+        "LD": 7,
+        "CL": 8,
+        "WP": 7,
+        "IN": 6,
+        "SAV": 3,
+        "INV": null
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 3,
+  "maxModels": 10,
+  "pointsPerAdditionalModel": 20,
+  "defaultWargear": [
+    "twin-bolter",
+    "bolt-pistol",
+    "chainsword",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [
+    {
+      "type": "upgrade",
+      "description": "Up to two Outriders in this Unit may each have one item from the Legion Equipment list selected for them.",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "The Outrider Sergeant in this Unit may have its chainsword exchanged for one item from the Legion Sergeant Melee Weapons list.",
+      "removes": [
+        "chainsword"
+      ],
+      "adds": [
+        "item-from-the-legion-sergeant-melee-weapons-list"
+      ],
+      "pointsCost": 0,
+      "scope": "leader"
+    },
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its bolt pistol exchanged for one item from the Legion Pistols list.",
+      "removes": [
+        "bolt-pistol"
+      ],
+      "adds": [
+        "item-from-the-legion-pistols-list"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "All Models in the Unit may have their twin bolter exchanged for one twin plasma gun for +15 Points per Model.",
+      "removes": [
+        "twin-bolter"
+      ],
+      "adds": [
+        "twin-plasma-gun-for-15-points-per-model"
+      ],
+      "pointsCost": 0,
+      "scope": "all-models"
+    },
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have their chainsword exchanged for one Astartes shotgun for Free.",
+      "removes": [
+        "chainsword"
+      ],
+      "adds": [
+        "astartes-shotgun"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Bulky",
+      "value": "2"
+    },
+    {
+      "name": "Vanguard",
+      "value": "1"
+    },
+    {
+      "name": "Firestorm"
+    },
+    {
+      "name": "Implacable Advance"
+    },
+    {
+      "name": "Outflank"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    }
+  ],
+  "unitType": "Cavalry",
+  "unitSubTypes": [
+    "Sergeant"
+  ]
+}

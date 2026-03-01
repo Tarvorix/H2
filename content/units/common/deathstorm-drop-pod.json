@@ -1,0 +1,56 @@
+{
+  "id": "deathstorm-drop-pod",
+  "name": "Deathstorm Drop Pod",
+  "titles": "Deathstorm Drop Pod",
+  "lore": "The Deathstorm drop pod was originally conceived as a means to augment the firepower of orbital assault spearheads, allowing such strike forces to scour enemy fortifications and defence lines of their defenders on the rare occasion that they were able to resist the overwhelming arrival of a drop assault force. The addition of automated Deathstorm missile launchers to the drop pod frame provides fire superiority in these situations, saturating the drop zone in fire and shrapnel and aiming to suppress enemy forces as much as to outright destroy them.",
+  "basePoints": 90,
+  "battlefieldRole": "Support",
+  "modelDefinitions": [
+    {
+      "name": "Deathstorm Drop Pod",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 0,
+        "BS": 2,
+        "frontArmour": 12,
+        "sideArmour": 12,
+        "rearArmour": 12,
+        "HP": 4,
+        "transportCapacity": 0
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "turret-mounted-deathstorm-missile-launcher"
+  ],
+  "wargearOptions": [],
+  "specialRules": [
+    {
+      "name": "Impact Reactive Doors"
+    },
+    {
+      "name": "Orbital Assault Vehicle"
+    },
+    {
+      "name": "Deathstorm"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    }
+  ],
+  "unitType": "Vehicle",
+  "unitSubTypes": []
+}

@@ -1,0 +1,141 @@
+{
+  "id": "rampager-squad",
+  "name": "Rampager Squad",
+  "titles": "Rampager Squad",
+  "lore": "Rampager squads were shock assault units, formed from the most bloodthirsty warriors in a Legion already known for its fury in battle. All possessed the prohibited psycho-surgery that drove them to ever greater heights of rage, some too far gone to be left unrestrained between battles, these are simply known as the Caedere or the ‘Butchers’ by the rest of their Legion. Others focused their desire for berserk slaughter through martial discipline, mastering a variety of macabre and savage weapons patterned from those used by Angron’s fellow arena gladiators and found on the feral worlds from which the Legion drew its recruits.",
+  "basePoints": 135,
+  "battlefieldRole": "Heavy Assault",
+  "modelDefinitions": [
+    {
+      "name": "Rampager Champion",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 7,
+        "WS": 5,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 2,
+        "I": 4,
+        "A": 3,
+        "LD": 9,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 3,
+        "INV": null
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Rampager",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 7,
+        "WS": 5,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 2,
+        "I": 4,
+        "A": 2,
+        "LD": 8,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 3,
+        "INV": null
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 5,
+  "maxModels": 15,
+  "pointsPerAdditionalModel": 22,
+  "defaultWargear": [
+    "caedere-weapon",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [
+    {
+      "type": "add",
+      "description": "Any Model in this Unit may have one bolt pistol selected for it for Free.",
+      "adds": [
+        "one-bolt-pistol-selected-for-it"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "The Rampager Champion in this Unit may have its bolt pistol exchanged for one plasma pistol for +5 Points.",
+      "removes": [
+        "bolt-pistol"
+      ],
+      "adds": [
+        "plasma-pistol"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "The Rampager Champion in this Unit may have its Caedere weapon exchanged for one of the following:",
+      "removes": [
+        "caedere-weapon"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Pair of lightning claws +10 Points",
+      "adds": [
+        "pair-lightning-claws"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Power fist +15 Points",
+      "adds": [
+        "power-fist"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Impact",
+      "value": "S"
+    },
+    {
+      "name": "Vanguard",
+      "value": "3"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Faction",
+      "value": "World Eaters"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Sergeant"
+  ]
+}

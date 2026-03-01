@@ -1,0 +1,214 @@
+{
+  "id": "praetorian-command-squad-with-jump-packs",
+  "name": "Praetorian Command Squad With Jump Packs",
+  "titles": "Praetorian Command Squad With Jump Packs",
+  "lore": "When their commander chooses to go to war bearing a jump pack, his chosen praetorians will likewise requisition such equipment. Leading the Legion from the front, these exemplary warriors utilise the additional mobility provided to seek out enemy warlords and champions, descending upon them with the finest weapons available to the Legion armoury. Each chosen is also aware of their role within their company or chapter, providing a martial example for their brethren to aspire to as they strike down their foes, before planting the colours of their Legion over the shattered corpses.",
+  "basePoints": 160,
+  "battlefieldRole": "Retinue",
+  "modelDefinitions": [
+    {
+      "name": "Chosen Champion with Jump Pack",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 12,
+        "WS": 5,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 2,
+        "I": 4,
+        "A": 4,
+        "LD": 8,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 2,
+        "INV": null
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Chosen with Jump Pack",
+      "baseSizeMM": 32,
+      "countInBase": 4,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 12,
+        "WS": 5,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 2,
+        "I": 4,
+        "A": 3,
+        "LD": 8,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 2,
+        "INV": null
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 5,
+  "maxModels": 10,
+  "pointsPerAdditionalModel": 20,
+  "defaultWargear": [
+    "bolter",
+    "bolt-pistol",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its bolter exchanged for one item from the Legion Combi-weapons list, one item from the Legion Sergeant Melee Weapons list or one of the following:",
+      "removes": [
+        "bolter"
+      ],
+      "adds": [
+        "item-from-the-legion-combi-weapons-list-one-item-from-the-legion-sergeant-melee-weapons-list-or-one-of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Astartes shotgun +2 Points per Model",
+      "adds": [
+        "astartes-shotgun"
+      ],
+      "pointsCost": 2,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Disintegrator rifle +5 Points per Model",
+      "adds": [
+        "disintegrator-rifle"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Volkite charger +2 Points per Model",
+      "adds": [
+        "volkite-charger"
+      ],
+      "pointsCost": 2,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit whose bolter has been exchanged for an item from the Legion Sergeant Melee Weapons list may have its bolt pistol exchanged for one combat shield for +2 Points per Model.",
+      "removes": [
+        "bolt-pistol"
+      ],
+      "adds": [
+        "combat-shield-for-2-points-per-model"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its bolt pistol exchanged for one item from the Legion Pistols list.",
+      "removes": [
+        "bolt-pistol"
+      ],
+      "adds": [
+        "item-from-the-legion-pistols-list"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "The Chosen Champion with Jump Pack in this Unit may have its bolt pistol exchanged for one disintegrator pistol for +5 Points.",
+      "removes": [
+        "bolt-pistol"
+      ],
+      "adds": [
+        "disintegrator-pistol"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its bolter and bolt pistol exchanged for one pair of lightning claws for +10 Points per Model.",
+      "removes": [
+        "bolter-and-bolt-pistol"
+      ],
+      "adds": [
+        "pair-of-lightning-claws-for-10-points-per-model"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Any Model in this Unit with a bolter may have one of the following selected for it:",
+      "adds": [
+        "one-of-the-following-selected-for-it"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Bayonet +1 Point per Model",
+      "adds": [
+        "bayonet"
+      ],
+      "pointsCost": 1,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Chain bayonet +2 Points per Model",
+      "adds": [
+        "chain-bayonet"
+      ],
+      "pointsCost": 2,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "One Chosen with Jump Pack in this Unit may have one Legion standard selected for it for +20 Points.",
+      "adds": [
+        "one-legion-standard-selected-for-it"
+      ],
+      "pointsCost": 20,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Bulky",
+      "value": "2"
+    },
+    {
+      "name": "Deep Strike"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Antigrav",
+    "Sergeant"
+  ]
+}

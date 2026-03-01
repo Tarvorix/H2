@@ -1,0 +1,144 @@
+{
+  "id": "sicaran",
+  "name": "Sicaran",
+  "titles": "Sicaran",
+  "lore": "The Sicaran chassis was one of the most advanced armoured units in the arsenal of the Great Crusade and was the exclusive province of the Space Marine Legions. Its introduction was ongoing at the outbreak of the Horus Heresy but already its success on the battlefield had led to the development of a number of variants, each making use of alternative turret mounted weapons to specialise the capability of the host vehicle. Notably these included the Omega plasma array, the Punisher rotary cannon and the Arcus missile launcher in addition to the standard Accelerator autocannon armament.",
+  "basePoints": 160,
+  "battlefieldRole": "Armour",
+  "modelDefinitions": [
+    {
+      "name": "Sicaran",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 14,
+        "BS": 4,
+        "frontArmour": 13,
+        "sideArmour": 12,
+        "rearArmour": 12,
+        "HP": 6,
+        "transportCapacity": 0
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "turret-mounted-twin-accelerator-autocannon",
+    "hull-front-mounted-heavy-bolter",
+    "two-sponson-mounted-heavy-bolters"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "This Model may have its Turret Mounted twin accelerator autocannon exchanged for one of the following:",
+      "removes": [
+        "turret-mounted-twin-accelerator-autocannon"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "Turret Mounted Arcus missile launcher +40 Points",
+      "adds": [
+        "turret-mounted-arcus-missile-launcher"
+      ],
+      "pointsCost": 40,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Turret Mounted punisher rotary cannon +10 Points",
+      "adds": [
+        "turret-mounted-punisher-rotary-cannon"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Turret Mounted Omega plasma array +25 Points",
+      "adds": [
+        "turret-mounted-omega-plasma-array"
+      ],
+      "pointsCost": 25,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "This Model may have both Sponson Mounted heavy bolters exchanged for one item from the Legion Sponson Weapons list.",
+      "removes": [
+        "have-both-sponson-mounted-heavy-bolters"
+      ],
+      "adds": [
+        "item-from-the-legion-sponson-weapons-list"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "This Model may have one item from the Legion Pintle Weapons list selected for it.",
+      "adds": [
+        "one-item-from-the-legion-pintle-weapons-list-selected-for-it"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "This Model may have one of each of the following selected for it:",
+      "adds": [
+        "one-of-each-of-the-following-selected-for-it"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "One Turret Mounted hunter-killer missile +5 Points",
+      "adds": [
+        "turret-mounted-hunter-killer-missile"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Searchlights +5 Points",
+      "adds": [
+        "searchlights"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "None"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    },
+    {
+      "category": "Custom",
+      "value": "Smokescreen"
+    }
+  ],
+  "unitType": "Vehicle",
+  "unitSubTypes": []
+}

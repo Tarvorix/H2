@@ -1,0 +1,133 @@
+{
+  "id": "inner-circle-knights-cenobium",
+  "name": "Inner Circle Knights Cenobium",
+  "titles": "Inner Circle Knights Cenobium",
+  "lore": "The Dark Angels Legion plays host to a multitude of ciphered Orders, Chambers Militant concealed within the panoply of the Legion and dedicated to the preservation and perfection of a singular doctrine of war. Within each of these Orders, the most dedicated warrior-adepts are charged with the station of cenobite and granted the right to bear the cipher and charge of the Order, fighting with greatblade and plasma-casters in the forefront of those battles that require the hard-won skills harboured within each of these secretive cells.",
+  "basePoints": 275,
+  "battlefieldRole": "Elites",
+  "modelDefinitions": [
+    {
+      "name": "Order Preceptor",
+      "baseSizeMM": 40,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 6,
+        "WS": 6,
+        "BS": 4,
+        "S": 4,
+        "T": 5,
+        "W": 2,
+        "I": 4,
+        "A": 3,
+        "LD": 9,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Order Cenobite",
+      "baseSizeMM": 40,
+      "countInBase": 4,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 6,
+        "WS": 5,
+        "BS": 4,
+        "S": 4,
+        "T": 5,
+        "W": 2,
+        "I": 4,
+        "A": 3,
+        "LD": 8,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 5,
+  "maxModels": 10,
+  "pointsPerAdditionalModel": 50,
+  "defaultWargear": [
+    "terranic-greatsword",
+    "plasma-caster",
+    "grenade-harness-order-preceptor-only"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its Terranic greatsword exchanged for one thunder hammer for +10 Points per Model.",
+      "removes": [
+        "terranic-greatsword"
+      ],
+      "adds": [
+        "thunder-hammer-for-10-points-per-model"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Bulky",
+      "value": "2"
+    },
+    {
+      "name": "Implacable Advance"
+    },
+    {
+      "name": "Slow and Purposeful"
+    },
+    {
+      "name": "Order Exemplars"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Faction",
+      "value": "Dark Angels"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Sergeant",
+    "Heavy"
+  ],
+  "dedicatedWeapons": [
+    {
+      "id": "inner-circle-knights-cenobium-sustained-fire",
+      "name": "- Sustained fire",
+      "category": "ranged",
+      "profile": {
+        "range": 0,
+        "hasTemplate": true,
+        "firepower": 1,
+        "rangedStrength": 4,
+        "ap": 4,
+        "damage": 1,
+        "specialRules": [
+          {
+            "name": "Template"
+          },
+          {
+            "name": "Breaching",
+            "value": "6+"
+          }
+        ],
+        "traits": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,194 @@
+{
+  "id": "red-butchers",
+  "name": "Red Butchers",
+  "titles": "Red Butchers",
+  "lore": "Clad in specially modified Terminator plate, designed to serve as both a protective, ablative armour but also as a restraint and confinement system, the Red Butchers are World Eaters driven beyond simple rage by their cranial implantations known as the Butcher’s Nails, rendering them into raving beasts that crave only violence. Thrashing against their bonds, and able only to exercise a marginal degree of control over their actions, these warriors are fit only to be unleashed upon the enemy as berserkers, freed from the concerns of military strategy and solely focused on violently dismembering their foes in a murderous frenzy.",
+  "basePoints": 250,
+  "battlefieldRole": "Elites",
+  "modelDefinitions": [
+    {
+      "name": "Devoured",
+      "baseSizeMM": 40,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 6,
+        "WS": 5,
+        "BS": 4,
+        "S": 4,
+        "T": 5,
+        "W": 2,
+        "I": 4,
+        "A": 3,
+        "LD": 12,
+        "CL": 10,
+        "WP": 6,
+        "IN": 4,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Red Butcher",
+      "baseSizeMM": 40,
+      "countInBase": 4,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 6,
+        "WS": 5,
+        "BS": 4,
+        "S": 4,
+        "T": 5,
+        "W": 2,
+        "I": 4,
+        "A": 2,
+        "LD": 12,
+        "CL": 10,
+        "WP": 6,
+        "IN": 4,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 5,
+  "maxModels": 10,
+  "pointsPerAdditionalModel": 45,
+  "defaultWargear": [
+    "butcher-power-axes"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "The Devoured in this Unit may have its butcher power axes exchanged for one butcher chainfists for +10 Points.",
+      "removes": [
+        "butcher-power-axes"
+      ],
+      "adds": [
+        "butcher-chainfists"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its butcher power axes exchanged for one combi-bolter and one power axe for Free.",
+      "removes": [
+        "butcher-power-axes"
+      ],
+      "adds": [
+        "combi-bolter-and-one-power-axe"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its butcher power axes exchanged for one pair of lightning claws for +10 Points per Model.",
+      "removes": [
+        "butcher-power-axes"
+      ],
+      "adds": [
+        "pair-of-lightning-claws-for-10-points-per-model"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "If the Devoured in this Unit has had its butcher power axes exchanged for a combi-bolter and power axe , it may have its combi-bolter exchanged for one item from the Legion Combi-weapons list.",
+      "removes": [
+        "combi-bolter"
+      ],
+      "adds": [
+        "item-from-the-legion-combi-weapons-list"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "If the Devoured in this Unit has had its butcher power axes exchanged for a combi-bolter and power axe , it may have its combi-bolter and/or power axe exchanged for one of the following:",
+      "removes": [
+        "combi-bolter-and-or-power-axe"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Power fist +10 Points each",
+      "adds": [
+        "power-fist"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Chainfist +5 Points each",
+      "adds": [
+        "chainfist"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Thunder hammer +5 Points each",
+      "adds": [
+        "thunder-hammer"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "The Devoured in this Unit may have one grenade harness selected for it for +5 Points.",
+      "adds": [
+        "one-grenade-harness-selected-for-it"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Bulky",
+      "value": "2"
+    },
+    {
+      "name": "Slow and Purposeful"
+    },
+    {
+      "name": "Heedless"
+    },
+    {
+      "name": "Ravening Madmen"
+    },
+    {
+      "name": "Eternal Warrior",
+      "value": "1"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Allegiance",
+      "value": "Traitor"
+    },
+    {
+      "category": "Faction",
+      "value": "World Eaters"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Sergeant",
+    "Heavy"
+  ]
+}

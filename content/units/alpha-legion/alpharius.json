@@ -1,0 +1,138 @@
+{
+  "id": "alpharius",
+  "name": "Alpharius",
+  "titles": "Alpharius Primarch of the Alpha Legion, the Hydra, the Threefold Serpent, The Final Configuration",
+  "lore": "Of all the Primarchs of the Legiones Astartes, Alpharius is without doubt the most steeped in mystery, legend, contradiction and deliberate falsification. Some even claim that the Alpha Legion has more than one Primarch, though it is entirely possible that this belief is itself an elaborate misdirection on the part of Alpharius, intended to further his Legion’s goals. The Primarch of the Alpha Legion shrouds himself in mystery, often moving unseen even amongst the ranks of his own Legion. However, when the time comes to cast off the cloak of misdirection, Alpharius is as awe-inspiring a being as any of the Primarchs of the Legiones Astartes. Clad in armour forged in the manner of some terrifying beast of Ancient Terran myth and armed with a fearsome panoply of weapons of unknown provenance, Alpharius bestrides the battlefield like a figure from legend. None can predict where or how the Primarch will strike, what weapons he will bring to bear or which of his many different forces will fight at his side.",
+  "basePoints": 465,
+  "battlefieldRole": "Warlord",
+  "modelDefinitions": [
+    {
+      "name": "Alpharius",
+      "baseSizeMM": 40,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 8,
+        "WS": 7,
+        "BS": 7,
+        "S": 6,
+        "T": 6,
+        "W": 6,
+        "I": 7,
+        "A": 6,
+        "LD": 12,
+        "CL": 10,
+        "WP": 10,
+        "IN": 11,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "the-pale-spear",
+    "the-hydra-s-spite",
+    "the-pythian-scales",
+    "frag-grenades",
+    "krak-grenades",
+    "venom-spheres"
+  ],
+  "wargearOptions": [],
+  "specialRules": [
+    {
+      "name": "Sire of the Alpha Legion"
+    },
+    {
+      "name": "Bulky",
+      "value": "4"
+    },
+    {
+      "name": "Everywhere and Nowhere"
+    },
+    {
+      "name": "Eternal Warrior",
+      "value": "2"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Faction",
+      "value": "Alpha Legion"
+    },
+    {
+      "category": "Custom",
+      "value": "Smokescreen"
+    },
+    {
+      "category": "Custom",
+      "value": "Master of the Legion"
+    }
+  ],
+  "unitType": "Paragon",
+  "unitSubTypes": [
+    "Unique",
+    "Light"
+  ],
+  "dedicatedWeapons": [
+    {
+      "id": "alpharius-the-pale-spear",
+      "name": "The Pale Spear",
+      "category": "melee",
+      "profile": {
+        "initiativeModifier": {
+          "op": "add",
+          "value": 1
+        },
+        "attacksModifier": "A",
+        "strengthModifier": {
+          "op": "add",
+          "value": 1
+        },
+        "ap": 2,
+        "damage": 2,
+        "specialRules": [
+          {
+            "name": "Critical Hit",
+            "value": "5+"
+          },
+          {
+            "name": "Armourbane"
+          },
+          {
+            "name": "Phage",
+            "value": "S"
+          }
+        ],
+        "traits": []
+      }
+    },
+    {
+      "id": "alpharius-the-hydra-s-spite",
+      "name": "The Hydra’s Spite",
+      "category": "ranged",
+      "profile": {
+        "range": 18,
+        "hasTemplate": false,
+        "firepower": 2,
+        "rangedStrength": 7,
+        "ap": 3,
+        "damage": 1,
+        "specialRules": [
+          {
+            "name": "Breaching",
+            "value": "4+"
+          }
+        ],
+        "traits": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,113 @@
+{
+  "id": "kh-rn-the-bloody",
+  "name": "Kh rn The Bloody",
+  "titles": "Khârn The Bloody Captain of the Eighth Assault Company, The Twice Un-slain, The Ender",
+  "lore": "Although a skilled warrior and duellist, Khârn was but a line captain at the time of Angron’s rediscovery by the Imperium, yet it was his skill with words that ensured he rose to become Angron’s equerry and one of the few whose counsel he ever heeded. It was Khârn who acted as the voice of reason, often bringing his master back from the brink of insanity and curbing the worst of his bloody excesses. But Khârn was not immune to the rage which afflicted his Legion, for it was upon the surface of Isstvan III, as the World Eaters turned on their brothers, that he first surrendered himself fully to the bloodshed and slaughter.",
+  "basePoints": 175,
+  "battlefieldRole": "High Command",
+  "modelDefinitions": [
+    {
+      "name": "Khârn the Bloody",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 7,
+        "BS": 5,
+        "S": 4,
+        "T": 4,
+        "W": 4,
+        "I": 5,
+        "A": 5,
+        "LD": 10,
+        "CL": 9,
+        "WP": 9,
+        "IN": 9,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "the-cutter",
+    "plasma-pistol",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "If Angron is not included in the same Army as this Model, this Model may have its The Cutter exchanged for one Gorechild Reforged for +10 Points.",
+      "removes": [
+        "the-cutter"
+      ],
+      "adds": [
+        "gorechild-reforged"
+      ],
+      "pointsCost": 10,
+      "scope": "one-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Reaping Blow",
+      "value": "2"
+    },
+    {
+      "name": "Eternal Warrior",
+      "value": "1"
+    },
+    {
+      "name": "Precision",
+      "value": "5+"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Allegiance",
+      "value": "Traitor"
+    },
+    {
+      "category": "Faction",
+      "value": "World Eaters"
+    },
+    {
+      "category": "Custom",
+      "value": "Master of the Legion"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Unique",
+    "Command"
+  ],
+  "dedicatedWeapons": [
+    {
+      "id": "kh-rn-the-bloody-the-cutter",
+      "name": "The Cutter",
+      "category": "melee",
+      "profile": {
+        "initiativeModifier": "I",
+        "attacksModifier": "A",
+        "strengthModifier": {
+          "op": "add",
+          "value": 1
+        },
+        "ap": 2,
+        "damage": 1,
+        "specialRules": [
+          {
+            "name": "Critical Hit",
+            "value": "6+"
+          }
+        ],
+        "traits": []
+      }
+    }
+  ]
+}

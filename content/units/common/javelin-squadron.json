@@ -1,0 +1,114 @@
+{
+  "id": "javelin-squadron",
+  "name": "Javelin Squadron",
+  "titles": "Javelin Squadron",
+  "lore": "Javelin attack speeders share many of the advanced systems found in the Scimitar jetbikes of the Legiones Astartes, and as such are both rare and highly valued. Utilising a range of antigrav impellor technologies, Javelin attack speeders are time-consuming to construct and difficult to repair should they sustain battle damage. Nevertheless, they are fast, highly manoeuvrable, have an extended operational range and, perhaps most importantly, are able to carry a heavy payload of weapon systems. All of these ensure that these attack vehicles remain in demand amongst the Legiones Astartes.",
+  "basePoints": 75,
+  "battlefieldRole": "Fast Attack",
+  "modelDefinitions": [
+    {
+      "name": "Javelin",
+      "baseSizeMM": 60,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 14,
+        "WS": 4,
+        "BS": 4,
+        "S": 4,
+        "T": 6,
+        "W": 4,
+        "I": 4,
+        "A": 2,
+        "LD": 8,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 3,
+        "INV": null
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 3,
+  "pointsPerAdditionalModel": 75,
+  "defaultWargear": [
+    "heavy-bolter",
+    "cyclone-missile-launcher"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its cyclone missile launcher exchanged for one of the following:",
+      "removes": [
+        "cyclone-missile-launcher"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Two heavy flamers Free",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Two heavy bolters Free",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Two lascannon +5 Points per Model",
+      "adds": [
+        "two-lascannon"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Two volkite culverin +5 Points per Model",
+      "adds": [
+        "two-volkite-culverin"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Bulky",
+      "value": "5"
+    },
+    {
+      "name": "Deep Strike"
+    },
+    {
+      "name": "Firing Protocols",
+      "value": "3"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    }
+  ],
+  "unitType": "Cavalry",
+  "unitSubTypes": [
+    "Skirmish",
+    "Antigrav"
+  ]
+}

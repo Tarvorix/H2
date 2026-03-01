@@ -1,0 +1,88 @@
+{
+  "id": "siege-breaker",
+  "name": "Siege Breaker",
+  "titles": "Siege Breaker",
+  "lore": "The wreckers of cities, the bringers-down of fortress walls and the shatterers of strongholds, Siege Breakers are officers of the Legion whose speciality is precisely applied destruction against strategic targets. Demonstrating an eye for detail, such warriors appraise all data available to them, identifying structural weaknesses and directing the heavy guns under their charge accordingly. Placed often in command of frontline artillery units, they prefer to closely observe their work, rather than sit back behind the lines, and so are deadly efficient in adapting their force’s attack patterns from moment to moment.",
+  "basePoints": 115,
+  "battlefieldRole": "Command",
+  "modelDefinitions": [
+    {
+      "name": "Siege Breaker",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 5,
+        "BS": 5,
+        "S": 4,
+        "T": 4,
+        "W": 3,
+        "I": 5,
+        "A": 4,
+        "LD": 9,
+        "CL": 9,
+        "WP": 8,
+        "IN": 8,
+        "SAV": 2,
+        "INV": 5
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "bolt-pistol",
+    "thunder-hammer",
+    "frag-grenades",
+    "krak-grenades",
+    "phosphex-bombs",
+    "cognis-signum",
+    "augury-scanner"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "This Model may have its bolt pistol exchanged for one disintegrator pistol for +5 Points or one item from the Legion Pistols list.",
+      "removes": [
+        "bolt-pistol"
+      ],
+      "adds": [
+        "disintegrator-pistol-for-5-points-or-one-item-from-the-legion-pistols-list"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "This Model may have melta bombs selected for it for +5 Points.",
+      "adds": [
+        "melta-bombs-selected-for-it"
+      ],
+      "pointsCost": 5,
+      "scope": "one-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "None"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Command",
+    "Heavy"
+  ]
+}

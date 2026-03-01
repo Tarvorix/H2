@@ -1,0 +1,67 @@
+{
+  "id": "vigilator",
+  "name": "Vigilator",
+  "titles": "Vigilator",
+  "lore": "Highly skilled as watchers and hunters among their brethren, Vigilators are the eyes of their Legion on the ground, their wisdom paramount in scouting out the foe’s disposition and strength, and determining the best place to strike. Often selected from Reconnaissance Squads, these peerless shots are able to operate with these formations, or conduct their operations individually. Many commanders conducted entire campaigns based off the careful observations of a trusted Vigilator from their company, and many a battle has been turned with a perfectly placed sniper’s bullet from such a warrior, well situated and well hidden.",
+  "basePoints": 95,
+  "battlefieldRole": "Command",
+  "modelDefinitions": [
+    {
+      "name": "Vigilator",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 4,
+        "BS": 7,
+        "S": 4,
+        "T": 4,
+        "W": 3,
+        "I": 5,
+        "A": 3,
+        "LD": 9,
+        "CL": 8,
+        "WP": 8,
+        "IN": 8,
+        "SAV": 2,
+        "INV": 5
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "nemesis-rifle",
+    "bolt-pistol",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [],
+  "specialRules": [
+    {
+      "name": "Infiltrate",
+      "value": "9"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    },
+    {
+      "category": "Custom",
+      "value": "Smokescreen"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Command"
+  ]
+}

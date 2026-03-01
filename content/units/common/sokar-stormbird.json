@@ -1,0 +1,103 @@
+{
+  "id": "sokar-stormbird",
+  "name": "Sokar Stormbird",
+  "titles": "Sokar Stormbird",
+  "lore": "The Sokar Stormbird is a dedicated attack lander, developed during the Unification Wars on Ancient Terra and adapted by the Emperor for Legion use. The Sokar itself was one of the later patterns developed and was the design precursor to the smaller, more widely produced Thunderhawk Gunship. It was conceived as a specialised, high durability orbital assault craft - almost a mobile bastion and firebase - which could land a Space Marine strike force and withstand heavy ground fire while its passengers forced a landing zone.",
+  "basePoints": 850,
+  "battlefieldRole": "Armour",
+  "modelDefinitions": [
+    {
+      "name": "Sokar Stormbird",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 16,
+        "BS": 4,
+        "frontArmour": 14,
+        "sideArmour": 14,
+        "rearArmour": 14,
+        "HP": 22,
+        "transportCapacity": 52
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "two-hull-left-mounted-twin-lascannon",
+    "two-hull-right-mounted-twin-lascannon",
+    "two-turret-mounted-twin-heavy-bolters",
+    "hull-rear-mounted-twin-heavy-bolter",
+    "six-centreline-mounted-hellstrike-missiles"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "Any of this Model’s Hull (Left) Mounted twin lascannon may each be exchanged for one Hull (Left) Mounted Gravis heavy bolter battery for Free.",
+      "removes": [
+        "each-be"
+      ],
+      "adds": [
+        "hull-left-mounted-gravis-heavy-bolter-battery"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "exchange",
+      "description": "Any of this Model’s Hull (Right) Mounted twin lascannon may each be exchanged for one Hull (Right) Mounted Gravis heavy bolter battery for Free.",
+      "removes": [
+        "each-be"
+      ],
+      "adds": [
+        "hull-right-mounted-gravis-heavy-bolter-battery"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Stormbird Transport Bay"
+    },
+    {
+      "name": "Void Shields",
+      "value": "2"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    }
+  ],
+  "unitType": "Vehicle",
+  "unitSubTypes": [
+    "Transport",
+    "SuperHeavy",
+    "Flyer"
+  ],
+  "accessPoints": [
+    {
+      "name": "- If this Model does not have a base",
+      "relativePosition": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "name": "it is considered to have Access Points on all Facings.",
+      "relativePosition": {
+        "x": 2,
+        "y": 0
+      }
+    }
+  ]
+}

@@ -1,0 +1,79 @@
+{
+  "id": "fire-raptor",
+  "name": "Fire Raptor",
+  "titles": "Fire Raptor",
+  "lore": "A variant of the Storm Eagle, the Fire Raptor gunship was created with the aim of providing overwhelming aerial firepower to Legiones Astartes assault forces. In addition to twin nose mounted Avenger bolt cannon and an array of rockets or missiles, the Fire Raptor replaces the capacious transport bay of the Storm Eagle with ammunition and targeting cogitators for two independent ball turrets. Each of these sophisticated turrets is equipped with a gyroscopic array and crewed by a dedicated Space Marine gunner, allowing each to strike separate targets with pinpoint precision even while the gunship moves at flank speed.",
+  "basePoints": 220,
+  "battlefieldRole": "Fast Attack",
+  "modelDefinitions": [
+    {
+      "name": "Fire Raptor",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 18,
+        "BS": 4,
+        "frontArmour": 12,
+        "sideArmour": 12,
+        "rearArmour": 12,
+        "HP": 6,
+        "transportCapacity": 0
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "centreline-mounted-twin-avenger-bolt-cannon",
+    "two-sponson-mounted-gravis-heavy-bolter-batteries",
+    "four-centreline-mounted-tempest-rockets"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "This Model may have its two Sponson Mounted Gravis heavy bolter batteries exchanged for two Sponson Mounted Gravis autocannon batteries for +15 Points.",
+      "removes": [
+        "two-sponson-mounted-gravis-heavy-bolter-batteries"
+      ],
+      "adds": [
+        "two-sponson-mounted-gravis-autocannon-batteries"
+      ],
+      "pointsCost": 15,
+      "scope": "one-model"
+    },
+    {
+      "type": "exchange",
+      "description": "This Model may have its four Centreline Mounted tempest rockets all be exchanged for four Centreline Mounted hellstrike missiles for +20 Points.",
+      "removes": [
+        "four-centreline-mounted-tempest-rockets-all-be"
+      ],
+      "adds": [
+        "four-centreline-mounted-hellstrike-missiles"
+      ],
+      "pointsCost": 20,
+      "scope": "one-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "None"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    }
+  ],
+  "unitType": "Vehicle",
+  "unitSubTypes": [
+    "Flyer"
+  ]
+}

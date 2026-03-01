@@ -1,0 +1,195 @@
+{
+  "id": "predator",
+  "name": "Predator",
+  "titles": "Predator",
+  "lore": "The Predator is perhaps the best known and most widespread variant of the basic Rhino chassis, equipped with superior armour protection and firepower, but sacrificing the Rhino’s troop transport capacity entirely. It is an effective and versatile medium tank, with a good balance of speed, firepower and protection and whose robust design can field a wide variety of armament configurations. The standard among these is a rapid-firing turret mounted autocannon, but it is also able to mount a number of deadly energy or flame weapons, allowing it to engage a range of targets, along with defensive sponsons.",
+  "basePoints": 100,
+  "battlefieldRole": "Armour",
+  "modelDefinitions": [
+    {
+      "name": "Predator",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 12,
+        "BS": 4,
+        "frontArmour": 13,
+        "sideArmour": 12,
+        "rearArmour": 10,
+        "HP": 5,
+        "transportCapacity": 0
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "turret-mounted-predator-cannon",
+    "two-sponson-mounted-heavy-bolters"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "This Model may have its Turret Mounted Predator cannon exchanged for one of the following:",
+      "removes": [
+        "turret-mounted-predator-cannon"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Turret Mounted flamestorm cannon Free",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Turret Mounted executioner plasma destroyer +25 Points",
+      "adds": [
+        "turret-mounted-executioner-plasma-destroyer"
+      ],
+      "pointsCost": 25,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Turret Mounted heavy conversion beam cannon +30 Points",
+      "adds": [
+        "turret-mounted-heavy-conversion-beam-cannon"
+      ],
+      "pointsCost": 30,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Turret Mounted magna-melta cannon +20 Points",
+      "adds": [
+        "turret-mounted-magna-melta-cannon"
+      ],
+      "pointsCost": 20,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Turret Mounted graviton cannon +20 Points",
+      "adds": [
+        "turret-mounted-graviton-cannon"
+      ],
+      "pointsCost": 20,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Turret Mounted volkite macro-saker +5 Points",
+      "adds": [
+        "turret-mounted-volkite-macro-saker"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Turret Mounted neutron blaster +15 Points",
+      "adds": [
+        "turret-mounted-neutron-blaster"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Turret Mounted twin lascannon +10 Points",
+      "adds": [
+        "turret-mounted-twin-lascannon"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "This Model may have both Sponson Mounted heavy bolters exchanged for one item from the Legion Sponson Weapons list.",
+      "removes": [
+        "have-both-sponson-mounted-heavy-bolters"
+      ],
+      "adds": [
+        "item-from-the-legion-sponson-weapons-list"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "This Model may have one item from the Legion Pintle Weapons list selected for it.",
+      "adds": [
+        "one-item-from-the-legion-pintle-weapons-list-selected-for-it"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "This Model may have one of each of the following selected for it:",
+      "adds": [
+        "one-of-each-of-the-following-selected-for-it"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "One Turret Mounted hunter-killer missile +5 Points",
+      "adds": [
+        "turret-mounted-hunter-killer-missile"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Searchlights +5 Points",
+      "adds": [
+        "searchlights"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Dozer blade +5 Points",
+      "adds": [
+        "dozer-blade"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "None"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    },
+    {
+      "category": "Custom",
+      "value": "Smokescreen"
+    }
+  ],
+  "unitType": "Vehicle",
+  "unitSubTypes": []
+}

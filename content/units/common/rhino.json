@@ -1,0 +1,130 @@
+{
+  "id": "rhino",
+  "name": "Rhino",
+  "titles": "Rhino",
+  "lore": "The Rhino is the most widely used armoured personnel carrier in the Imperium. Based on ancient STC technology the fundamental design is robust, reliable and easy to maintain, and its adaptive power plant can run off a wide variety of fuels (with varying degrees of efficiency), making it perfect for the wide ranging armies of the Great Crusade. Produced in the thousands and with several distinct patterns in common use - the Deimos being most widespread in the Space Marine Legions, it has also served as the basis for a number of other war machines.",
+  "basePoints": 60,
+  "battlefieldRole": "Transport",
+  "modelDefinitions": [
+    {
+      "name": "Rhino",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 12,
+        "BS": 4,
+        "frontArmour": 12,
+        "sideArmour": 11,
+        "rearArmour": 10,
+        "HP": 5,
+        "transportCapacity": 12
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "two-pintle-mounted-bolters"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "Each of this Model’s Pintle Mounted bolters may be exchanged for one Pintle Mounted combi-bolter for +5 Points each.",
+      "removes": [
+        "be"
+      ],
+      "adds": [
+        "pintle-mounted-combi-bolter-for-5-points-each"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "exchange",
+      "description": "One of this Model’s Pintle Mounted bolters may be exchanged for one item from the Legion Pintle Weapons list.",
+      "removes": [
+        "be"
+      ],
+      "adds": [
+        "item-from-the-legion-pintle-weapons-list"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "This Model may have one of each of the following selected for it:",
+      "adds": [
+        "one-of-each-of-the-following-selected-for-it"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "Searchlights +5 Points",
+      "adds": [
+        "searchlights"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "One Hull (Front) Mounted hunter-killer missile +10 Points",
+      "adds": [
+        "hull-front-mounted-hunter-killer-missile"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Dozer blade +5 Points",
+      "adds": [
+        "dozer-blade"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Light Transport"
+    },
+    {
+      "name": "Auto-repair",
+      "value": "4+"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    },
+    {
+      "category": "Custom",
+      "value": "Smokescreen"
+    }
+  ],
+  "unitType": "Vehicle",
+  "unitSubTypes": [
+    "Transport"
+  ],
+  "accessPoints": [
+    {
+      "name": "- This Model has Access Points on both Side Facings and the Rear Facing.",
+      "relativePosition": {
+        "x": 0,
+        "y": 0
+      }
+    }
+  ]
+}

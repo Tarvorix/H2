@@ -1,0 +1,93 @@
+{
+  "id": "corswain",
+  "name": "Corswain",
+  "titles": "Corswain Paladin of the Ninth Order",
+  "lore": "Exemplifying the qualities of stalwart determination and mastery of the blade, Corswain was the rising star amongst his brothers in the annals of the Great Crusade. His was the righteous path of the paladin, and being born of Caliban but not an ingrained scion of the Order, Corswain was uniquely placed to bridge the divisions within the Legion in its formative years under the Primarch. Even as the dust of the Age of Darkness settled, Corswain was remembered for his level-headed and disciplined authority as a commander and for his relentlessness in the heat of battle.",
+  "basePoints": 220,
+  "battlefieldRole": "High Command",
+  "modelDefinitions": [
+    {
+      "name": "Corswain",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 7,
+        "BS": 5,
+        "S": 4,
+        "T": 4,
+        "W": 4,
+        "I": 5,
+        "A": 5,
+        "LD": 10,
+        "CL": 9,
+        "WP": 9,
+        "IN": 9,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "bolter",
+    "bolt-pistol",
+    "the-blade",
+    "armour-of-the-forest",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [],
+  "specialRules": [
+    {
+      "name": "None"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Allegiance",
+      "value": "Loyalist"
+    },
+    {
+      "category": "Faction",
+      "value": "Dark Angels"
+    },
+    {
+      "category": "Custom",
+      "value": "Master of the Legion"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Unique",
+    "Command"
+  ],
+  "dedicatedWeapons": [
+    {
+      "id": "corswain-the-blade",
+      "name": "The Blade",
+      "category": "melee",
+      "profile": {
+        "initiativeModifier": "I",
+        "attacksModifier": "A",
+        "strengthModifier": {
+          "op": "add",
+          "value": 2
+        },
+        "ap": 2,
+        "damage": 2,
+        "specialRules": [
+          {
+            "name": "Duellist’s Edge",
+            "value": "2"
+          }
+        ],
+        "traits": []
+      }
+    }
+  ]
+}

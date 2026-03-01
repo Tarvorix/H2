@@ -1,0 +1,75 @@
+{
+  "id": "master-of-signals",
+  "name": "Master of Signals",
+  "titles": "Master of Signals",
+  "lore": "A vital link between those desperately fighting and supporting elements of the Legion in battle, the Master of Signals is a strategic and communications specialist. Carrying a command vox relay, this warrior receives constant positional updates from forces in the vicinity, and directs them with a logistical skill that is second to none. Many officers have noted that they have been able to commit themselves to the fighting knowing that a Master of Signals will coordinate on their behalf, signalling priority objectives and ensuring that weak spots in an enemy line are exploited, as well as reinforcing against enemy counter-attack.",
+  "basePoints": 115,
+  "battlefieldRole": "Command",
+  "modelDefinitions": [
+    {
+      "name": "Master of Signals",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 5,
+        "BS": 5,
+        "S": 4,
+        "T": 4,
+        "W": 3,
+        "I": 5,
+        "A": 4,
+        "LD": 8,
+        "CL": 7,
+        "WP": 7,
+        "IN": 10,
+        "SAV": 2,
+        "INV": 5
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "bolt-pistol",
+    "frag-grenades",
+    "krak-grenades",
+    "command-vox-relay"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "This Model may have its bolt pistol exchanged for one item from the Legion Pistols list.",
+      "removes": [
+        "bolt-pistol"
+      ],
+      "adds": [
+        "item-from-the-legion-pistols-list"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "None"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Command"
+  ]
+}

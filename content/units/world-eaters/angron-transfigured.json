@@ -1,0 +1,100 @@
+{
+  "id": "angron-transfigured",
+  "name": "Angron Transfigured",
+  "titles": "Angron Transfigured Avatar of Rage, The Annihilator, Death Incarnate",
+  "lore": "Upon the discovery that the Butcher’s Nails would eventually kill Angron, his brother Lorgar set out to ensure his survival. Utilising profane ritual, Lorgar ensured that Angron’s ascension to daemonhood would preserve his life and simultaneously seal him into eternal servitude to the powers of the Warp. Angron found himself infused with power, his already prodigious skill and strength augmented and his form twisted. Great crimson wings burst from Angron’s back, and his hands and feet grew clawed and his features bestial. While the Butcher’s Nails no longer dictated Angron’s mood, he was instead now possessed of a constant furious rage, driven to unending slaughter.",
+  "basePoints": 600,
+  "battlefieldRole": "Warlord",
+  "modelDefinitions": [
+    {
+      "name": "Angron Transfigured",
+      "baseSizeMM": 100,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 14,
+        "WS": 8,
+        "BS": 6,
+        "S": 7,
+        "T": 7,
+        "W": 7,
+        "I": 7,
+        "A": 8,
+        "LD": 12,
+        "CL": 10,
+        "WP": 12,
+        "IN": 8,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "blades-of-the-red-angel"
+  ],
+  "wargearOptions": [],
+  "specialRules": [
+    {
+      "name": "Bulky",
+      "value": "7"
+    },
+    {
+      "name": "Lord of Corruption"
+    },
+    {
+      "name": "Deep Strike"
+    },
+    {
+      "name": "Eternal Warrior",
+      "value": "2"
+    },
+    {
+      "name": "Fear",
+      "value": "2"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Allegiance",
+      "value": "Traitor"
+    },
+    {
+      "category": "Faction",
+      "value": "World Eaters"
+    },
+    {
+      "category": "Custom",
+      "value": "Master of the Legion"
+    }
+  ],
+  "unitType": "Paragon",
+  "unitSubTypes": [
+    "Unique",
+    "Antigrav"
+  ],
+  "dedicatedWeapons": [
+    {
+      "id": "angron-transfigured-eviscerating-slashes",
+      "name": "- Eviscerating Slashes",
+      "category": "melee",
+      "profile": {
+        "initiativeModifier": "I",
+        "attacksModifier": "A",
+        "strengthModifier": "S",
+        "ap": 2,
+        "damage": 2,
+        "specialRules": [
+          {
+            "name": "Reaping Blow",
+            "value": "2"
+          }
+        ],
+        "traits": []
+      }
+    }
+  ]
+}

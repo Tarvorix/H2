@@ -1,0 +1,143 @@
+{
+  "id": "land-raider-explorator",
+  "name": "Land Raider Explorator",
+  "titles": "Land Raider Explorator",
+  "lore": "During the lost days of Mankind’s Golden Age, the Land Raider, armoured and equipped for exploration, was used to scout the most hostile of alien worlds. It was only in later, more warlike times that it would be converted into one of the most potent war machines in the Imperium, and in the Proteus Explorator variant there lingers the influence of its origins. Fitted with a more confined and less accessible transport bay in order to mount an array of scanners and navigational augurs, the Explorator mounts a more focused array of weapons, operating instead as an unmatched pathfinder for any mechanised task force.",
+  "basePoints": 220,
+  "battlefieldRole": "Recon",
+  "modelDefinitions": [
+    {
+      "name": "Land Raider Explorator",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 12,
+        "BS": 4,
+        "frontArmour": 14,
+        "sideArmour": 14,
+        "rearArmour": 14,
+        "HP": 8,
+        "transportCapacity": 10
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "two-sponson-mounted-twin-lascannon",
+    "dozer-blade"
+  ],
+  "wargearOptions": [
+    {
+      "type": "add",
+      "description": "This Model may have one item from the Legion Pintle Weapons list selected for it.",
+      "adds": [
+        "one-item-from-the-legion-pintle-weapons-list-selected-for-it"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "This Model may have one of the following selected for it:",
+      "adds": [
+        "one-of-the-following-selected-for-it"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "One Hull (Front) Mounted twin lascannon +20 Points",
+      "adds": [
+        "hull-front-mounted-twin-lascannon"
+      ],
+      "pointsCost": 20,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "One Hull (Front) Mounted twin heavy bolter +10 Points",
+      "adds": [
+        "hull-front-mounted-twin-heavy-bolter"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "One Hull (Front) Mounted twin heavy flamer +10 Points",
+      "adds": [
+        "hull-front-mounted-twin-heavy-flamer"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "This Model may have one of each of the following selected for it:",
+      "adds": [
+        "one-of-each-of-the-following-selected-for-it"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "One Hull (Front) Mounted hunter-killer missile +5 Points",
+      "adds": [
+        "hull-front-mounted-hunter-killer-missile"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Searchlights +5 Points",
+      "adds": [
+        "searchlights"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Auto-repair",
+      "value": "5+"
+    },
+    {
+      "name": "Outflank"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    },
+    {
+      "category": "Custom",
+      "value": "Smokescreen"
+    }
+  ],
+  "unitType": "Vehicle",
+  "unitSubTypes": [
+    "Transport"
+  ],
+  "accessPoints": [
+    {
+      "name": "- This Model has Access Points on both Side Facings.",
+      "relativePosition": {
+        "x": 0,
+        "y": 0
+      }
+    }
+  ]
+}

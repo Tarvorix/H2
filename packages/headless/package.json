@@ -1,0 +1,35 @@
+{
+  "name": "@hh/headless",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "hh-headless": "./dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./cli": {
+      "import": "./dist/cli.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hh/types": "workspace:*",
+    "@hh/engine": "workspace:*",
+    "@hh/ai": "workspace:*",
+    "@hh/data": "workspace:*",
+    "@hh/army-builder": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^25.3.0"
+  },
+  "files": ["dist"]
+}

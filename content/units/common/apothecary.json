@@ -1,0 +1,87 @@
+{
+  "id": "apothecary",
+  "name": "Apothecary",
+  "titles": "Apothecary",
+  "lore": "A Legion’s Apothecaries carry its most sacred trusts - the care of its fallen and the promise of its future. Serving as battlefield healers it is an Apothecary’s task to return the injured back into the fray and minister final mercy to those in need of it. From those beyond help, they have the onerous duty of recovering the Legion’s gene-seed zygotes for implantation in future generations of Space Marines. These tasks require skill, learning and above all courage - for it is one thing to fight an enemy, and quite another to turn from battle and tend to the fallen in the midst of war, heedless of safety.",
+  "basePoints": 30,
+  "battlefieldRole": "Support",
+  "modelDefinitions": [
+    {
+      "name": "Apothecary",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 4,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 2,
+        "I": 4,
+        "A": 2,
+        "LD": 7,
+        "CL": 7,
+        "WP": 7,
+        "IN": 8,
+        "SAV": 3,
+        "INV": null
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "bolt-pistol",
+    "chainsword",
+    "narthecium",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "This Model may have its chainsword exchanged for one item from the Legion Sergeant Melee Weapons list.",
+      "removes": [
+        "chainsword"
+      ],
+      "adds": [
+        "item-from-the-legion-sergeant-melee-weapons-list"
+      ],
+      "pointsCost": 0,
+      "scope": "leader"
+    },
+    {
+      "type": "exchange",
+      "description": "This Model may have its bolt pistol exchanged for one item from the Legion Pistols list.",
+      "removes": [
+        "bolt-pistol"
+      ],
+      "adds": [
+        "item-from-the-legion-pistols-list"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Medic",
+      "value": "4+"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": []
+}

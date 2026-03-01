@@ -1,0 +1,70 @@
+{
+  "id": "esoterist",
+  "name": "Esoterist",
+  "titles": "Esoterist",
+  "lore": "The Legion Esoterists were a late occurrence among many of the armies embroiled in the Horus Heresy, as members of the Librarius returned to their studies with or without the blessing of their Primarchs, and delved into the forbidden lore that saw common use on the battlefields of that dark age. Many saw the power that could be gained from treating with the powers of the Warp, summoning forth its denizens and binding them to their cause. Others however saw such beings as a threat that must be countered, directing their study to the banishment of daemonkind.",
+  "basePoints": 95,
+  "battlefieldRole": "Command",
+  "modelDefinitions": [
+    {
+      "name": "Esoterist",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 5,
+        "BS": 5,
+        "S": 4,
+        "T": 4,
+        "W": 3,
+        "I": 5,
+        "A": 4,
+        "LD": 7,
+        "CL": 8,
+        "WP": 10,
+        "IN": 8,
+        "SAV": 2,
+        "INV": 5
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "force-weapon",
+    "archaeotech-pistol",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [],
+  "specialRules": [
+    {
+      "name": "Anathemata Discipline"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    },
+    {
+      "category": "Custom",
+      "value": "Psyker"
+    },
+    {
+      "category": "Custom",
+      "value": "Anathemata"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Command"
+  ]
+}
