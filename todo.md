@@ -15,6 +15,29 @@ Execute `plan.md` phase-by-phase with continuously enforced MVP scope (3 legions
 - `pnpm typecheck`: PASS
 - `pnpm test -- packages/ui/src/canvas/assets.test.ts`: PASS (1 file, 4 tests)
 
+## Hotfix Plan (Objective Placement UX/Logic - 2026-03-01)
+- [x] Fix mission objective count display mismatch for symmetric missions.
+- [x] Fix objective placement click mapping so markers place at clicked battlefield positions.
+- [x] Run targeted verification and record results.
+
+## Hotfix Verification (Objective Placement UX/Logic - 2026-03-01)
+- `pnpm --filter @hh/ui typecheck`: PASS
+
+## Feature Plan (Full Unit Deploy/Move - 2026-03-01)
+- [x] Add full-unit movement destination handling (translate whole unit formation from click).
+- [x] Add deployment placement mode with full-unit formation as default while preserving per-model placement mode.
+- [x] Run targeted verification and record results.
+
+## Feature Verification (Full Unit Deploy/Move - 2026-03-01)
+- `pnpm --filter @hh/ui typecheck`: PASS
+
+## Hotfix Plan (Move Click Regression - 2026-03-01)
+- [x] Fix stale movement click handler dependencies so battlefield click sets destination during Move/Rush.
+- [x] Run targeted verification and record results.
+
+## Hotfix Verification (Move Click Regression - 2026-03-01)
+- `pnpm --filter @hh/ui typecheck`: PASS
+
 ## Guardrails
 - Use only units from `HH_v2_units.md`.
 - MVP legions: World Eaters, Alpha Legion, Dark Angels.

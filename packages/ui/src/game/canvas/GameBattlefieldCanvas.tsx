@@ -136,6 +136,22 @@ export function GameBattlefieldCanvas({
             break;
           }
 
+          // Movement flow destination selection uses battlefield click as unit destination.
+          if (
+            state.flowState.type === 'movement' &&
+            state.flowState.step.step === 'selectDestination'
+          ) {
+            const worldX = (action.screenX - state.camera.offsetX) / state.camera.zoom;
+            const worldY = (action.screenY - state.camera.offsetY) / state.camera.zoom;
+            const clampedX = Math.max(0, Math.min(state.battlefieldWidth, worldX));
+            const clampedY = Math.max(0, Math.min(state.battlefieldHeight, worldY));
+            dispatch({
+              type: 'SET_MOVE_DESTINATION',
+              position: { x: clampedX, y: clampedY },
+            });
+            break;
+          }
+
           // Left click → hit test for unit selection
           if (state.gameState) {
             const worldX = (action.screenX - state.camera.offsetX) / state.camera.zoom;
@@ -202,7 +218,14 @@ export function GameBattlefieldCanvas({
           break;
       }
     },
-    [dispatch, state.gameState, state.camera],
+    [
+      dispatch,
+      state.gameState,
+      state.camera,
+      state.flowState,
+      state.battlefieldWidth,
+      state.battlefieldHeight,
+    ],
   );
 
   const visualizerState = useMemo(() => buildVisualizerState(state), [state]);

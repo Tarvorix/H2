@@ -22,18 +22,24 @@ export function ObjectivePlacementScreen({ state, dispatch, onReturnToMenu }: Ob
   const canConfirmPlacement = pendingPosition !== null;
   const allPlaced = placedObjectives.length >= totalToPlace;
 
-  const handleCanvasClick = useCallback(
+  const handleBattlefieldClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
       if (allPlaced) return;
 
       const rect = e.currentTarget.getBoundingClientRect();
-      const camera = state.camera;
-      const x = (e.clientX - rect.left - camera.offsetX) / camera.zoom;
-      const y = (e.clientY - rect.top - camera.offsetY) / camera.zoom;
+      if (rect.width <= 0 || rect.height <= 0) return;
+
+      const xRatio = (e.clientX - rect.left) / rect.width;
+      const yRatio = (e.clientY - rect.top) / rect.height;
+      const clampedXRatio = Math.max(0, Math.min(1, xRatio));
+      const clampedYRatio = Math.max(0, Math.min(1, yRatio));
+
+      const x = clampedXRatio * state.battlefieldWidth;
+      const y = clampedYRatio * state.battlefieldHeight;
 
       dispatch({ type: 'SET_OBJECTIVE_POSITION', position: { x, y } });
     },
-    [dispatch, state.camera, allPlaced],
+    [dispatch, allPlaced, state.battlefieldWidth, state.battlefieldHeight],
   );
 
   const handleConfirmPlacement = useCallback(() => {
@@ -65,7 +71,6 @@ export function ObjectivePlacementScreen({ state, dispatch, onReturnToMenu }: Ob
       <div className="setup-content objective-placement-content">
         <div
           className="objective-placement-canvas"
-          onClick={handleCanvasClick}
           role="button"
           tabIndex={0}
         >
@@ -74,7 +79,9 @@ export function ObjectivePlacementScreen({ state, dispatch, onReturnToMenu }: Ob
             <div className="battlefield-outline" style={{
               width: `${state.battlefieldWidth * 4}px`,
               height: `${state.battlefieldHeight * 4}px`,
-            }}>
+            }}
+            onClick={handleBattlefieldClick}
+            >
               {/* Show placed objectives */}
               {placedObjectives.map((obj, i) => (
                 <div

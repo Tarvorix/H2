@@ -41,7 +41,7 @@ function getMissionDescription(mission: MissionDefinition): string {
     ? mission.objectivePlacement.objectives.length
     : mission.objectivePlacement.kind === 'alternating'
       ? mission.objectivePlacement.count
-      : mission.objectivePlacement.pairsCount;
+      : mission.objectivePlacement.pairsCount * 2;
 
   const specialRules = mission.specialRules
     .map((r) => r.replace(/([A-Z])/g, ' $1').trim())

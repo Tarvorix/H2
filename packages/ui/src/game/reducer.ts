@@ -146,6 +146,53 @@ function applySetupDeploymentPlacement(
   };
 }
 
+function buildTranslatedUnitMovePositions(
+  gameState: GameState,
+  unitId: string,
+  destination: Position,
+): { modelPositions: { modelId: string; position: Position }[] | null; error: string | null } {
+  for (const army of gameState.armies) {
+    const unit = army.units.find(u => u.id === unitId);
+    if (!unit) continue;
+
+    const aliveModels = unit.models.filter(model => !model.isDestroyed);
+    if (aliveModels.length === 0) {
+      return {
+        modelPositions: null,
+        error: `Move failed: unit "${unitId}" has no alive models.`,
+      };
+    }
+
+    const centroid = aliveModels.reduce(
+      (acc, model) => ({
+        x: acc.x + model.position.x,
+        y: acc.y + model.position.y,
+      }),
+      { x: 0, y: 0 },
+    );
+    const centerX = centroid.x / aliveModels.length;
+    const centerY = centroid.y / aliveModels.length;
+    const dx = destination.x - centerX;
+    const dy = destination.y - centerY;
+
+    return {
+      modelPositions: aliveModels.map(model => ({
+        modelId: model.id,
+        position: {
+          x: Math.round((model.position.x + dx) * 10) / 10,
+          y: Math.round((model.position.y + dy) * 10) / 10,
+        },
+      })),
+      error: null,
+    };
+  }
+
+  return {
+    modelPositions: null,
+    error: `Move failed: unit "${unitId}" was not found.`,
+  };
+}
+
 /**
  * Apply an engine command to the game state.
  * Returns the updated GameUIState with new game state, log entries, ghost trails, and dice animation.
@@ -864,6 +911,28 @@ export function gameReducer(
       if (state.flowState.type !== 'movement') return state;
       const moveStep = state.flowState.step;
       if (moveStep.step !== 'selectDestination') return state;
+
+      if (!state.gameState) return state;
+      const translatedMove = buildTranslatedUnitMovePositions(
+        state.gameState,
+        moveStep.unitId,
+        action.position,
+      );
+      if (!translatedMove.modelPositions) {
+        return {
+          ...state,
+          notifications: [
+            ...state.notifications,
+            {
+              message: translatedMove.error ?? 'Move failed: unable to build unit movement.',
+              type: 'error' as const,
+              timestamp: Date.now(),
+              duration: 4000,
+            },
+          ],
+        };
+      }
+
       return {
         ...state,
         flowState: {
@@ -871,7 +940,7 @@ export function gameReducer(
           step: {
             step: 'confirmMove',
             unitId: moveStep.unitId,
-            modelPositions: [{ modelId: action.modelId, position: action.position }],
+            modelPositions: translatedMove.modelPositions,
             isRush: moveStep.isRush,
           },
         },
@@ -882,13 +951,20 @@ export function gameReducer(
       if (state.flowState.type !== 'movement') return state;
       const moveStep = state.flowState.step;
       if (moveStep.step === 'confirmMove') {
-        // Dispatch move commands for each model
+        // Dispatch move commands for each model (full-unit translation).
+        // Stop on first rejected command to avoid additional partial movement.
         let newState = state;
         if (moveStep.isRush) {
           newState = applyEngineCommand(newState, buildRushCommand(moveStep.unitId));
+          if (newState.lastErrors.length > 0) {
+            return newState;
+          }
         }
         for (const mp of moveStep.modelPositions) {
           newState = applyEngineCommand(newState, buildMoveCommand(mp.modelId, mp.position));
+          if (newState.lastErrors.length > 0) {
+            return newState;
+          }
         }
         return {
           ...newState,

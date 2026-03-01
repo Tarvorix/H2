@@ -6,7 +6,7 @@
  * Deployment zones are 12" deep from each player's table edge.
  */
 
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Phase, SubPhase } from '@hh/types';
 import type { GameState, ArmyState, UnitState, ModelState, Position, TerrainPiece, MissionState, ObjectiveMarker } from '@hh/types';
 import type { GameUIState, GameUIAction, ArmyConfig, MissionSelectUIState } from '../types';
@@ -17,6 +17,71 @@ interface DeploymentScreenProps {
   state: GameUIState;
   dispatch: React.Dispatch<GameUIAction>;
   onReturnToMenu: () => void;
+}
+
+type DeploymentPlacementMode = 'unit' | 'model';
+
+function clamp(value: number, min: number, max: number): number {
+  if (value < min) return min;
+  if (value > max) return max;
+  return value;
+}
+
+function buildUnitDeploymentFormation(
+  modelCount: number,
+  anchor: Position,
+  deployingPlayerIndex: number,
+  battlefieldWidth: number,
+  battlefieldHeight: number,
+  zoneDepth: number,
+): Position[] {
+  if (modelCount <= 0) return [];
+
+  const cols = Math.ceil(Math.sqrt(modelCount));
+  const rows = Math.ceil(modelCount / cols);
+  const baseSpacing = 1.25;
+
+  const xSpacing = cols > 1
+    ? Math.min(baseSpacing, (battlefieldWidth - 1) / (cols - 1))
+    : baseSpacing;
+  const ySpacing = rows > 1
+    ? Math.min(baseSpacing, (zoneDepth - 0.5) / (rows - 1))
+    : baseSpacing;
+
+  const halfWidth = ((cols - 1) * xSpacing) / 2;
+  const rowDepth = (rows - 1) * ySpacing;
+
+  const minAnchorX = halfWidth;
+  const maxAnchorX = battlefieldWidth - halfWidth;
+  const clampedAnchorX = clamp(anchor.x, minAnchorX, maxAnchorX);
+
+  const minAnchorY = deployingPlayerIndex === 0
+    ? 0
+    : battlefieldHeight - zoneDepth + rowDepth;
+  const maxAnchorY = deployingPlayerIndex === 0
+    ? zoneDepth - rowDepth
+    : battlefieldHeight;
+  const clampedAnchorY = clamp(
+    anchor.y,
+    Math.min(minAnchorY, maxAnchorY),
+    Math.max(minAnchorY, maxAnchorY),
+  );
+
+  const positions: Position[] = [];
+  for (let i = 0; i < modelCount; i++) {
+    const row = Math.floor(i / cols);
+    const col = i % cols;
+    const x = clampedAnchorX + (col - (cols - 1) / 2) * xSpacing;
+    const y = deployingPlayerIndex === 0
+      ? clampedAnchorY + row * ySpacing
+      : clampedAnchorY - row * ySpacing;
+    positions.push({
+      x: Math.round(x * 10) / 10,
+      y: Math.round(y * 10) / 10,
+    });
+  }
+
+  return positions;
 }
 
 /**
@@ -191,6 +256,7 @@ function createArmyState(config: ArmyConfig, playerIndex: number): ArmyState {
 }
 
 export function DeploymentScreen({ state, dispatch, onReturnToMenu }: DeploymentScreenProps) {
+  const [placementMode, setPlacementMode] = useState<DeploymentPlacementMode>('unit');
   const deployment = state.deployment;
   const deployingPlayerIndex = deployment.deployingPlayerIndex;
   const deployingConfig = state.armyConfigs[deployingPlayerIndex];
@@ -318,9 +384,41 @@ export function DeploymentScreen({ state, dispatch, onReturnToMenu }: Deployment
       const clickYPct = (e.clientY - rect.top) / rect.height;
       const worldX = clickXPct * state.battlefieldWidth;
       const worldY = clickYPct * state.battlefieldHeight;
-      handlePlaceModel({ x: Math.round(worldX * 10) / 10, y: Math.round(worldY * 10) / 10 });
+      const clickedPosition = { x: Math.round(worldX * 10) / 10, y: Math.round(worldY * 10) / 10 };
+
+      if (placementMode === 'unit') {
+        const formation = buildUnitDeploymentFormation(
+          placingUnit.models.length,
+          clickedPosition,
+          deployingPlayerIndex,
+          state.battlefieldWidth,
+          state.battlefieldHeight,
+          zoneDepth,
+        );
+        // Re-selecting the same unit clears pending model positions for re-placement.
+        dispatch({ type: 'SELECT_ROSTER_UNIT', unitId: placingUnit.id });
+        for (let i = 0; i < placingUnit.models.length; i++) {
+          dispatch({
+            type: 'PLACE_DEPLOYMENT_MODEL',
+            modelId: placingUnit.models[i].id,
+            position: formation[i],
+          });
+        }
+        return;
+      }
+
+      handlePlaceModel(clickedPosition);
     },
-    [placingUnit, handlePlaceModel, state.battlefieldWidth, state.battlefieldHeight],
+    [
+      placingUnit,
+      placementMode,
+      deployingPlayerIndex,
+      dispatch,
+      handlePlaceModel,
+      state.battlefieldWidth,
+      state.battlefieldHeight,
+      zoneDepth,
+    ],
   );
 
   const allPlaced = unitsToPlace.length === 0 && !placingUnit;
@@ -371,6 +469,22 @@ export function DeploymentScreen({ state, dispatch, onReturnToMenu }: Deployment
           {placingUnit && (
             <div className="panel-section">
               <div className="panel-title">Placing: {placingUnit.profileId}</div>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                <button
+                  className="toolbar-btn"
+                  onClick={() => setPlacementMode('unit')}
+                  style={placementMode === 'unit' ? { outline: '1px solid #22c55e' } : undefined}
+                >
+                  Place Whole Unit
+                </button>
+                <button
+                  className="toolbar-btn"
+                  onClick={() => setPlacementMode('model')}
+                  style={placementMode === 'model' ? { outline: '1px solid #22c55e' } : undefined}
+                >
+                  Place Models One-by-One
+                </button>
+              </div>
               <div className="panel-row">
                 <span className="panel-row-label">Models placed</span>
                 <span className="panel-row-value">
@@ -388,7 +502,9 @@ export function DeploymentScreen({ state, dispatch, onReturnToMenu }: Deployment
               {modelsLeftToPlace > 0 && (
                 <div className="panel-row">
                   <span className="panel-row-label" style={{ color: '#fbbf24' }}>
-                    Click battlefield to place next model
+                    {placementMode === 'unit'
+                      ? 'Click battlefield to place full unit formation'
+                      : 'Click battlefield to place next model'}
                   </span>
                 </div>
               )}

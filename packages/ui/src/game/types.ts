@@ -496,7 +496,7 @@ export type GameUIAction =
   // ── Movement Flow ─────────────────────────────────────────────────────────
   | { type: 'START_MOVE_FLOW' }
   | { type: 'START_RUSH_FLOW' }
-  | { type: 'SET_MOVE_DESTINATION'; modelId: string; position: Position }
+  | { type: 'SET_MOVE_DESTINATION'; position: Position }
   | { type: 'CONFIRM_MOVE' }
   | { type: 'CANCEL_MOVE' }
   // ── Shooting Flow ─────────────────────────────────────────────────────────
