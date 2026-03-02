@@ -73,6 +73,28 @@ importers:
         specifier: workspace:*
         version: link:../types
 
+  packages/headless:
+    dependencies:
+      '@hh/ai':
+        specifier: workspace:*
+        version: link:../ai
+      '@hh/army-builder':
+        specifier: workspace:*
+        version: link:../army-builder
+      '@hh/data':
+        specifier: workspace:*
+        version: link:../data
+      '@hh/engine':
+        specifier: workspace:*
+        version: link:../engine
+      '@hh/types':
+        specifier: workspace:*
+        version: link:../types
+    devDependencies:
+      '@types/node':
+        specifier: ^25.3.0
+        version: 25.3.0
+
   packages/geometry:
     dependencies:
       '@hh/types':

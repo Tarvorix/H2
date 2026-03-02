@@ -319,9 +319,9 @@ describe('removeUnitFromDetachment', () => {
 // ─── Mandatory Slots ─────────────────────────────────────────────────────────
 
 describe('areMandatorySlotsFilled', () => {
-  it('returns false for empty Crusade Primary (HC is mandatory)', () => {
+  it('returns true for empty Crusade Primary (HC is optional)', () => {
     const det = makeDetachment();
-    expect(areMandatorySlotsFilled(det, CRUSADE_PRIMARY)).toBe(false);
+    expect(areMandatorySlotsFilled(det, CRUSADE_PRIMARY)).toBe(true);
   });
 
   it('returns true when HC slot is filled', () => {

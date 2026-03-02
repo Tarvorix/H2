@@ -1,0 +1,138 @@
+{
+  "ranged": [
+    {
+      "id": "archaeotech-pistol",
+      "name": "Archaeotech pistol",
+      "range": 12,
+      "firepower": 1,
+      "rangedStrength": 6,
+      "ap": 4,
+      "damage": 2,
+      "specialRules": ["Pistol", "Breaching (3+)"],
+      "traits": ["Assault"]
+    },
+    {
+      "id": "deathlock",
+      "name": "Deathlock",
+      "range": 18,
+      "firepower": 2,
+      "rangedStrength": 6,
+      "ap": 2,
+      "damage": 1,
+      "specialRules": ["Shred (6+)", "Overload (2)"],
+      "traits": ["Xenos"]
+    },
+    {
+      "id": "doomlock",
+      "name": "Doomlock",
+      "range": 9,
+      "firepower": 2,
+      "rangedStrength": 6,
+      "ap": 2,
+      "damage": 1,
+      "specialRules": ["Pistol", "Shred (6+)", "Overload (2)"],
+      "traits": ["Xenos", "Assault"]
+    },
+    {
+      "id": "reclaimed-autogun",
+      "name": "Reclaimed autogun",
+      "range": 18,
+      "firepower": 3,
+      "rangedStrength": 3,
+      "ap": null,
+      "damage": 1,
+      "specialRules": ["Pistol"],
+      "traits": ["Auto", "Assault"]
+    },
+    {
+      "id": "reclaimed-autopistol",
+      "name": "Reclaimed autopistol",
+      "range": 9,
+      "firepower": 3,
+      "rangedStrength": 3,
+      "ap": null,
+      "damage": 1,
+      "specialRules": ["Pistol"],
+      "traits": ["Auto", "Assault"]
+    },
+    {
+      "id": "reclaimed-lasgun",
+      "name": "Reclaimed lasgun",
+      "range": 24,
+      "firepower": 2,
+      "rangedStrength": 3,
+      "ap": 6,
+      "damage": 1,
+      "specialRules": ["Pistol"],
+      "traits": ["Las", "Assault"]
+    },
+    {
+      "id": "reclaimed-laspistol",
+      "name": "Reclaimed laspistol",
+      "range": 12,
+      "firepower": 2,
+      "rangedStrength": 3,
+      "ap": 6,
+      "damage": 1,
+      "specialRules": ["Pistol"],
+      "traits": ["Las", "Assault"]
+    },
+    {
+      "id": "reclaimed-shotgun",
+      "name": "Reclaimed shotgun",
+      "range": 12,
+      "firepower": 2,
+      "rangedStrength": 4,
+      "ap": null,
+      "damage": 1,
+      "specialRules": ["Stun (0)"],
+      "traits": ["Auto", "Assault"]
+    },
+    {
+      "id": "reclaimed-heavy-stubber",
+      "name": "Reclaimed heavy stubber",
+      "range": 36,
+      "firepower": 5,
+      "rangedStrength": 4,
+      "ap": null,
+      "damage": 1,
+      "specialRules": ["Suppressive (0)"],
+      "traits": ["Auto", "Assault"]
+    }
+  ],
+  "melee": [
+    {
+      "id": "halo-blade",
+      "name": "Halo blade",
+      "initiativeModifier": "I",
+      "attacksModifier": "A",
+      "strengthModifier": "+2",
+      "ap": 2,
+      "damage": 1,
+      "specialRules": ["Shred (5+)"],
+      "traits": ["Xenos"]
+    },
+    {
+      "id": "reclaimed-melee-weapon",
+      "name": "Reclaimed melee weapon",
+      "initiativeModifier": "-1",
+      "attacksModifier": "A",
+      "strengthModifier": "+1",
+      "ap": 5,
+      "damage": 1,
+      "specialRules": ["Rending (6+)"],
+      "traits": []
+    },
+    {
+      "id": "terrawatt-pattern-power-gauntlet",
+      "name": "Terrawatt-pattern power gauntlet",
+      "initiativeModifier": 2,
+      "attacksModifier": "-1",
+      "strengthModifier": "+4",
+      "ap": 2,
+      "damage": 3,
+      "specialRules": [],
+      "traits": ["Power"]
+    }
+  ]
+}

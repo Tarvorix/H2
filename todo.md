@@ -1,9 +1,54 @@
 # HHv2 TODO
 
-Last Updated: 2026-03-01
+Last Updated: 2026-03-02
+
+## Hotfix Plan (Mobile Hardening iPhone/iPad - 2026-03-02)
+- [x] Add safe-area CSS variables and apply them to top/bottom fixed bars and panels.
+- [x] Replace fragile `100vh` layout heights with `100dvh` fallbacks for iOS Safari viewport stability.
+- [x] Harden mobile panel/modal sizing so bottom sheets and reaction/challenge overlays avoid clipping on narrow screens.
+- [x] Improve touch ergonomics (tap behavior + non-zooming form controls on mobile).
+- [x] Run UI verification gate and amend previous commit with all current uncommitted + hardening changes, then push. (Typecheck blocked in this environment: `tsc: command not found`, with installs blocked by `ENOTFOUND registry.npmjs.org`; commit amended + force-pushed.)
+
+## Hotfix Plan (High Command Slot Rules Alignment - 2026-03-02)
+- [x] Remove Crusade Primary High Command slot mandatory flag to match rules text.
+- [x] Update Crusade Primary detachment docs/comments/tests to reflect optional High Command slot.
+- [x] Verify unlock behavior remains: each Command = +1 Auxiliary, each filled High Command = +1 Apex OR +1 Auxiliary.
+- [ ] Run targeted detachment/validation tests (blocked: local `vitest` unavailable and `pnpm install` fails with `ENOTFOUND registry.npmjs.org` in this environment).
+
+## Recovery Plan (Blackshields + Shattered Datasheets Correctness - 2026-03-02)
+- [x] Audit existing generated profiles and PDF payload for Blackshields/Shattered unit definitions and exact rules hooks.
+- [x] Add explicit Blackshields/Shattered datasheet content source and generation pipeline without broadening curated legion content.
+- [x] Ensure content indexes expose only curated legions plus Blackshields/Shattered units.
+- [x] Wire army-builder validation for Blackshields/Shattered datasheet legality, lineage, and doctrine constraints.
+- [x] Wire UI selection and defaults so Shattered supports all 18 legion selections while keeping curated top-level faction options.
+- [x] Run verification gates: `pnpm content:build`, `pnpm content:validate`, `pnpm typecheck`, and targeted tests for doctrine validation.
+- [ ] Commit and push verified fixes.
+
+## Recovery Verification (Blackshields + Shattered Datasheets Correctness - 2026-03-02)
+- `pnpm content:build`: PASS (`102` total units; `78` common; `6` each World Eaters/Alpha Legion/Dark Angels; `1` Blackshields; `5` Shattered Legions commanders)
+- `pnpm content:validate`: PASS
+- `pnpm typecheck`: PASS
+- `pnpm test -- packages/data/src/weapons.test.ts packages/data/src/faction-scope.test.ts packages/data/src/profile-compatibility.test.ts packages/army-builder/src/validation.test.ts`: PASS (`113` tests)
+
+## CI Fix Plan (Headless Lockfile Drift - 2026-03-02)
+- [x] Regenerate `pnpm-lock.yaml` so it includes `packages/headless` importer dependencies.
+- [ ] Verify `pnpm install --frozen-lockfile` succeeds locally (blocked in this environment by `ENOTFOUND registry.npmjs.org`).
+- [ ] Re-run `pnpm typecheck` after lockfile sync (blocked pending dependency restore in this environment).
+- [ ] Commit and push lockfile fix.
 
 ## Active Goal
 Remove all MVP hardwires and fully implement Blackshields + Shattered Legions as first-class, expansion-safe factions across `types`, `data`, `army-builder`, `engine`, `headless`, and `ui`, while preserving existing legion behavior.
+
+## Hotfix Plan (Restore Curated Scope - 2026-03-01)
+- [x] Restore curated content source pipeline and generated curated JSON/index outputs.
+- [x] Restore runtime profile registry to curated profile set.
+- [x] Restrict playable faction list to curated 3 legions + Blackshields + Shattered Legions.
+- [x] Re-run content + typecheck verification gates.
+
+## Hotfix Verification (Restore Curated Scope - 2026-03-01)
+- `pnpm content:build`: PASS (`96` total units; `78` common; `6` each legion-specific for World Eaters/Alpha Legion/Dark Angels)
+- `pnpm content:validate`: PASS (legions: `world-eaters`, `alpha-legion`, `dark-angels`)
+- `pnpm typecheck`: PASS
 
 ## GitHub Pages Deployment Plan (2026-03-01)
 - [x] Replace hardcoded UI build base path with GitHub Pages-safe base path logic.

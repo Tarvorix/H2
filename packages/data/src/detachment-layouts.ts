@@ -79,7 +79,7 @@ function resetSlotCounter(): void {
  * 1x High Command, 3x Command (Prime), 4x Troops (Prime), 4x Transport
  *
  * Every army must have exactly one Primary Detachment.
- * HC slot is mandatory. Command (Prime) slots each unlock 1 Auxiliary Detachment.
+ * HC slot is optional. Command (Prime) slots each unlock 1 Auxiliary Detachment.
  * HC slot (when filled) unlocks 1 Apex OR 1 Auxiliary Detachment.
  */
 resetSlotCounter();
@@ -89,7 +89,7 @@ export const CRUSADE_PRIMARY: DetachmentTemplate = {
   type: DetachmentType.Primary,
   category: 'primary',
   slots: [
-    makeSlot(BattlefieldRole.HighCommand, { isMandatory: true, label: 'High Command' }),
+    makeSlot(BattlefieldRole.HighCommand, { label: 'High Command' }),
     makeSlot(BattlefieldRole.Command, { isPrime: true, label: 'Command (Prime) 1' }),
     makeSlot(BattlefieldRole.Command, { isPrime: true, label: 'Command (Prime) 2' }),
     makeSlot(BattlefieldRole.Command, { isPrime: true, label: 'Command (Prime) 3' }),

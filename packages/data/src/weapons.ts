@@ -255,6 +255,53 @@ export const GRENADE_WEAPONS: RangedWeaponProfile[] = [
   ranged('phosphex-bombs', 'Phosphex bombs', 6, 1, 5, 2, 1, ['Blast (3")', 'Breaching (4+)', 'Poisoned (3+)'], ['Grenade']),
 ];
 
+// ─── Blackshields Supplement Weapons ──────────────────────────────────────────
+
+export const BLACKSHIELDS_SUPPLEMENT_RANGED_WEAPONS: RangedWeaponProfile[] = [
+  // Core armoury item used by Endryd Haar datasheet.
+  ranged(
+    'archaeotech-pistol',
+    'Archaeotech pistol',
+    12,
+    1,
+    6,
+    4,
+    2,
+    ['Pistol', 'Breaching (3+)'],
+    ['Assault'],
+  ),
+  // Oath of Moment: The Taint of the Xenos
+  ranged('deathlock', 'Deathlock', 18, 2, 6, 2, 1, ['Shred (6+)', 'Overload (2)'], ['Xenos']),
+  ranged(
+    'doomlock',
+    'Doomlock',
+    9,
+    2,
+    6,
+    2,
+    1,
+    ['Pistol', 'Shred (6+)', 'Overload (2)'],
+    ['Xenos', 'Assault'],
+  ),
+  // Oath of Moment: The Weapons of Desperation
+  ranged('reclaimed-autogun', 'Reclaimed autogun', 18, 3, 3, null, 1, ['Pistol'], ['Auto', 'Assault']),
+  ranged('reclaimed-autopistol', 'Reclaimed autopistol', 9, 3, 3, null, 1, ['Pistol'], ['Auto', 'Assault']),
+  ranged('reclaimed-lasgun', 'Reclaimed lasgun', 24, 2, 3, 6, 1, ['Pistol'], ['Las', 'Assault']),
+  ranged('reclaimed-laspistol', 'Reclaimed laspistol', 12, 2, 3, 6, 1, ['Pistol'], ['Las', 'Assault']),
+  ranged('reclaimed-shotgun', 'Reclaimed shotgun', 12, 2, 4, null, 1, ['Stun (0)'], ['Auto', 'Assault']),
+  ranged(
+    'reclaimed-heavy-stubber',
+    'Reclaimed heavy stubber',
+    36,
+    5,
+    4,
+    null,
+    1,
+    ['Suppressive (0)'],
+    ['Auto', 'Assault'],
+  ),
+];
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // MELEE WEAPONS
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -311,6 +358,25 @@ export const DREADNOUGHT_MELEE: MeleeWeaponProfile[] = [
   melee('leviathan-siege-drill', 'Leviathan siege drill', 1, 'A', 'x2', 2, 5, ['Armourbane'], ['Power']),
 ];
 
+export const BLACKSHIELDS_SUPPLEMENT_MELEE_WEAPONS: MeleeWeaponProfile[] = [
+  // Oath of Moment: The Taint of the Xenos
+  melee('halo-blade', 'Halo blade', 'I', 'A', '+2', 2, 1, ['Shred (5+)'], ['Xenos']),
+  // Oath of Moment: The Weapons of Desperation
+  melee('reclaimed-melee-weapon', 'Reclaimed melee weapon', '-1', 'A', '+1', 5, 1, ['Rending (6+)'], []),
+  // Endryd Haar wargear profile.
+  melee(
+    'terrawatt-pattern-power-gauntlet',
+    'Terrawatt-pattern power gauntlet',
+    2,
+    '-1',
+    '+4',
+    2,
+    3,
+    [],
+    ['Power'],
+  ),
+];
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // CONSOLIDATED DATABASE
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -327,6 +393,7 @@ const allRangedArrays = [
   FLAME_WEAPONS, GRAVITON_WEAPONS, LAS_WEAPONS, MELTA_WEAPONS,
   MISSILE_WEAPONS, PLASMA_WEAPONS, VOLKITE_WEAPONS, AUTOCANNON_WEAPONS,
   BATTLECANNON_WEAPONS, GRENADE_WEAPONS,
+  BLACKSHIELDS_SUPPLEMENT_RANGED_WEAPONS,
 ];
 for (const arr of allRangedArrays) {
   for (const weapon of arr) {
@@ -336,7 +403,12 @@ for (const arr of allRangedArrays) {
 
 // Populate melee weapons
 const allMeleeArrays = [
-  CHAIN_WEAPONS, FORCE_WEAPONS, POWER_WEAPONS, BASIC_MELEE, DREADNOUGHT_MELEE,
+  CHAIN_WEAPONS,
+  FORCE_WEAPONS,
+  POWER_WEAPONS,
+  BASIC_MELEE,
+  DREADNOUGHT_MELEE,
+  BLACKSHIELDS_SUPPLEMENT_MELEE_WEAPONS,
 ];
 for (const arr of allMeleeArrays) {
   for (const weapon of arr) {

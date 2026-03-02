@@ -1,11 +1,13 @@
 /* ─── Main Menu ────────────────────────────────────────────────────────────── */
 
 .main-menu {
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  min-height: 100vh;
+  height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
   background: linear-gradient(135deg, #0a0a1a 0%, #16213e 50%, #0a0a1a 100%);
 }
 
@@ -93,13 +95,14 @@
 
 .game-layout {
   display: grid;
-  grid-template-rows: 44px 1fr;
+  grid-template-rows: calc(44px + var(--safe-top)) 1fr;
   grid-template-columns: 1fr 320px;
   grid-template-areas:
     "toolbar toolbar"
     "canvas  sidebar";
   width: 100%;
-  height: 100vh;
+  min-height: 100vh;
+  height: 100dvh;
 }
 
 .game-toolbar {
@@ -108,7 +111,7 @@
   border-bottom: 1px solid #1e3a5f;
   display: flex;
   align-items: center;
-  padding: 0 12px;
+  padding: var(--safe-top) calc(12px + var(--safe-right)) 0 calc(12px + var(--safe-left));
   gap: 8px;
   overflow-x: auto;
 }
@@ -133,7 +136,7 @@
   background: #0f0f23;
   border-left: 1px solid #1e3a5f;
   overflow-y: auto;
-  padding: 12px;
+  padding: 12px calc(12px + var(--safe-right)) calc(12px + var(--safe-bottom)) calc(12px + var(--safe-left));
 }
 
 /* ─── Setup Screens ────────────────────────────────────────────────────────── */
@@ -141,8 +144,9 @@
 .setup-screen {
   display: flex;
   flex-direction: column;
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  min-height: 100vh;
+  height: 100dvh;
   background: #0a0a1a;
   overflow: hidden;
 }
@@ -151,7 +155,7 @@
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 16px 24px;
+  padding: calc(16px + var(--safe-top)) calc(24px + var(--safe-right)) 16px calc(24px + var(--safe-left));
   background: #16213e;
   border-bottom: 1px solid #1e3a5f;
 }
@@ -173,7 +177,7 @@
 .setup-content {
   flex: 1;
   overflow: auto;
-  padding: 24px;
+  padding: 24px calc(24px + var(--safe-right)) calc(24px + var(--safe-bottom)) calc(24px + var(--safe-left));
 }
 
 .setup-footer {
@@ -181,7 +185,7 @@
   justify-content: center;
   align-items: center;
   flex-direction: column;
-  padding: 16px 24px;
+  padding: 16px calc(24px + var(--safe-right)) calc(16px + var(--safe-bottom)) calc(24px + var(--safe-left));
   background: #16213e;
   border-top: 1px solid #1e3a5f;
 }
@@ -945,15 +949,16 @@
 /* ─── End Game Summary ─────────────────────────────────────────────────────── */
 
 .endgame-screen {
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  min-height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   background: linear-gradient(135deg, #0a0a1a 0%, #16213e 50%, #0a0a1a 100%);
   overflow-y: auto;
-  padding: 40px;
+  padding: calc(40px + var(--safe-top)) calc(40px + var(--safe-right)) calc(40px + var(--safe-bottom)) calc(40px + var(--safe-left));
 }
 
 .endgame-header {
@@ -1124,7 +1129,7 @@
   border: 1px solid #2a4a6f;
   border-bottom: none;
   border-radius: 8px 8px 0 0;
-  padding: 16px 24px;
+  padding: 16px calc(24px + var(--safe-right)) calc(16px + var(--safe-bottom)) calc(24px + var(--safe-left));
   min-width: 400px;
   max-width: 600px;
   z-index: 200;
@@ -1134,7 +1139,7 @@
 .flow-panel-shooting {
   width: min(860px, calc(100vw - 32px));
   max-width: 860px;
-  max-height: calc(100vh - 84px);
+  max-height: calc(100dvh - 84px - var(--safe-top) - var(--safe-bottom));
   display: flex;
   flex-direction: column;
 }
@@ -1209,6 +1214,8 @@
   padding: 24px;
   min-width: 400px;
   max-width: 500px;
+  max-height: calc(100dvh - 40px - var(--safe-top) - var(--safe-bottom));
+  overflow-y: auto;
   animation: modal-scale-in 0.2s ease-out;
 }
 
@@ -1278,6 +1285,8 @@
   padding: 24px;
   min-width: 400px;
   max-width: 500px;
+  max-height: calc(100dvh - 40px - var(--safe-top) - var(--safe-bottom));
+  overflow-y: auto;
 }
 
 .challenge-modal-title {
@@ -2309,33 +2318,35 @@
 
 @media (max-width: 900px) {
   .game-layout {
-    grid-template-rows: 44px minmax(40vh, 1fr) minmax(32vh, 42vh);
+    grid-template-rows: calc(44px + var(--safe-top)) minmax(40vh, 1fr) minmax(32vh, 42vh);
     grid-template-columns: 1fr;
     grid-template-areas:
       "toolbar"
       "canvas"
       "sidebar";
+    min-height: 100vh;
     height: 100dvh;
   }
 
   .game-sidebar {
     border-left: none;
     border-top: 1px solid #1e3a5f;
-    padding: 8px;
+    padding: 8px calc(8px + var(--safe-right)) calc(8px + var(--safe-bottom)) calc(8px + var(--safe-left));
   }
 
   .setup-screen {
+    min-height: 100vh;
     height: 100dvh;
   }
 
   .setup-header {
-    padding: 12px;
+    padding: calc(12px + var(--safe-top)) calc(12px + var(--safe-right)) 12px calc(12px + var(--safe-left));
     gap: 10px;
     flex-wrap: wrap;
   }
 
   .setup-content {
-    padding: 12px;
+    padding: 12px calc(12px + var(--safe-right)) calc(12px + var(--safe-bottom)) calc(12px + var(--safe-left));
   }
 
   .army-load-content,
@@ -2388,18 +2399,18 @@
     min-width: 0;
     max-width: none;
     border-radius: 8px 8px 0 0;
-    padding: 12px;
+    padding: 12px calc(12px + var(--safe-right)) calc(12px + var(--safe-bottom)) calc(12px + var(--safe-left));
   }
 
   .flow-panel-shooting {
     width: auto;
-    max-height: calc(100vh - 104px);
+    max-height: calc(100dvh - 104px - var(--safe-top) - var(--safe-bottom));
   }
 
   .reaction-modal,
   .challenge-modal {
     min-width: 0;
-    width: calc(100vw - 24px);
+    width: calc(100vw - 24px - var(--safe-left) - var(--safe-right));
   }
 
   .endgame-screen {
@@ -2419,7 +2430,7 @@
 
   .toolbar-btn,
   .setup-confirm-btn {
-    min-height: 40px;
+    min-height: 44px;
   }
 }
 
@@ -2455,7 +2466,7 @@
   }
 
   .game-toolbar {
-    padding: 0 8px;
+    padding: var(--safe-top) calc(8px + var(--safe-right)) 0 calc(8px + var(--safe-left));
     gap: 6px;
   }
 
@@ -2475,5 +2486,13 @@
 
   .flow-panel-actions {
     flex-wrap: wrap;
+  }
+
+  .faction-select,
+  .detachment-add-select,
+  .ai-tier-select,
+  .toolbar-select,
+  .panel-input {
+    font-size: 16px;
   }
 }

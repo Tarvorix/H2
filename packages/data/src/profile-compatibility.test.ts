@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { LegionFaction } from '@hh/types';
-import { getAllLegions } from './faction-scope';
+import { getCuratedLegions } from './faction-scope';
 import { ALL_DETACHMENT_TEMPLATES } from './detachment-layouts';
 import { getAllProfiles } from './profile-registry';
 
@@ -45,7 +45,7 @@ function readJsonFile<T>(relativePath: string): T {
 
 describe('profile compatibility guards', () => {
   it('keeps runtime profile registry synchronized with generated unit whitelist', () => {
-    const whitelistIds = readJsonFile<string[]>('content/indexes/unit-whitelist.json');
+    const whitelistIds = readJsonFile<string[]>('content/indexes/mvp-whitelist.json');
     const runtimeIds = getAllProfiles().map((profile) => profile.id);
 
     const whitelistSet = new Set(whitelistIds);
@@ -76,7 +76,7 @@ describe('profile compatibility guards', () => {
   it('keeps legion index gating aligned with faction-specific profile traits', () => {
     const legionIndex = readJsonFile<LegionIndexFile>('content/indexes/legion-index.json');
     const profiles = getAllProfiles();
-    const legionKeys = getAllLegions().map((legion) => LEGION_TO_KEY[legion]);
+    const legionKeys = getCuratedLegions().map((legion) => LEGION_TO_KEY[legion]);
     const allLegionNames = new Set(Object.values(LegionFaction));
 
     for (const legionKey of legionKeys) {
@@ -87,12 +87,23 @@ describe('profile compatibility guards', () => {
     const leakedEntries: string[] = [];
 
     for (const profile of profiles) {
-      const factionTraits = profile.traits
-        .filter((trait) => trait.category === 'Faction' && allLegionNames.has(trait.value as LegionFaction))
-        .map((trait) => trait.value as LegionFaction);
+      const allFactionTraits = profile.traits
+        .filter((trait) => trait.category === 'Faction')
+        .map((trait) => trait.value);
+
+      const hasOnlyLegionFactionTraits = allFactionTraits.every((value) =>
+        allLegionNames.has(value as LegionFaction),
+      );
+      if (!hasOnlyLegionFactionTraits) {
+        continue;
+      }
+
+      const factionTraits = allFactionTraits
+        .filter((value) => allLegionNames.has(value as LegionFaction))
+        .map((value) => value as LegionFaction);
 
       const specificLegionKeys = factionTraits.map((faction) => LEGION_TO_KEY[faction]);
-      const isGeneric = specificLegionKeys.length === 0;
+      const isGeneric = allFactionTraits.length === 0;
 
       for (const legionKey of legionKeys) {
         const allowedIds = new Set(legionIndex[legionKey]?.allowedUnitIds ?? []);
@@ -111,4 +122,3 @@ describe('profile compatibility guards', () => {
     expect(leakedEntries).toEqual([]);
   });
 });
-

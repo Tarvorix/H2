@@ -1,89 +1,16 @@
 {
-  "lion-el-jonson": {
-    "path": "content/units/dark-angels/lion-el-jonson.json",
-    "role": "Warlord",
+  "alexis-polux": {
+    "path": "content/units/shattered-legions/alexis-polux.json",
+    "role": "Command",
     "legionTags": [
-      "dark-angels"
+      "shattered-legions"
     ]
   },
-  "jaghatai-khan": {
-    "path": "content/units/white-scars/jaghatai-khan.json",
+  "alpharius": {
+    "path": "content/units/alpha-legion/alpharius.json",
     "role": "Warlord",
     "legionTags": [
-      "white-scars"
-    ]
-  },
-  "leman-russ": {
-    "path": "content/units/space-wolves/leman-russ.json",
-    "role": "Warlord",
-    "legionTags": [
-      "space-wolves"
-    ]
-  },
-  "rogal-dorn": {
-    "path": "content/units/imperial-fists/rogal-dorn.json",
-    "role": "Warlord",
-    "legionTags": [
-      "imperial-fists"
-    ]
-  },
-  "sanguinius": {
-    "path": "content/units/blood-angels/sanguinius.json",
-    "role": "Warlord",
-    "legionTags": [
-      "blood-angels"
-    ]
-  },
-  "ferrus-manus": {
-    "path": "content/units/iron-hands/ferrus-manus.json",
-    "role": "Warlord",
-    "legionTags": [
-      "iron-hands"
-    ]
-  },
-  "roboute-guilliman": {
-    "path": "content/units/ultramarines/roboute-guilliman.json",
-    "role": "Warlord",
-    "legionTags": [
-      "ultramarines"
-    ]
-  },
-  "vulkan": {
-    "path": "content/units/salamanders/vulkan.json",
-    "role": "Warlord",
-    "legionTags": [
-      "salamanders"
-    ]
-  },
-  "corvus-corax": {
-    "path": "content/units/raven-guard/corvus-corax.json",
-    "role": "Warlord",
-    "legionTags": [
-      "raven-guard"
-    ]
-  },
-  "fulgrim": {
-    "path": "content/units/common/fulgrim.json",
-    "role": "Warlord",
-    "legionTags": []
-  },
-  "fulgrim-transfigured": {
-    "path": "content/units/common/fulgrim-transfigured.json",
-    "role": "Warlord",
-    "legionTags": []
-  },
-  "perturabo": {
-    "path": "content/units/iron-warriors/perturabo.json",
-    "role": "Warlord",
-    "legionTags": [
-      "iron-warriors"
-    ]
-  },
-  "konrad-curze": {
-    "path": "content/units/night-lords/konrad-curze.json",
-    "role": "Warlord",
-    "legionTags": [
-      "night-lords"
+      "alpha-legion"
     ]
   },
   "angron": {
@@ -100,51 +27,319 @@
       "world-eaters"
     ]
   },
-  "mortarion": {
-    "path": "content/units/death-guard/mortarion.json",
-    "role": "Warlord",
-    "legionTags": [
-      "death-guard"
-    ]
+  "apothecary": {
+    "path": "content/units/common/apothecary.json",
+    "role": "Support",
+    "legionTags": []
   },
-  "magnus-the-red": {
-    "path": "content/units/thousand-sons/magnus-the-red.json",
-    "role": "Warlord",
-    "legionTags": [
-      "thousand-sons"
-    ]
+  "araknae-quad-accelerator-platform": {
+    "path": "content/units/common/araknae-quad-accelerator-platform.json",
+    "role": "Support",
+    "legionTags": []
   },
-  "horus-ascended": {
-    "path": "content/units/sons-of-horus/horus-ascended.json",
-    "role": "Warlord",
-    "legionTags": [
-      "sons-of-horus"
-    ]
-  },
-  "horus-lupercal": {
-    "path": "content/units/sons-of-horus/horus-lupercal.json",
-    "role": "Warlord",
-    "legionTags": [
-      "sons-of-horus"
-    ]
-  },
-  "lorgar": {
-    "path": "content/units/word-bearers/lorgar.json",
-    "role": "Warlord",
-    "legionTags": [
-      "word-bearers"
-    ]
-  },
-  "alpharius": {
-    "path": "content/units/alpha-legion/alpharius.json",
-    "role": "Warlord",
+  "armillus-dynat": {
+    "path": "content/units/alpha-legion/armillus-dynat.json",
+    "role": "High Command",
     "legionTags": [
       "alpha-legion"
     ]
   },
-  "mounted-praetor": {
-    "path": "content/units/common/mounted-praetor.json",
+  "arquitor-bombard": {
+    "path": "content/units/common/arquitor-bombard.json",
+    "role": "Armour",
+    "legionTags": []
+  },
+  "assault-squad": {
+    "path": "content/units/common/assault-squad.json",
+    "role": "Troops",
+    "legionTags": []
+  },
+  "breacher-squad": {
+    "path": "content/units/common/breacher-squad.json",
+    "role": "Troops",
+    "legionTags": []
+  },
+  "cataphractii-terminator-command-squad": {
+    "path": "content/units/common/cataphractii-terminator-command-squad.json",
+    "role": "Retinue",
+    "legionTags": []
+  },
+  "cataphractii-terminator-squad": {
+    "path": "content/units/common/cataphractii-terminator-squad.json",
+    "role": "Heavy Assault",
+    "legionTags": []
+  },
+  "centurion": {
+    "path": "content/units/common/centurion.json",
+    "role": "Command",
+    "legionTags": []
+  },
+  "centurion-command-squad": {
+    "path": "content/units/common/centurion-command-squad.json",
+    "role": "Retinue",
+    "legionTags": []
+  },
+  "centurion-in-terminator-armour": {
+    "path": "content/units/common/centurion-in-terminator-armour.json",
+    "role": "Command",
+    "legionTags": []
+  },
+  "cerberus-heavy-tank-destroyer": {
+    "path": "content/units/common/cerberus-heavy-tank-destroyer.json",
+    "role": "Armour",
+    "legionTags": []
+  },
+  "chaplain": {
+    "path": "content/units/common/chaplain.json",
+    "role": "Command",
+    "legionTags": []
+  },
+  "contemptor-dreadnought": {
+    "path": "content/units/common/contemptor-dreadnought.json",
+    "role": "War-Engine",
+    "legionTags": []
+  },
+  "corswain": {
+    "path": "content/units/dark-angels/corswain.json",
     "role": "High Command",
+    "legionTags": [
+      "dark-angels"
+    ]
+  },
+  "damocles-command-rhino": {
+    "path": "content/units/common/damocles-command-rhino.json",
+    "role": "Command",
+    "legionTags": []
+  },
+  "deathstorm-drop-pod": {
+    "path": "content/units/common/deathstorm-drop-pod.json",
+    "role": "Support",
+    "legionTags": []
+  },
+  "deathwing-companion-detachment": {
+    "path": "content/units/dark-angels/deathwing-companion-detachment.json",
+    "role": "Retinue",
+    "legionTags": [
+      "dark-angels"
+    ]
+  },
+  "deredeo-dreadnought": {
+    "path": "content/units/common/deredeo-dreadnought.json",
+    "role": "War-Engine",
+    "legionTags": []
+  },
+  "despoiler-squad": {
+    "path": "content/units/common/despoiler-squad.json",
+    "role": "Troops",
+    "legionTags": []
+  },
+  "dreadclaw-drop-pod": {
+    "path": "content/units/common/dreadclaw-drop-pod.json",
+    "role": "Heavy Transport",
+    "legionTags": []
+  },
+  "dreadnought-drop-pod": {
+    "path": "content/units/common/dreadnought-drop-pod.json",
+    "role": "Heavy Transport",
+    "legionTags": []
+  },
+  "dreadwing-interemptors": {
+    "path": "content/units/dark-angels/dreadwing-interemptors.json",
+    "role": "Support",
+    "legionTags": [
+      "dark-angels"
+    ]
+  },
+  "drop-pod": {
+    "path": "content/units/common/drop-pod.json",
+    "role": "Transport",
+    "legionTags": []
+  },
+  "endryd-haar": {
+    "path": "content/units/blackshields/endryd-haar.json",
+    "role": "High Command",
+    "legionTags": [
+      "blackshields"
+    ]
+  },
+  "esoterist": {
+    "path": "content/units/common/esoterist.json",
+    "role": "Command",
+    "legionTags": []
+  },
+  "exodus": {
+    "path": "content/units/alpha-legion/exodus.json",
+    "role": "Elites",
+    "legionTags": [
+      "alpha-legion"
+    ]
+  },
+  "falchion-super-heavy-tank-destroyer": {
+    "path": "content/units/common/falchion-super-heavy-tank-destroyer.json",
+    "role": "Armour",
+    "legionTags": []
+  },
+  "fellblade-super-heavy-battle-tank": {
+    "path": "content/units/common/fellblade-super-heavy-battle-tank.json",
+    "role": "Armour",
+    "legionTags": []
+  },
+  "fire-raptor": {
+    "path": "content/units/common/fire-raptor.json",
+    "role": "Fast Attack",
+    "legionTags": []
+  },
+  "garviel-loken": {
+    "path": "content/units/shattered-legions/garviel-loken.json",
+    "role": "High Command",
+    "legionTags": [
+      "shattered-legions"
+    ]
+  },
+  "glaive-super-heavy-special-weapons-tank": {
+    "path": "content/units/common/glaive-super-heavy-special-weapons-tank.json",
+    "role": "Armour",
+    "legionTags": []
+  },
+  "headhunter-kill-team": {
+    "path": "content/units/alpha-legion/headhunter-kill-team.json",
+    "role": "Elites",
+    "legionTags": [
+      "alpha-legion"
+    ]
+  },
+  "heavy-support-squad": {
+    "path": "content/units/common/heavy-support-squad.json",
+    "role": "Support",
+    "legionTags": []
+  },
+  "herald": {
+    "path": "content/units/common/herald.json",
+    "role": "Command",
+    "legionTags": []
+  },
+  "hibou-khan": {
+    "path": "content/units/shattered-legions/hibou-khan.json",
+    "role": "Command",
+    "legionTags": [
+      "shattered-legions"
+    ]
+  },
+  "inner-circle-knights-cenobium": {
+    "path": "content/units/dark-angels/inner-circle-knights-cenobium.json",
+    "role": "Elites",
+    "legionTags": [
+      "dark-angels"
+    ]
+  },
+  "javelin-squadron": {
+    "path": "content/units/common/javelin-squadron.json",
+    "role": "Fast Attack",
+    "legionTags": []
+  },
+  "kh-rn-the-bloody": {
+    "path": "content/units/world-eaters/kh-rn-the-bloody.json",
+    "role": "High Command",
+    "legionTags": [
+      "world-eaters"
+    ]
+  },
+  "kharybdis-assault-claw": {
+    "path": "content/units/common/kharybdis-assault-claw.json",
+    "role": "Heavy Transport",
+    "legionTags": []
+  },
+  "kratos-assault-tank": {
+    "path": "content/units/common/kratos-assault-tank.json",
+    "role": "Armour",
+    "legionTags": []
+  },
+  "land-raider-carrier": {
+    "path": "content/units/common/land-raider-carrier.json",
+    "role": "Heavy Transport",
+    "legionTags": []
+  },
+  "land-raider-explorator": {
+    "path": "content/units/common/land-raider-explorator.json",
+    "role": "Recon",
+    "legionTags": []
+  },
+  "land-speeder-squadron": {
+    "path": "content/units/common/land-speeder-squadron.json",
+    "role": "Fast Attack",
+    "legionTags": []
+  },
+  "legion-champion": {
+    "path": "content/units/common/legion-champion.json",
+    "role": "Command",
+    "legionTags": []
+  },
+  "lernaean-terminator-squad": {
+    "path": "content/units/alpha-legion/lernaean-terminator-squad.json",
+    "role": "Elites",
+    "legionTags": [
+      "alpha-legion"
+    ]
+  },
+  "leviathan-dreadnought": {
+    "path": "content/units/common/leviathan-dreadnought.json",
+    "role": "War-Engine",
+    "legionTags": []
+  },
+  "librarian": {
+    "path": "content/units/common/librarian.json",
+    "role": "Command",
+    "legionTags": []
+  },
+  "lion-el-jonson": {
+    "path": "content/units/dark-angels/lion-el-jonson.json",
+    "role": "Warlord",
+    "legionTags": [
+      "dark-angels"
+    ]
+  },
+  "lotara-sarrin": {
+    "path": "content/units/world-eaters/lotara-sarrin.json",
+    "role": "Command",
+    "legionTags": [
+      "world-eaters"
+    ]
+  },
+  "marduk-sedras": {
+    "path": "content/units/dark-angels/marduk-sedras.json",
+    "role": "High Command",
+    "legionTags": [
+      "dark-angels"
+    ]
+  },
+  "master-of-signals": {
+    "path": "content/units/common/master-of-signals.json",
+    "role": "Command",
+    "legionTags": []
+  },
+  "mastodon-super-heavy-assault-transport": {
+    "path": "content/units/common/mastodon-super-heavy-assault-transport.json",
+    "role": "Armour",
+    "legionTags": []
+  },
+  "moritat": {
+    "path": "content/units/common/moritat.json",
+    "role": "Command",
+    "legionTags": []
+  },
+  "optae": {
+    "path": "content/units/common/optae.json",
+    "role": "Command",
+    "legionTags": []
+  },
+  "outrider-squadron": {
+    "path": "content/units/common/outrider-squadron.json",
+    "role": "Recon",
+    "legionTags": []
+  },
+  "overseer": {
+    "path": "content/units/common/overseer.json",
+    "role": "Command",
     "legionTags": []
   },
   "praetor": {
@@ -162,721 +357,8 @@
     "role": "High Command",
     "legionTags": []
   },
-  "corswain": {
-    "path": "content/units/dark-angels/corswain.json",
-    "role": "High Command",
-    "legionTags": [
-      "dark-angels"
-    ]
-  },
-  "marduk-sedras": {
-    "path": "content/units/dark-angels/marduk-sedras.json",
-    "role": "High Command",
-    "legionTags": [
-      "dark-angels"
-    ]
-  },
-  "qin-xa": {
-    "path": "content/units/white-scars/qin-xa.json",
-    "role": "High Command",
-    "legionTags": [
-      "white-scars"
-    ]
-  },
-  "hvarl-red-blade": {
-    "path": "content/units/space-wolves/hvarl-red-blade.json",
-    "role": "High Command",
-    "legionTags": [
-      "space-wolves"
-    ]
-  },
-  "evander-garrius": {
-    "path": "content/units/imperial-fists/evander-garrius.json",
-    "role": "High Command",
-    "legionTags": [
-      "imperial-fists"
-    ]
-  },
-  "fafnir-rann": {
-    "path": "content/units/imperial-fists/fafnir-rann.json",
-    "role": "High Command",
-    "legionTags": [
-      "imperial-fists"
-    ]
-  },
-  "sigismund": {
-    "path": "content/units/imperial-fists/sigismund.json",
-    "role": "High Command",
-    "legionTags": [
-      "imperial-fists"
-    ]
-  },
-  "chapter-master-raldoron": {
-    "path": "content/units/blood-angels/chapter-master-raldoron.json",
-    "role": "High Command",
-    "legionTags": [
-      "blood-angels"
-    ]
-  },
-  "iron-father": {
-    "path": "content/units/iron-hands/iron-father.json",
-    "role": "High Command",
-    "legionTags": [
-      "iron-hands"
-    ]
-  },
-  "iron-hands-iron-father-in-artificer-armour": {
-    "path": "content/units/iron-hands/iron-hands-iron-father-in-artificer-armour.json",
-    "role": "High Command",
-    "legionTags": [
-      "iron-hands"
-    ]
-  },
-  "shadrak-meduson": {
-    "path": "content/units/iron-hands/shadrak-meduson.json",
-    "role": "High Command",
-    "legionTags": [
-      "iron-hands"
-    ]
-  },
-  "cassian-dracos-reborn": {
-    "path": "content/units/salamanders/cassian-dracos-reborn.json",
-    "role": "High Command",
-    "legionTags": [
-      "salamanders"
-    ]
-  },
-  "lord-commander-eidolon": {
-    "path": "content/units/common/lord-commander-eidolon.json",
-    "role": "High Command",
-    "legionTags": []
-  },
-  "iron-warriors-warsmith-in-artificer-armour": {
-    "path": "content/units/iron-warriors/iron-warriors-warsmith-in-artificer-armour.json",
-    "role": "High Command",
-    "legionTags": [
-      "iron-warriors"
-    ]
-  },
-  "warsmith": {
-    "path": "content/units/iron-warriors/warsmith.json",
-    "role": "High Command",
-    "legionTags": [
-      "iron-warriors"
-    ]
-  },
-  "sevatar": {
-    "path": "content/units/night-lords/sevatar.json",
-    "role": "High Command",
-    "legionTags": [
-      "night-lords"
-    ]
-  },
-  "kh-rn-the-bloody": {
-    "path": "content/units/world-eaters/kh-rn-the-bloody.json",
-    "role": "High Command",
-    "legionTags": [
-      "world-eaters"
-    ]
-  },
-  "calas-typhon": {
-    "path": "content/units/death-guard/calas-typhon.json",
-    "role": "High Command",
-    "legionTags": [
-      "death-guard"
-    ]
-  },
-  "ahzek-ahriman": {
-    "path": "content/units/thousand-sons/ahzek-ahriman.json",
-    "role": "High Command",
-    "legionTags": [
-      "thousand-sons"
-    ]
-  },
-  "magistus-amon": {
-    "path": "content/units/thousand-sons/magistus-amon.json",
-    "role": "High Command",
-    "legionTags": [
-      "thousand-sons"
-    ]
-  },
-  "little-horus-aximand": {
-    "path": "content/units/sons-of-horus/little-horus-aximand.json",
-    "role": "High Command",
-    "legionTags": [
-      "sons-of-horus"
-    ]
-  },
-  "ezekyle-abaddon": {
-    "path": "content/units/sons-of-horus/ezekyle-abaddon.json",
-    "role": "High Command",
-    "legionTags": [
-      "sons-of-horus"
-    ]
-  },
-  "garviel-loken": {
-    "path": "content/units/sons-of-horus/garviel-loken.json",
-    "role": "High Command",
-    "legionTags": [
-      "sons-of-horus"
-    ]
-  },
-  "tybalt-marr": {
-    "path": "content/units/sons-of-horus/tybalt-marr.json",
-    "role": "High Command",
-    "legionTags": [
-      "sons-of-horus"
-    ]
-  },
-  "vheren-ashurhaddon": {
-    "path": "content/units/sons-of-horus/vheren-ashurhaddon.json",
-    "role": "High Command",
-    "legionTags": [
-      "sons-of-horus"
-    ]
-  },
-  "argel-tal": {
-    "path": "content/units/word-bearers/argel-tal.json",
-    "role": "High Command",
-    "legionTags": [
-      "word-bearers"
-    ]
-  },
-  "erebus": {
-    "path": "content/units/word-bearers/erebus.json",
-    "role": "High Command",
-    "legionTags": [
-      "word-bearers"
-    ]
-  },
-  "kor-phaeron": {
-    "path": "content/units/word-bearers/kor-phaeron.json",
-    "role": "High Command",
-    "legionTags": [
-      "word-bearers"
-    ]
-  },
-  "armillus-dynat": {
-    "path": "content/units/alpha-legion/armillus-dynat.json",
-    "role": "High Command",
-    "legionTags": [
-      "alpha-legion"
-    ]
-  },
-  "nathaniel-garro": {
-    "path": "content/units/common/nathaniel-garro.json",
-    "role": "High Command",
-    "legionTags": []
-  },
-  "armistos": {
-    "path": "content/units/common/armistos.json",
-    "role": "Command",
-    "legionTags": []
-  },
-  "centurion": {
-    "path": "content/units/common/centurion.json",
-    "role": "Command",
-    "legionTags": []
-  },
-  "centurion-in-terminator-armour": {
-    "path": "content/units/common/centurion-in-terminator-armour.json",
-    "role": "Command",
-    "legionTags": []
-  },
-  "chaplain": {
-    "path": "content/units/common/chaplain.json",
-    "role": "Command",
-    "legionTags": []
-  },
-  "chaplain-in-terminator-armour": {
-    "path": "content/units/common/chaplain-in-terminator-armour.json",
-    "role": "Command",
-    "legionTags": []
-  },
-  "chaplain-with-jump-pack": {
-    "path": "content/units/common/chaplain-with-jump-pack.json",
-    "role": "Command",
-    "legionTags": []
-  },
-  "damocles-command-rhino": {
-    "path": "content/units/common/damocles-command-rhino.json",
-    "role": "Command",
-    "legionTags": []
-  },
-  "delegatus": {
-    "path": "content/units/common/delegatus.json",
-    "role": "Command",
-    "legionTags": []
-  },
-  "delegatus-in-terminator-armour": {
-    "path": "content/units/common/delegatus-in-terminator-armour.json",
-    "role": "Command",
-    "legionTags": []
-  },
-  "esoterist": {
-    "path": "content/units/common/esoterist.json",
-    "role": "Command",
-    "legionTags": []
-  },
-  "esoterist-in-terminator-armour": {
-    "path": "content/units/common/esoterist-in-terminator-armour.json",
-    "role": "Command",
-    "legionTags": []
-  },
-  "esoterist-with-jump-pack": {
-    "path": "content/units/common/esoterist-with-jump-pack.json",
-    "role": "Command",
-    "legionTags": []
-  },
-  "forge-lord": {
-    "path": "content/units/common/forge-lord.json",
-    "role": "Command",
-    "legionTags": []
-  },
-  "forge-lord-in-terminator-armour": {
-    "path": "content/units/common/forge-lord-in-terminator-armour.json",
-    "role": "Command",
-    "legionTags": []
-  },
-  "herald": {
-    "path": "content/units/common/herald.json",
-    "role": "Command",
-    "legionTags": []
-  },
-  "herald-in-terminator-armour": {
-    "path": "content/units/common/herald-in-terminator-armour.json",
-    "role": "Command",
-    "legionTags": []
-  },
-  "herald-with-jump-pack": {
-    "path": "content/units/common/herald-with-jump-pack.json",
-    "role": "Command",
-    "legionTags": []
-  },
-  "legion-champion": {
-    "path": "content/units/common/legion-champion.json",
-    "role": "Command",
-    "legionTags": []
-  },
-  "legion-champion-in-terminator-armour": {
-    "path": "content/units/common/legion-champion-in-terminator-armour.json",
-    "role": "Command",
-    "legionTags": []
-  },
-  "legion-champion-with-jump-pack": {
-    "path": "content/units/common/legion-champion-with-jump-pack.json",
-    "role": "Command",
-    "legionTags": []
-  },
-  "librarian": {
-    "path": "content/units/common/librarian.json",
-    "role": "Command",
-    "legionTags": []
-  },
-  "librarian-in-terminator-armour": {
-    "path": "content/units/common/librarian-in-terminator-armour.json",
-    "role": "Command",
-    "legionTags": []
-  },
-  "librarian-with-jump-pack": {
-    "path": "content/units/common/librarian-with-jump-pack.json",
-    "role": "Command",
-    "legionTags": []
-  },
-  "master-of-signals": {
-    "path": "content/units/common/master-of-signals.json",
-    "role": "Command",
-    "legionTags": []
-  },
-  "master-of-signals-with-jump-pack": {
-    "path": "content/units/common/master-of-signals-with-jump-pack.json",
-    "role": "Command",
-    "legionTags": []
-  },
-  "moritat": {
-    "path": "content/units/common/moritat.json",
-    "role": "Command",
-    "legionTags": []
-  },
-  "moritat-mortalis": {
-    "path": "content/units/common/moritat-mortalis.json",
-    "role": "Command",
-    "legionTags": []
-  },
-  "mortificator": {
-    "path": "content/units/common/mortificator.json",
-    "role": "Command",
-    "legionTags": []
-  },
-  "mortificator-in-terminator-armour": {
-    "path": "content/units/common/mortificator-in-terminator-armour.json",
-    "role": "Command",
-    "legionTags": []
-  },
-  "mounted-centurion": {
-    "path": "content/units/common/mounted-centurion.json",
-    "role": "Command",
-    "legionTags": []
-  },
-  "mounted-chaplain": {
-    "path": "content/units/common/mounted-chaplain.json",
-    "role": "Command",
-    "legionTags": []
-  },
-  "mounted-delegatus": {
-    "path": "content/units/common/mounted-delegatus.json",
-    "role": "Command",
-    "legionTags": []
-  },
-  "mounted-forge-lord": {
-    "path": "content/units/common/mounted-forge-lord.json",
-    "role": "Command",
-    "legionTags": []
-  },
-  "mounted-herald": {
-    "path": "content/units/common/mounted-herald.json",
-    "role": "Command",
-    "legionTags": []
-  },
-  "mounted-legion-champion": {
-    "path": "content/units/common/mounted-legion-champion.json",
-    "role": "Command",
-    "legionTags": []
-  },
-  "mounted-librarian": {
-    "path": "content/units/common/mounted-librarian.json",
-    "role": "Command",
-    "legionTags": []
-  },
-  "mounted-master-of-signals": {
-    "path": "content/units/common/mounted-master-of-signals.json",
-    "role": "Command",
-    "legionTags": []
-  },
-  "mounted-primus-medicae": {
-    "path": "content/units/common/mounted-primus-medicae.json",
-    "role": "Command",
-    "legionTags": []
-  },
-  "mounted-siege-breaker": {
-    "path": "content/units/common/mounted-siege-breaker.json",
-    "role": "Command",
-    "legionTags": []
-  },
-  "optae": {
-    "path": "content/units/common/optae.json",
-    "role": "Command",
-    "legionTags": []
-  },
-  "overseer": {
-    "path": "content/units/common/overseer.json",
-    "role": "Command",
-    "legionTags": []
-  },
-  "pathfinder": {
-    "path": "content/units/common/pathfinder.json",
-    "role": "Command",
-    "legionTags": []
-  },
-  "praevian": {
-    "path": "content/units/common/praevian.json",
-    "role": "Command",
-    "legionTags": []
-  },
-  "primus-medicae": {
-    "path": "content/units/common/primus-medicae.json",
-    "role": "Command",
-    "legionTags": []
-  },
-  "primus-medicae-in-terminator-armour": {
-    "path": "content/units/common/primus-medicae-in-terminator-armour.json",
-    "role": "Command",
-    "legionTags": []
-  },
-  "siege-breaker": {
-    "path": "content/units/common/siege-breaker.json",
-    "role": "Command",
-    "legionTags": []
-  },
-  "siege-breaker-in-terminator-armour": {
-    "path": "content/units/common/siege-breaker-in-terminator-armour.json",
-    "role": "Command",
-    "legionTags": []
-  },
-  "siege-breaker-with-jump-pack": {
-    "path": "content/units/common/siege-breaker-with-jump-pack.json",
-    "role": "Command",
-    "legionTags": []
-  },
-  "vigilator": {
-    "path": "content/units/common/vigilator.json",
-    "role": "Command",
-    "legionTags": []
-  },
-  "warmonger": {
-    "path": "content/units/common/warmonger.json",
-    "role": "Command",
-    "legionTags": []
-  },
-  "warmonger-in-terminator-armour": {
-    "path": "content/units/common/warmonger-in-terminator-armour.json",
-    "role": "Command",
-    "legionTags": []
-  },
-  "hibou-khan": {
-    "path": "content/units/white-scars/hibou-khan.json",
-    "role": "Command",
-    "legionTags": [
-      "white-scars"
-    ]
-  },
-  "stormseer": {
-    "path": "content/units/white-scars/stormseer.json",
-    "role": "Command",
-    "legionTags": [
-      "white-scars"
-    ]
-  },
-  "white-scars-mounted-stormseer": {
-    "path": "content/units/white-scars/white-scars-mounted-stormseer.json",
-    "role": "Command",
-    "legionTags": [
-      "white-scars"
-    ]
-  },
-  "white-scars-stormseer-in-terminator-armour": {
-    "path": "content/units/white-scars/white-scars-stormseer-in-terminator-armour.json",
-    "role": "Command",
-    "legionTags": [
-      "white-scars"
-    ]
-  },
-  "white-scars-stormseer-with-jump-pack": {
-    "path": "content/units/white-scars/white-scars-stormseer-with-jump-pack.json",
-    "role": "Command",
-    "legionTags": [
-      "white-scars"
-    ]
-  },
-  "caster-of-runes": {
-    "path": "content/units/space-wolves/caster-of-runes.json",
-    "role": "Command",
-    "legionTags": [
-      "space-wolves"
-    ]
-  },
-  "geigor-fell-hand": {
-    "path": "content/units/space-wolves/geigor-fell-hand.json",
-    "role": "Command",
-    "legionTags": [
-      "space-wolves"
-    ]
-  },
-  "space-wolves-caster-of-runes-in-terminator-armour": {
-    "path": "content/units/space-wolves/space-wolves-caster-of-runes-in-terminator-armour.json",
-    "role": "Command",
-    "legionTags": [
-      "space-wolves"
-    ]
-  },
-  "space-wolves-caster-of-runes-with-jump-pack": {
-    "path": "content/units/space-wolves/space-wolves-caster-of-runes-with-jump-pack.json",
-    "role": "Command",
-    "legionTags": [
-      "space-wolves"
-    ]
-  },
-  "space-wolves-mounted-caster-of-runes": {
-    "path": "content/units/space-wolves/space-wolves-mounted-caster-of-runes.json",
-    "role": "Command",
-    "legionTags": [
-      "space-wolves"
-    ]
-  },
-  "space-wolves-mounted-speaker-of-the-dead": {
-    "path": "content/units/space-wolves/space-wolves-mounted-speaker-of-the-dead.json",
-    "role": "Command",
-    "legionTags": [
-      "space-wolves"
-    ]
-  },
-  "space-wolves-speaker-of-the-dead": {
-    "path": "content/units/space-wolves/space-wolves-speaker-of-the-dead.json",
-    "role": "Command",
-    "legionTags": [
-      "space-wolves"
-    ]
-  },
-  "space-wolves-speaker-of-the-dead-in-terminator-armour": {
-    "path": "content/units/space-wolves/space-wolves-speaker-of-the-dead-in-terminator-armour.json",
-    "role": "Command",
-    "legionTags": [
-      "space-wolves"
-    ]
-  },
-  "alexis-polux": {
-    "path": "content/units/imperial-fists/alexis-polux.json",
-    "role": "Command",
-    "legionTags": [
-      "imperial-fists"
-    ]
-  },
-  "camba-diaz": {
-    "path": "content/units/imperial-fists/camba-diaz.json",
-    "role": "Command",
-    "legionTags": [
-      "imperial-fists"
-    ]
-  },
-  "aster-crohne": {
-    "path": "content/units/blood-angels/aster-crohne.json",
-    "role": "Command",
-    "legionTags": [
-      "blood-angels"
-    ]
-  },
-  "dominion-zephon": {
-    "path": "content/units/blood-angels/dominion-zephon.json",
-    "role": "Command",
-    "legionTags": [
-      "blood-angels"
-    ]
-  },
-  "remus-ventanus": {
-    "path": "content/units/ultramarines/remus-ventanus.json",
-    "role": "Command",
-    "legionTags": [
-      "ultramarines"
-    ]
-  },
-  "kaedes-nex": {
-    "path": "content/units/raven-guard/kaedes-nex.json",
-    "role": "Command",
-    "legionTags": [
-      "raven-guard"
-    ]
-  },
-  "captain-lucius": {
-    "path": "content/units/common/captain-lucius.json",
-    "role": "Command",
-    "legionTags": []
-  },
-  "saul-tarvitz": {
-    "path": "content/units/common/saul-tarvitz.json",
-    "role": "Command",
-    "legionTags": []
-  },
-  "n-rik-dreygur": {
-    "path": "content/units/iron-warriors/n-rik-dreygur.json",
-    "role": "Command",
-    "legionTags": [
-      "iron-warriors"
-    ]
-  },
-  "lotara-sarrin": {
-    "path": "content/units/world-eaters/lotara-sarrin.json",
-    "role": "Command",
-    "legionTags": [
-      "world-eaters"
-    ]
-  },
-  "prosperine-sorcerer": {
-    "path": "content/units/thousand-sons/prosperine-sorcerer.json",
-    "role": "Command",
-    "legionTags": [
-      "thousand-sons"
-    ]
-  },
-  "dark-emissary": {
-    "path": "content/units/sons-of-horus/dark-emissary.json",
-    "role": "Command",
-    "legionTags": [
-      "sons-of-horus"
-    ]
-  },
-  "maloghurst-the-twisted": {
-    "path": "content/units/sons-of-horus/maloghurst-the-twisted.json",
-    "role": "Command",
-    "legionTags": [
-      "sons-of-horus"
-    ]
-  },
-  "sons-of-horus-dark-emissary-in-terminator-armour": {
-    "path": "content/units/sons-of-horus/sons-of-horus-dark-emissary-in-terminator-armour.json",
-    "role": "Command",
-    "legionTags": [
-      "sons-of-horus"
-    ]
-  },
-  "word-bearers-diabolist": {
-    "path": "content/units/word-bearers/word-bearers-diabolist.json",
-    "role": "Command",
-    "legionTags": [
-      "word-bearers"
-    ]
-  },
-  "word-bearers-diabolist-in-terminator-armour": {
-    "path": "content/units/word-bearers/word-bearers-diabolist-in-terminator-armour.json",
-    "role": "Command",
-    "legionTags": [
-      "word-bearers"
-    ]
-  },
-  "word-bearers-mounted-diabolist": {
-    "path": "content/units/word-bearers/word-bearers-mounted-diabolist.json",
-    "role": "Command",
-    "legionTags": [
-      "word-bearers"
-    ]
-  },
-  "zardu-layak": {
-    "path": "content/units/word-bearers/zardu-layak.json",
-    "role": "Command",
-    "legionTags": [
-      "word-bearers"
-    ]
-  },
-  "autilon-skorr": {
-    "path": "content/units/alpha-legion/autilon-skorr.json",
-    "role": "Command",
-    "legionTags": [
-      "alpha-legion"
-    ]
-  },
-  "saboteur": {
-    "path": "content/units/alpha-legion/saboteur.json",
-    "role": "Command",
-    "legionTags": [
-      "alpha-legion"
-    ]
-  },
-  "tylos-rubio": {
-    "path": "content/units/common/tylos-rubio.json",
-    "role": "Command",
-    "legionTags": []
-  },
-  "cataphractii-terminator-command-squad": {
-    "path": "content/units/common/cataphractii-terminator-command-squad.json",
-    "role": "Retinue",
-    "legionTags": []
-  },
-  "centurion-command-squad": {
-    "path": "content/units/common/centurion-command-squad.json",
-    "role": "Retinue",
-    "legionTags": []
-  },
-  "outrider-praetorian-command-squad": {
-    "path": "content/units/common/outrider-praetorian-command-squad.json",
-    "role": "Retinue",
-    "legionTags": []
-  },
   "praetorian-command-squad": {
     "path": "content/units/common/praetorian-command-squad.json",
-    "role": "Retinue",
-    "legionTags": []
-  },
-  "praetorian-command-squad-on-scimitar-jetbikes": {
-    "path": "content/units/common/praetorian-command-squad-on-scimitar-jetbikes.json",
     "role": "Retinue",
     "legionTags": []
   },
@@ -885,475 +367,15 @@
     "role": "Retinue",
     "legionTags": []
   },
-  "tartaros-terminator-command-squad": {
-    "path": "content/units/common/tartaros-terminator-command-squad.json",
-    "role": "Retinue",
+  "praevian": {
+    "path": "content/units/common/praevian.json",
+    "role": "Command",
     "legionTags": []
   },
-  "dark-angels-cataphractii-terminator-deathwing-companions": {
-    "path": "content/units/dark-angels/dark-angels-cataphractii-terminator-deathwing-companions.json",
-    "role": "Retinue",
-    "legionTags": [
-      "dark-angels"
-    ]
-  },
-  "dark-angels-tartaros-terminator-deathwing-companions": {
-    "path": "content/units/dark-angels/dark-angels-tartaros-terminator-deathwing-companions.json",
-    "role": "Retinue",
-    "legionTags": [
-      "dark-angels"
-    ]
-  },
-  "deathwing-companion-detachment": {
-    "path": "content/units/dark-angels/deathwing-companion-detachment.json",
-    "role": "Retinue",
-    "legionTags": [
-      "dark-angels"
-    ]
-  },
-  "space-wolves-fenrisian-wolf-pack": {
-    "path": "content/units/space-wolves/space-wolves-fenrisian-wolf-pack.json",
-    "role": "Retinue",
-    "legionTags": [
-      "space-wolves"
-    ]
-  },
-  "wolf-kin-of-russ": {
-    "path": "content/units/space-wolves/wolf-kin-of-russ.json",
-    "role": "Retinue",
-    "legionTags": [
-      "space-wolves"
-    ]
-  },
-  "imperial-fists-huscarl-terminator-retinue": {
-    "path": "content/units/imperial-fists/imperial-fists-huscarl-terminator-retinue.json",
-    "role": "Retinue",
-    "legionTags": [
-      "imperial-fists"
-    ]
-  },
-  "blood-angels-ofanim-court": {
-    "path": "content/units/blood-angels/blood-angels-ofanim-court.json",
-    "role": "Retinue",
-    "legionTags": [
-      "blood-angels"
-    ]
-  },
-  "blood-angels-ofanim-court-with-jump-packs": {
-    "path": "content/units/blood-angels/blood-angels-ofanim-court-with-jump-packs.json",
-    "role": "Retinue",
-    "legionTags": [
-      "blood-angels"
-    ]
-  },
-  "blood-angels-sanguinary-guard": {
-    "path": "content/units/blood-angels/blood-angels-sanguinary-guard.json",
-    "role": "Retinue",
-    "legionTags": [
-      "blood-angels"
-    ]
-  },
-  "iron-hands-morlock-terminator-squad": {
-    "path": "content/units/iron-hands/iron-hands-morlock-terminator-squad.json",
-    "role": "Retinue",
-    "legionTags": [
-      "iron-hands"
-    ]
-  },
-  "phoenix-terminator-squad": {
-    "path": "content/units/common/phoenix-terminator-squad.json",
-    "role": "Retinue",
+  "predator": {
+    "path": "content/units/common/predator.json",
+    "role": "Armour",
     "legionTags": []
-  },
-  "iron-circle-maniple": {
-    "path": "content/units/iron-warriors/iron-circle-maniple.json",
-    "role": "Retinue",
-    "legionTags": [
-      "iron-warriors"
-    ]
-  },
-  "iron-warriors-dominator-cohort": {
-    "path": "content/units/iron-warriors/iron-warriors-dominator-cohort.json",
-    "role": "Retinue",
-    "legionTags": [
-      "iron-warriors"
-    ]
-  },
-  "deathshroud-terminator-squad": {
-    "path": "content/units/death-guard/deathshroud-terminator-squad.json",
-    "role": "Retinue",
-    "legionTags": [
-      "death-guard"
-    ]
-  },
-  "sons-of-horus-chieftain-squad": {
-    "path": "content/units/sons-of-horus/sons-of-horus-chieftain-squad.json",
-    "role": "Retinue",
-    "legionTags": [
-      "sons-of-horus"
-    ]
-  },
-  "seeker-squad": {
-    "path": "content/units/common/seeker-squad.json",
-    "role": "Elites",
-    "legionTags": []
-  },
-  "veteran-assault-squad": {
-    "path": "content/units/common/veteran-assault-squad.json",
-    "role": "Elites",
-    "legionTags": []
-  },
-  "veteran-breacher-squad": {
-    "path": "content/units/common/veteran-breacher-squad.json",
-    "role": "Elites",
-    "legionTags": []
-  },
-  "veteran-heavy-support-squad": {
-    "path": "content/units/common/veteran-heavy-support-squad.json",
-    "role": "Elites",
-    "legionTags": []
-  },
-  "veteran-tactical-squad": {
-    "path": "content/units/common/veteran-tactical-squad.json",
-    "role": "Elites",
-    "legionTags": []
-  },
-  "dark-angels-firewing-enigmatus-cabal": {
-    "path": "content/units/dark-angels/dark-angels-firewing-enigmatus-cabal.json",
-    "role": "Elites",
-    "legionTags": [
-      "dark-angels"
-    ]
-  },
-  "dark-angels-inner-circle-knights-cenobium-order-of-the-broken-claws": {
-    "path": "content/units/dark-angels/dark-angels-inner-circle-knights-cenobium-order-of-the-broken-claws.json",
-    "role": "Elites",
-    "legionTags": [
-      "dark-angels"
-    ]
-  },
-  "inner-circle-knights-cenobium": {
-    "path": "content/units/dark-angels/inner-circle-knights-cenobium.json",
-    "role": "Elites",
-    "legionTags": [
-      "dark-angels"
-    ]
-  },
-  "golden-keshig": {
-    "path": "content/units/white-scars/golden-keshig.json",
-    "role": "Elites",
-    "legionTags": [
-      "white-scars"
-    ]
-  },
-  "varagyr-wolf-guard-terminator-squad": {
-    "path": "content/units/space-wolves/varagyr-wolf-guard-terminator-squad.json",
-    "role": "Elites",
-    "legionTags": [
-      "space-wolves"
-    ]
-  },
-  "templar-brethren": {
-    "path": "content/units/imperial-fists/templar-brethren.json",
-    "role": "Elites",
-    "legionTags": [
-      "imperial-fists"
-    ]
-  },
-  "crimson-paladins": {
-    "path": "content/units/blood-angels/crimson-paladins.json",
-    "role": "Elites",
-    "legionTags": [
-      "blood-angels"
-    ]
-  },
-  "dawnbreaker-cohort": {
-    "path": "content/units/blood-angels/dawnbreaker-cohort.json",
-    "role": "Elites",
-    "legionTags": [
-      "blood-angels"
-    ]
-  },
-  "invictarus-suzerain-squad": {
-    "path": "content/units/ultramarines/invictarus-suzerain-squad.json",
-    "role": "Elites",
-    "legionTags": [
-      "ultramarines"
-    ]
-  },
-  "ultramarines-locutarus-storm-squad": {
-    "path": "content/units/ultramarines/ultramarines-locutarus-storm-squad.json",
-    "role": "Elites",
-    "legionTags": [
-      "ultramarines"
-    ]
-  },
-  "firedrake-terminator-squad": {
-    "path": "content/units/salamanders/firedrake-terminator-squad.json",
-    "role": "Elites",
-    "legionTags": [
-      "salamanders"
-    ]
-  },
-  "dark-fury-squad": {
-    "path": "content/units/raven-guard/dark-fury-squad.json",
-    "role": "Elites",
-    "legionTags": [
-      "raven-guard"
-    ]
-  },
-  "mor-deythan-squad": {
-    "path": "content/units/raven-guard/mor-deythan-squad.json",
-    "role": "Elites",
-    "legionTags": [
-      "raven-guard"
-    ]
-  },
-  "raven-guard-deliverers-squad": {
-    "path": "content/units/raven-guard/raven-guard-deliverers-squad.json",
-    "role": "Elites",
-    "legionTags": [
-      "raven-guard"
-    ]
-  },
-  "emperor-s-children-palatine-blade-aquilae-squad": {
-    "path": "content/units/common/emperor-s-children-palatine-blade-aquilae-squad.json",
-    "role": "Elites",
-    "legionTags": []
-  },
-  "emperor-s-children-sun-killer-squad": {
-    "path": "content/units/common/emperor-s-children-sun-killer-squad.json",
-    "role": "Elites",
-    "legionTags": []
-  },
-  "palatine-blade-squad": {
-    "path": "content/units/common/palatine-blade-squad.json",
-    "role": "Elites",
-    "legionTags": []
-  },
-  "contekar-terminator-squad": {
-    "path": "content/units/night-lords/contekar-terminator-squad.json",
-    "role": "Elites",
-    "legionTags": [
-      "night-lords"
-    ]
-  },
-  "red-butchers": {
-    "path": "content/units/world-eaters/red-butchers.json",
-    "role": "Elites",
-    "legionTags": [
-      "world-eaters"
-    ]
-  },
-  "world-eaters-red-hand-destroyer-assault-squad": {
-    "path": "content/units/world-eaters/world-eaters-red-hand-destroyer-assault-squad.json",
-    "role": "Elites",
-    "legionTags": [
-      "world-eaters"
-    ]
-  },
-  "world-eaters-red-hand-destroyer-mortalis-squad": {
-    "path": "content/units/world-eaters/world-eaters-red-hand-destroyer-mortalis-squad.json",
-    "role": "Elites",
-    "legionTags": [
-      "world-eaters"
-    ]
-  },
-  "death-guard-mortus-poisoner-squad": {
-    "path": "content/units/death-guard/death-guard-mortus-poisoner-squad.json",
-    "role": "Elites",
-    "legionTags": [
-      "death-guard"
-    ]
-  },
-  "khenetai-occult-cabal": {
-    "path": "content/units/thousand-sons/khenetai-occult-cabal.json",
-    "role": "Elites",
-    "legionTags": [
-      "thousand-sons"
-    ]
-  },
-  "sekhmet-terminator-cabal": {
-    "path": "content/units/thousand-sons/sekhmet-terminator-cabal.json",
-    "role": "Elites",
-    "legionTags": [
-      "thousand-sons"
-    ]
-  },
-  "thousand-sons-numerologist-cabal": {
-    "path": "content/units/thousand-sons/thousand-sons-numerologist-cabal.json",
-    "role": "Elites",
-    "legionTags": [
-      "thousand-sons"
-    ]
-  },
-  "justaerin-terminator-squad": {
-    "path": "content/units/sons-of-horus/justaerin-terminator-squad.json",
-    "role": "Elites",
-    "legionTags": [
-      "sons-of-horus"
-    ]
-  },
-  "gal-vorbak": {
-    "path": "content/units/word-bearers/gal-vorbak.json",
-    "role": "Elites",
-    "legionTags": [
-      "word-bearers"
-    ]
-  },
-  "word-bearers-procurators": {
-    "path": "content/units/word-bearers/word-bearers-procurators.json",
-    "role": "Elites",
-    "legionTags": [
-      "word-bearers"
-    ]
-  },
-  "word-bearers-procurators-with-jump-packs": {
-    "path": "content/units/word-bearers/word-bearers-procurators-with-jump-packs.json",
-    "role": "Elites",
-    "legionTags": [
-      "word-bearers"
-    ]
-  },
-  "exodus": {
-    "path": "content/units/alpha-legion/exodus.json",
-    "role": "Elites",
-    "legionTags": [
-      "alpha-legion"
-    ]
-  },
-  "headhunter-kill-team": {
-    "path": "content/units/alpha-legion/headhunter-kill-team.json",
-    "role": "Elites",
-    "legionTags": [
-      "alpha-legion"
-    ]
-  },
-  "lernaean-terminator-squad": {
-    "path": "content/units/alpha-legion/lernaean-terminator-squad.json",
-    "role": "Elites",
-    "legionTags": [
-      "alpha-legion"
-    ]
-  },
-  "cataphractii-terminator-squad": {
-    "path": "content/units/common/cataphractii-terminator-squad.json",
-    "role": "Heavy Assault",
-    "legionTags": []
-  },
-  "destroyer-assault-squad": {
-    "path": "content/units/common/destroyer-assault-squad.json",
-    "role": "Heavy Assault",
-    "legionTags": []
-  },
-  "indomitus-terminator-squad": {
-    "path": "content/units/common/indomitus-terminator-squad.json",
-    "role": "Heavy Assault",
-    "legionTags": []
-  },
-  "mortalis-destroyer-squad": {
-    "path": "content/units/common/mortalis-destroyer-squad.json",
-    "role": "Heavy Assault",
-    "legionTags": []
-  },
-  "saturnine-terminator-squad": {
-    "path": "content/units/common/saturnine-terminator-squad.json",
-    "role": "Heavy Assault",
-    "legionTags": []
-  },
-  "tartaros-terminator-siege-squad": {
-    "path": "content/units/common/tartaros-terminator-siege-squad.json",
-    "role": "Heavy Assault",
-    "legionTags": []
-  },
-  "tartaros-terminator-squad": {
-    "path": "content/units/common/tartaros-terminator-squad.json",
-    "role": "Heavy Assault",
-    "legionTags": []
-  },
-  "ebon-keshig": {
-    "path": "content/units/white-scars/ebon-keshig.json",
-    "role": "Heavy Assault",
-    "legionTags": [
-      "white-scars"
-    ]
-  },
-  "white-scars-dark-sons-of-death": {
-    "path": "content/units/white-scars/white-scars-dark-sons-of-death.json",
-    "role": "Heavy Assault",
-    "legionTags": [
-      "white-scars"
-    ]
-  },
-  "deathsworn-pack": {
-    "path": "content/units/space-wolves/deathsworn-pack.json",
-    "role": "Heavy Assault",
-    "legionTags": [
-      "space-wolves"
-    ]
-  },
-  "phalanx-warder-squad": {
-    "path": "content/units/imperial-fists/phalanx-warder-squad.json",
-    "role": "Heavy Assault",
-    "legionTags": [
-      "imperial-fists"
-    ]
-  },
-  "the-angel-s-tears": {
-    "path": "content/units/blood-angels/the-angel-s-tears.json",
-    "role": "Heavy Assault",
-    "legionTags": [
-      "blood-angels"
-    ]
-  },
-  "gorgon-terminator-squad": {
-    "path": "content/units/iron-hands/gorgon-terminator-squad.json",
-    "role": "Heavy Assault",
-    "legionTags": [
-      "iron-hands"
-    ]
-  },
-  "praetorian-breacher-squad": {
-    "path": "content/units/ultramarines/praetorian-breacher-squad.json",
-    "role": "Heavy Assault",
-    "legionTags": [
-      "ultramarines"
-    ]
-  },
-  "ultramarines-fulmentarus-terminator-squad": {
-    "path": "content/units/ultramarines/ultramarines-fulmentarus-terminator-squad.json",
-    "role": "Heavy Assault",
-    "legionTags": [
-      "ultramarines"
-    ]
-  },
-  "ultramarines-nemesis-destroyer-squad": {
-    "path": "content/units/ultramarines/ultramarines-nemesis-destroyer-squad.json",
-    "role": "Heavy Assault",
-    "legionTags": [
-      "ultramarines"
-    ]
-  },
-  "pyroclast-squad": {
-    "path": "content/units/salamanders/pyroclast-squad.json",
-    "role": "Heavy Assault",
-    "legionTags": [
-      "salamanders"
-    ]
-  },
-  "tyrant-siege-terminator-squad": {
-    "path": "content/units/iron-warriors/tyrant-siege-terminator-squad.json",
-    "role": "Heavy Assault",
-    "legionTags": [
-      "iron-warriors"
-    ]
-  },
-  "night-lords-atramentar-flay-clade": {
-    "path": "content/units/night-lords/night-lords-atramentar-flay-clade.json",
-    "role": "Heavy Assault",
-    "legionTags": [
-      "night-lords"
-    ]
   },
   "rampager-squad": {
     "path": "content/units/world-eaters/rampager-squad.json",
@@ -1362,283 +384,9 @@
       "world-eaters"
     ]
   },
-  "grave-warden-terminator-squad": {
-    "path": "content/units/death-guard/grave-warden-terminator-squad.json",
-    "role": "Heavy Assault",
-    "legionTags": [
-      "death-guard"
-    ]
-  },
-  "reaver-attack-squad": {
-    "path": "content/units/sons-of-horus/reaver-attack-squad.json",
-    "role": "Heavy Assault",
-    "legionTags": [
-      "sons-of-horus"
-    ]
-  },
-  "sons-of-horus-reaver-aggressor-squad": {
-    "path": "content/units/sons-of-horus/sons-of-horus-reaver-aggressor-squad.json",
-    "role": "Heavy Assault",
-    "legionTags": [
-      "sons-of-horus"
-    ]
-  },
-  "assault-squad": {
-    "path": "content/units/common/assault-squad.json",
-    "role": "Troops",
-    "legionTags": []
-  },
-  "breacher-squad": {
-    "path": "content/units/common/breacher-squad.json",
-    "role": "Troops",
-    "legionTags": []
-  },
-  "despoiler-squad": {
-    "path": "content/units/common/despoiler-squad.json",
-    "role": "Troops",
-    "legionTags": []
-  },
-  "tactical-squad": {
-    "path": "content/units/common/tactical-squad.json",
-    "role": "Troops",
-    "legionTags": []
-  },
-  "grey-slayer-pack": {
-    "path": "content/units/space-wolves/grey-slayer-pack.json",
-    "role": "Troops",
-    "legionTags": [
-      "space-wolves"
-    ]
-  },
-  "medusan-immortals-squad": {
-    "path": "content/units/iron-hands/medusan-immortals-squad.json",
-    "role": "Troops",
-    "legionTags": [
-      "iron-hands"
-    ]
-  },
-  "salamanders-adherents-squad": {
-    "path": "content/units/salamanders/salamanders-adherents-squad.json",
-    "role": "Troops",
-    "legionTags": [
-      "salamanders"
-    ]
-  },
-  "terror-squad": {
-    "path": "content/units/night-lords/terror-squad.json",
-    "role": "Troops",
-    "legionTags": [
-      "night-lords"
-    ]
-  },
-  "apothecary": {
-    "path": "content/units/common/apothecary.json",
-    "role": "Support",
-    "legionTags": []
-  },
-  "araknae-quad-accelerator-platform": {
-    "path": "content/units/common/araknae-quad-accelerator-platform.json",
-    "role": "Support",
-    "legionTags": []
-  },
-  "deathstorm-drop-pod": {
-    "path": "content/units/common/deathstorm-drop-pod.json",
-    "role": "Support",
-    "legionTags": []
-  },
-  "heavy-support-squad": {
-    "path": "content/units/common/heavy-support-squad.json",
-    "role": "Support",
-    "legionTags": []
-  },
   "rapier-battery": {
     "path": "content/units/common/rapier-battery.json",
     "role": "Support",
-    "legionTags": []
-  },
-  "tactical-support-squad": {
-    "path": "content/units/common/tactical-support-squad.json",
-    "role": "Support",
-    "legionTags": []
-  },
-  "techmarine": {
-    "path": "content/units/common/techmarine.json",
-    "role": "Support",
-    "legionTags": []
-  },
-  "dreadwing-interemptors": {
-    "path": "content/units/dark-angels/dreadwing-interemptors.json",
-    "role": "Support",
-    "legionTags": [
-      "dark-angels"
-    ]
-  },
-  "kyzagan-assault-speeder": {
-    "path": "content/units/white-scars/kyzagan-assault-speeder.json",
-    "role": "Support",
-    "legionTags": [
-      "white-scars"
-    ]
-  },
-  "space-wolves-jorlund-hunter-pack": {
-    "path": "content/units/space-wolves/space-wolves-jorlund-hunter-pack.json",
-    "role": "Support",
-    "legionTags": [
-      "space-wolves"
-    ]
-  },
-  "salamanders-sanctifier-squad": {
-    "path": "content/units/salamanders/salamanders-sanctifier-squad.json",
-    "role": "Support",
-    "legionTags": [
-      "salamanders"
-    ]
-  },
-  "kakophoni-squad": {
-    "path": "content/units/common/kakophoni-squad.json",
-    "role": "Support",
-    "legionTags": []
-  },
-  "iron-warriors-iron-havocs": {
-    "path": "content/units/iron-warriors/iron-warriors-iron-havocs.json",
-    "role": "Support",
-    "legionTags": [
-      "iron-warriors"
-    ]
-  },
-  "castellax-achea-automata": {
-    "path": "content/units/thousand-sons/castellax-achea-automata.json",
-    "role": "Support",
-    "legionTags": [
-      "thousand-sons"
-    ]
-  },
-  "castra-ferrum-dreadnought": {
-    "path": "content/units/common/castra-ferrum-dreadnought.json",
-    "role": "War-Engine",
-    "legionTags": []
-  },
-  "contemptor-dreadnought": {
-    "path": "content/units/common/contemptor-dreadnought.json",
-    "role": "War-Engine",
-    "legionTags": []
-  },
-  "deredeo-dreadnought": {
-    "path": "content/units/common/deredeo-dreadnought.json",
-    "role": "War-Engine",
-    "legionTags": []
-  },
-  "leviathan-dreadnought": {
-    "path": "content/units/common/leviathan-dreadnought.json",
-    "role": "War-Engine",
-    "legionTags": []
-  },
-  "saturnine-dreadnought": {
-    "path": "content/units/common/saturnine-dreadnought.json",
-    "role": "War-Engine",
-    "legionTags": []
-  },
-  "dark-angels-excindio-battle-automata": {
-    "path": "content/units/common/dark-angels-excindio-battle-automata.json",
-    "role": "War-Engine",
-    "legionTags": []
-  },
-  "contemptor-incaendius-dreadnought": {
-    "path": "content/units/blood-angels/contemptor-incaendius-dreadnought.json",
-    "role": "War-Engine",
-    "legionTags": [
-      "blood-angels"
-    ]
-  },
-  "honoured-telemechrus": {
-    "path": "content/units/ultramarines/honoured-telemechrus.json",
-    "role": "War-Engine",
-    "legionTags": [
-      "ultramarines"
-    ]
-  },
-  "rylanor-the-unyielding": {
-    "path": "content/units/common/rylanor-the-unyielding.json",
-    "role": "War-Engine",
-    "legionTags": []
-  },
-  "contemptor-osiron-dreadnought": {
-    "path": "content/units/thousand-sons/contemptor-osiron-dreadnought.json",
-    "role": "War-Engine",
-    "legionTags": [
-      "thousand-sons"
-    ]
-  },
-  "mhara-gal-dreadnought": {
-    "path": "content/units/word-bearers/mhara-gal-dreadnought.json",
-    "role": "War-Engine",
-    "legionTags": [
-      "word-bearers"
-    ]
-  },
-  "drop-pod": {
-    "path": "content/units/common/drop-pod.json",
-    "role": "Transport",
-    "legionTags": []
-  },
-  "rhino": {
-    "path": "content/units/common/rhino.json",
-    "role": "Transport",
-    "legionTags": []
-  },
-  "termite": {
-    "path": "content/units/common/termite.json",
-    "role": "Transport",
-    "legionTags": []
-  },
-  "caestus-assault-ram": {
-    "path": "content/units/common/caestus-assault-ram.json",
-    "role": "Heavy Transport",
-    "legionTags": []
-  },
-  "dreadclaw-drop-pod": {
-    "path": "content/units/common/dreadclaw-drop-pod.json",
-    "role": "Heavy Transport",
-    "legionTags": []
-  },
-  "dreadnought-drop-pod": {
-    "path": "content/units/common/dreadnought-drop-pod.json",
-    "role": "Heavy Transport",
-    "legionTags": []
-  },
-  "kharybdis-assault-claw": {
-    "path": "content/units/common/kharybdis-assault-claw.json",
-    "role": "Heavy Transport",
-    "legionTags": []
-  },
-  "land-raider-achilles": {
-    "path": "content/units/common/land-raider-achilles.json",
-    "role": "Heavy Transport",
-    "legionTags": []
-  },
-  "land-raider-carrier": {
-    "path": "content/units/common/land-raider-carrier.json",
-    "role": "Heavy Transport",
-    "legionTags": []
-  },
-  "spartan": {
-    "path": "content/units/common/spartan.json",
-    "role": "Heavy Transport",
-    "legionTags": []
-  },
-  "attack-bike-squadron": {
-    "path": "content/units/common/attack-bike-squadron.json",
-    "role": "Recon",
-    "legionTags": []
-  },
-  "land-raider-explorator": {
-    "path": "content/units/common/land-raider-explorator.json",
-    "role": "Recon",
-    "legionTags": []
-  },
-  "outrider-squadron": {
-    "path": "content/units/common/outrider-squadron.json",
-    "role": "Recon",
     "legionTags": []
   },
   "reconnaissance-squad": {
@@ -1646,115 +394,68 @@
     "role": "Recon",
     "legionTags": []
   },
+  "red-butchers": {
+    "path": "content/units/world-eaters/red-butchers.json",
+    "role": "Elites",
+    "legionTags": [
+      "world-eaters"
+    ]
+  },
+  "rhino": {
+    "path": "content/units/common/rhino.json",
+    "role": "Transport",
+    "legionTags": []
+  },
+  "saboteur": {
+    "path": "content/units/alpha-legion/saboteur.json",
+    "role": "Command",
+    "legionTags": [
+      "alpha-legion"
+    ]
+  },
   "sabre": {
     "path": "content/units/common/sabre.json",
     "role": "Recon",
     "legionTags": []
   },
-  "scout-squad": {
-    "path": "content/units/common/scout-squad.json",
-    "role": "Recon",
+  "saturnine-dreadnought": {
+    "path": "content/units/common/saturnine-dreadnought.json",
+    "role": "War-Engine",
     "legionTags": []
   },
-  "tarantula-sentry-gun": {
-    "path": "content/units/common/tarantula-sentry-gun.json",
-    "role": "Recon",
+  "saturnine-terminator-squad": {
+    "path": "content/units/common/saturnine-terminator-squad.json",
+    "role": "Heavy Assault",
     "legionTags": []
   },
-  "white-scars-falcon-s-claws": {
-    "path": "content/units/white-scars/white-scars-falcon-s-claws.json",
-    "role": "Recon",
+  "saul-tarvitz": {
+    "path": "content/units/shattered-legions/saul-tarvitz.json",
+    "role": "Command",
     "legionTags": [
-      "white-scars"
+      "shattered-legions"
     ]
-  },
-  "thousand-sons-ammitara-occult-intercession-cabal": {
-    "path": "content/units/thousand-sons/thousand-sons-ammitara-occult-intercession-cabal.json",
-    "role": "Recon",
-    "legionTags": [
-      "thousand-sons"
-    ]
-  },
-  "alpha-legion-effrit-disruption-cadre": {
-    "path": "content/units/alpha-legion/alpha-legion-effrit-disruption-cadre.json",
-    "role": "Recon",
-    "legionTags": [
-      "alpha-legion"
-    ]
-  },
-  "fire-raptor": {
-    "path": "content/units/common/fire-raptor.json",
-    "role": "Fast Attack",
-    "legionTags": []
-  },
-  "javelin-squadron": {
-    "path": "content/units/common/javelin-squadron.json",
-    "role": "Fast Attack",
-    "legionTags": []
-  },
-  "land-speeder-squadron": {
-    "path": "content/units/common/land-speeder-squadron.json",
-    "role": "Fast Attack",
-    "legionTags": []
   },
   "scimitar-jetbike-squadron": {
     "path": "content/units/common/scimitar-jetbike-squadron.json",
     "role": "Fast Attack",
     "legionTags": []
   },
-  "storm-eagle": {
-    "path": "content/units/common/storm-eagle.json",
-    "role": "Fast Attack",
-    "legionTags": []
-  },
-  "xiphon-interceptor": {
-    "path": "content/units/common/xiphon-interceptor.json",
-    "role": "Fast Attack",
-    "legionTags": []
-  },
-  "night-raptor-squad": {
-    "path": "content/units/night-lords/night-raptor-squad.json",
-    "role": "Fast Attack",
-    "legionTags": [
-      "night-lords"
-    ]
-  },
-  "ashen-circle-squad": {
-    "path": "content/units/word-bearers/ashen-circle-squad.json",
-    "role": "Fast Attack",
-    "legionTags": [
-      "word-bearers"
-    ]
-  },
-  "arquitor-bombard": {
-    "path": "content/units/common/arquitor-bombard.json",
-    "role": "Armour",
-    "legionTags": []
-  },
-  "kratos-assault-tank": {
-    "path": "content/units/common/kratos-assault-tank.json",
-    "role": "Armour",
-    "legionTags": []
-  },
-  "legion-basilisk": {
-    "path": "content/units/common/legion-basilisk.json",
-    "role": "Armour",
-    "legionTags": []
-  },
-  "legion-medusa": {
-    "path": "content/units/common/legion-medusa.json",
-    "role": "Armour",
-    "legionTags": []
-  },
-  "predator": {
-    "path": "content/units/common/predator.json",
-    "role": "Armour",
-    "legionTags": []
-  },
   "scorpius-missile-tank": {
     "path": "content/units/common/scorpius-missile-tank.json",
     "role": "Armour",
     "legionTags": []
+  },
+  "seeker-squad": {
+    "path": "content/units/common/seeker-squad.json",
+    "role": "Elites",
+    "legionTags": []
+  },
+  "shadrak-meduson": {
+    "path": "content/units/shattered-legions/shadrak-meduson.json",
+    "role": "High Command",
+    "legionTags": [
+      "shattered-legions"
+    ]
   },
   "sicaran": {
     "path": "content/units/common/sicaran.json",
@@ -1766,34 +467,9 @@
     "role": "Armour",
     "legionTags": []
   },
-  "vindicator-siege-tank": {
-    "path": "content/units/common/vindicator-siege-tank.json",
-    "role": "Armour",
-    "legionTags": []
-  },
-  "cerberus-heavy-tank-destroyer": {
-    "path": "content/units/common/cerberus-heavy-tank-destroyer.json",
-    "role": "Armour",
-    "legionTags": []
-  },
-  "falchion-super-heavy-tank-destroyer": {
-    "path": "content/units/common/falchion-super-heavy-tank-destroyer.json",
-    "role": "Armour",
-    "legionTags": []
-  },
-  "fellblade-super-heavy-battle-tank": {
-    "path": "content/units/common/fellblade-super-heavy-battle-tank.json",
-    "role": "Armour",
-    "legionTags": []
-  },
-  "glaive-super-heavy-special-weapons-tank": {
-    "path": "content/units/common/glaive-super-heavy-special-weapons-tank.json",
-    "role": "Armour",
-    "legionTags": []
-  },
-  "mastodon-super-heavy-assault-transport": {
-    "path": "content/units/common/mastodon-super-heavy-assault-transport.json",
-    "role": "Armour",
+  "siege-breaker": {
+    "path": "content/units/common/siege-breaker.json",
+    "role": "Command",
     "legionTags": []
   },
   "sokar-stormbird": {
@@ -1801,13 +477,53 @@
     "role": "Armour",
     "legionTags": []
   },
-  "thunderhawk-gunship": {
-    "path": "content/units/common/thunderhawk-gunship.json",
-    "role": "Armour",
+  "spartan": {
+    "path": "content/units/common/spartan.json",
+    "role": "Heavy Transport",
     "legionTags": []
   },
-  "thunderhawk-transporter": {
-    "path": "content/units/common/thunderhawk-transporter.json",
+  "storm-eagle": {
+    "path": "content/units/common/storm-eagle.json",
+    "role": "Fast Attack",
+    "legionTags": []
+  },
+  "tactical-squad": {
+    "path": "content/units/common/tactical-squad.json",
+    "role": "Troops",
+    "legionTags": []
+  },
+  "tactical-support-squad": {
+    "path": "content/units/common/tactical-support-squad.json",
+    "role": "Support",
+    "legionTags": []
+  },
+  "tarantula-sentry-gun": {
+    "path": "content/units/common/tarantula-sentry-gun.json",
+    "role": "Recon",
+    "legionTags": []
+  },
+  "tartaros-terminator-command-squad": {
+    "path": "content/units/common/tartaros-terminator-command-squad.json",
+    "role": "Retinue",
+    "legionTags": []
+  },
+  "tartaros-terminator-squad": {
+    "path": "content/units/common/tartaros-terminator-squad.json",
+    "role": "Heavy Assault",
+    "legionTags": []
+  },
+  "techmarine": {
+    "path": "content/units/common/techmarine.json",
+    "role": "Support",
+    "legionTags": []
+  },
+  "termite": {
+    "path": "content/units/common/termite.json",
+    "role": "Transport",
+    "legionTags": []
+  },
+  "thunderhawk-gunship": {
+    "path": "content/units/common/thunderhawk-gunship.json",
     "role": "Armour",
     "legionTags": []
   },
@@ -1816,18 +532,29 @@
     "role": "Armour",
     "legionTags": []
   },
-  "tos-dios": {
-    "path": "content/units/imperial-fists/tos-dios.json",
-    "role": "Armour",
-    "legionTags": [
-      "imperial-fists"
-    ]
+  "veteran-assault-squad": {
+    "path": "content/units/common/veteran-assault-squad.json",
+    "role": "Elites",
+    "legionTags": []
   },
-  "the-tormentor": {
-    "path": "content/units/iron-warriors/the-tormentor.json",
+  "veteran-tactical-squad": {
+    "path": "content/units/common/veteran-tactical-squad.json",
+    "role": "Elites",
+    "legionTags": []
+  },
+  "vigilator": {
+    "path": "content/units/common/vigilator.json",
+    "role": "Command",
+    "legionTags": []
+  },
+  "vindicator-siege-tank": {
+    "path": "content/units/common/vindicator-siege-tank.json",
     "role": "Armour",
-    "legionTags": [
-      "iron-warriors"
-    ]
+    "legionTags": []
+  },
+  "xiphon-interceptor": {
+    "path": "content/units/common/xiphon-interceptor.json",
+    "role": "Fast Attack",
+    "legionTags": []
   }
 }

@@ -3,6 +3,13 @@ import { LegionFaction } from '@hh/types';
 export const SHATTERED_LEGIONS_TACTICA_ID = 'shattered-legions-mutable-tactics';
 export const SHATTERED_LEGIONS_GAMBIT_ID = 'shattered-legions-spiteful-strike';
 export const SHATTERED_LEGIONS_ADVANCED_REACTION_ID = 'shattered-legions-exact-the-price';
+export const SHATTERED_LEGIONS_COMMANDER_UNIT_IDS = [
+  'hibou-khan',
+  'alexis-polux',
+  'shadrak-meduson',
+  'saul-tarvitz',
+  'garviel-loken',
+] as const;
 
 export const SHATTERED_LEGIONS_MIN_SELECTED = 2;
 export const SHATTERED_LEGIONS_MAX_SELECTED = 3;
@@ -117,4 +124,3 @@ export function getMutableTacticsBenefit(
 ): MutableTacticsBenefit | undefined {
   return SHATTERED_LEGIONS_MUTABLE_TACTICS.find((benefit) => benefit.legion === legion);
 }
-

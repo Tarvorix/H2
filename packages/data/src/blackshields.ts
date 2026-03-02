@@ -10,8 +10,17 @@ export interface BlackshieldsOathDefinition {
   requiresSelectedLegionForArmoury?: boolean;
 }
 
+export interface BlackshieldsWeaponOption {
+  weaponId: string;
+  name: string;
+  pointsCost: number;
+  sourceList: 'legion-special-weapons' | 'legion-officer-wargear' | 'weapons-of-desperation';
+  maxPerModels?: number;
+}
+
 export const BLACKSHIELDS_TACTICA_ID = 'blackshields-bastard-sons-of-fate';
 export const BLACKSHIELDS_GAMBIT_ID = 'blackshields-beholden-to-none';
+export const BLACKSHIELDS_SUPPLEMENT_UNIT_IDS = ['endryd-haar'] as const;
 
 export const BLACKSHIELDS_OATHS: BlackshieldsOathDefinition[] = [
   {
@@ -95,6 +104,74 @@ export const BLACKSHIELDS_OATHS: BlackshieldsOathDefinition[] = [
   },
 ];
 
+export const BLACKSHIELDS_TAINT_OF_THE_XENOS_OPTIONS: BlackshieldsWeaponOption[] = [
+  {
+    weaponId: 'deathlock',
+    name: 'Deathlock',
+    pointsCost: 15,
+    sourceList: 'legion-special-weapons',
+  },
+  {
+    weaponId: 'doomlock',
+    name: 'Doomlock',
+    pointsCost: 10,
+    sourceList: 'legion-special-weapons',
+  },
+  {
+    weaponId: 'halo-blade',
+    name: 'Halo blade',
+    pointsCost: 15,
+    sourceList: 'legion-officer-wargear',
+  },
+];
+
+export const BLACKSHIELDS_WEAPONS_OF_DESPERATION_OPTIONS: BlackshieldsWeaponOption[] = [
+  {
+    weaponId: 'reclaimed-melee-weapon',
+    name: 'Reclaimed melee weapon',
+    pointsCost: 0,
+    sourceList: 'weapons-of-desperation',
+    maxPerModels: 3,
+  },
+  {
+    weaponId: 'reclaimed-autogun',
+    name: 'Reclaimed autogun',
+    pointsCost: 0,
+    sourceList: 'weapons-of-desperation',
+  },
+  {
+    weaponId: 'reclaimed-autopistol',
+    name: 'Reclaimed autopistol',
+    pointsCost: 0,
+    sourceList: 'weapons-of-desperation',
+  },
+  {
+    weaponId: 'reclaimed-lasgun',
+    name: 'Reclaimed lasgun',
+    pointsCost: 0,
+    sourceList: 'weapons-of-desperation',
+  },
+  {
+    weaponId: 'reclaimed-laspistol',
+    name: 'Reclaimed laspistol',
+    pointsCost: 0,
+    sourceList: 'weapons-of-desperation',
+  },
+  {
+    weaponId: 'reclaimed-shotgun',
+    name: 'Reclaimed shotgun',
+    pointsCost: 0,
+    sourceList: 'weapons-of-desperation',
+  },
+  {
+    weaponId: 'reclaimed-heavy-stubber',
+    name: 'Reclaimed heavy stubber',
+    pointsCost: 0,
+    sourceList: 'weapons-of-desperation',
+    maxPerModels: 3,
+  },
+];
+
 const OATH_BY_ID = new Map(BLACKSHIELDS_OATHS.map((oath) => [oath.id, oath]));
 
 const BLACKSHIELDS_OATH_LIMIT_BY_DETACHMENT: Partial<Record<DetachmentType, number>> = {
@@ -125,4 +202,3 @@ export function isProfileAllowedForBlackshields(profile: UnitProfile): boolean {
     .map((trait) => trait.value);
   return factionTraits.every((value) => !LEGION_VALUES.has(value as LegionFaction));
 }
-

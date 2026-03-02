@@ -67,11 +67,11 @@ describe('Crusade Primary Detachment', () => {
     expect(troopSlots.every((s) => s.isPrime)).toBe(true);
   });
 
-  it('marks HC slot as mandatory', () => {
+  it('does not mark HC slot as mandatory', () => {
     const hcSlot = CRUSADE_PRIMARY.slots.find(
       (s) => s.role === BattlefieldRole.HighCommand,
     );
-    expect(hcSlot?.isMandatory).toBe(true);
+    expect(hcSlot?.isMandatory).toBe(false);
   });
 
   it('Transport slots are not Prime', () => {

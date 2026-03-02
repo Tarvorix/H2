@@ -286,6 +286,19 @@ describe('Specific ranged weapon profiles', () => {
     expect(weapon.traits).toContain('Auto');
   });
 
+  it('Deathlock: Blackshields supplement profile matches PDF', () => {
+    const weapon = RANGED_WEAPONS['deathlock'];
+    expect(weapon).toBeDefined();
+    expect(weapon.range).toBe(18);
+    expect(weapon.firepower).toBe(2);
+    expect(weapon.rangedStrength).toBe(6);
+    expect(weapon.ap).toBe(2);
+    expect(weapon.damage).toBe(1);
+    expect(weapon.specialRules.some((r) => r.name === 'Shred' && r.value === '6+')).toBe(true);
+    expect(weapon.specialRules.some((r) => r.name === 'Overload' && r.value === '2')).toBe(true);
+    expect(weapon.traits).toContain('Xenos');
+  });
+
   it('Volkite charger: R15, FP2, RS5, AP5, D1, Deflagrate (5), Volkite', () => {
     const weapon = RANGED_WEAPONS['volkite-charger'];
     expect(weapon).toBeDefined();
@@ -554,6 +567,17 @@ describe('Specific melee weapon profiles', () => {
     expect(weapon.ap).toBe(2);
     expect(weapon.damage).toBe(4);
     expect(weapon.specialRules.some(r => r.name === 'Armourbane')).toBe(true);
+    expect(weapon.traits).toContain('Power');
+  });
+
+  it('Terrawatt-pattern power gauntlet: Endryd Haar profile matches PDF', () => {
+    const weapon = MELEE_WEAPONS['terrawatt-pattern-power-gauntlet'];
+    expect(weapon).toBeDefined();
+    expect(weapon.initiativeModifier).toBe(2);
+    expect(weapon.attacksModifier).toEqual({ op: 'subtract', value: 1 });
+    expect(weapon.strengthModifier).toEqual({ op: 'add', value: 4 });
+    expect(weapon.ap).toBe(2);
+    expect(weapon.damage).toBe(3);
     expect(weapon.traits).toContain('Power');
   });
 });

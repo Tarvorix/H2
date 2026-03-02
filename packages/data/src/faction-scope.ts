@@ -8,14 +8,26 @@
 import { LegionFaction, SpecialFaction } from '@hh/types';
 import type { ArmyFaction } from '@hh/types';
 
+const CURATED_LEGIONS: LegionFaction[] = [
+  LegionFaction.DarkAngels,
+  LegionFaction.WorldEaters,
+  LegionFaction.AlphaLegion,
+];
 const ALL_LEGIONS: LegionFaction[] = Object.values(LegionFaction);
 const SPECIAL_FACTIONS: SpecialFaction[] = Object.values(SpecialFaction);
 
 /**
- * Return all 18 Legiones Astartes factions.
+ * Return all Legiones Astartes factions.
  */
 export function getAllLegions(): LegionFaction[] {
   return [...ALL_LEGIONS];
+}
+
+/**
+ * Return currently curated Legiones Astartes factions for top-level faction selection.
+ */
+export function getCuratedLegions(): LegionFaction[] {
+  return [...CURATED_LEGIONS];
 }
 
 /**
@@ -23,7 +35,7 @@ export function getAllLegions(): LegionFaction[] {
  * Includes all legions plus any special factions.
  */
 export function getPlayableFactions(): ArmyFaction[] {
-  return [...ALL_LEGIONS, ...SPECIAL_FACTIONS];
+  return [...CURATED_LEGIONS, ...SPECIAL_FACTIONS];
 }
 
 /**

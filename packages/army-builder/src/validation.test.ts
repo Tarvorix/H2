@@ -356,7 +356,7 @@ describe('validateAlliedDetachment', () => {
 // ─── validateMandatorySlots ──────────────────────────────────────────────────
 
 describe('validateMandatorySlots', () => {
-  it('error when mandatory HC slot is empty', () => {
+  it('no error when Crusade Primary has no High Command unit', () => {
     const army = makeValidArmy({
       detachments: [
         makeDetachment({
@@ -364,11 +364,10 @@ describe('validateMandatorySlots', () => {
         }),
       ],
     });
-    const errors = validateMandatorySlots(army);
-    expect(errors.some((e) => e.message.includes('mandatory'))).toBe(true);
+    expect(validateMandatorySlots(army)).toHaveLength(0);
   });
 
-  it('no error when mandatory HC slot is filled', () => {
+  it('no error when Crusade Primary High Command slot is filled', () => {
     const army = makeValidArmy({
       detachments: [
         makeDetachment({
@@ -377,6 +376,25 @@ describe('validateMandatorySlots', () => {
       ],
     });
     expect(validateMandatorySlots(army)).toHaveLength(0);
+  });
+
+  it('error when Warlord Detachment mandatory Warlord slot is empty', () => {
+    const army = makeValidArmy({
+      detachments: [
+        makeDetachment({
+          units: [makeUnit({ battlefieldRole: BattlefieldRole.Troops })],
+        }),
+        makeDetachment({
+          id: 'warlord-det',
+          detachmentTemplateId: 'warlord-detachment',
+          type: DetachmentType.Primary,
+          units: [],
+        }),
+      ],
+    });
+    const errors = validateMandatorySlots(army);
+    expect(errors.some((e) => e.message.includes('Warlord'))).toBe(true);
+    expect(errors.some((e) => e.message.includes('mandatory'))).toBe(true);
   });
 });
 

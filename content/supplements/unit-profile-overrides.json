@@ -1,0 +1,80 @@
+{
+  "endryd-haar": {
+    "id": "endryd-haar",
+    "name": "Endryd Haar",
+    "titles": "The Riven Hound, Praetor of the Black Shield, The Fangs of the Emperor",
+    "lore": "Once of the World Eaters Legion, Endryd Haar and his command were believed lost on Crusade when their brethren cast in their lot with the Traitors. Endryd was driven to cold madness by the revelation of his Legion's betrayal and cast off all traces of his Legion's insignia and honours, swearing a death oath to atone for the XIIth Legion's crimes.",
+    "basePoints": 165,
+    "battlefieldRole": "High Command",
+    "modelDefinitions": [
+      {
+        "name": "Endryd Haar",
+        "baseSizeMM": 32,
+        "countInBase": 1,
+        "isAdditionalModelType": true,
+        "characteristics": {
+          "M": 7,
+          "WS": 6,
+          "BS": 5,
+          "S": 4,
+          "T": 5,
+          "W": 4,
+          "I": 5,
+          "A": 5,
+          "LD": 10,
+          "CL": 9,
+          "WP": 10,
+          "IN": 8,
+          "SAV": 2,
+          "INV": 4
+        },
+        "isLeader": true
+      }
+    ],
+    "minModels": 1,
+    "maxModels": 1,
+    "pointsPerAdditionalModel": 0,
+    "defaultWargear": [
+      "archaeotech-pistol",
+      "terrawatt-pattern-power-gauntlet",
+      "frag-grenades",
+      "krak-grenades"
+    ],
+    "wargearOptions": [],
+    "specialRules": [
+      {
+        "name": "Fangs of the Emperor"
+      },
+      {
+        "name": "The Riven Hound"
+      },
+      {
+        "name": "Hatred",
+        "value": "World Eaters"
+      },
+      {
+        "name": "Eternal Warrior",
+        "value": "1"
+      }
+    ],
+    "traits": [
+      {
+        "category": "Allegiance",
+        "value": "Loyalist"
+      },
+      {
+        "category": "Faction",
+        "value": "Blackshields"
+      },
+      {
+        "category": "Custom",
+        "value": "Master of the Legion"
+      }
+    ],
+    "unitType": "Infantry",
+    "unitSubTypes": [
+      "Unique",
+      "Command"
+    ]
+  }
+}

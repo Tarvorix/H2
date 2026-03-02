@@ -9,11 +9,11 @@ import type { UnitProfile } from '@hh/types';
 import { LegionFaction, SpecialFaction } from '@hh/types';
 import type { ArmyFaction } from '@hh/types';
 import { BattlefieldRole } from '@hh/types';
-import { ALL_UNIT_PROFILES } from './generated/unit-profiles';
+import { MVP_UNIT_PROFILES } from './generated/mvp-unit-profiles';
 
 // ─── Registry State (auto-initialized at module load) ───────────────────────
 
-const _allProfiles: UnitProfile[] = ALL_UNIT_PROFILES;
+const _allProfiles: UnitProfile[] = MVP_UNIT_PROFILES;
 
 const _profileById: Map<string, UnitProfile> = new Map();
 const _profilesByRole: Map<BattlefieldRole, UnitProfile[]> = new Map();
@@ -70,8 +70,13 @@ export function getProfilesByFaction(faction: ArmyFaction): UnitProfile[] {
   }
 
   if (faction === SpecialFaction.ShatteredLegions) {
-    // Shattered Legions can draw from any legion profile; selected legions are validated later.
-    return [..._allProfiles];
+    // Shattered Legions can draw from legion and generic profiles, but not Blackshields-only units.
+    return _allProfiles.filter((profile) => {
+      const factionTraits = profile.traits
+        .filter((t) => t.category === 'Faction')
+        .map((t) => t.value);
+      return !factionTraits.includes(SpecialFaction.Blackshields);
+    });
   }
 
   return _allProfiles.filter(profile => {
