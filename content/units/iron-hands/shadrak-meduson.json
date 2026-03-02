@@ -1,0 +1,69 @@
+{
+  "id": "shadrak-meduson",
+  "name": "Shadrak Meduson",
+  "titles": "Shadrak Meduson Warleader of the Iron Hands, Master of the Shattered Legions, Lord of the Sorrgol Clan",
+  "lore": "Assigned to the Iron Hands orbital reserve above Isstvan V, Shadrak Meduson witnessed the betrayal of his Legion and the death of his Primarch from afar. Meduson took command of a significant portion of the remaining Iron Hands and reorganised them into a more flexible and effective fighting force. Working in concert with survivors from other betrayed Legions, his forces conducted an aggressive guerilla operation behind the Traitor frontlines, engaging in sabotage and assassination operations, then withdrawing before retribution could be brought to bear.",
+  "basePoints": 175,
+  "battlefieldRole": "High Command",
+  "modelDefinitions": [
+    {
+      "name": "Shadrak Meduson",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 5,
+        "BS": 5,
+        "S": 4,
+        "T": 4,
+        "W": 4,
+        "I": 5,
+        "A": 4,
+        "LD": 10,
+        "CL": 9,
+        "WP": 9,
+        "IN": 9,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "storm-s-wrath",
+    "albian-power-gladius",
+    "servo-arm",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [],
+  "specialRules": [
+    {
+      "name": "Battlesmith",
+      "value": "1"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Allegiance",
+      "value": "Loyalist"
+    },
+    {
+      "category": "Faction",
+      "value": "Iron Hands"
+    },
+    {
+      "category": "Custom",
+      "value": "Master of the Legion"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Unique",
+    "Command"
+  ]
+}

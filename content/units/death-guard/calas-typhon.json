@@ -1,0 +1,145 @@
+{
+  "id": "calas-typhon",
+  "name": "Calas Typhon",
+  "titles": "Calas Typhon First Captain of the Death Guard, The Left Hand of Mortarion, Master of the Terminus Est",
+  "lore": "The First Captain of the Death Guard Legion once pursued a role in the Legion’s Librarius but with the Primarch Mortarion harbouring a deep-rooted distrust of those who wielded the powers of the psyker, Typhon suppressed his gift and strove instead to serve as a war leader. His strength, skill and demeanour led him to high rank, culminating in his command of the warship Terminus Est and the deadly alchemical payload held within its arsenal. Though he served no more as battle-psyker, the influence of the Warp lingered within Typhon still, for he was amongst the first of his Legion to heed the influence of dark powers.",
+  "basePoints": 200,
+  "battlefieldRole": "High Command",
+  "modelDefinitions": [
+    {
+      "name": "Calas Typhon",
+      "baseSizeMM": 40,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 6,
+        "WS": 6,
+        "BS": 5,
+        "S": 4,
+        "T": 5,
+        "W": 5,
+        "I": 5,
+        "A": 4,
+        "LD": 10,
+        "CL": 9,
+        "WP": 9,
+        "IN": 9,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "lakrimae",
+    "slaker"
+  ],
+  "wargearOptions": [],
+  "specialRules": [
+    {
+      "name": "Bulky",
+      "value": "2"
+    },
+    {
+      "name": "Implacable Advance"
+    },
+    {
+      "name": "Slow and Purposeful"
+    },
+    {
+      "name": "Eternal Warrior",
+      "value": "1"
+    },
+    {
+      "name": "Death Cloud"
+    },
+    {
+      "name": "Witchblood"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Allegiance",
+      "value": "Traitor"
+    },
+    {
+      "category": "Faction",
+      "value": "Death Guard"
+    },
+    {
+      "category": "Custom",
+      "value": "Psyker"
+    },
+    {
+      "category": "Custom",
+      "value": "Master of the Legion"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Unique",
+    "Command",
+    "Heavy"
+  ],
+  "dedicatedWeapons": [
+    {
+      "id": "calas-typhon-lakrimae",
+      "name": "Lakrimae",
+      "category": "melee",
+      "profile": {
+        "initiativeModifier": {
+          "op": "subtract",
+          "value": 1
+        },
+        "attacksModifier": "A",
+        "strengthModifier": "S",
+        "ap": 2,
+        "damage": 2,
+        "specialRules": [
+          {
+            "name": "Reaping Blow",
+            "value": "3"
+          },
+          {
+            "name": "Poisoned",
+            "value": "3+"
+          }
+        ],
+        "traits": []
+      }
+    },
+    {
+      "id": "calas-typhon-slaker",
+      "name": "Slaker",
+      "category": "ranged",
+      "profile": {
+        "range": 0,
+        "hasTemplate": true,
+        "firepower": 1,
+        "rangedStrength": 3,
+        "ap": null,
+        "damage": 1,
+        "specialRules": [
+          {
+            "name": "Template"
+          },
+          {
+            "name": "Pistol"
+          },
+          {
+            "name": "Poisoned",
+            "value": "2+"
+          },
+          {
+            "name": "Panic",
+            "value": "1"
+          }
+        ],
+        "traits": []
+      }
+    }
+  ]
+}

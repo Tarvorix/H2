@@ -10,7 +10,7 @@ import type {
   Phase,
   SubPhase,
   TacticalStatus,
-  LegionFaction,
+  ArmyFaction,
   Allegiance,
 } from './enums';
 
@@ -176,7 +176,7 @@ export interface AdvancedReactionDefinition {
   /** Display name (e.g., 'Vengeance of the First Legion') */
   name: string;
   /** Which legion provides this reaction */
-  legion: LegionFaction;
+  legion: ArmyFaction;
   /** Which phase this reaction can be used in */
   triggerPhase: Phase;
   /** Which sub-phase within the phase */
@@ -236,7 +236,7 @@ export interface LegionGambitDefinition {
   /** Display name (e.g., 'Sword of the Order') */
   name: string;
   /** Which legion this gambit belongs to */
-  legion: LegionFaction;
+  legion: ArmyFaction;
   /** Human-readable description */
   description: string;
 
@@ -406,7 +406,7 @@ export interface RiteOfWarDefinition {
   /** Display name */
   name: string;
   /** Which legion this belongs to */
-  legion: LegionFaction;
+  legion: ArmyFaction;
   /** Required allegiance (null = any) */
   requiredAllegiance?: Allegiance;
   /** Whether this is a Hereticus rite */

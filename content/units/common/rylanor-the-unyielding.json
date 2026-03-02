@@ -1,0 +1,75 @@
+{
+  "id": "rylanor-the-unyielding",
+  "name": "Rylanor the Unyielding",
+  "titles": "Rylanor the Unyielding",
+  "lore": "One of the first generation of the Emperor’s Children, Rylanor had the singular honour of fighting beside the Emperor, with the battle honours of Roma and Thule etched into his armour. His history was the history of his Legion, and he had been the first to carry the Palatine standard into battle alongside his newfound Primarch. When he fell, grievously wounded in battle against the Aeldari, his salvation was internment in a Dreadnought of his Legion. Rylanor became his Legion’s Ancient of Rites, presiding over the Emperor’s Children’s Ceremonials of Induction as well as lending his might to the line of battle for many decades until the treachery of the Warmaster tore his Legion apart from within. When the atrocity on Isstvan III came, Rylanor’s unshakable loyalty to the Emperor marked him for death in his Primarch’s eyes and he was assigned to the first wave assault, but instead survived the first murderous blow of betrayal. Once the fighting began in earnest, Rylanor soon became a priority target for the Traitors, his power dooming scores of his former battle brothers to their deaths wherever he fought, while his mere presence became a rallying cry for those loyal Emperor’s Children battling out to the bitter end. Reported destroyed several times, Rylanor, increasingly damaged, somehow endured for much of the fighting on Isstvan III, but his final fate remains unknown.",
+  "basePoints": 180,
+  "battlefieldRole": "War-Engine",
+  "modelDefinitions": [
+    {
+      "name": "Rylanor",
+      "baseSizeMM": 60,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 8,
+        "WS": 4,
+        "BS": 4,
+        "S": 7,
+        "T": 7,
+        "W": 6,
+        "I": 4,
+        "A": 4,
+        "LD": 12,
+        "CL": 12,
+        "WP": 7,
+        "IN": 5,
+        "SAV": 2,
+        "INV": 5
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "kheres-assault-cannon",
+    "gravis-power-fist-and-one-heavy-flamer"
+  ],
+  "wargearOptions": [],
+  "specialRules": [
+    {
+      "name": "Bulky",
+      "value": "6"
+    },
+    {
+      "name": "Explodes",
+      "value": "5+"
+    },
+    {
+      "name": "Implacable Advance"
+    },
+    {
+      "name": "Vengeful Hate"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Allegiance",
+      "value": "Loyalist"
+    },
+    {
+      "category": "Custom",
+      "value": "Emperor’s Children"
+    },
+    {
+      "category": "Custom",
+      "value": "Smokescreen"
+    }
+  ],
+  "unitType": "Walker",
+  "unitSubTypes": [
+    "Unique"
+  ]
+}

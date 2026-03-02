@@ -5,21 +5,22 @@
  */
 
 import { useCallback, useMemo } from 'react';
+import type { ArmyFaction } from '@hh/types';
 import { LegionFaction, Allegiance } from '@hh/types';
 import type { ArmyList } from '@hh/types';
-import { getRitesForLegion, getMvpLegions } from '@hh/data';
+import { getAllLegions, getRitesForLegion, getPlayableFactions } from '@hh/data';
 
 interface FactionSelectorProps {
   armyList: ArmyList | null;
   playerIndex: number;
   selectedRiteId: string | null;
-  onFactionChange: (faction: LegionFaction) => void;
+  onFactionChange: (faction: ArmyFaction) => void;
   onAllegianceChange: (allegiance: Allegiance) => void;
   onPointsLimitChange: (limit: number) => void;
   onRiteChange: (riteId: string | null) => void;
 }
 
-const MVP_FACTIONS = getMvpLegions();
+const PLAYABLE_FACTIONS = getPlayableFactions();
 const POINTS_PRESETS = [1500, 2000, 2500, 3000, 3500, 4000, 5000];
 
 export function FactionSelector({
@@ -33,7 +34,7 @@ export function FactionSelector({
 }: FactionSelectorProps) {
   const handleFactionChange = useCallback(
     (e: React.ChangeEvent<HTMLSelectElement>) => {
-      onFactionChange(e.target.value as LegionFaction);
+      onFactionChange(e.target.value as ArmyFaction);
     },
     [onFactionChange],
   );
@@ -62,7 +63,9 @@ export function FactionSelector({
 
   const availableRites = useMemo(() => {
     if (!armyList?.faction) return [];
-    return getRitesForLegion(armyList.faction);
+    const isLegion = getAllLegions().includes(armyList.faction as LegionFaction);
+    if (!isLegion) return [];
+    return getRitesForLegion(armyList.faction as LegionFaction);
   }, [armyList?.faction]);
 
   return (
@@ -75,7 +78,7 @@ export function FactionSelector({
           onChange={handleFactionChange}
         >
           <option value="" disabled>Select Faction...</option>
-          {MVP_FACTIONS.map((f) => (
+          {PLAYABLE_FACTIONS.map((f) => (
             <option key={f} value={f}>{f}</option>
           ))}
         </select>

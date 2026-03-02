@@ -14,6 +14,7 @@ export {
   BattlefieldRole,
   Allegiance,
   LegionFaction,
+  SpecialFaction,
   TacticalStatus,
   TerrainType,
   Phase,
@@ -41,7 +42,7 @@ export type {
   WeaponEntry,
 } from './weapons';
 // WeaponTrait is a type alias re-exported for convenience
-export type { WeaponTrait } from './enums';
+export type { WeaponTrait, ArmyFaction } from './enums';
 
 // Special Rules
 export type {
@@ -140,6 +141,9 @@ export type {
   SelectedWargearOption,
   ArmyValidationResult,
   ArmyValidationError,
+  BlackshieldsDoctrine,
+  ShatteredLegionsDoctrine,
+  ArmyDoctrine,
   LegionTactica,
   AdvancedReaction,
 } from './army-building';

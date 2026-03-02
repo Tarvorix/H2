@@ -1,0 +1,149 @@
+{
+  "id": "primus-medicae",
+  "name": "Primus Medicae",
+  "titles": "Primus Medicae",
+  "lore": "High officers of the Legion Apothecarion, the primus medicae of a Legion hold the onerous duties of both ensuring the battlereadiness and physical wellbeing of their battle-brothers. This is an authority which none but a Primarch or his chosen deputy can overrule, and such warriors are dedicated to preserving the gene-seed of their Legion from loss or contamination at any cost, even that of their lives.",
+  "basePoints": 100,
+  "battlefieldRole": "Command",
+  "modelDefinitions": [
+    {
+      "name": "Primus Medicae",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 5,
+        "BS": 5,
+        "S": 4,
+        "T": 4,
+        "W": 3,
+        "I": 5,
+        "A": 3,
+        "LD": 8,
+        "CL": 8,
+        "WP": 8,
+        "IN": 8,
+        "SAV": 2,
+        "INV": 5
+      },
+      "isLeader": false
+    },
+    {
+      "name": "Primus Medicae with Jump Pack",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 12,
+        "WS": 5,
+        "BS": 5,
+        "S": 4,
+        "T": 4,
+        "W": 3,
+        "I": 5,
+        "A": 3,
+        "LD": 8,
+        "CL": 8,
+        "WP": 8,
+        "IN": 8,
+        "SAV": 2,
+        "INV": 5
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "bolt-pistol",
+    "chainsword",
+    "narthecium",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "This Model may have its bolt pistol and/or chainsword exchanged for one item from the Legion Officer Wargear list.",
+      "removes": [
+        "bolt-pistol-and-or-chainsword"
+      ],
+      "adds": [
+        "item-from-the-legion-officer-wargear-list"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "exchange",
+      "description": "This Model may have its bolt pistol exchanged for one item from the Legion Combi-weapons list or one of the following:",
+      "removes": [
+        "bolt-pistol"
+      ],
+      "adds": [
+        "item-from-the-legion-combi-weapons-list-or-one-of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "Astartes shotgun +2 Points",
+      "adds": [
+        "astartes-shotgun"
+      ],
+      "pointsCost": 2,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Volkite charger +2 Points",
+      "adds": [
+        "volkite-charger"
+      ],
+      "pointsCost": 2,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "This Model may have melta bombs selected for it for +5 Points.",
+      "adds": [
+        "melta-bombs-selected-for-it"
+      ],
+      "pointsCost": 5,
+      "scope": "one-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Medic (4+) Primus Medicae with Jump Pack"
+    },
+    {
+      "name": "Medic",
+      "value": "4+"
+    },
+    {
+      "name": "Bulky",
+      "value": "2"
+    },
+    {
+      "name": "Deep Strike"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Antigrav"
+  ]
+}

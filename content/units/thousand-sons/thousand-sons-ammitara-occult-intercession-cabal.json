@@ -1,0 +1,177 @@
+{
+  "id": "thousand-sons-ammitara-occult-intercession-cabal",
+  "name": "Thousand Sons Ammitara Occult Intercession Cabal",
+  "titles": "Thousand Sons Ammitara Occult Intercession Cabal",
+  "lore": "The very existence of the sect known as the Ammitara Occult was in some cases doubted, such was the group’s secrecy and shadowed reputation beyond the confines of its Legion. Even within the ranks of the Thousand Sons, it was spoken of obliquely, if acknowledged at all, as evidence collected from the wreckage of Prospero was later to attest. What the Ammitara was in fact, was the striking fangs of the Order of the Blind, perhaps the most hidden and obscure division of the Thousand Sons, dedicated to misdirection, reconnaissance and some claimed even espionage beyond the Legion, with the Intercession Cabals of the Ammitara specialising in another dark art of war – that of assassination.",
+  "basePoints": 145,
+  "battlefieldRole": "Recon",
+  "modelDefinitions": [
+    {
+      "name": "Ammitara Fate",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 7,
+        "WS": 4,
+        "BS": 5,
+        "S": 4,
+        "T": 4,
+        "W": 2,
+        "I": 4,
+        "A": 2,
+        "LD": 8,
+        "CL": 8,
+        "WP": 7,
+        "IN": 8,
+        "SAV": 4,
+        "INV": null
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Intercessor",
+      "baseSizeMM": 32,
+      "countInBase": 4,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 4,
+        "BS": 5,
+        "S": 4,
+        "T": 4,
+        "W": 2,
+        "I": 4,
+        "A": 2,
+        "LD": 8,
+        "CL": 8,
+        "WP": 7,
+        "IN": 8,
+        "SAV": 4,
+        "INV": null
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 5,
+  "maxModels": 10,
+  "pointsPerAdditionalModel": 27,
+  "defaultWargear": [
+    "bolt-pistol",
+    "nemesis-bolter",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [
+    {
+      "type": "add",
+      "description": "The Ammitara Fate in this Unit may have melta bombs selected for it for +10 Points.",
+      "adds": [
+        "melta-bombs-selected-for-it"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "The Ammitara Fate in this Unit may have its bolt pistol exchanged for one item from the Legion Pistols list.",
+      "removes": [
+        "bolt-pistol"
+      ],
+      "adds": [
+        "item-from-the-legion-pistols-list"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "One Intercessor in this Unit may have one nuncio-vox selected for it for +10 Points.",
+      "adds": [
+        "one-nuncio-vox-selected-for-it"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "For every five Models in this Unit, up to two Intercessors in this Unit may each have their Nemesis bolter exchanged for one of the following:",
+      "removes": [
+        "each-have-their-nemesis-bolter"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Meltagun +15 Points per Model",
+      "adds": [
+        "meltagun"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Plasma gun +10 Points per Model",
+      "adds": [
+        "plasma-gun"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Æther-fire blaster +15 Points per Model",
+      "adds": [
+        "ther-fire-blaster"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Infiltrate",
+      "value": "9"
+    },
+    {
+      "name": "Move Through Cover"
+    },
+    {
+      "name": "Support Unit",
+      "value": "2"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Faction",
+      "value": "Thousand Sons"
+    },
+    {
+      "category": "Custom",
+      "value": "Psyker"
+    },
+    {
+      "category": "Custom",
+      "value": "Corvidae"
+    },
+    {
+      "category": "Custom",
+      "value": "Smokescreen"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Sergeant",
+    "Light",
+    "Skirmish"
+  ]
+}

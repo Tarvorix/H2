@@ -1,0 +1,267 @@
+{
+  "id": "white-scars-dark-sons-of-death",
+  "name": "White Scars Dark Sons of Death",
+  "titles": "White Scars Dark Sons of Death",
+  "lore": "In the instances where their enemy had fallen so far from humanity’s light, the hope of Imperial Compliance was lost, or an abhorrent xeno-strain stood before them that could not be permitted to exist, the White Scars would call upon the Karaoghlanlar to bring about the unmaking of their foes. The Dark Sons of Death, a moniker used by those not of Chogorian descent, were deployed as a final irrevocable measure. The Karaoghlanlar not only sought to bring about the demise of their enemy physically, but also through ancient Chogorian rites, spiritually.",
+  "basePoints": 125,
+  "battlefieldRole": "Heavy Assault",
+  "modelDefinitions": [
+    {
+      "name": "Death’s Champion",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 12,
+        "WS": 5,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 1,
+        "I": 4,
+        "A": 2,
+        "LD": 9,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 3,
+        "INV": null
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Dark Son",
+      "baseSizeMM": 32,
+      "countInBase": 4,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 12,
+        "WS": 4,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 1,
+        "I": 4,
+        "A": 1,
+        "LD": 8,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 3,
+        "INV": null
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 5,
+  "maxModels": 15,
+  "pointsPerAdditionalModel": 20,
+  "defaultWargear": [
+    "bolt-pistol",
+    "chainsword",
+    "frag-grenades",
+    "krak-grenades",
+    "rad-grenades"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its chainsword exchanged for one of the following:",
+      "removes": [
+        "chainsword"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Charnabal sabre +5 Points per Model",
+      "adds": [
+        "charnabal-sabre"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Power glaive +15 Points per Model",
+      "adds": [
+        "power-glaive"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "For every five Models in this Unit, one Model in this Unit may have its bolt pistol exchanged for one of the following:",
+      "removes": [
+        "bolt-pistol"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "Plasma pistol +5 Points per Model",
+      "adds": [
+        "plasma-pistol"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Hand flamer +5 Points per Model",
+      "adds": [
+        "hand-flamer"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "For every five Models in this Unit, one Model in this Unit may have one of the following selected for it:",
+      "adds": [
+        "one-of-the-following-selected-for-it"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "Flamer +5 Points per Model",
+      "adds": [
+        "flamer"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Plasma gun +10 Points per Model",
+      "adds": [
+        "plasma-gun"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Meltagun +15 Points per Model",
+      "adds": [
+        "meltagun"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "The Death’s Champion in this Unit may have its chainsword exchanged for one of the following:",
+      "removes": [
+        "chainsword"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Power weapon +10 Points",
+      "adds": [
+        "power-weapon"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Power fist +15 Points",
+      "adds": [
+        "power-fist"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Lightning claw +10 Points",
+      "adds": [
+        "lightning-claw"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "The Death’s Champion in this Unit may have its bolt pistol exchanged for one item from the Legion Pistols list.",
+      "removes": [
+        "bolt-pistol"
+      ],
+      "adds": [
+        "item-from-the-legion-pistols-list"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "The Death’s Champion in this Unit may have its bolt pistol and chainsword exchanged for one pair of lightning claws for +10 Points.",
+      "removes": [
+        "bolt-pistol-and-chainsword"
+      ],
+      "adds": [
+        "pair-lightning-claws"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "The Death’s Champion in this Unit may have melta bombs selected for it for +10 Points.",
+      "adds": [
+        "melta-bombs-selected-for-it"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Bulky",
+      "value": "2"
+    },
+    {
+      "name": "Deep Strike"
+    },
+    {
+      "name": "Impact",
+      "value": "A"
+    },
+    {
+      "name": "Invocation of the Razing Tempest"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Faction",
+      "value": "White Scars"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Sergeant",
+    "Antigrav"
+  ]
+}

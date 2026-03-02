@@ -1,0 +1,172 @@
+{
+  "id": "ultramarines-fulmentarus-terminator-squad",
+  "name": "Ultramarines Fulmentarus Terminator Squad",
+  "titles": "Ultramarines Fulmentarus Terminator Squad",
+  "lore": "The warriors of the Fulmentarus are equipped with Cataphractii pattern Terminator armour, enhanced to carry an array of targeting systems that make it possible for each to combine their fire in a highly coordinated fashion. When combined with the Fulmentarus missile array, these sensors make the Fulmentarus a fearsome heavy assault unit and one that, were it not for the outbreak of the Horus Heresy, might one day have entered service across the Legiones Astartes.",
+  "basePoints": 290,
+  "battlefieldRole": "Heavy Assault",
+  "modelDefinitions": [
+    {
+      "name": "Fulmentarus Sergeant",
+      "baseSizeMM": 40,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 6,
+        "WS": 4,
+        "BS": 4,
+        "S": 4,
+        "T": 5,
+        "W": 2,
+        "I": 4,
+        "A": 3,
+        "LD": 8,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Fulmentarus Terminator",
+      "baseSizeMM": 40,
+      "countInBase": 4,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 6,
+        "WS": 4,
+        "BS": 4,
+        "S": 4,
+        "T": 5,
+        "W": 2,
+        "I": 4,
+        "A": 2,
+        "LD": 8,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 5,
+  "maxModels": 10,
+  "pointsPerAdditionalModel": 55,
+  "defaultWargear": [
+    "combi-bolter",
+    "fulmentarus-missile-array",
+    "peritarch-targeter"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its peritarch targeter exchanged for one of the following:",
+      "removes": [
+        "peritarch-targeter"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Power weapon Free",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Power fist +5 Points per Model",
+      "adds": [
+        "power-fist"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Chainfist +10 Points per Model",
+      "adds": [
+        "chainfist"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "The Fulmentarus Sergeant in this Unit may have its peritarch targeter exchanged for one thunder hammer for +10 Points.",
+      "removes": [
+        "peritarch-targeter"
+      ],
+      "adds": [
+        "thunder-hammer"
+      ],
+      "pointsCost": 10,
+      "scope": "leader"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Bulky",
+      "value": "2"
+    },
+    {
+      "name": "Implacable Advance"
+    },
+    {
+      "name": "Slow and Purposeful"
+    },
+    {
+      "name": "Firing Protocols",
+      "value": "2"
+    },
+    {
+      "name": "Support Unit",
+      "value": "1"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Faction",
+      "value": "Ultramarines"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Sergeant",
+    "Heavy"
+  ],
+  "dedicatedWeapons": [
+    {
+      "id": "ultramarines-fulmentarus-terminator-squad-splinter-missiles",
+      "name": "- Splinter missiles",
+      "category": "ranged",
+      "profile": {
+        "range": 36,
+        "hasTemplate": false,
+        "firepower": 4,
+        "rangedStrength": 4,
+        "ap": 5,
+        "damage": 1,
+        "specialRules": [
+          {
+            "name": "Suppressive",
+            "value": "1"
+          }
+        ],
+        "traits": []
+      }
+    }
+  ]
+}

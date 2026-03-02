@@ -1,0 +1,80 @@
+{
+  "id": "master-of-signals-with-jump-pack",
+  "name": "Master of Signals with Jump Pack",
+  "titles": "Master of Signals with Jump Pack",
+  "lore": "Although unconventional in its approach to the duties of a Master of Signals, certain warriors who are sworn to conduct this role will employ jump packs in specific situations. Whether to offer them a better vantage point over the battlefield or to carry them over treacherous terrain, the situations that necessitate the use of such wargear are varied and the success of doing so has been a point of contention amongst many members of Legion high command. USING THIS UNIT: This Unit counts as a Master of Signals Unit for the purposes of selecting the Maelstrom Sentry Battery Auxiliary Detachment.",
+  "basePoints": 135,
+  "battlefieldRole": "Command",
+  "modelDefinitions": [
+    {
+      "name": "Master of Signals with Jump Pack",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 12,
+        "WS": 5,
+        "BS": 5,
+        "S": 4,
+        "T": 4,
+        "W": 3,
+        "I": 5,
+        "A": 4,
+        "LD": 8,
+        "CL": 7,
+        "WP": 7,
+        "IN": 10,
+        "SAV": 2,
+        "INV": 5
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "bolt-pistol",
+    "frag-grenades",
+    "krak-grenades",
+    "command-vox-relay"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "This Model may have its bolt pistol exchanged for one item from the Legion Pistols list.",
+      "removes": [
+        "bolt-pistol"
+      ],
+      "adds": [
+        "item-from-the-legion-pistols-list"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Bulky",
+      "value": "2"
+    },
+    {
+      "name": "Deep Strike"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Command",
+    "Antigrav"
+  ]
+}

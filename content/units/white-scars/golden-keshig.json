@@ -1,0 +1,230 @@
+{
+  "id": "golden-keshig",
+  "name": "Golden Keshig",
+  "titles": "Golden Keshig",
+  "lore": "Among the most prestigious of the White Scars’ main combat units are their heavy assault jetbike squads - often collectively referred to as the ‘Golden Keshig’. These skilled riders serve as linebreakers and assault units, often serving where other Legions would deploy heavy armour or Terminator units. Acting as the speartip of what the Vth Legion called a Zao, a piercing attack at the heart of the enemy adapted from the tribes ofChogoris, the Golden Keshig encircle the enemy at apparently random speeds and directions before focusing momentum into a single strike through the centre of an enemy formation.",
+  "basePoints": 140,
+  "battlefieldRole": "Elites",
+  "modelDefinitions": [
+    {
+      "name": "Keshig Champion",
+      "baseSizeMM": 60,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 16,
+        "WS": 5,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 2,
+        "I": 4,
+        "A": 3,
+        "LD": 9,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 2,
+        "INV": null
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Keshig Rider",
+      "baseSizeMM": 60,
+      "countInBase": 2,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 16,
+        "WS": 5,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 2,
+        "I": 4,
+        "A": 3,
+        "LD": 8,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 2,
+        "INV": null
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 3,
+  "maxModels": 6,
+  "pointsPerAdditionalModel": 40,
+  "defaultWargear": [
+    "kontos-power-lance",
+    "power-sword",
+    "bolt-pistol",
+    "scatterbolt-launcher"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "The Keshig Champion in this Unit may have its power sword exchanged for one of the following:",
+      "removes": [
+        "power-sword"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Power axe Free",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Thunder hammer +10 Points",
+      "adds": [
+        "thunder-hammer"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "Any Keshig Rider in this Unit may have their power sword exchanged for one power axe for Free.",
+      "removes": [
+        "power-sword"
+      ],
+      "adds": [
+        "power-axe"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its power sword exchanged for one of the following:",
+      "removes": [
+        "power-sword"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Power lance Free",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Power maul Free",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Charnabal sabre Free",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "One Keshig Rider in this Unit may have one vexilla selected for it for +10 Points.",
+      "adds": [
+        "one-vexilla-selected-for-it"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Deep Strike"
+    },
+    {
+      "name": "Bulky",
+      "value": "3"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Faction",
+      "value": "White Scars"
+    }
+  ],
+  "unitType": "Cavalry",
+  "unitSubTypes": [
+    "Sergeant",
+    "Antigrav"
+  ],
+  "dedicatedWeapons": [
+    {
+      "id": "golden-keshig-kontos-power-lance",
+      "name": "Kontos power lance",
+      "category": "melee",
+      "profile": {
+        "initiativeModifier": {
+          "op": "add",
+          "value": 4
+        },
+        "attacksModifier": 1,
+        "strengthModifier": {
+          "op": "add",
+          "value": 5
+        },
+        "ap": 3,
+        "damage": 2,
+        "specialRules": [
+          {
+            "name": "Impact",
+            "value": "AP"
+          },
+          {
+            "name": "Armourbane"
+          }
+        ],
+        "traits": []
+      }
+    },
+    {
+      "id": "golden-keshig-scatterbolt-launcher",
+      "name": "Scatterbolt launcher",
+      "category": "ranged",
+      "profile": {
+        "range": 0,
+        "hasTemplate": true,
+        "firepower": 1,
+        "rangedStrength": 5,
+        "ap": 4,
+        "damage": 1,
+        "specialRules": [
+          {
+            "name": "Template"
+          },
+          {
+            "name": "Shred",
+            "value": "6+"
+          },
+          {
+            "name": "Pinning",
+            "value": "1"
+          }
+        ],
+        "traits": []
+      }
+    }
+  ]
+}

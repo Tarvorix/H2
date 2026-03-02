@@ -418,6 +418,7 @@ export function gameReducer(
               modelCount: unit.modelCount,
               pointsCost: unit.totalPoints,
               wargearOptions: unit.selectedOptions.map(o => o.optionIndex),
+              originLegion: unit.originLegion,
             });
           }
         }
@@ -426,6 +427,7 @@ export function gameReducer(
           playerName: armyList.playerName,
           faction: armyList.faction,
           allegiance: armyList.allegiance,
+          doctrine: armyList.doctrine,
           pointsLimit: armyList.pointsLimit,
           unitSelections,
         };

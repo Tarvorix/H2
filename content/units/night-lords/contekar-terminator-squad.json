@@ -1,0 +1,196 @@
+{
+  "id": "contekar-terminator-squad",
+  "name": "Contekar Terminator Squad",
+  "titles": "Contekar Terminator Squad",
+  "lore": "Contekar Terminators were called upon when the VIIIth Legion wished to bring more than terror but utter and abject despair and destruction upon a foe, to burn their armies and to topple the foundations of their civilisation. A haughty warrior class within the Night Lords, the Contekar were made up of recruits taken from Nostramo’s ruling noble elite, and in their blood lay the corruption and contempt held for Imperial citizenry by those vicious potentates. The Contekar kept themselves aloof from the rest of the Legion, deigning only to fight for those leaders they deemed worthy or possessed of similarly noble Nostraman blood.",
+  "basePoints": 225,
+  "battlefieldRole": "Elites",
+  "modelDefinitions": [
+    {
+      "name": "Dissident",
+      "baseSizeMM": 40,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 7,
+        "WS": 5,
+        "BS": 4,
+        "S": 4,
+        "T": 5,
+        "W": 2,
+        "I": 4,
+        "A": 3,
+        "LD": 9,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 2,
+        "INV": 5
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Contekar",
+      "baseSizeMM": 40,
+      "countInBase": 4,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 5,
+        "BS": 4,
+        "S": 4,
+        "T": 5,
+        "W": 2,
+        "I": 4,
+        "A": 3,
+        "LD": 8,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 2,
+        "INV": 5
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 5,
+  "maxModels": 15,
+  "pointsPerAdditionalModel": 40,
+  "defaultWargear": [
+    "chainblade",
+    "volkite-cavitor"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "The Dissident in this Unit may have its chainblade exchanged for one Escaton power claw for +10 Points.",
+      "removes": [
+        "chainblade"
+      ],
+      "adds": [
+        "escaton-power-claw"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its volkite cavitor exchanged for one heavy flamer for Free.",
+      "removes": [
+        "volkite-cavitor"
+      ],
+      "adds": [
+        "heavy-flamer"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Bulky",
+      "value": "2"
+    },
+    {
+      "name": "Implacable Advance"
+    },
+    {
+      "name": "Deep Strike"
+    },
+    {
+      "name": "Vanguard",
+      "value": "3"
+    },
+    {
+      "name": "Fear",
+      "value": "1"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Faction",
+      "value": "Night Lords"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Sergeant"
+  ],
+  "dedicatedWeapons": [
+    {
+      "id": "contekar-terminator-squad-chainblade",
+      "name": "Chainblade",
+      "category": "melee",
+      "profile": {
+        "initiativeModifier": "I",
+        "attacksModifier": "A",
+        "strengthModifier": {
+          "op": "add",
+          "value": 1
+        },
+        "ap": 3,
+        "damage": 1,
+        "specialRules": [
+          {
+            "name": "Breaching",
+            "value": "6+"
+          },
+          {
+            "name": "Shred",
+            "value": "6+"
+          }
+        ],
+        "traits": []
+      }
+    },
+    {
+      "id": "contekar-terminator-squad-volkite-cavitor",
+      "name": "Volkite cavitor",
+      "category": "ranged",
+      "profile": {
+        "range": 10,
+        "hasTemplate": false,
+        "firepower": 4,
+        "rangedStrength": 6,
+        "ap": 5,
+        "damage": 1,
+        "specialRules": [
+          {
+            "name": "Deflagrate",
+            "value": "6"
+          }
+        ],
+        "traits": []
+      }
+    },
+    {
+      "id": "contekar-terminator-squad-escaton-power-claw",
+      "name": "Escaton power claw",
+      "category": "melee",
+      "profile": {
+        "initiativeModifier": {
+          "op": "subtract",
+          "value": 2
+        },
+        "attacksModifier": "A",
+        "strengthModifier": {
+          "op": "add",
+          "value": 3
+        },
+        "ap": 2,
+        "damage": 2,
+        "specialRules": [
+          {
+            "name": "Shred",
+            "value": "6+"
+          }
+        ],
+        "traits": []
+      }
+    }
+  ]
+}

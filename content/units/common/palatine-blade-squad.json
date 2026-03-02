@@ -1,0 +1,178 @@
+{
+  "id": "palatine-blade-squad",
+  "name": "Palatine Blade Squad",
+  "titles": "Palatine Blade Squad",
+  "lore": "A warrior fraternity drawn from among the finest swordsmen of the Legion, the Palatine Blades existed outside of the rigid formations of the Emperor’s Children’s military order. They were an elite duelling society to whose ranks many aspired and on whom Fulgrim looked with particular favour and interest. At the discretion of the lords of the Legion, members of the Palatine Blades without their own command fought together in units, serving as a shining example to their battle brothers of excellence and perfection in the arts of war, seeking out the finest enemy warriors in the field against which to prove their superiority.",
+  "basePoints": 165,
+  "battlefieldRole": "Elites",
+  "modelDefinitions": [
+    {
+      "name": "Palatine Prefector",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 7,
+        "WS": 5,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 2,
+        "I": 4,
+        "A": 3,
+        "LD": 8,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 2,
+        "INV": null
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Palatine Warrior",
+      "baseSizeMM": 32,
+      "countInBase": 4,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 5,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 2,
+        "I": 4,
+        "A": 3,
+        "LD": 8,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 2,
+        "INV": null
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 5,
+  "maxModels": 10,
+  "pointsPerAdditionalModel": 28,
+  "defaultWargear": [
+    "palatine-blade",
+    "bolt-pistol",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its Palatine blade exchanged for one Phoenix power spear for Free.",
+      "removes": [
+        "palatine-blade"
+      ],
+      "adds": [
+        "phoenix-power-spear"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "The Palatine Prefector in this Unit may have its bolt pistol exchanged for one item from the Legion Pistols list.",
+      "removes": [
+        "bolt-pistol"
+      ],
+      "adds": [
+        "item-from-the-legion-pistols-list"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "If all Models in this Unit have the Traitor Trait, all Models in the Unit may have one of the following selected for them. Every Model in this Unit must have the same item selected for it:",
+      "adds": [
+        "one-of-the-following-selected-for-them-every-model-in-this-unit-must-have-the-same-item-selected-for-it"
+      ],
+      "pointsCost": 0,
+      "scope": "all-models"
+    },
+    {
+      "type": "add",
+      "description": "Sonic shriekers +5 Points per Model",
+      "adds": [
+        "sonic-shriekers"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Sonic lance +5 Points per Model",
+      "adds": [
+        "sonic-lance"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its Palatine blade exchanged for one power weapon or one Phoenix rapier for Free.",
+      "removes": [
+        "palatine-blade"
+      ],
+      "adds": [
+        "power-weapon-or-one-phoenix-rapier"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Vanguard",
+      "value": "3"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "Emperor’s Children"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Sergeant"
+  ],
+  "dedicatedWeapons": [
+    {
+      "id": "palatine-blade-squad-palatine-blade",
+      "name": "Palatine blade",
+      "category": "melee",
+      "profile": {
+        "initiativeModifier": "I",
+        "attacksModifier": "A",
+        "strengthModifier": {
+          "op": "add",
+          "value": 1
+        },
+        "ap": 3,
+        "damage": 1,
+        "specialRules": [
+          {
+            "name": "Breaching",
+            "value": "5+"
+          },
+          {
+            "name": "Duellist’s Edge",
+            "value": "1"
+          }
+        ],
+        "traits": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,165 @@
+{
+  "id": "mhara-gal-dreadnought",
+  "name": "Mhara Gal Dreadnought",
+  "titles": "Mhara Gal Dreadnought",
+  "lore": "Created from corrupted Contemptor Dreadnought chassis, the fire-blackened armour of these fel creatures runs like molten wax as its plates crack open to pour out choking black flames. Cultic writings record them as the ‘Mhara Gal’ - a complex Colchisian allegorical phrase translated as “...that which was blessed, but now stands beyond the sight of the gods\". These writings also describe these fallen killers as having “failed its oath to the Eightfold path\" and being “punished with life beyond death\". What is known for sure is that where they tread, reality buckles and warps, and that the weapons they carry incinerate all before them.",
+  "basePoints": 210,
+  "battlefieldRole": "War-Engine",
+  "modelDefinitions": [
+    {
+      "name": "Mhara Gal Dreadnought",
+      "baseSizeMM": 60,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 8,
+        "WS": 5,
+        "BS": 4,
+        "S": 7,
+        "T": 7,
+        "W": 7,
+        "I": 4,
+        "A": 4,
+        "LD": 12,
+        "CL": 10,
+        "WP": 8,
+        "IN": 5,
+        "SAV": 2,
+        "INV": 5
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "warpfire-cannon",
+    "tainted-claw",
+    "burning-warpfire"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "This Model may have its warpfire cannon exchanged for one of the following:",
+      "removes": [
+        "warpfire-cannon"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Gravis bolt cannon Free",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Gravis melta cannon +5 Points",
+      "adds": [
+        "gravis-melta-cannon"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Gravis autocannon Free",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Twin lascannon Free",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Bulky",
+      "value": "6"
+    },
+    {
+      "name": "Explodes",
+      "value": "5+"
+    },
+    {
+      "name": "Implacable Advance"
+    },
+    {
+      "name": "Fear",
+      "value": "1"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Allegiance",
+      "value": "Traitor"
+    },
+    {
+      "category": "Faction",
+      "value": "Word Bearers"
+    }
+  ],
+  "unitType": "Walker",
+  "unitSubTypes": [],
+  "dedicatedWeapons": [
+    {
+      "id": "mhara-gal-dreadnought-warpfire-cannon",
+      "name": "Warpfire cannon",
+      "category": "ranged",
+      "profile": {
+        "range": 36,
+        "hasTemplate": false,
+        "firepower": 1,
+        "rangedStrength": 6,
+        "ap": 4,
+        "damage": 2,
+        "specialRules": [
+          {
+            "name": "Heavy",
+            "value": "RS"
+          },
+          {
+            "name": "Blast",
+            "value": "3\""
+          },
+          {
+            "name": "Breaching",
+            "value": "4+"
+          },
+          {
+            "name": "Shred",
+            "value": "6+"
+          }
+        ],
+        "traits": []
+      }
+    },
+    {
+      "id": "mhara-gal-dreadnought-tainted-claw",
+      "name": "Tainted claw",
+      "category": "melee",
+      "profile": {
+        "initiativeModifier": "I",
+        "attacksModifier": "A",
+        "strengthModifier": {
+          "op": "add",
+          "value": 3
+        },
+        "ap": 2,
+        "damage": 3,
+        "specialRules": [],
+        "traits": []
+      }
+    }
+  ]
+}

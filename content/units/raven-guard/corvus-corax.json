@@ -1,0 +1,152 @@
+{
+  "id": "corvus-corax",
+  "name": "Corvus Corax",
+  "titles": "Corvus Corax Primarch of the Raven Guard, The Liberator, Chooser of the Slain, The Shadowed Lord",
+  "lore": "Lord Corax presents a striking countenance, at least when he wishes to be seen. His skin is alabaster white and his shoulder length hair as black as the feathers of his namesake, the raven. Most remarkable and unsettling are his eyes, which are entirely black shards of solid shadow. Though few even amongst his sons know of it, Corax is blessed with the ability to pass unnoticed should he will it; this preternatural ability allowing him to slip from the perception of his enemies even when standing in plain view. In battle, the Raven Lord wields his Legion as he did his rebel cells before the Emperor came to Kiavahr.",
+  "basePoints": 440,
+  "battlefieldRole": "Warlord",
+  "modelDefinitions": [
+    {
+      "name": "Corvus Corax",
+      "baseSizeMM": 40,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 16,
+        "WS": 7,
+        "BS": 6,
+        "S": 6,
+        "T": 6,
+        "W": 6,
+        "I": 6,
+        "A": 6,
+        "LD": 12,
+        "CL": 10,
+        "WP": 10,
+        "IN": 10,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "wrath-justice",
+    "talionis",
+    "the-corvidine-talons",
+    "cameleoline",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [],
+  "specialRules": [
+    {
+      "name": "Sire of the Raven Guard"
+    },
+    {
+      "name": "Bulky",
+      "value": "6"
+    },
+    {
+      "name": "The Shadowed Lord"
+    },
+    {
+      "name": "Eternal Warrior",
+      "value": "2"
+    },
+    {
+      "name": "Deep Strike"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Allegiance",
+      "value": "Loyalist"
+    },
+    {
+      "category": "Faction",
+      "value": "Raven Guard"
+    },
+    {
+      "category": "Custom",
+      "value": "Master of the Legion"
+    }
+  ],
+  "unitType": "Paragon",
+  "unitSubTypes": [
+    "Unique",
+    "Antigrav"
+  ],
+  "dedicatedWeapons": [
+    {
+      "id": "corvus-corax-wrath-justice",
+      "name": "Wrath & Justice",
+      "category": "ranged",
+      "profile": {
+        "range": 14,
+        "hasTemplate": false,
+        "firepower": 6,
+        "rangedStrength": 5,
+        "ap": 4,
+        "damage": 1,
+        "specialRules": [
+          {
+            "name": "Breaching",
+            "value": "6+"
+          }
+        ],
+        "traits": []
+      }
+    },
+    {
+      "id": "corvus-corax-talionis",
+      "name": "Talionis",
+      "category": "melee",
+      "profile": {
+        "initiativeModifier": {
+          "op": "add",
+          "value": 4
+        },
+        "attacksModifier": 3,
+        "strengthModifier": "S",
+        "ap": 3,
+        "damage": 2,
+        "specialRules": [
+          {
+            "name": "Breaching",
+            "value": "6+"
+          }
+        ],
+        "traits": []
+      }
+    },
+    {
+      "id": "corvus-corax-the-corvidine-talons",
+      "name": "The Corvidine Talons",
+      "category": "melee",
+      "profile": {
+        "initiativeModifier": {
+          "op": "add",
+          "value": 1
+        },
+        "attacksModifier": {
+          "op": "add",
+          "value": 2
+        },
+        "strengthModifier": "S",
+        "ap": 2,
+        "damage": 1,
+        "specialRules": [
+          {
+            "name": "Critical Hit",
+            "value": "6+"
+          }
+        ],
+        "traits": []
+      }
+    }
+  ]
+}

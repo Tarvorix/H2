@@ -1,0 +1,106 @@
+{
+  "id": "iron-circle-maniple",
+  "name": "Iron Circle Maniple",
+  "titles": "Iron Circle Maniple",
+  "lore": "Of the most visible fruits of Perturabo’s genius, developed after he was unshackled from the Emperor’s strict dictates, were the iron Circle, or the Domitar-Ferrum as they became known, first deployed as a bodyguard for their Primarch after the Battle of Phall, where he judged his own sons had failed him. Variants of the Domitar/Conqueror pattern, they were built as unyielding instruments of their creator’s will and designed for the kind of warfare their master favoured most. Initially limited to deployment by their master’s side, as the Age of Darkness went on, more were constructed and found service elsewhere in the Legion.",
+  "basePoints": 150,
+  "battlefieldRole": "Retinue",
+  "modelDefinitions": [
+    {
+      "name": "Domitar-ferrum",
+      "baseSizeMM": 60,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 4,
+        "BS": 4,
+        "S": 7,
+        "T": 7,
+        "W": 4,
+        "I": 3,
+        "A": 3,
+        "LD": 8,
+        "CL": 12,
+        "WP": 5,
+        "IN": 5,
+        "SAV": 2,
+        "INV": 5
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 6,
+  "pointsPerAdditionalModel": 135,
+  "defaultWargear": [
+    "graviton-crusher",
+    "twin-shrapnel-cannon",
+    "karceri-battle-shield",
+    "spraying-the-target-with-a-cloud-of-metallic-shards-while-they-lack-the-penetrative-power-of-the-more-traditional-bolter-shell-they-more-than-make-up-for-it-with-the-terrible-wounds-caused-and-the-panic-they-engender-among-the-foe"
+  ],
+  "wargearOptions": [],
+  "specialRules": [
+    {
+      "name": "Shield of the Iron Tyrant"
+    },
+    {
+      "name": "Bulky",
+      "value": "4"
+    },
+    {
+      "name": "Implacable Advance"
+    },
+    {
+      "name": "Impact",
+      "value": "A"
+    },
+    {
+      "name": "Firestorm"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Faction",
+      "value": "Iron Warriors"
+    },
+    {
+      "category": "Custom",
+      "value": "Shield"
+    }
+  ],
+  "unitType": "Automata",
+  "unitSubTypes": [
+    "Heavy"
+  ],
+  "dedicatedWeapons": [
+    {
+      "id": "iron-circle-maniple-twin-shrapnel-cannon",
+      "name": "Twin shrapnel cannon",
+      "category": "ranged",
+      "profile": {
+        "range": 36,
+        "hasTemplate": false,
+        "firepower": 6,
+        "rangedStrength": 5,
+        "ap": 5,
+        "damage": 1,
+        "specialRules": [
+          {
+            "name": "Pinning",
+            "value": "1"
+          },
+          {
+            "name": "Shred",
+            "value": "5+"
+          }
+        ],
+        "traits": []
+      }
+    }
+  ]
+}

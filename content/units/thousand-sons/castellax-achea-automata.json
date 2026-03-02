@@ -1,0 +1,89 @@
+{
+  "id": "castellax-achea-automata",
+  "name": "Castellax Achea Automata",
+  "titles": "Castellax-Achea Automata",
+  "lore": "The Thousand Sons Legion had long acknowledged the usefulness of the unliving might of battle-automata as obedient, resilient and ultimately expendable shock assault units. As with every other facet of warfare, the use of such battle-automata was something the Thousand Sons believed they could improve upon with the application of their psychic arts. That such research had long been considered a ‘heretek anathema’ by the Mechanicum was a factor ignored, and their early experiments had yielded fruit in the form of a custom-designed Castellax variant of their own specifications in the last years before their censure.",
+  "basePoints": 80,
+  "battlefieldRole": "Support",
+  "modelDefinitions": [
+    {
+      "name": "Castellax-Achea",
+      "baseSizeMM": 60,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 6,
+        "WS": 3,
+        "BS": 3,
+        "S": 6,
+        "T": 6,
+        "W": 4,
+        "I": 3,
+        "A": 3,
+        "LD": 12,
+        "CL": 10,
+        "WP": 7,
+        "IN": 5,
+        "SAV": 3,
+        "INV": 5
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "asphyx-bolt-cannon",
+    "achea-force-claws"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "This Model’s Asphyx bolt cannon may be exchanged for one æther-fire cannon for +10 Points.",
+      "removes": [
+        "be"
+      ],
+      "adds": [
+        "ther-fire-cannon"
+      ],
+      "pointsCost": 10,
+      "scope": "one-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Bulky",
+      "value": "4"
+    },
+    {
+      "name": "Explodes",
+      "value": "6+"
+    },
+    {
+      "name": "Psychic Conduit"
+    },
+    {
+      "name": "Implacable Advance"
+    },
+    {
+      "name": "Firestorm"
+    },
+    {
+      "name": "Firing Protocols",
+      "value": "3"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Faction",
+      "value": "Thousand Sons"
+    }
+  ],
+  "unitType": "Automata",
+  "unitSubTypes": []
+}

@@ -23,10 +23,10 @@ import {
   CoreReaction,
   ChallengeGambit,
   AftermathOption,
-  LegionFaction,
   Allegiance,
   DeploymentMap,
 } from '@hh/types';
+import type { ArmyDoctrine, ArmyFaction, LegionFaction } from '@hh/types';
 import type { GameEvent, CommandResult, ValidationError } from '@hh/engine';
 import type { CameraState, OverlayVisibility } from '../state/types';
 import type { AIPlayerConfig } from '@hh/ai';
@@ -307,9 +307,11 @@ export interface ArmyConfig {
   /** Player display name */
   playerName: string;
   /** Selected faction */
-  faction: LegionFaction;
+  faction: ArmyFaction;
   /** Selected allegiance */
   allegiance: Allegiance;
+  /** Faction doctrine payload (if any) */
+  doctrine?: ArmyDoctrine;
   /** Points limit for this army */
   pointsLimit: number;
   /** Unit selections (profile IDs with counts and wargear choices) */
@@ -327,6 +329,8 @@ export interface UnitSelection {
   pointsCost: number;
   /** Equipped wargear option indices */
   wargearOptions: number[];
+  /** Original legion lineage for doctrine-dependent rules. */
+  originLegion?: LegionFaction;
 }
 
 // ─── Preset Army ─────────────────────────────────────────────────────────────

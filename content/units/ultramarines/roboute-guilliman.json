@@ -1,0 +1,147 @@
+{
+  "id": "roboute-guilliman",
+  "name": "Roboute Guilliman",
+  "titles": "Roboute Guilliman Primarch of the Ultramarines, The Victorious, The Master of Ultramar, Ruler of Hosts, The Blade of Unity",
+  "lore": "Held by some as a paragon among the Emperor’s sons, Roboute Guilliman was as much a patrician statesman as he was an indefatigable warrior. A being of preternatural intelligence, cold reason and indomitable will, Guilliman forged his Legion into a vast force of conquest and control, a weapon by which he made himself the master of a domain which spanned five hundred worlds. Guilliman was a charismatic and gifted leader, beloved of his people and singularly capable of compartmentalising incredible quantities of information. He was an organiser and a logistician, one capable of turning the wildest theories into practical reality and rendering order from chaos. Under his leadership the Ultramarines Legion became the largest and arguably the most tactically balanced of the Legiones Astartes, an elegantly structured but elaborate and highly meritocratic force that waged war with exceptional efficiency through the application of analysis and reason.",
+  "basePoints": 465,
+  "battlefieldRole": "Warlord",
+  "modelDefinitions": [
+    {
+      "name": "Roboute Guilliman",
+      "baseSizeMM": 40,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 8,
+        "WS": 7,
+        "BS": 6,
+        "S": 6,
+        "T": 6,
+        "W": 6,
+        "I": 6,
+        "A": 6,
+        "LD": 12,
+        "CL": 10,
+        "WP": 10,
+        "IN": 10,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "the-arbitrator",
+    "the-gladius-incandor",
+    "the-hand-of-dominion",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [],
+  "specialRules": [
+    {
+      "name": "Sire of the Ultramarines"
+    },
+    {
+      "name": "Bulky",
+      "value": "4"
+    },
+    {
+      "name": "Calculating Swordsman"
+    },
+    {
+      "name": "Eternal Warrior",
+      "value": "2"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Allegiance",
+      "value": "Loyalist"
+    },
+    {
+      "category": "Faction",
+      "value": "Ultramarines"
+    },
+    {
+      "category": "Custom",
+      "value": "Master of the Legion"
+    }
+  ],
+  "unitType": "Paragon",
+  "unitSubTypes": [
+    "Unique"
+  ],
+  "dedicatedWeapons": [
+    {
+      "id": "roboute-guilliman-the-arbitrator",
+      "name": "The Arbitrator",
+      "category": "ranged",
+      "profile": {
+        "range": 18,
+        "hasTemplate": false,
+        "firepower": 2,
+        "rangedStrength": 6,
+        "ap": 3,
+        "damage": 1,
+        "specialRules": [
+          {
+            "name": "Breaching",
+            "value": "5+"
+          }
+        ],
+        "traits": []
+      }
+    },
+    {
+      "id": "roboute-guilliman-the-gladius-incandor",
+      "name": "The Gladius Incandor",
+      "category": "melee",
+      "profile": {
+        "initiativeModifier": "I",
+        "attacksModifier": "A",
+        "strengthModifier": "S",
+        "ap": 3,
+        "damage": 2,
+        "specialRules": [
+          {
+            "name": "Breaching",
+            "value": "5+"
+          },
+          {
+            "name": "Duellist’s Edge",
+            "value": "1"
+          }
+        ],
+        "traits": []
+      }
+    },
+    {
+      "id": "roboute-guilliman-the-hand-of-dominion",
+      "name": "The Hand of Dominion",
+      "category": "melee",
+      "profile": {
+        "initiativeModifier": {
+          "op": "subtract",
+          "value": 3
+        },
+        "attacksModifier": "A",
+        "strengthModifier": {
+          "op": "add",
+          "value": 4
+        },
+        "ap": 2,
+        "damage": 3,
+        "specialRules": [
+          {
+            "name": "Armourbane"
+          }
+        ],
+        "traits": []
+      }
+    }
+  ]
+}

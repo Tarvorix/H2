@@ -8,6 +8,7 @@ import type {
   Phase,
   SubPhase,
   Allegiance,
+  ArmyFaction,
   LegionFaction,
   TerrainType,
   CoreReaction,
@@ -17,6 +18,7 @@ import type {
   AdvancedReactionUsage,
   LegionTacticaState,
 } from './legion-rules';
+import type { ArmyDoctrine } from './army-building';
 import type { MissionState } from './mission-types';
 
 // ─── Spatial Types ────────────────────────────────────────────────────────────
@@ -156,6 +158,8 @@ export interface UnitState {
   engagedWithUnitIds: string[];
   /** Unit-level characteristic modifiers */
   modifiers: CharacteristicModifier[];
+  /** Original legion lineage for doctrine/legion-rule lookups. */
+  originLegion?: LegionFaction;
 }
 
 export enum UnitMovementState {
@@ -184,9 +188,11 @@ export interface ArmyState {
   /** Display name (e.g., "Player 1 — Sons of Horus") */
   playerName: string;
   /** Faction */
-  faction: LegionFaction;
+  faction: ArmyFaction;
   /** Allegiance */
   allegiance: Allegiance;
+  /** Faction doctrine payload selected in army building (if any). */
+  doctrine?: ArmyDoctrine;
   /** All units in this army */
   units: UnitState[];
   /** Total points value of this army */

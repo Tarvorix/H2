@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useMemo } from 'react';
-import type { BattlefieldRole, LegionFaction } from '@hh/types';
+import type { ArmyFaction, BattlefieldRole } from '@hh/types';
 import { getProfilesByFaction, getAllProfiles } from '@hh/data';
 
 interface UnitBrowserEntry {
@@ -26,7 +26,7 @@ interface UnitBrowserProps {
   /** Search text filter */
   searchFilter: string;
   /** Faction to filter profiles for */
-  faction: LegionFaction | null;
+  faction: ArmyFaction | null;
   /** Callback when a unit is selected */
   onSelectUnit: (profileId: string) => void;
   /** Callback when search text changes */

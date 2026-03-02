@@ -1,0 +1,145 @@
+{
+  "id": "leman-russ",
+  "name": "Leman Russ",
+  "titles": "Leman Russ The Wolf King of Fenris, The Lord of Winter and Ruin, Primarch of the Space Wolves",
+  "lore": "Of all of the Primarchs of the Legiones Astartes, few were as legend-shrouded or as little understood as Leman Russ, master of the Space Wolves and lord of the icy death world of Fenris. To some, he was no more than a savage and bestial chieftain gifted the power of a god; one of the Emperor’s ‘monsters’ as terrifying and inhuman in his own way as the horror-obsessed Night Haunter or the blood-bedecked berserker Angron. To others he was an incomparable warlord, ferocious beyond measure, but also faultlessly loyal, as unwavering in battle as adamant, and as coldhearted to his foes as the killing frost that shrouded his world’s winters. Both opinions, perhaps, were true to some measure, but neither told the full tale. For though as undoubtedly as savage as Leman Russ was, and no matter how much the beast marked him as it did not his brothers, he was also wise beyond his Legion’s barbaric appearances and self-aware to a degree few guessed at, which made him doubly dangerous.",
+  "basePoints": 450,
+  "battlefieldRole": "Warlord",
+  "modelDefinitions": [
+    {
+      "name": "Leman Russ",
+      "baseSizeMM": 40,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 8,
+        "WS": 8,
+        "BS": 6,
+        "S": 7,
+        "T": 6,
+        "W": 6,
+        "I": 7,
+        "A": 7,
+        "LD": 12,
+        "CL": 10,
+        "WP": 10,
+        "IN": 10,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "the-axe-of-helwinter",
+    "the-sword-of-balenight",
+    "scornspitter"
+  ],
+  "wargearOptions": [],
+  "specialRules": [
+    {
+      "name": "Sire of the Space Wolves"
+    },
+    {
+      "name": "Bulky",
+      "value": "5"
+    },
+    {
+      "name": "Howl of the Death Wolf"
+    },
+    {
+      "name": "Eternal Warrior",
+      "value": "2"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Allegiance",
+      "value": "Loyalist"
+    },
+    {
+      "category": "Faction",
+      "value": "Space Wolves"
+    },
+    {
+      "category": "Custom",
+      "value": "Master of the Legion"
+    }
+  ],
+  "unitType": "Paragon",
+  "unitSubTypes": [
+    "Unique"
+  ],
+  "dedicatedWeapons": [
+    {
+      "id": "leman-russ-the-axe-of-helwinter",
+      "name": "The Axe of Helwinter",
+      "category": "melee",
+      "profile": {
+        "initiativeModifier": "I",
+        "attacksModifier": "A",
+        "strengthModifier": {
+          "op": "add",
+          "value": 2
+        },
+        "ap": 2,
+        "damage": 2,
+        "specialRules": [
+          {
+            "name": "Armourbane"
+          },
+          {
+            "name": "Reaping Blow",
+            "value": "1"
+          }
+        ],
+        "traits": []
+      }
+    },
+    {
+      "id": "leman-russ-the-sword-of-balenight",
+      "name": "The Sword of Balenight",
+      "category": "melee",
+      "profile": {
+        "initiativeModifier": "I",
+        "attacksModifier": "A",
+        "strengthModifier": {
+          "op": "add",
+          "value": 1
+        },
+        "ap": 2,
+        "damage": 2,
+        "specialRules": [
+          {
+            "name": "Critical Hit",
+            "value": "5+"
+          }
+        ],
+        "traits": []
+      }
+    },
+    {
+      "id": "leman-russ-scornspitter",
+      "name": "Scornspitter",
+      "category": "ranged",
+      "profile": {
+        "range": 12,
+        "hasTemplate": false,
+        "firepower": 3,
+        "rangedStrength": 4,
+        "ap": 3,
+        "damage": 1,
+        "specialRules": [
+          {
+            "name": "Breaching",
+            "value": "6+"
+          }
+        ],
+        "traits": []
+      }
+    }
+  ]
+}

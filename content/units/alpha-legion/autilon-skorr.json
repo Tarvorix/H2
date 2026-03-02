@@ -1,0 +1,86 @@
+{
+  "id": "autilon-skorr",
+  "name": "Autilon Skorr",
+  "titles": "Autilon Skorr Consul-Delegatus of the Alpha Legion",
+  "lore": "Autilon Skorr was frequently dispatched to demand Compliance of newly discovered worlds in the name of the Imperium. Those worlds that refused invariably fell to disorder within weeks, and eventually capitulated. After the outbreak of the Horus Heresy, Skorr performed the same role, until the debacle at Epsilon-Stranivar IX, where the disparate forces of a dozen shattered Loyalist battle groups threw back his forces. Skorr’s record was marred and he quickly fell from the graces of both the Warmaster and his Primarch. Desperate for a return to glory, he seized upon the Mezoan campaign as a chance for his redemption.",
+  "basePoints": 135,
+  "battlefieldRole": "Command",
+  "modelDefinitions": [
+    {
+      "name": "Autilon Skorr",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 5,
+        "BS": 5,
+        "S": 4,
+        "T": 4,
+        "W": 3,
+        "I": 5,
+        "A": 4,
+        "LD": 9,
+        "CL": 8,
+        "WP": 8,
+        "IN": 8,
+        "SAV": 2,
+        "INV": 5
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "rime-shard",
+    "bolt-pistol",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [],
+  "specialRules": [
+    {
+      "name": "Consul-Delegatus"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Allegiance",
+      "value": "Traitor"
+    },
+    {
+      "category": "Faction",
+      "value": "Alpha Legion"
+    },
+    {
+      "category": "Custom",
+      "value": "Master of the Legion"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Unique",
+    "Command"
+  ],
+  "dedicatedWeapons": [
+    {
+      "id": "autilon-skorr-rime-shard",
+      "name": "Rime-shard",
+      "category": "melee",
+      "profile": {
+        "initiativeModifier": "I",
+        "attacksModifier": "A",
+        "strengthModifier": {
+          "op": "add",
+          "value": 2
+        },
+        "ap": 2,
+        "damage": 1,
+        "specialRules": [],
+        "traits": []
+      }
+    }
+  ]
+}

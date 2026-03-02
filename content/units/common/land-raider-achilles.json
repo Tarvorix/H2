@@ -1,0 +1,116 @@
+{
+  "id": "land-raider-achilles",
+  "name": "Land Raider Achilles",
+  "titles": "Land Raider Achilles",
+  "lore": "The Land Raider Achilles shares much of its STC with the Phobos pattern of Land Raider carrier, with the obvious exception that it surrenders much of its transport capacity to mount a quad launcher, a weapon most commonly employed as a mobile artillery piece. The glacis of the Land Raider Achilles also features layer upon layer of ancient electromagnetic incantations, and ferromantic computational algorithms are etched into each part of its structure at a microscopic level. The resultant armour plating provides greater resilience against damage that would threaten to incapacitate this mighty war machine.",
+  "basePoints": 280,
+  "battlefieldRole": "Heavy Transport",
+  "modelDefinitions": [
+    {
+      "name": "Land Raider Achilles",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 10,
+        "BS": 4,
+        "frontArmour": 14,
+        "sideArmour": 14,
+        "rearArmour": 14,
+        "HP": 10,
+        "transportCapacity": 6
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "two-sponson-mounted-twin-multi-melta",
+    "hull-front-mounted-quad-launcher"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "This Model may have its two Sponson Mounted twin multi-melta s exchanged for two Sponson Mounted twin volkite culverin for Free.",
+      "removes": [
+        "two-sponson-mounted-twin-multi-melta-s"
+      ],
+      "adds": [
+        "two-sponson-mounted-twin-volkite-culverin"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "This Model may have one item from the Legion Pintle Weapons list selected for it.",
+      "adds": [
+        "one-item-from-the-legion-pintle-weapons-list-selected-for-it"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "This Model may have one of each of the following selected for it:",
+      "adds": [
+        "one-of-each-of-the-following-selected-for-it"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "One Hull (Front) Mounted hunter-killer missile +5 Points",
+      "adds": [
+        "hull-front-mounted-hunter-killer-missile"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Searchlights +5 Points",
+      "adds": [
+        "searchlights"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Auto-repair",
+      "value": "5+"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    },
+    {
+      "category": "Custom",
+      "value": "Smokescreen"
+    }
+  ],
+  "unitType": "Vehicle",
+  "unitSubTypes": [
+    "Transport"
+  ],
+  "accessPoints": [
+    {
+      "name": "- This Model has Access Points on both Side Facings.",
+      "relativePosition": {
+        "x": 0,
+        "y": 0
+      }
+    }
+  ]
+}

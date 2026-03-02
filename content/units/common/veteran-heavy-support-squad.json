@@ -1,0 +1,153 @@
+{
+  "id": "veteran-heavy-support-squad",
+  "name": "Veteran Heavy Support Squad",
+  "titles": "Veteran Heavy Support Squad",
+  "lore": "The least common of the various veteran units commonly fielded as part of the Legiones Astartes, Support Veterans are long range infantry tasked with holding ground and the destruction of key enemy assets. Granted access to the rarest and most destructive weapons held within their Legion’s armoury, these warriors can be equipped to face a wide variety of threats, making best use of their battle-honed skills to seize victory.",
+  "basePoints": 115,
+  "battlefieldRole": "Elites",
+  "modelDefinitions": [
+    {
+      "name": "Veteran Support Sergeant",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 7,
+        "WS": 4,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 2,
+        "I": 4,
+        "A": 2,
+        "LD": 8,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 3,
+        "INV": null
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Support Veteran",
+      "baseSizeMM": 32,
+      "countInBase": 4,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 4,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 2,
+        "I": 4,
+        "A": 2,
+        "LD": 8,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 3,
+        "INV": null
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 5,
+  "maxModels": 10,
+  "pointsPerAdditionalModel": 20,
+  "defaultWargear": [
+    "bolt-pistol",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [
+    {
+      "type": "upgrade",
+      "description": "Every Model in this Unit must have one of the following selected for it:",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "One item from the Legion Heavy Weapons list.",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "One item from the Legion Special Weapons list.",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "One heavy disintegrator +15 Points per Model",
+      "adds": [
+        "heavy-disintegrator"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "One disintegrator blaster +10 Points per Model",
+      "adds": [
+        "disintegrator-blaster"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "The Veteran Support Sergeant in this Unit may have one item from the Legion Sergeant Melee Weapons list selected for it.",
+      "adds": [
+        "one-item-from-the-legion-sergeant-melee-weapons-list-selected-for-it"
+      ],
+      "pointsCost": 0,
+      "scope": "leader"
+    },
+    {
+      "type": "add",
+      "description": "One Support Veteran in this Unit may have one vexilla selected for it for +10 Points.",
+      "adds": [
+        "one-vexilla-selected-for-it"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Up to two Support Veterans in this Unit may each have one item from the Legion Equipment list selected for them.",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Implacable Advance"
+    },
+    {
+      "name": "Support Unit",
+      "value": "1"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Sergeant"
+  ]
+}

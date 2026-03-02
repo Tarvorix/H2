@@ -3,7 +3,13 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { Allegiance, BattlefieldRole, DetachmentType, LegionFaction } from '@hh/types';
+import {
+  Allegiance,
+  BattlefieldRole,
+  DetachmentType,
+  LegionFaction,
+  SpecialFaction,
+} from '@hh/types';
 import type { ArmyList } from '@hh/types';
 import {
   exportArmyList,
@@ -109,6 +115,19 @@ describe('importArmyList', () => {
     const result = importArmyList(json);
     expect(result.errors.some((e) => e.includes('armyList'))).toBe(true);
   });
+
+  it('migrates schema v1 army payloads to schema v2 fields', () => {
+    const v1Payload = {
+      schemaVersion: 1,
+      armyList: makeValidArmy(),
+    };
+
+    const result = importArmyList(JSON.stringify(v1Payload));
+    expect(result.errors).toHaveLength(0);
+    expect(result.armyList).not.toBeNull();
+    expect(result.armyList!.doctrine).toBeUndefined();
+    expect(result.armyList!.detachments[0].units[0].originLegion).toBe(LegionFaction.SonsOfHorus);
+  });
 });
 
 // ─── Structure Validation ────────────────────────────────────────────────────
@@ -130,6 +149,19 @@ describe('validateArmyListStructure', () => {
     const army = { ...makeValidArmy(), faction: 'Invalid Legion' } as unknown as Record<string, unknown>;
     const errors = validateArmyListStructure(army);
     expect(errors.some((e) => e.includes('faction'))).toBe(true);
+  });
+
+  it('accepts special faction values', () => {
+    const army = {
+      ...makeValidArmy(),
+      faction: SpecialFaction.Blackshields,
+      detachments: [{
+        ...makeValidArmy().detachments[0],
+        faction: SpecialFaction.Blackshields,
+      }],
+    } as unknown as Record<string, unknown>;
+    const errors = validateArmyListStructure(army);
+    expect(errors).toHaveLength(0);
   });
 
   it('catches invalid allegiance', () => {

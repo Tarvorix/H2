@@ -1,0 +1,86 @@
+{
+  "id": "cassian-dracos-reborn",
+  "name": "Cassian Dracos Reborn",
+  "titles": "Cassian Dracos Reborn",
+  "lore": "Once the lord of the XVIII th Legion in the days before Vulkan’s return, Cassian was consigned to the eternal half-life of a Dreadnought after suffering mortal wounds in the final battle of the old Salamanders Legion. The shell in which he was entombed was forged at the hand of Vulkan himself, akin to no other pattern of dreadnought and impervious to all but the most deadly of attacks, and even capable of limited self-repair. At the Dropsite Massacre, Dracos rampaged through the Traitor lines, reliving his first death as the XVIII th Legion once again faced oblivion. Leaving a trail of dead behind him, Dracos was only stopped by an orbital lance strike that glassed an entire battlefield. Horus and his generals left Isstvan certain that the old warlord’s life had been ended along with his Primarch and Legion, and for a year Dracos lay entombed in the vitrified dust of the Urgall Depression. Rescued by warriors of his own Legion, come seeking news of Vulkan, Cassian Dracos would be reborn once more, torn from the dark heart of Isstvan V and returned to the battlefield. He was no longer as he once was, now fey and unpredictable of temperament and burdened with a fearsome rage and need for vengeance. By means of his brute strength and a newfound power over the simple animus of combat-automata, he would prove a dire thorn in the side of Horus’ ambitions.",
+  "basePoints": 220,
+  "battlefieldRole": "High Command",
+  "modelDefinitions": [
+    {
+      "name": "Cassian Dracos",
+      "baseSizeMM": 60,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 6,
+        "WS": 5,
+        "BS": 5,
+        "S": 7,
+        "T": 7,
+        "W": 8,
+        "I": 3,
+        "A": 4,
+        "LD": 12,
+        "CL": 12,
+        "WP": 6,
+        "IN": 8,
+        "SAV": 2,
+        "INV": 5
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "paired-gravis-power-fists",
+    "two-forge-crafted-heavy-flamers"
+  ],
+  "wargearOptions": [],
+  "specialRules": [
+    {
+      "name": "Bulky",
+      "value": "6"
+    },
+    {
+      "name": "Explodes",
+      "value": "5+"
+    },
+    {
+      "name": "Implacable Advance"
+    },
+    {
+      "name": "Battlesmith",
+      "value": "1"
+    },
+    {
+      "name": "Drakenscale Armour"
+    },
+    {
+      "name": "Whispers of Isstvan"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Allegiance",
+      "value": "Loyalist"
+    },
+    {
+      "category": "Faction",
+      "value": "Salamanders"
+    },
+    {
+      "category": "Custom",
+      "value": "Smokescreen"
+    },
+    {
+      "category": "Custom",
+      "value": "Cybertheurgist"
+    }
+  ],
+  "unitType": "Walker",
+  "unitSubTypes": [
+    "Unique"
+  ]
+}

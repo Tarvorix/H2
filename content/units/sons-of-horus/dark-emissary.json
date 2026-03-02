@@ -1,0 +1,76 @@
+{
+  "id": "dark-emissary",
+  "name": "Dark Emissary",
+  "titles": "Dark Emissary",
+  "lore": "These ominous figures were the eyes of the Warmaster, taken from those of his own Legion whose dedication was beyond question and sent out to guide those forces that pledged themselves to Horus’ service. They would act as an example of the martial skill the Warmaster demanded from those that followed him and as executioners for those that failed to fulfil his wishes. Carrying a staff of office hearing the Eye of Horus icon of the Warmaster, their authority stemmed directly from him, and their commands were spoken as if with his voice. All who saw them knew that victory for the Traitor cause would soon follow.",
+  "basePoints": 90,
+  "battlefieldRole": "Command",
+  "modelDefinitions": [
+    {
+      "name": "Dark Emissary",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 5,
+        "BS": 5,
+        "S": 4,
+        "T": 4,
+        "W": 4,
+        "I": 5,
+        "A": 4,
+        "LD": 10,
+        "CL": 10,
+        "WP": 9,
+        "IN": 8,
+        "SAV": 2,
+        "INV": 5
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "staff-of-dark-authority",
+    "bolt-pistol",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "This Model may have its bolt pistol exchanged for one item from the Legion Pistols list.",
+      "removes": [
+        "bolt-pistol"
+      ],
+      "adds": [
+        "item-from-the-legion-pistols-list"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Eyes of the Warmaster"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Allegiance",
+      "value": "Traitor"
+    },
+    {
+      "category": "Faction",
+      "value": "Sons of Horus"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Unique",
+    "Command"
+  ]
+}

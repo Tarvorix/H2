@@ -1,0 +1,118 @@
+{
+  "id": "sons-of-horus-chieftain-squad",
+  "name": "Sons of Horus Chieftain Squad",
+  "titles": "Sons of Horus Chieftain Squad",
+  "lore": "In the tribal gang cultures of the Cthonian underhives, the title of Chieftain was given to those among the gang lord’s most loyal coterie of warriors, each entrusted with command of one of the gang’s warbands. Following in the tradition of their home world, the Sons of Horus carried the title into their Legion hierarchy, bestowing the honour upon junior officers. In rare cases, groups of these Chieftains would be called together to fight at the side of their overlord, asked to temporarily give up the duties of command for the honour of safeguarding a hero of the Legion and bearing his banner onto the battlefield.",
+  "basePoints": 155,
+  "battlefieldRole": "Retinue",
+  "modelDefinitions": [
+    {
+      "name": "Chieftain",
+      "baseSizeMM": 32,
+      "countInBase": 5,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 5,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 2,
+        "I": 4,
+        "A": 3,
+        "LD": 8,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 2,
+        "INV": 5
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 5,
+  "maxModels": 10,
+  "pointsPerAdditionalModel": 25,
+  "defaultWargear": [
+    "banestrike-bolter",
+    "bolt-pistol",
+    "chainsword",
+    "boarding-shield",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its chainsword exchanged for one of the following:",
+      "removes": [
+        "chainsword"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Chainaxe Free",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Power weapon +10 Points per Model",
+      "adds": [
+        "power-weapon"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Power fist +15 Points per Model",
+      "adds": [
+        "power-fist"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "One Model in this Unit may have its banestrike bolter exchanged for one Legion standard for +20 Points.",
+      "removes": [
+        "banestrike-bolter"
+      ],
+      "adds": [
+        "legion-standard"
+      ],
+      "pointsCost": 20,
+      "scope": "one-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Honour Above All"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Faction",
+      "value": "Sons of Horus"
+    },
+    {
+      "category": "Custom",
+      "value": "Shield"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Heavy"
+  ]
+}

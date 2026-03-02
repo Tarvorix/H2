@@ -1,0 +1,218 @@
+{
+  "id": "mortalis-destroyer-squad",
+  "name": "Mortalis Destroyer Squad",
+  "titles": "Mortalis Destroyer Squad",
+  "lore": "In the close confines of sundered fortress-citadels, the contested decks of void warships or the labyrinthine industrial complexes of hive cities, Mortalis Destroyers deploy weapons born of the nightmarish horrors of Old Night to not only kill their adversaries but also contaminate the battlefield with a radioactive fallout that ensures a hideous, drawn-out death for any further foes that approach the area. Eschewing the bulky jump packs of other Destroyer formations, the Mortalis Destroyer squads are set loose when no surrender can be expected from an enemy and no escape allowed.",
+  "basePoints": 85,
+  "battlefieldRole": "Heavy Assault",
+  "modelDefinitions": [
+    {
+      "name": "Mortalis Destroyer Sergeant",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 7,
+        "WS": 4,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 1,
+        "I": 4,
+        "A": 3,
+        "LD": 8,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 3,
+        "INV": null
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Mortalis Destroyer",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 4,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 1,
+        "I": 4,
+        "A": 2,
+        "LD": 7,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 3,
+        "INV": null
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 5,
+  "maxModels": 10,
+  "pointsPerAdditionalModel": 15,
+  "defaultWargear": [
+    "two-bolt-pistols",
+    "chainsword",
+    "rad-grenades",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "The Mortalis Destroyer Sergeant in this Unit may have its chainsword exchanged for one heavy chainsword for +5 Points or for one item from the Legion Sergeant Melee Weapons list.",
+      "removes": [
+        "chainsword"
+      ],
+      "adds": [
+        "heavy-chainsword-for-5-points-or-for-one-item-from-the-legion-sergeant-melee-weapons-list"
+      ],
+      "pointsCost": 0,
+      "scope": "leader"
+    },
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its two bolt pistols exchanged for one of the following:",
+      "removes": [
+        "two-bolt-pistols"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Two volkite serpentas +5 Points per Model",
+      "adds": [
+        "two-volkite-serpentas"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Two hand flamers +5 Points per Model",
+      "adds": [
+        "two-hand-flamers"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "One Mortalis Destroyer in this Unit may have one vexilla selected for it for +10 Points.",
+      "adds": [
+        "one-vexilla-selected-for-it"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Up to two Mortalis Destroyers in this Unit may each have one item from the Legion Equipment list selected for them.",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "The Mortalis Destroyer Sergeant in this Unit may have melta bombs selected for it for +10 Points.",
+      "adds": [
+        "melta-bombs-selected-for-it"
+      ],
+      "pointsCost": 10,
+      "scope": "leader"
+    },
+    {
+      "type": "add",
+      "description": "The Mortalis Destroyer Sergeant in this Unit may have phosphex bombs selected for it for +10 Points.",
+      "adds": [
+        "phosphex-bombs-selected-for-it"
+      ],
+      "pointsCost": 10,
+      "scope": "leader"
+    },
+    {
+      "type": "exchange",
+      "description": "For every five Models in this Unit, one Mortalis Destroyer in this Unit may have one of its bolt pistols exchanged for one of the following:",
+      "removes": [
+        "have-one-of-its-bolt-pistols"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Destroyer missile launcher with rad missiles +15 Points per Model",
+      "adds": [
+        "destroyer-missile-launcher-with-rad-missiles"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Graviton gun +10 Points per Model",
+      "adds": [
+        "graviton-gun"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Disintegrator rifle +10 Points per Model",
+      "adds": [
+        "disintegrator-rifle"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Plasma pistol +5 Points per Model",
+      "adds": [
+        "plasma-pistol"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Firestorm"
+    },
+    {
+      "name": "Vanguard",
+      "value": "2"
+    },
+    {
+      "name": "Bitter Duty"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Sergeant"
+  ]
+}

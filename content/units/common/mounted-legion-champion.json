@@ -1,0 +1,172 @@
+{
+  "id": "mounted-legion-champion",
+  "name": "Mounted Legion Champion",
+  "titles": "Mounted Legion Champion",
+  "lore": "Where many Legion Champions can be found in the thickest fighting amidst throngs of infantry, some prefer the mobility of bikes and jetbikes to carry them from one combat to the next, for while such means of transport render the traditional strategic concerns of the battlefield impractical, they grant the freedom to select foes at will. USING THIS UNIT: This Unit counts as a Legion Champion Unit for the purposes of selecting the Veteran Cadre Auxiliary Detachment.",
+  "basePoints": 145,
+  "battlefieldRole": "Command",
+  "modelDefinitions": [
+    {
+      "name": "Outrider Legion Champion",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 14,
+        "WS": 6,
+        "BS": 5,
+        "S": 4,
+        "T": 4,
+        "W": 4,
+        "I": 5,
+        "A": 5,
+        "LD": 8,
+        "CL": 8,
+        "WP": 8,
+        "IN": 7,
+        "SAV": 2,
+        "INV": 5
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Legion Champion on Scimitar Jetbike",
+      "baseSizeMM": 60,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 16,
+        "WS": 6,
+        "BS": 5,
+        "S": 4,
+        "T": 4,
+        "W": 4,
+        "I": 5,
+        "A": 5,
+        "LD": 8,
+        "CL": 8,
+        "WP": 8,
+        "IN": 8,
+        "SAV": 2,
+        "INV": 5
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "twin-bolter-outrider-legion-champion-only",
+    "heavy-bolter-legion-champion-on-scimitar-jetbike-only",
+    "volkite-serpenta",
+    "paragon-blade",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [
+    {
+      "type": "add",
+      "description": "This Model may have melta bombs selected for it for +5 Points.",
+      "adds": [
+        "melta-bombs-selected-for-it"
+      ],
+      "pointsCost": 5,
+      "scope": "one-model"
+    },
+    {
+      "type": "exchange",
+      "description": "This Outrider Legion Champion may have its twin bolter exchanged for one twin plasma gun for +15 Points.",
+      "removes": [
+        "twin-bolter"
+      ],
+      "adds": [
+        "twin-plasma-gun"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "This Legion Champion on Scimitar Jetbike may have its heavy bolter exchanged for one of the following:",
+      "removes": [
+        "heavy-bolter"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Volkite culverin +10 Points",
+      "adds": [
+        "volkite-culverin"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Plasma cannon +15 Points",
+      "adds": [
+        "plasma-cannon"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Multi-melta +20 Points",
+      "adds": [
+        "multi-melta"
+      ],
+      "pointsCost": 20,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Bulky",
+      "value": "2"
+    },
+    {
+      "name": "Firestorm"
+    },
+    {
+      "name": "Implacable Advance"
+    },
+    {
+      "name": "Outflank"
+    },
+    {
+      "name": "Never Back Down Legion Champion on Scimitar Jetbike"
+    },
+    {
+      "name": "Bulky",
+      "value": "3"
+    },
+    {
+      "name": "Deep Strike"
+    },
+    {
+      "name": "Never Back Down"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    }
+  ],
+  "unitType": "Cavalry",
+  "unitSubTypes": [
+    "Command",
+    "Antigrav"
+  ]
+}

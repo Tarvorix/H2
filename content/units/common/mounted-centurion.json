@@ -1,0 +1,185 @@
+{
+  "id": "mounted-centurion",
+  "name": "Mounted Centurion",
+  "titles": "Mounted Centurion",
+  "lore": "Whether commanding massed outrider companies, jetbike sky-hunter phalanxes or simply adapting to the needs of a specific theatre, Centurions employ rapid mounts such as the Scimitar jetbike to augment both their firepower and manoeuvrability. Often favoured by the boldest of Legion officers, such means of transport allow these capable warriors to race into the teeth of the foe, carving a bloody swathe through any caught in their path.",
+  "basePoints": 110,
+  "battlefieldRole": "Command",
+  "modelDefinitions": [
+    {
+      "name": "Outrider Centurion",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 14,
+        "WS": 5,
+        "BS": 5,
+        "S": 4,
+        "T": 4,
+        "W": 4,
+        "I": 5,
+        "A": 4,
+        "LD": 9,
+        "CL": 8,
+        "WP": 8,
+        "IN": 7,
+        "SAV": 2,
+        "INV": 5
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Centurion on Scimitar Jetbike",
+      "baseSizeMM": 60,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 16,
+        "WS": 5,
+        "BS": 5,
+        "S": 4,
+        "T": 4,
+        "W": 4,
+        "I": 5,
+        "A": 4,
+        "LD": 9,
+        "CL": 8,
+        "WP": 8,
+        "IN": 8,
+        "SAV": 2,
+        "INV": 5
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "twin-bolter-outrider-centurion-only",
+    "heavy-bolter-centurion-on-scimitar-jetbike-only",
+    "bolt-pistol",
+    "chainsword",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "This Model may have its chainsword and/or bolt pistol exchanged for one item from the Legion Officer Wargear list.",
+      "removes": [
+        "chainsword-and-or-bolt-pistol"
+      ],
+      "adds": [
+        "item-from-the-legion-officer-wargear-list"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "This Model may have melta bombs selected for it for +5 Points.",
+      "adds": [
+        "melta-bombs-selected-for-it"
+      ],
+      "pointsCost": 5,
+      "scope": "one-model"
+    },
+    {
+      "type": "exchange",
+      "description": "This Outrider Centurion may have its twin bolter exchanged for one twin plasma gun for +15 Points.",
+      "removes": [
+        "twin-bolter"
+      ],
+      "adds": [
+        "twin-plasma-gun"
+      ],
+      "pointsCost": 15,
+      "scope": "leader"
+    },
+    {
+      "type": "exchange",
+      "description": "This Centurion on Scimitar Jetbike may have its heavy bolter exchanged for one of the following:",
+      "removes": [
+        "heavy-bolter"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "leader"
+    },
+    {
+      "type": "add",
+      "description": "Volkite culverin +10 Points",
+      "adds": [
+        "volkite-culverin"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Plasma cannon +15 Points",
+      "adds": [
+        "plasma-cannon"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Multi-melta +20 Points",
+      "adds": [
+        "multi-melta"
+      ],
+      "pointsCost": 20,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Bulky",
+      "value": "2"
+    },
+    {
+      "name": "Firestorm"
+    },
+    {
+      "name": "Implacable Advance"
+    },
+    {
+      "name": "Outflank"
+    },
+    {
+      "name": "Officer of the Line (2) Centurion on Scimitar Jetbike"
+    },
+    {
+      "name": "Bulky",
+      "value": "3"
+    },
+    {
+      "name": "Deep Strike"
+    },
+    {
+      "name": "Officer of the Line",
+      "value": "2"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    }
+  ],
+  "unitType": "Cavalry",
+  "unitSubTypes": [
+    "Command",
+    "Antigrav"
+  ]
+}

@@ -8,7 +8,7 @@ import {
 } from '@hh/types';
 import {
   createHeadlessGameStateFromArmyLists,
-  validateHeadlessArmyListsForMvp,
+  validateHeadlessArmyLists,
 } from './roster';
 
 function makeUnit(overrides: Partial<ArmyListUnit>): ArmyListUnit {
@@ -71,11 +71,11 @@ function makeValidArmyList(faction: LegionFaction, name: string): ArmyList {
 }
 
 describe('headless roster validation', () => {
-  it('accepts MVP-valid army lists', () => {
+  it('accepts valid army lists', () => {
     const army0 = makeValidArmyList(LegionFaction.WorldEaters, 'Player 1');
     const army1 = makeValidArmyList(LegionFaction.AlphaLegion, 'Player 2');
 
-    const result = validateHeadlessArmyListsForMvp([army0, army1]);
+    const result = validateHeadlessArmyLists([army0, army1]);
 
     expect(result.isValid).toBe(true);
     expect(result.errors).toHaveLength(0);
@@ -83,12 +83,12 @@ describe('headless roster validation', () => {
     expect(result.playerResults[1].isValid).toBe(true);
   });
 
-  it('rejects out-of-scope faction and unknown profile references', () => {
+  it('rejects unplayable faction and unknown profile references', () => {
     const army0 = makeValidArmyList(LegionFaction.WorldEaters, 'Player 1');
     const army1 = makeValidArmyList(LegionFaction.AlphaLegion, 'Player 2');
 
-    army1.faction = LegionFaction.SonsOfHorus;
-    army1.detachments[0].faction = LegionFaction.SonsOfHorus;
+    army1.faction = 'Not A Faction' as LegionFaction;
+    army1.detachments[0].faction = 'Not A Faction' as LegionFaction;
     army1.detachments[0].units[0] = makeUnit({
       id: 'invalid-profile',
       profileId: 'not-a-real-profile',
@@ -96,10 +96,10 @@ describe('headless roster validation', () => {
       totalPoints: 100,
     });
 
-    const result = validateHeadlessArmyListsForMvp([army0, army1]);
+    const result = validateHeadlessArmyLists([army0, army1]);
 
     expect(result.isValid).toBe(false);
-    expect(result.errors.some((err) => err.includes('outside HHv2 MVP legion scope'))).toBe(true);
+    expect(result.errors.some((err) => err.includes('not currently playable'))).toBe(true);
     expect(result.errors.some((err) => err.includes('unknown or out-of-scope profile ID'))).toBe(true);
   });
 });

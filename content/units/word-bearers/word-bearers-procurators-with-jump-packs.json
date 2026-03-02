@@ -1,0 +1,180 @@
+{
+  "id": "word-bearers-procurators-with-jump-packs",
+  "name": "Word Bearers Procurators with Jump Packs",
+  "titles": "Word Bearers Procurators with Jump Packs",
+  "lore": "Although the Order of the Procurators, or the Vor Nergeth as they were known within their Legion, took to war adorned with the helix symbol of the Apothecarion it would transpire that their efforts would not be concentrated on the preservation of Legionaries, but instead on seeking to desecrate the bodies of the fallen, harvesting their organs even as they suffered the last agonising throes of life. Such gross defilement served to fuel dark rituals of summoning and reanimation, bringing forth the denizens of the Warp, and imbuing themselves and their apprentices with the stolen lifeforce of their victims.",
+  "basePoints": 130,
+  "battlefieldRole": "Elites",
+  "modelDefinitions": [
+    {
+      "name": "Procurator with Jump Pack",
+      "baseSizeMM": 32,
+      "countInBase": 5,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 12,
+        "WS": 4,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 1,
+        "I": 4,
+        "A": 2,
+        "LD": 8,
+        "CL": 7,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 3,
+        "INV": null
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Procurant with Jump Pack",
+      "baseSizeMM": 32,
+      "countInBase": 5,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 12,
+        "WS": 4,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 1,
+        "I": 4,
+        "A": 2,
+        "LD": 7,
+        "CL": 7,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 3,
+        "INV": null
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 5,
+  "maxModels": 15,
+  "pointsPerAdditionalModel": 20,
+  "defaultWargear": [
+    "bolt-pistol",
+    "chainsword",
+    "frag-grenades",
+    "krak-grenades",
+    "narthecium-procurator-with-jump-pack-only"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "Any Procurator with Jump Pack in this Unit may have its chainsword exchanged for one of the following options:",
+      "removes": [
+        "chainsword"
+      ],
+      "adds": [
+        "of-the-following-options"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Heavy chainsword +5 Points per Model",
+      "adds": [
+        "heavy-chainsword"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Power weapon +10 Points per Model",
+      "adds": [
+        "power-weapon"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "For every five Models in this Unit, one Procurant with Jump Pack in this Unit may:",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Have its chainsword exchanged for one power fist for +15 Points per Model.",
+      "adds": [
+        "have-its-chainsword-exchanged-for-one-power-fist"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Have its bolt pistol exchanged for one hand flamer for +10 Points per Model.",
+      "adds": [
+        "have-its-bolt-pistol-exchanged-for-one-hand-flamer"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Have its bolt pistol exchanged for one plasma pistol for +15 Points per Model.",
+      "adds": [
+        "have-its-bolt-pistol-exchanged-for-one-plasma-pistol"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Have its bolt pistol exchanged for one warpfire pistol for +15 Points per Model.",
+      "adds": [
+        "have-its-bolt-pistol-exchanged-for-one-warpfire-pistol"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Bulky",
+      "value": "2"
+    },
+    {
+      "name": "Support Unit",
+      "value": "1"
+    },
+    {
+      "name": "Bitter Duty"
+    },
+    {
+      "name": "Deep Strike"
+    },
+    {
+      "name": "Flesh Harvester",
+      "value": "Procurator with Jump Pack only"
+    },
+    {
+      "name": "Medic",
+      "value": "4+) (Procurator with Jump Pack only"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Allegiance",
+      "value": "Traitor"
+    },
+    {
+      "category": "Faction",
+      "value": "Word Bearers"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Sergeant",
+    "Antigrav"
+  ]
+}

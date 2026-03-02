@@ -7,7 +7,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Phase, SubPhase } from '@hh/types';
+import { LegionFaction, Phase, SubPhase } from '@hh/types';
 import type { GameState, ArmyState, UnitState, ModelState, Position, TerrainPiece, MissionState, ObjectiveMarker } from '@hh/types';
 import type { GameUIState, GameUIAction, ArmyConfig, MissionSelectUIState } from '../types';
 import { getProfileById, findMission, findDeploymentMapByType } from '@hh/data';
@@ -227,6 +227,11 @@ function createArmyState(config: ArmyConfig, playerIndex: number): ArmyState {
     return {
       id: `p${playerIndex}-unit-${unitIdx}`,
       profileId: sel.profileId,
+      originLegion:
+        sel.originLegion ??
+        (Object.values(LegionFaction).includes(config.faction as LegionFaction)
+          ? (config.faction as LegionFaction)
+          : undefined),
       models,
       statuses: [],
       hasReactedThisTurn: false,
@@ -246,6 +251,7 @@ function createArmyState(config: ArmyConfig, playerIndex: number): ArmyState {
     playerName: config.playerName,
     faction: config.faction,
     allegiance: config.allegiance,
+    doctrine: config.doctrine,
     units,
     totalPoints: config.unitSelections.reduce((sum, s) => sum + s.pointsCost, 0),
     pointsLimit: config.pointsLimit,

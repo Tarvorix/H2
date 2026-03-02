@@ -1,0 +1,169 @@
+{
+  "id": "mounted-master-of-signals",
+  "name": "Mounted Master of Signals",
+  "titles": "Mounted Master of Signals",
+  "lore": "During long-range or reconnaissance taskings, Legion specialists are well known to employ the scouting capabilities of Spatha combat bikes or Scimitar jetbikes to allow them to cover vast areas of ground. In the conduct of such missions, these warriors often travel alongside armoured columns who churn across hundreds of kilometres of arid desert or icy tundra to hunt down their foes and annihilate them. USING THIS UNIT: This Unit counts as a Master of Signals Unit for the purposes of selecting the Maelstrom Sentry Battery Auxiliary Detachment.",
+  "basePoints": 145,
+  "battlefieldRole": "Command",
+  "modelDefinitions": [
+    {
+      "name": "Outrider Master of Signals",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 14,
+        "WS": 5,
+        "BS": 5,
+        "S": 4,
+        "T": 4,
+        "W": 4,
+        "I": 5,
+        "A": 4,
+        "LD": 8,
+        "CL": 7,
+        "WP": 7,
+        "IN": 9,
+        "SAV": 2,
+        "INV": 5
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Master of Signals on Scimitar Jetbike",
+      "baseSizeMM": 60,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 16,
+        "WS": 5,
+        "BS": 5,
+        "S": 4,
+        "T": 4,
+        "W": 4,
+        "I": 5,
+        "A": 4,
+        "LD": 8,
+        "CL": 7,
+        "WP": 7,
+        "IN": 10,
+        "SAV": 2,
+        "INV": 5
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "twin-bolter-outrider-master-of-signals-only",
+    "heavy-bolter-master-of-signals-on-scimitar-jetbike-only",
+    "bolt-pistol",
+    "frag-grenades",
+    "krak-grenades",
+    "command-vox-relay"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "This Model may have its bolt pistol exchanged for one item from the Legion Pistols list.",
+      "removes": [
+        "bolt-pistol"
+      ],
+      "adds": [
+        "item-from-the-legion-pistols-list"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "exchange",
+      "description": "This Outrider Master of Signals may have its twin bolter exchanged for one twin plasma gun for +15 Points.",
+      "removes": [
+        "twin-bolter"
+      ],
+      "adds": [
+        "twin-plasma-gun"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "This Master of Signals on Scimitar Jetbike may have its heavy bolter exchanged for one of the following:",
+      "removes": [
+        "heavy-bolter"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Volkite culverin +10 Points",
+      "adds": [
+        "volkite-culverin"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Plasma cannon +15 Points",
+      "adds": [
+        "plasma-cannon"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Multi-melta +20 Points",
+      "adds": [
+        "multi-melta"
+      ],
+      "pointsCost": 20,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Bulky",
+      "value": "2"
+    },
+    {
+      "name": "Firestorm"
+    },
+    {
+      "name": "Implacable Advance"
+    },
+    {
+      "name": "Outflank Master of Signals on Scimitar Jetbike"
+    },
+    {
+      "name": "Bulky",
+      "value": "3"
+    },
+    {
+      "name": "Deep Strike"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    }
+  ],
+  "unitType": "Cavalry",
+  "unitSubTypes": [
+    "Command",
+    "Antigrav"
+  ]
+}

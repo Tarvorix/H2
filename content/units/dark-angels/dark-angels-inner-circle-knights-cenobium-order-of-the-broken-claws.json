@@ -1,0 +1,108 @@
+{
+  "id": "dark-angels-inner-circle-knights-cenobium-order-of-the-broken-claws",
+  "name": "Dark Angels Inner Circle Knights Cenobium Order of the Broken Claws",
+  "titles": "Dark Angels Inner Circle Knights Cenobium – Order of the Broken Claws",
+  "lore": "Of the Orders of the I st Legion’s Inner Circle, that of the Broken Claws had the fewest adherents, but not through insignificance. They were responsible for compiling the accounts of the battles waged against the dread Rangda and, in the wake of the xenos strain’s destruction, these knights were charged with guarding the spoils of those victories. As the events of the Horus Heresy transpired, the duties of the Order of the Broken Claws were extended, with small groups guarding stasis vaults containing relics acquired from vanquished foes of the I st Legion, preventing them from falling into the hands of those who opposed the Imperium.",
+  "basePoints": 285,
+  "battlefieldRole": "Elites",
+  "modelDefinitions": [
+    {
+      "name": "Order Preceptor",
+      "baseSizeMM": 40,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 6,
+        "WS": 6,
+        "BS": 4,
+        "S": 4,
+        "T": 5,
+        "W": 2,
+        "I": 4,
+        "A": 3,
+        "LD": 9,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Order Cenobite",
+      "baseSizeMM": 40,
+      "countInBase": 4,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 6,
+        "WS": 5,
+        "BS": 4,
+        "S": 4,
+        "T": 5,
+        "W": 2,
+        "I": 4,
+        "A": 3,
+        "LD": 8,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 5,
+  "maxModels": 10,
+  "pointsPerAdditionalModel": 55,
+  "defaultWargear": [
+    "terranic-greatsword",
+    "plasma-caster",
+    "grenade-harness-order-preceptor-only"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its Terranic greatsword exchanged for one thunder hammer for +10 Points per Model.",
+      "removes": [
+        "terranic-greatsword"
+      ],
+      "adds": [
+        "thunder-hammer-for-10-points-per-model"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Bulky",
+      "value": "2"
+    },
+    {
+      "name": "Implacable Advance"
+    },
+    {
+      "name": "Slow and Purposeful"
+    },
+    {
+      "name": "Order of the Broken Claws"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Faction",
+      "value": "Dark Angels"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Sergeant",
+    "Heavy"
+  ]
+}

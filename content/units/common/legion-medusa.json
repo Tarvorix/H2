@@ -1,0 +1,51 @@
+{
+  "id": "legion-medusa",
+  "name": "Legion Medusa",
+  "titles": "Legion Medusa",
+  "lore": "The Legion Medusa shares many common components with the Basilisk, but in place of the long-ranged earthshaker cannon is fitted with a massive calibre siege mortar. In doing so, the Medusa sacrifices range for outright destructive power in a tradeoff that is only exacerbated by being mounted on a relatively lightly armoured and slow moving platform. Despite this, these venerable tanks were called upon to provide close fire support on the front lines of the myriad battles of the Horus Heresy, their crews knowing only too well the vulnerabilities of the vehicles they operated.",
+  "basePoints": 150,
+  "battlefieldRole": "Armour",
+  "modelDefinitions": [
+    {
+      "name": "Legion Medusa",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 10,
+        "BS": 4,
+        "frontArmour": 12,
+        "sideArmour": 12,
+        "rearArmour": 10,
+        "HP": 4,
+        "transportCapacity": 0
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "centreline-mounted-medusa-mortar",
+    "hull-front-mounted-heavy-bolter"
+  ],
+  "wargearOptions": [],
+  "specialRules": [
+    {
+      "name": "None"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    }
+  ],
+  "unitType": "Vehicle",
+  "unitSubTypes": []
+}

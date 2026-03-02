@@ -1,14 +1,15 @@
 import type {
   Allegiance,
+  ArmyFaction,
+  ArmyDoctrine,
   ArmyState,
   GameState,
-  LegionFaction,
   ModelState,
   ObjectiveMarker,
   Position,
   UnitState,
 } from '@hh/types';
-import { Phase, SubPhase, UnitMovementState } from '@hh/types';
+import { LegionFaction, Phase, SubPhase, UnitMovementState } from '@hh/types';
 import {
   STANDARD_BATTLEFIELD_HEIGHT,
   STANDARD_BATTLEFIELD_WIDTH,
@@ -24,6 +25,7 @@ export interface HeadlessUnitSetup {
   modelCount?: number;
   unitId?: string;
   isWarlord?: boolean;
+  originLegion?: LegionFaction;
   modelPositions?: Position[];
   isInReserves?: boolean;
   isDeployed?: boolean;
@@ -31,8 +33,9 @@ export interface HeadlessUnitSetup {
 
 export interface HeadlessArmySetup {
   playerName: string;
-  faction: LegionFaction;
+  faction: ArmyFaction;
   allegiance: Allegiance;
+  doctrine?: ArmyDoctrine;
   units: HeadlessUnitSetup[];
   pointsLimit?: number;
   baseReactionAllotment?: number;
@@ -192,6 +195,11 @@ function createArmyState(
     return {
       id: unitSetup.unitId ?? `p${playerIndex}-unit-${unitIndex}`,
       profileId: unitSetup.profileId,
+      originLegion:
+        unitSetup.originLegion ??
+        (Object.values(LegionFaction).includes(setup.faction as LegionFaction)
+          ? (setup.faction as LegionFaction)
+          : undefined),
       models,
       statuses: [],
       hasReactedThisTurn: false,
@@ -219,6 +227,7 @@ function createArmyState(
     playerName: setup.playerName,
     faction: setup.faction,
     allegiance: setup.allegiance,
+    doctrine: setup.doctrine,
     units,
     totalPoints,
     pointsLimit: setup.pointsLimit ?? totalPoints,

@@ -1,0 +1,75 @@
+{
+  "id": "space-wolves-fenrisian-wolf-pack",
+  "name": "Space Wolves Fenrisian Wolf Pack",
+  "titles": "Space Wolves Fenrisian Wolf Pack",
+  "lore": "Much of the native fauna of Fenris consists of large and savage predatory creatures. Since Leman Russ came to command of his Legion, others have sought to emulate the Wolf King and his kin, Freki and Geri, by raising bestial companions of their own. To form a bond with such creatures is considered a sign of favour among the sons of Fenris, and those who manage such a feat often rise to high rank. On the battlefield, they form a bloodthirsty but loyal pack around their master. Many who thought to challenge a son of Fenris have instead ended their days caught in the shredding jaws of one of these terrifying creatures.",
+  "basePoints": 10,
+  "battlefieldRole": "Retinue",
+  "modelDefinitions": [
+    {
+      "name": "Fenrisian Wolf",
+      "baseSizeMM": 40,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 8,
+        "WS": 3,
+        "BS": 0,
+        "S": 4,
+        "T": 4,
+        "W": 1,
+        "I": 4,
+        "A": 2,
+        "LD": 5,
+        "CL": 5,
+        "WP": 4,
+        "IN": 2,
+        "SAV": 6,
+        "INV": null
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 5,
+  "pointsPerAdditionalModel": 9,
+  "defaultWargear": [
+    "wolf-teeth-and-claws"
+  ],
+  "wargearOptions": [],
+  "specialRules": [
+    {
+      "name": "Heedless"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Faction",
+      "value": "Space Wolves"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Light"
+  ],
+  "dedicatedWeapons": [
+    {
+      "id": "space-wolves-fenrisian-wolf-pack-wolf-teeth-and-claws",
+      "name": "Wolf teeth and claws",
+      "category": "melee",
+      "profile": {
+        "initiativeModifier": "I",
+        "attacksModifier": "A",
+        "strengthModifier": "S",
+        "ap": 5,
+        "damage": 1,
+        "specialRules": [],
+        "traits": []
+      }
+    }
+  ]
+}

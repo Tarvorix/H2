@@ -25,7 +25,7 @@ export type {
 } from './roster';
 export {
   createHeadlessGameStateFromArmyLists,
-  validateHeadlessArmyListsForMvp,
+  validateHeadlessArmyLists,
 } from './roster';
 export type {
   HeadlessReplayArtifact,

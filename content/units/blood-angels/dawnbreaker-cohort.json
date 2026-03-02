@@ -1,0 +1,173 @@
+{
+  "id": "dawnbreaker-cohort",
+  "name": "Dawnbreaker Cohort",
+  "titles": "Dawnbreaker Cohort",
+  "lore": "Even within a Legion whose skills in the arts of orbital strike and shock assault are legendary, the Dawnbreaker cohorts stand apart. Chosen from amongst the most experienced and daring of the Legion’s assault squads, the Dawnbreakers are trained and equipped to act as the tip of the Blood Angels’ spear. Lacking the versatility of standard tactical or assault units, the Dawnbreakers have one purpose in battle: to sunder the enemy’s lines and tear the heart from its formation. Armed with lances and blades wreathed in keen-edged power fields, there are few warriors who can stand in the face of such an onslaught.",
+  "basePoints": 150,
+  "battlefieldRole": "Elites",
+  "modelDefinitions": [
+    {
+      "name": "Dawnbreaker Champion",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 12,
+        "WS": 5,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 2,
+        "I": 4,
+        "A": 3,
+        "LD": 8,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 2,
+        "INV": null
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Dawnbreaker",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 12,
+        "WS": 5,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 2,
+        "I": 4,
+        "A": 3,
+        "LD": 8,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 2,
+        "INV": null
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 5,
+  "maxModels": 10,
+  "pointsPerAdditionalModel": 25,
+  "defaultWargear": [
+    "falling-star-power-spear",
+    "grenade-discharger"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "The Dawnbreaker Champion in this Unit may have its Falling-star power spear exchanged for one Perdition weapon for +5 Points.",
+      "removes": [
+        "falling-star-power-spear"
+      ],
+      "adds": [
+        "perdition-weapon"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Every Model in this Unit may have melta bombs selected for them for +25 Points per Unit.",
+      "adds": [
+        "melta-bombs-selected-for-them-for-25-points-per-unit"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its falling-star power spear exchanged for one pair of equinox blades for Free.",
+      "removes": [
+        "falling-star-power-spear"
+      ],
+      "adds": [
+        "pair-of-equinox-blades"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Set the Sky Aflame"
+    },
+    {
+      "name": "Bulky",
+      "value": "2"
+    },
+    {
+      "name": "Deep Strike"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Faction",
+      "value": "Blood Angels"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Sergeant",
+    "Antigrav"
+  ],
+  "dedicatedWeapons": [
+    {
+      "id": "dawnbreaker-cohort-falling-star-power-spear",
+      "name": "Falling-star power spear",
+      "category": "melee",
+      "profile": {
+        "initiativeModifier": {
+          "op": "add",
+          "value": 1
+        },
+        "attacksModifier": "A",
+        "strengthModifier": "S",
+        "ap": 3,
+        "damage": 1,
+        "specialRules": [
+          {
+            "name": "Impact",
+            "value": "SM"
+          },
+          {
+            "name": "Breaching",
+            "value": "5+"
+          }
+        ],
+        "traits": []
+      }
+    },
+    {
+      "id": "dawnbreaker-cohort-frag",
+      "name": "- Frag",
+      "category": "ranged",
+      "profile": {
+        "range": 12,
+        "hasTemplate": false,
+        "firepower": 1,
+        "rangedStrength": 4,
+        "ap": 6,
+        "damage": 1,
+        "specialRules": [
+          {
+            "name": "Blast",
+            "value": "3\""
+          }
+        ],
+        "traits": []
+      }
+    }
+  ]
+}

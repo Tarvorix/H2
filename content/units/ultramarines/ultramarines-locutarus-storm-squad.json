@@ -1,0 +1,151 @@
+{
+  "id": "ultramarines-locutarus-storm-squad",
+  "name": "Ultramarines Locutarus Storm Squad",
+  "titles": "Ultramarines Locutarus Storm Squad",
+  "lore": "Where the assault units of many other Legions are known for their savagery, the Locutarus are universally of a disciplined and exacting mien. Their training elevates bladesmanship to an art, but instead of focusing on the individual skill of each warrior, instead the Locutarus train as a unit in synchronicity, ensuring every strike is perfectly timed and coordinated. During pitched battles, Locutarus Storm squads are often held as reserves, their commanders waiting until the perfect moment to commit them to the battle, and in one single charge tip the outcome in favour of the Ultramarines.",
+  "basePoints": 200,
+  "battlefieldRole": "Elites",
+  "modelDefinitions": [
+    {
+      "name": "Locutarus Strike Leader",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 12,
+        "WS": 5,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 2,
+        "I": 4,
+        "A": 3,
+        "LD": 8,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 2,
+        "INV": null
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Locutarus",
+      "baseSizeMM": 32,
+      "countInBase": 4,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 12,
+        "WS": 5,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 2,
+        "I": 4,
+        "A": 2,
+        "LD": 8,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 2,
+        "INV": null
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 5,
+  "maxModels": 10,
+  "pointsPerAdditionalModel": 38,
+  "defaultWargear": [
+    "bolt-pistol",
+    "argean-power-sword",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "The Locutarus Strike Leader may have its Argean power sword exchanged for one item from the Legion Sergeant Melee Weapons list.",
+      "removes": [
+        "argean-power-sword"
+      ],
+      "adds": [
+        "item-from-the-legion-sergeant-melee-weapons-list"
+      ],
+      "pointsCost": 0,
+      "scope": "leader"
+    },
+    {
+      "type": "exchange",
+      "description": "For every five Models in this Unit, one Locutarus in this Unit may have its bolt pistol exchanged for one item from the Legion Pistols list.",
+      "removes": [
+        "bolt-pistol"
+      ],
+      "adds": [
+        "item-from-the-legion-pistols-list"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "The Locutarus Strike Leader may have its bolt pistol exchanged for one item from the Legion Pistols list.",
+      "removes": [
+        "bolt-pistol"
+      ],
+      "adds": [
+        "item-from-the-legion-pistols-list"
+      ],
+      "pointsCost": 0,
+      "scope": "leader"
+    },
+    {
+      "type": "add",
+      "description": "The Locutarus Strike Leader may have one combat shield selected for it for +5 Points.",
+      "adds": [
+        "one-combat-shield-selected-for-it"
+      ],
+      "pointsCost": 5,
+      "scope": "leader"
+    },
+    {
+      "type": "add",
+      "description": "The Locutarus Strike Leader may have melta bombs selected for it for +10 Points.",
+      "adds": [
+        "melta-bombs-selected-for-it"
+      ],
+      "pointsCost": 10,
+      "scope": "leader"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Bulky",
+      "value": "2"
+    },
+    {
+      "name": "Deep Strike"
+    },
+    {
+      "name": "Precision",
+      "value": "6+"
+    },
+    {
+      "name": "The Blade of Wisdom"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Faction",
+      "value": "Ultramarines"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Antigrav"
+  ]
+}

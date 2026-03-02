@@ -1,0 +1,115 @@
+{
+  "id": "vheren-ashurhaddon",
+  "name": "Vheren Ashurhaddon",
+  "titles": "Vheren Ashurhaddon Master of the True Sons, Cadre-captain of the Sons of Horus, The First Reaver",
+  "lore": "Vheren Ashurhaddon was born of Cthonia, and recruited into the Luna Wolves after Horus Lupercal took control of his Legion. He regarded the Terrans and their approach to warfare with disdain, surrounding himself with those whose Cthonian origins made them inherently superior in his eyes, leading them in daring assaults that earned him the moniker ‘The First Reaver’. On the eve of Horus’ invasion of the Sol System, no longer content to suffer the indignity of witnessing the gradual fall of his Legion into corruption, Ashurhaddon took it upon himself to reconquer Cthonia to secure the XVIth Legion’s future and rekindle its glory.",
+  "basePoints": 205,
+  "battlefieldRole": "High Command",
+  "modelDefinitions": [
+    {
+      "name": "Vheren Ashurhaddon",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 7,
+        "BS": 5,
+        "S": 4,
+        "T": 4,
+        "W": 4,
+        "I": 5,
+        "A": 5,
+        "LD": 10,
+        "CL": 9,
+        "WP": 9,
+        "IN": 9,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "the-axe-serpentis",
+    "banestrike-fusilade",
+    "vexilla",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [],
+  "specialRules": [
+    {
+      "name": "None"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Allegiance",
+      "value": "Traitor"
+    },
+    {
+      "category": "Faction",
+      "value": "Sons of Horus"
+    },
+    {
+      "category": "Custom",
+      "value": "Master of the Legion"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Unique",
+    "Command"
+  ],
+  "dedicatedWeapons": [
+    {
+      "id": "vheren-ashurhaddon-the-axe-serpentis",
+      "name": "The Axe Serpentis",
+      "category": "melee",
+      "profile": {
+        "initiativeModifier": {
+          "op": "add",
+          "value": 1
+        },
+        "attacksModifier": "A",
+        "strengthModifier": "S",
+        "ap": 2,
+        "damage": 1,
+        "specialRules": [
+          {
+            "name": "Critical Hit",
+            "value": "6+"
+          }
+        ],
+        "traits": []
+      }
+    },
+    {
+      "id": "vheren-ashurhaddon-banestrike-fusilade",
+      "name": "Banestrike fusilade",
+      "category": "ranged",
+      "profile": {
+        "range": 10,
+        "hasTemplate": false,
+        "firepower": 4,
+        "rangedStrength": 5,
+        "ap": 4,
+        "damage": 1,
+        "specialRules": [
+          {
+            "name": "Pistol"
+          },
+          {
+            "name": "Breaching",
+            "value": "6+"
+          }
+        ],
+        "traits": []
+      }
+    }
+  ]
+}

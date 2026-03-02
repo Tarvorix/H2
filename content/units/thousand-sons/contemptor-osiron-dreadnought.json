@@ -1,0 +1,321 @@
+{
+  "id": "contemptor-osiron-dreadnought",
+  "name": "Contemptor Osiron Dreadnought",
+  "titles": "Contemptor-Osiron Dreadnought",
+  "lore": "For many decades, the arts by which the powers of a psyker could be maintained medically into the half-life of Dreadnought internment eluded the Legiones Astartes. It was not until Magnus himself was focused on the issue that a solution, albeit a difficult one, was created. The use of a crowning psychometric barrier lattice for the living brain of the mortally wounded psyker was his answer, a device he named the ‘osiron’. Using principles few even among the Imperium’s foremost psi-arcanists understood, the Thousand Sons began fitting it to the highly adaptable Contemptor Dreadnought chassis with startlingly powerful results.",
+  "basePoints": 200,
+  "battlefieldRole": "War-Engine",
+  "modelDefinitions": [
+    {
+      "name": "Contemptor-Osiron Dreadnought",
+      "baseSizeMM": 60,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 8,
+        "WS": 4,
+        "BS": 4,
+        "S": 7,
+        "T": 7,
+        "W": 6,
+        "I": 4,
+        "A": 4,
+        "LD": 12,
+        "CL": 10,
+        "WP": 8,
+        "IN": 5,
+        "SAV": 2,
+        "INV": 5
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "gravis-bolt-cannon",
+    "gravis-force-blade",
+    "combi-bolter"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "This Model’s Gravis bolt cannon may be exchanged for one of the following:",
+      "removes": [
+        "be"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "Gravis melta cannon +15 Points",
+      "adds": [
+        "gravis-melta-cannon"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Gravis autocannon +10 Points",
+      "adds": [
+        "gravis-autocannon"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Gravis plasma cannon +10 Points",
+      "adds": [
+        "gravis-plasma-cannon"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Conversion beam cannon +20 Points",
+      "adds": [
+        "conversion-beam-cannon-short"
+      ],
+      "pointsCost": 20,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Twin volkite culverin +15 Points",
+      "adds": [
+        "twin-volkite-culverin"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Kheres assault cannon +15 Points",
+      "adds": [
+        "kheres-assault-cannon"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Twin lascannon +20 Points",
+      "adds": [
+        "twin-lascannon"
+      ],
+      "pointsCost": 20,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "This Model’s combi-bolter may be exchanged for one of the following:",
+      "removes": [
+        "be"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "Heavy flamer +5 Points",
+      "adds": [
+        "heavy-flamer"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Plasma blaster +10 Points",
+      "adds": [
+        "plasma-blaster"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Graviton gun +15 Points",
+      "adds": [
+        "graviton-gun"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Meltagun +15 Points",
+      "adds": [
+        "meltagun"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "This Model may have one havoc launcher selected for it for +5 Points.",
+      "adds": [
+        "one-havoc-launcher-selected-for-it"
+      ],
+      "pointsCost": 5,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "This Model may have one of the following Psychic Disciplines selected for it:",
+      "adds": [
+        "one-of-the-following-psychic-disciplines-selected-for-it"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "Biomancy +20 Points",
+      "adds": [
+        "biomancy"
+      ],
+      "pointsCost": 20,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Pyromancy +10 Points",
+      "adds": [
+        "pyromancy"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Telekinesis +20 Points",
+      "adds": [
+        "telekinesis"
+      ],
+      "pointsCost": 20,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Divination +20 Points",
+      "adds": [
+        "divination"
+      ],
+      "pointsCost": 20,
+      "scope": "any-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Thaumaturgy Free",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Telepathy +10 Points",
+      "adds": [
+        "telepathy"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "This Model may have its Gravis bolt cannon exchanged for one æther-fire magna-cannon for +10 Points.",
+      "removes": [
+        "gravis-bolt-cannon"
+      ],
+      "adds": [
+        "ther-fire-magna-cannon"
+      ],
+      "pointsCost": 10,
+      "scope": "one-model"
+    },
+    {
+      "type": "exchange",
+      "description": "This Model may have its combi-bolter exchanged for one æther-fire blaster for +10 Points.",
+      "removes": [
+        "combi-bolter"
+      ],
+      "adds": [
+        "ther-fire-blaster"
+      ],
+      "pointsCost": 10,
+      "scope": "one-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Bulky",
+      "value": "6"
+    },
+    {
+      "name": "Explodes",
+      "value": "5+"
+    },
+    {
+      "name": "Implacable Advance"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Faction",
+      "value": "Thousand Sons"
+    },
+    {
+      "category": "Custom",
+      "value": "Smokescreen"
+    },
+    {
+      "category": "Custom",
+      "value": "Psyker"
+    }
+  ],
+  "unitType": "Walker",
+  "unitSubTypes": [],
+  "dedicatedWeapons": [
+    {
+      "id": "contemptor-osiron-dreadnought-gravis-force-blade",
+      "name": "Gravis force blade",
+      "category": "melee",
+      "profile": {
+        "initiativeModifier": "I",
+        "attacksModifier": "A",
+        "strengthModifier": {
+          "op": "add",
+          "value": 2
+        },
+        "ap": 2,
+        "damage": 2,
+        "specialRules": [
+          {
+            "name": "Force",
+            "value": "D"
+          },
+          {
+            "name": "Reaping Blow",
+            "value": "2"
+          }
+        ],
+        "traits": []
+      }
+    }
+  ]
+}

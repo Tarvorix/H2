@@ -1,0 +1,152 @@
+{
+  "id": "outrider-praetorian-command-squad",
+  "name": "Outrider Praetorian Command Squad",
+  "titles": "Outrider Praetorian Command Squad",
+  "lore": "Most often designated to serve in the direct company of a similarly equipped Legion Praetor, Praetorian Command Squads can be assigned to specialist outrider roles. These veterans are masters of mounted combat doctrines and utilise powerful Spatha pattern bikes to range ahead of the body of the battleforce to meet the enemy, or to flank their position and exploit their weaknesses in hit-and-run attacks.",
+  "basePoints": 150,
+  "battlefieldRole": "Retinue",
+  "modelDefinitions": [
+    {
+      "name": "Outrider Chosen Champion",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 14,
+        "WS": 5,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 3,
+        "I": 4,
+        "A": 4,
+        "LD": 8,
+        "CL": 8,
+        "WP": 7,
+        "IN": 6,
+        "SAV": 2,
+        "INV": null
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Outrider Chosen",
+      "baseSizeMM": 32,
+      "countInBase": 2,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 14,
+        "WS": 5,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 3,
+        "I": 4,
+        "A": 3,
+        "LD": 8,
+        "CL": 8,
+        "WP": 7,
+        "IN": 6,
+        "SAV": 2,
+        "INV": null
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 3,
+  "maxModels": 10,
+  "pointsPerAdditionalModel": 40,
+  "defaultWargear": [
+    "twin-bolter",
+    "bolt-pistol",
+    "chainsword",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its chainsword exchanged for one item from the Legion Sergeant Melee Weapons list.",
+      "removes": [
+        "chainsword"
+      ],
+      "adds": [
+        "item-from-the-legion-sergeant-melee-weapons-list"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its bolt pistol exchanged for one item from the Legion Pistols list or one combat shield for +4 Points per Model.",
+      "removes": [
+        "bolt-pistol"
+      ],
+      "adds": [
+        "item-from-the-legion-pistols-list-or-one-combat-shield-for-4-points-per-model"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "The Outrider Chosen Champion in this Unit may have its bolt pistol exchanged for one disintegrator pistol for +5 Points.",
+      "removes": [
+        "bolt-pistol"
+      ],
+      "adds": [
+        "disintegrator-pistol"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its twin bolter exchanged for one twin plasma gun for +15 Points per Model.",
+      "removes": [
+        "twin-bolter"
+      ],
+      "adds": [
+        "twin-plasma-gun-for-15-points-per-model"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "One Outrider Chosen in this Unit may have one Legion standard selected for it for +20 Points.",
+      "adds": [
+        "one-legion-standard-selected-for-it"
+      ],
+      "pointsCost": 20,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Bulky",
+      "value": "2"
+    },
+    {
+      "name": "Firestorm"
+    },
+    {
+      "name": "Implacable Advance"
+    },
+    {
+      "name": "Outflank"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    }
+  ],
+  "unitType": "Cavalry",
+  "unitSubTypes": []
+}

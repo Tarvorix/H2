@@ -1,0 +1,78 @@
+{
+  "id": "esoterist-with-jump-pack",
+  "name": "Esoterist with Jump Pack",
+  "titles": "Esoterist with Jump Pack",
+  "lore": "Amidst the ever-changing, warp-corrupted battlescapes with which Legion Esoterists were repeatedly forced to contend, jump packs were highly valued as a means of avoiding ætheric perils and delivering once-sanctioned psychic onslaughts in equal measure. USING THIS UNIT: This Unit counts as an Esoterist Unit for the purposes of selecting the Daemonic Manifestation Auxiliary Detachment.",
+  "basePoints": 125,
+  "battlefieldRole": "Command",
+  "modelDefinitions": [
+    {
+      "name": "Esoterist with Jump Pack",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 12,
+        "WS": 5,
+        "BS": 5,
+        "S": 4,
+        "T": 4,
+        "W": 3,
+        "I": 5,
+        "A": 4,
+        "LD": 7,
+        "CL": 8,
+        "WP": 10,
+        "IN": 8,
+        "SAV": 2,
+        "INV": 5
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "archaeotech-pistol",
+    "force-weapon",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [],
+  "specialRules": [
+    {
+      "name": "Anathemata Discipline"
+    },
+    {
+      "name": "Bulky",
+      "value": "2"
+    },
+    {
+      "name": "Deep Strike"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    },
+    {
+      "category": "Custom",
+      "value": "Psyker"
+    },
+    {
+      "category": "Custom",
+      "value": "Anathemata"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Command",
+    "Antigrav"
+  ]
+}

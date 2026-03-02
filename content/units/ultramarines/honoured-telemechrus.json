@@ -1,0 +1,77 @@
+{
+  "id": "honoured-telemechrus",
+  "name": "Honoured Telemechrus",
+  "titles": "Honoured Telemechrus",
+  "lore": "Telemechrus had only served his Legion for ten years when he was interred within a Contemptor Dreadnought. At the moment of the Word Bearers’ betrayal at Calth he was in suspended animation, housed within the cargo bay of a transport ship as part of the muster. When that ship was destroyed, the transport casket carrying his deactivated chassis fell through orbit and smashed into the surface. Instead of being destroyed on impact, Telemechrus was awoken by emergency vox transmissions, emerging from his shattered container miraculously undamaged before joining the battles to resist the treacherous Word Bearers assault.",
+  "basePoints": 170,
+  "battlefieldRole": "War-Engine",
+  "modelDefinitions": [
+    {
+      "name": "Honoured Telemechrus",
+      "baseSizeMM": 60,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 8,
+        "WS": 4,
+        "BS": 4,
+        "S": 7,
+        "T": 7,
+        "W": 6,
+        "I": 4,
+        "A": 4,
+        "LD": 12,
+        "CL": 10,
+        "WP": 7,
+        "IN": 5,
+        "SAV": 2,
+        "INV": 5
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "kheres-assault-cannon",
+    "gravis-power-fist",
+    "combi-bolter"
+  ],
+  "wargearOptions": [],
+  "specialRules": [
+    {
+      "name": "Bulky",
+      "value": "6"
+    },
+    {
+      "name": "Explodes",
+      "value": "5+"
+    },
+    {
+      "name": "Implacable Advance"
+    },
+    {
+      "name": "Hatred",
+      "value": "Word Bearers"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Allegiance",
+      "value": "Loyalist"
+    },
+    {
+      "category": "Faction",
+      "value": "Ultramarines"
+    },
+    {
+      "category": "Custom",
+      "value": "Smokescreen"
+    }
+  ],
+  "unitType": "Walker",
+  "unitSubTypes": [
+    "Unique"
+  ]
+}

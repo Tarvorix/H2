@@ -1,0 +1,229 @@
+{
+  "id": "gorgon-terminator-squad",
+  "name": "Gorgon Terminator Squad",
+  "titles": "Gorgon Terminator Squad",
+  "lore": "The Gorgon pattern of Tactical Dreadnought Armour was one of a number of on-going attempts by Ferrus Manus and his cadre of Iron Fathers to ref ne and augment the various patterns of Terminator armour employed by the Legiones Astartes forces, though by the time of the Primarch’s death, a full issue to his Legion was never approved. One of the most extreme technological examples of the Iron Hands’ innovation, this prototype required bonding to its wearer. In battle this ensured superior mobility and reaction speed, without sacrificing resilience.",
+  "basePoints": 200,
+  "battlefieldRole": "Heavy Assault",
+  "modelDefinitions": [
+    {
+      "name": "Gorgon Hammerbearer",
+      "baseSizeMM": 40,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 7,
+        "WS": 4,
+        "BS": 4,
+        "S": 4,
+        "T": 5,
+        "W": 2,
+        "I": 4,
+        "A": 3,
+        "LD": 8,
+        "CL": 8,
+        "WP": 9,
+        "IN": 8,
+        "SAV": 2,
+        "INV": 5
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Gorgon Terminator",
+      "baseSizeMM": 40,
+      "countInBase": 4,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 4,
+        "BS": 4,
+        "S": 4,
+        "T": 5,
+        "W": 2,
+        "I": 4,
+        "A": 3,
+        "LD": 8,
+        "CL": 7,
+        "WP": 9,
+        "IN": 7,
+        "SAV": 2,
+        "INV": 5
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 5,
+  "maxModels": 10,
+  "pointsPerAdditionalModel": 35,
+  "defaultWargear": [
+    "thunder-hammer-gorgon-hammerbearer-only",
+    "artificer-power-axe-gorgon-terminator-only",
+    "combi-bolter",
+    "gorgon-pattern-terminator-armour",
+    "grenade-harness-gorgon-hammerbearer-only"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "Any Gorgon Terminator in this Unit may have its artificer power axe exchanged for one of the following:",
+      "removes": [
+        "artificer-power-axe"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Lightning claw +5 Points per Model",
+      "adds": [
+        "lightning-claw"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Power fist +10 Points per Model",
+      "adds": [
+        "power-fist"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Chainfist +10 Points per Model",
+      "adds": [
+        "chainfist"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "Any Gorgon Terminator in this Unit may have its artificer power axe and combi-bolter exchanged for one pair of lightning claws for +10 Points per Model.",
+      "removes": [
+        "artificer-power-axe-and-combi-bolter"
+      ],
+      "adds": [
+        "pair-of-lightning-claws-for-10-points-per-model"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its combi-bolter exchanged for one item from the Legion Combi-weapons list.",
+      "removes": [
+        "combi-bolter"
+      ],
+      "adds": [
+        "item-from-the-legion-combi-weapons-list"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "For every three Models in this Unit, one Gorgon Terminator in this Unit may have its combi-bolter exchanged for one of the following:",
+      "removes": [
+        "combi-bolter"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Heavy flamer +5 Points per Model",
+      "adds": [
+        "heavy-flamer"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Graviton gun +10 Points per Model",
+      "adds": [
+        "graviton-gun"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Graviton shredder +15 Points per Model",
+      "adds": [
+        "graviton-shredder"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Plasma blaster +10 Points per Model",
+      "adds": [
+        "plasma-blaster"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Reaper autocannon +15 Points per Model",
+      "adds": [
+        "reaper-autocannon"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "One Gorgon Terminator in this Unit may have one vexilla selected for it for +10 Points.",
+      "adds": [
+        "one-vexilla-selected-for-it"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Bulky",
+      "value": "2"
+    },
+    {
+      "name": "Implacable Advance"
+    },
+    {
+      "name": "Feel No Pain",
+      "value": "5+"
+    },
+    {
+      "name": "Vanguard",
+      "value": "3"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Faction",
+      "value": "Iron Hands"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Sergeant",
+    "Heavy"
+  ]
+}

@@ -5,6 +5,7 @@
 
 import type {
   Allegiance,
+  ArmyFaction,
   LegionFaction,
   BattlefieldRole,
   DetachmentType,
@@ -74,9 +75,11 @@ export interface ArmyList {
   /** Total points used */
   totalPoints: number;
   /** Primary faction */
-  faction: LegionFaction;
+  faction: ArmyFaction;
   /** Allegiance */
   allegiance: Allegiance;
+  /** Faction doctrine payload (if any) */
+  doctrine?: ArmyDoctrine;
   /** Rite of War (if any) */
   riteOfWar?: string;
   /** Detachments */
@@ -96,9 +99,13 @@ export interface ArmyListDetachment {
   /** Detachment type */
   type: DetachmentType;
   /** Faction */
-  faction: LegionFaction;
+  faction: ArmyFaction;
+  /** Parent detachment for linked detachment rules (Auxiliary/Apex inheritance, etc.) */
+  parentDetachmentId?: string;
   /** Units in this detachment */
   units: ArmyListUnit[];
+  /** Doctrine payload selected specifically for this detachment */
+  doctrine?: ArmyDoctrine;
 }
 
 /**
@@ -117,7 +124,35 @@ export interface ArmyListUnit {
   totalPoints: number;
   /** Which Force Org slot this fills */
   battlefieldRole: BattlefieldRole;
+  /** Original legion lineage for faction-mixing rules (e.g. Shattered Legions). */
+  originLegion?: LegionFaction;
 }
+
+export interface BlackshieldsDoctrine {
+  kind: 'blackshields';
+  /**
+   * Oath IDs selected for this detachment. Primary detachment usually has 2,
+   * Allied usually has 1, and linked Auxiliary/Apex detachments inherit.
+   */
+  oathIds: string[];
+  /** Optional legion selected for Panoply of Old and similar oath effects. */
+  selectedLegionForArmoury?: LegionFaction;
+}
+
+export interface ShatteredLegionsDoctrine {
+  kind: 'shatteredLegions';
+  /** Exactly 2 or 3 legions selected for Mutable Tactics. */
+  selectedLegions: LegionFaction[];
+  /**
+   * Prime slot links for Exemplars of the Legion:
+   * key = prime command unit id, value = added slot legion lineage.
+   */
+  exemplarLegionByPrimeUnitId?: Record<string, LegionFaction>;
+}
+
+export type ArmyDoctrine =
+  | BlackshieldsDoctrine
+  | ShatteredLegionsDoctrine;
 
 /**
  * A wargear option selection within an army list unit.
@@ -162,7 +197,7 @@ export interface LegionTactica {
   /** Unique identifier */
   id: string;
   /** Legion this applies to */
-  legion: LegionFaction;
+  legion: ArmyFaction;
   /** Display name */
   name: string;
   /** Description of the effects */
@@ -181,7 +216,7 @@ export interface AdvancedReaction {
   /** Display name */
   name: string;
   /** Which legion provides this reaction */
-  legion: LegionFaction;
+  legion: ArmyFaction;
   /** Which phase this reaction can be used in */
   triggerPhase: string;
   /** Description of the reaction */

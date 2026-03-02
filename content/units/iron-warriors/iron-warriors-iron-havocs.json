@@ -1,0 +1,151 @@
+{
+  "id": "iron-warriors-iron-havocs",
+  "name": "Iron Warriors Iron Havocs",
+  "titles": "Iron Warriors Iron Havocs",
+  "lore": "Amongst most of the Legiones Astartes, it is the principal role of heavy support squads to saturate an area or target enemy armour with heavy ordnance, obliterating an enemy through sheer weight of fire. The Iron Havocs of the IV th Legion, however, are an elite formation who have elevated these tactics almost to an art. These warriors are amongst the finest marksmen of the Iron Warriors, placing both shell and explosive blast with exacting precision as they advance alongside the Legion’s assault cadres. Iron Havocs are often attached to the leading elements of any assault, where their pinpoint accuracy allows them to scour clean fortifications and strongpoints of enemy infantry with murderous efficiency, clearing a path for the Iron Warriors infantry to sweep aside any survivors.",
+  "basePoints": 135,
+  "battlefieldRole": "Support",
+  "modelDefinitions": [
+    {
+      "name": "Iron Havoc Sergeant",
+      "baseSizeMM": 40,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 7,
+        "WS": 4,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 1,
+        "I": 4,
+        "A": 1,
+        "LD": 8,
+        "CL": 7,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 3,
+        "INV": null
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Iron Havoc",
+      "baseSizeMM": 40,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 4,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 1,
+        "I": 4,
+        "A": 1,
+        "LD": 7,
+        "CL": 7,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 3,
+        "INV": null
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 5,
+  "maxModels": 10,
+  "pointsPerAdditionalModel": 25,
+  "defaultWargear": [
+    "shrapnel-cannon",
+    "bolt-pistol",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [
+    {
+      "type": "add",
+      "description": "The Iron Havoc Sergeant in this Unit may have one item from the Legion Sergeant Melee Weapons list selected for it.",
+      "adds": [
+        "one-item-from-the-legion-sergeant-melee-weapons-list-selected-for-it"
+      ],
+      "pointsCost": 0,
+      "scope": "leader"
+    },
+    {
+      "type": "add",
+      "description": "One Iron Havoc in this Unit may have one vexilla selected for it for +10 Points.",
+      "adds": [
+        "one-vexilla-selected-for-it"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Up to two Iron Havocs in this Unit may each have one item from the Legion Equipment list selected for them.",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Every Model in this Unit may have its shrapnel cannon replaced with one of the following options. Every Model in this Unit must have the same option selected for it.",
+      "adds": [
+        "its-shrapnel-cannon-replaced-with-one-of-the-following-options-every-model-in-this-unit-must-have-the-same-option-selected-for-it"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Autocannon +10 Points per Model",
+      "adds": [
+        "autocannon"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Missile launcher +5 Points per Model",
+      "adds": [
+        "missile-launcher"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Lascannon +15 Points per Model",
+      "adds": [
+        "lascannon"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Support Unit",
+      "value": "1"
+    },
+    {
+      "name": "Ferrum Occularis"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Faction",
+      "value": "Iron Warriors"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Sergeant"
+  ]
+}

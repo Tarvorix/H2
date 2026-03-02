@@ -1,0 +1,157 @@
+{
+  "id": "praetorian-breacher-squad",
+  "name": "Praetorian Breacher Squad",
+  "titles": "Praetorian Breacher Squad",
+  "lore": "The elite Praetorian squads of the XIIIth Legion eschewed the ranged power of the bolter for lethality in close combat, carrying power weapons in its place. Often assigned to shipboard security and used in rapid counterboarding actions to repel enemy incursions, are the speartip of Legion Breacher formations acting as a resilient anvil upon which the enemy will be broken. Relentless in their advance and immovable in defence, the veteran Legionaries of the Praetorian Breacher squads have won countless laurels that honour their skill in close-quarters warfare.",
+  "basePoints": 115,
+  "battlefieldRole": "Heavy Assault",
+  "modelDefinitions": [
+    {
+      "name": "Praetorian Primus",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 7,
+        "WS": 4,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 2,
+        "I": 4,
+        "A": 2,
+        "LD": 8,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 3,
+        "INV": 5
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Praetorian",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 4,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 2,
+        "I": 4,
+        "A": 2,
+        "LD": 7,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 3,
+        "INV": 5
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 5,
+  "maxModels": 10,
+  "pointsPerAdditionalModel": 18,
+  "defaultWargear": [
+    "power-sword",
+    "bolt-pistol",
+    "boarding-shield",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [
+    {
+      "type": "upgrade",
+      "description": "Up to two Praetorians in this Unit may each have one item from the Legion Equipment list selected for them.",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "One Praetorian in this Unit may have one vexilla selected for it for +10 Points.",
+      "adds": [
+        "one-vexilla-selected-for-it"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "The Praetorian Primus in this Unit may have its bolt pistol exchanged for one plasma pistol for +10 Points.",
+      "removes": [
+        "bolt-pistol"
+      ],
+      "adds": [
+        "plasma-pistol"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "The Praetorian Primus in this Unit may exchange its power sword for one of the following:",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Power fist +15 Points",
+      "adds": [
+        "power-fist"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Legatine axe +5 Points",
+      "adds": [
+        "legatine-axe"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "For every five Models in this Unit, one Praetorian in this Unit may have its power sword exchanged for one Legatine axe for +5 Points per Model.",
+      "removes": [
+        "power-sword"
+      ],
+      "adds": [
+        "legatine-axe-for-5-points-per-model"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "None"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Faction",
+      "value": "Ultramarines"
+    },
+    {
+      "category": "Custom",
+      "value": "Shield"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Sergeant",
+    "Heavy"
+  ]
+}

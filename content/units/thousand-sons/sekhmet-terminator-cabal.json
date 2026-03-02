@@ -1,0 +1,220 @@
+{
+  "id": "sekhmet-terminator-cabal",
+  "name": "Sekhmet Terminator Cabal",
+  "titles": "Sekhmet Terminator Cabal",
+  "lore": "The Sekhmet were the elite of the Thousand Sons, and when called upon, served as Magnus’ bodyguard. Clad in Terminator armour, each was a high initiate of the Prosperine Mysteries who had sublimated their abilities and emotions into the highest levels of control. Marked by the jade scarab bonded to their armour, they stood apart from others of the Legion, a brotherhood within a brotherhood. Able to hold their minds at the highest levels of the Enumerations, the Scarab Occult fought with such unified precision and control that they seemed to some less warriors of flesh and blood but more automata sculpted in the form of men.",
+  "basePoints": 250,
+  "battlefieldRole": "Elites",
+  "modelDefinitions": [
+    {
+      "name": "Sekhmet Inceptor",
+      "baseSizeMM": 40,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 6,
+        "WS": 5,
+        "BS": 4,
+        "S": 4,
+        "T": 5,
+        "W": 2,
+        "I": 4,
+        "A": 3,
+        "LD": 9,
+        "CL": 9,
+        "WP": 8,
+        "IN": 7,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Sekhmet",
+      "baseSizeMM": 40,
+      "countInBase": 4,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 6,
+        "WS": 5,
+        "BS": 4,
+        "S": 4,
+        "T": 5,
+        "W": 2,
+        "I": 4,
+        "A": 3,
+        "LD": 8,
+        "CL": 8,
+        "WP": 8,
+        "IN": 7,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 5,
+  "maxModels": 10,
+  "pointsPerAdditionalModel": 45,
+  "defaultWargear": [
+    "combi-bolter",
+    "achea-pattern-force-sword"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its combi-bolter exchanged for one volkite charger for Free or for one item from the Legion Combi-weapons list.",
+      "removes": [
+        "combi-bolter"
+      ],
+      "adds": [
+        "volkite-charger-for-free-or-for-one-item-from-the-legion-combi-weapons-list"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its Achea pattern force sword exchanged for one of the following:",
+      "removes": [
+        "achea-pattern-force-sword"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Lightning claw +5 Points per Model",
+      "adds": [
+        "lightning-claw"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Power fist +10 Points per Model",
+      "adds": [
+        "power-fist"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Chainfist +10 Points per Model",
+      "adds": [
+        "chainfist"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Thunder hammer +10 Points per Model",
+      "adds": [
+        "thunder-hammer"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its combi-bolter and Achea pattern force sword exchanged for one pair of lightning claws for +10 Points.",
+      "removes": [
+        "combi-bolter-and-achea-pattern-force-sword"
+      ],
+      "adds": [
+        "pair-lightning-claws"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "For every five Models in this Unit, one Model may have its combi-bolter exchanged for one of the following:",
+      "removes": [
+        "combi-bolter"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "Heavy flamer +10 Points per Model",
+      "adds": [
+        "heavy-flamer"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Reaper autocannon +15 Points per Model",
+      "adds": [
+        "reaper-autocannon"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Plasma blaster +10 Points per Model",
+      "adds": [
+        "plasma-blaster"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "The Sekhment Inceptor in this Unit may have one grenade harness selected for it for +5 Points.",
+      "adds": [
+        "one-grenade-harness-selected-for-it"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Bulky",
+      "value": "2"
+    },
+    {
+      "name": "Implacable Advance"
+    },
+    {
+      "name": "Slow and Purposeful"
+    },
+    {
+      "name": "Vanguard",
+      "value": "3"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Faction",
+      "value": "Thousand Sons"
+    },
+    {
+      "category": "Custom",
+      "value": "Psyker"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Sergeant",
+    "Heavy"
+  ]
+}

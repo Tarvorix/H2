@@ -130,6 +130,19 @@ export enum LegionFaction {
   AlphaLegion = 'Alpha Legion',
 }
 
+/**
+ * Non-legion factions built from supplemental army rules.
+ */
+export enum SpecialFaction {
+  Blackshields = 'Blackshields',
+  ShatteredLegions = 'Shattered Legions',
+}
+
+/**
+ * Any playable army faction.
+ */
+export type ArmyFaction = LegionFaction | SpecialFaction;
+
 // ─── Tactical Statuses ────────────────────────────────────────────────────────
 
 /**

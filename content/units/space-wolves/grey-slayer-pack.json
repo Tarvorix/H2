@@ -1,0 +1,287 @@
+{
+  "id": "grey-slayer-pack",
+  "name": "Grey Slayer Pack",
+  "titles": "Grey Slayer Pack",
+  "lore": "Whereas the Terran style tactical squads, decreasingly evident in the VIth Legion’s order of battle, were disciplined cogs in an intricate machine of war, the Grey Slayers were, in effect, compact individual warbands of Space Marines, all but autonomous in their own right in the field: fluid, sure-footed and largely exempt from the reliance on direct commands from above. They were expected to deal with myriad challenges on their own if needs be and, above all, to close with the enemy on their own terms, to seek and destroy.",
+  "basePoints": 145,
+  "battlefieldRole": "Troops",
+  "modelDefinitions": [
+    {
+      "name": "Huscarl",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 7,
+        "WS": 4,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 1,
+        "I": 4,
+        "A": 2,
+        "LD": 8,
+        "CL": 7,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 3,
+        "INV": null
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Grey Slayer",
+      "baseSizeMM": 32,
+      "countInBase": 9,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 4,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 1,
+        "I": 4,
+        "A": 2,
+        "LD": 7,
+        "CL": 7,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 3,
+        "INV": null
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 10,
+  "maxModels": 20,
+  "pointsPerAdditionalModel": 12,
+  "defaultWargear": [
+    "bolt-pistol",
+    "fenrisian-axe",
+    "combat-shield",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its combat shield exchanged for a bolter for Free.",
+      "removes": [
+        "combat-shield"
+      ],
+      "adds": [
+        "a-bolter"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Any Model in this Unit with a bolter may have one of the following selected for it:",
+      "adds": [
+        "one-of-the-following-selected-for-it"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Bayonet +1 Point per Model",
+      "adds": [
+        "bayonet"
+      ],
+      "pointsCost": 1,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Chain bayonet +2 Points per Model",
+      "adds": [
+        "chain-bayonet"
+      ],
+      "pointsCost": 2,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "The Huscarl in this Unit may have its Fenrisian axe exchanged for one of the following:",
+      "removes": [
+        "fenrisian-axe"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Power fist +15 Points per Model",
+      "adds": [
+        "power-fist"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Lightning claw +10 Points per Model",
+      "adds": [
+        "lightning-claw"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Thunder hammer +15 Points per Model",
+      "adds": [
+        "thunder-hammer"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Frost blade (sword, axe or claw) +15 Points per Model",
+      "adds": [
+        "frost-blade-sword-axe-or-claw"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "The Huscarl in this Unit may have its bolt pistol exchanged for one item from the Legion Pistol list.",
+      "removes": [
+        "bolt-pistol"
+      ],
+      "adds": [
+        "item-from-the-legion-pistol-list"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "The Huscarl in this Unit may have its bolter , bolt pistol and Fenrisian axe exchanged for one pair of lightning claws for +15 Points.",
+      "removes": [
+        "bolter-bolt-pistol-and-fenrisian-axe"
+      ],
+      "adds": [
+        "pair-lightning-claws"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "The Huscarl in this Unit may be given melta bombs for +10 Points.",
+      "adds": [
+        "the-huscarl-in-this-unit-may-be-given-melta-bombs"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "Any Grey Slayer in this Unit may have its Fenrisian axe exchanged for one power weapon for +5 Points per Model.",
+      "removes": [
+        "fenrisian-axe"
+      ],
+      "adds": [
+        "power-weapon-for-5-points-per-model"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "For every five Models in the Unit, one Grey Slayer may have its Fenrisian axe exchanged for one of the following:",
+      "removes": [
+        "fenrisian-axe"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Heavy chainsword +2 Points per Model",
+      "adds": [
+        "heavy-chainsword"
+      ],
+      "pointsCost": 2,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Power fist +20 Points per Model",
+      "adds": [
+        "power-fist"
+      ],
+      "pointsCost": 20,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Lightning claw +10 Points per Model",
+      "adds": [
+        "lightning-claw"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "For every five Models in the Unit, one Grey Slayer may have its bolt pistol exchanged for one item from the Legion Pistol list.",
+      "removes": [
+        "bolt-pistol"
+      ],
+      "adds": [
+        "item-from-the-legion-pistol-list"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "One Grey Slayer in this Unit may have one vexilla selected for it for +10 Points.",
+      "adds": [
+        "one-vexilla-selected-for-it"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Up to two Grey Slayers in this Unit may each have one item from the Legion Equipment list selected for them.",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Line",
+      "value": "2"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Faction",
+      "value": "Space Wolves"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Sergeant"
+  ]
+}

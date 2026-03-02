@@ -3,7 +3,32 @@
 Last Updated: 2026-03-01
 
 ## Active Goal
-Execute `plan.md` phase-by-phase with continuously enforced MVP scope (3 legions, units from `HH_v2_units.md` only) while keeping build/test green.
+Remove all MVP hardwires and fully implement Blackshields + Shattered Legions as first-class, expansion-safe factions across `types`, `data`, `army-builder`, `engine`, `headless`, and `ui`, while preserving existing legion behavior.
+
+## GitHub Pages Deployment Plan (2026-03-01)
+- [x] Replace hardcoded UI build base path with GitHub Pages-safe base path logic.
+- [x] Add GitHub Actions workflow to build `@hh/ui` and deploy `packages/ui/dist` to Pages.
+- [x] Verify UI production build succeeds with `VITE_BASE_PATH=/<repo>/` locally.
+
+## De-Hardwire Plan (Blackshields + Shattered Legions - 2026-03-01)
+- [x] Phase A: Remove MVP runtime/tooling path (`mvp` generated profiles/whitelist/pathing) and use full profile runtime source.
+- [x] Phase B: Replace MVP APIs/callsites (`*Mvp*`, `*ForMvp`) with non-MVP expansion-safe APIs.
+- [x] Phase C: Add `SpecialFaction` + `ArmyFaction`, doctrine payloads, and schema v2 migration support.
+- [x] Phase D: Preserve detachment/faction/doctrine lineage through UI reducer, headless setup, and engine queries.
+- [x] Phase E: Implement Blackshields + Shattered doctrine data/rule payloads and doctrine-aware legality validation.
+- [x] Phase F: Implement doctrine selection UX and runtime integration for advanced reactions/gambits/tactica behavior.
+- [x] Remove all MVP naming/symbols from shipped runtime code and UI copy.
+- [x] Run full gates: `pnpm typecheck`, `pnpm test`, `pnpm content:build`, `pnpm content:validate`.
+
+## De-Hardwire Progress Log (2026-03-01)
+- Baseline checks:
+  - `pnpm typecheck`: PASS
+  - `pnpm test`: FAIL (2 pre-existing AI tests: shooting delegation in `basic-strategy.test.ts` and `tactical-strategy.test.ts`)
+- Implementation completion checks:
+  - `pnpm content:build`: PASS (303 unit profiles indexed)
+  - `pnpm content:validate`: PASS
+  - `pnpm typecheck`: PASS
+  - `pnpm test`: PASS (120 files, 3663 tests)
 
 ## Hotfix Plan (Deployment/Render Regression - 2026-02-28)
 - [x] Verify and fix deployment-to-playing model persistence so deployed units are visible on game start.

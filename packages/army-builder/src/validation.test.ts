@@ -3,7 +3,13 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { BattlefieldRole, DetachmentType, LegionFaction, Allegiance } from '@hh/types';
+import {
+  BattlefieldRole,
+  DetachmentType,
+  LegionFaction,
+  SpecialFaction,
+  Allegiance,
+} from '@hh/types';
 import type { ArmyList, ArmyListDetachment, ArmyListUnit } from '@hh/types';
 import {
   validateArmyList,
@@ -16,9 +22,10 @@ import {
   validateDetachmentCounts,
   validateUnitEligibility,
   validateWarlordDesignation,
-  validateArmyListForMvp,
-  validateMvpFactionScope,
+  validateArmyListWithDoctrine,
+  validatePlayableFactionScope,
   validateUnitProfilesExist,
+  validateDoctrineConstraints,
 } from './validation';
 
 // ─── Test Fixtures ───────────────────────────────────────────────────────────
@@ -497,17 +504,17 @@ describe('validateWarlordDesignation', () => {
   });
 });
 
-// ─── HHv2 MVP Scope Validators ──────────────────────────────────────────────
+// ─── Faction Scope Validators ────────────────────────────────────────────────
 
-describe('validateMvpFactionScope', () => {
-  it('errors when primary faction is outside MVP scope', () => {
-    const errors = validateMvpFactionScope(
-      makeValidArmy({ faction: LegionFaction.SonsOfHorus }),
+describe('validatePlayableFactionScope', () => {
+  it('errors when primary faction is not playable', () => {
+    const errors = validatePlayableFactionScope(
+      makeValidArmy({ faction: 'Not A Faction' as LegionFaction }),
     );
-    expect(errors.some((e) => e.message.includes('outside HHv2 MVP legion scope'))).toBe(true);
+    expect(errors.some((e) => e.message.includes('not currently playable'))).toBe(true);
   });
 
-  it('passes when army and detachments are in MVP scope', () => {
+  it('passes when army and detachments are playable', () => {
     const army = makeValidArmy({
       faction: LegionFaction.DarkAngels,
       detachments: [
@@ -516,7 +523,7 @@ describe('validateMvpFactionScope', () => {
         }),
       ],
     });
-    expect(validateMvpFactionScope(army)).toHaveLength(0);
+    expect(validatePlayableFactionScope(army)).toHaveLength(0);
   });
 });
 
@@ -557,10 +564,69 @@ describe('validateUnitProfilesExist', () => {
   });
 });
 
-describe('validateArmyListForMvp', () => {
-  it('returns invalid for non-MVP faction army', () => {
-    const result = validateArmyListForMvp(makeValidArmy());
-    expect(result.isValid).toBe(false);
-    expect(result.errors.some((e) => e.message.includes('MVP legion scope'))).toBe(true);
+describe('validateArmyListWithDoctrine', () => {
+  it('returns valid for a playable army with valid profiles', () => {
+    const army = makeValidArmy({
+      faction: LegionFaction.DarkAngels,
+      detachments: [
+        makeDetachment({
+          faction: LegionFaction.DarkAngels,
+          units: makeValidArmy().detachments[0].units,
+        }),
+      ],
+    });
+    const result = validateArmyListWithDoctrine(
+      army,
+    );
+    expect(result.isValid).toBe(true);
+  });
+});
+
+describe('validateDoctrineConstraints', () => {
+  it('requires 2 oaths on Blackshields primary detachment', () => {
+    const army = makeValidArmy({
+      faction: SpecialFaction.Blackshields,
+      doctrine: {
+        kind: 'blackshields',
+        oathIds: ['blackshields-eternal-vendetta', 'blackshields-panoply-of-old'],
+        selectedLegionForArmoury: LegionFaction.DarkAngels,
+      },
+      detachments: [
+        makeDetachment({
+          faction: SpecialFaction.Blackshields,
+          doctrine: {
+            kind: 'blackshields',
+            oathIds: ['blackshields-eternal-vendetta'],
+          },
+        }),
+      ],
+    });
+
+    const errors = validateDoctrineConstraints(army);
+    expect(errors.some((e) => e.message.includes('exactly 2 oath'))).toBe(true);
+  });
+
+  it('requires 2 or 3 selected legions for Shattered Legions', () => {
+    const army = makeValidArmy({
+      faction: SpecialFaction.ShatteredLegions,
+      doctrine: {
+        kind: 'shatteredLegions',
+        selectedLegions: [LegionFaction.DarkAngels],
+      },
+      detachments: [
+        makeDetachment({
+          faction: SpecialFaction.ShatteredLegions,
+          units: [
+            makeUnit({
+              profileId: 'tactical-squad',
+              originLegion: LegionFaction.DarkAngels,
+            }),
+          ],
+        }),
+      ],
+    });
+
+    const errors = validateDoctrineConstraints(army);
+    expect(errors.some((e) => e.message.includes('must select exactly 2 or 3 legions'))).toBe(true);
   });
 });

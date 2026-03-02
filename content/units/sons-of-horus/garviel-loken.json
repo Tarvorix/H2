@@ -1,0 +1,71 @@
+{
+  "id": "garviel-loken",
+  "name": "Garviel Loken",
+  "titles": "Garviel Loken Captain of the 10 th Company, New-moon of the Mournival, The Last Wolf of Luna",
+  "lore": "Garviel Loken was one of the senior captains of the Luna Wolves Legion (later the Sons of Horus) during the latter part of the Great Crusade. Highly regarded as a warrior and commander by both his brethren and his Primarch, admired for his cool head and intelligence as well as his record in battle, he was given the honour of induction into the Mournival, his Legion cadre of close advisors to their Primarch. However, after Horus’ fall on Davin, he was considered too loyal to the old way—the ideals of the Great Crusade and the Emperor, to be inducted into the dark conspiracy that was overtaking his beloved Legion. Assigned to lead the Sons of Horus contingent attack in the first wave, he rose swiftly to the mantle of leadership, he and his command casting aside the identity of the Sons of Horus, and proclaiming themselves Luna Wolves once more, extracting a heavy toll of dead on those they had once called brother.",
+  "basePoints": 175,
+  "battlefieldRole": "High Command",
+  "modelDefinitions": [
+    {
+      "name": "Garviel Loken",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 6,
+        "BS": 5,
+        "S": 4,
+        "T": 4,
+        "W": 4,
+        "I": 5,
+        "A": 5,
+        "LD": 10,
+        "CL": 9,
+        "WP": 9,
+        "IN": 9,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "paragon-blade",
+    "bolt-pistol",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [],
+  "specialRules": [
+    {
+      "name": "Hatred",
+      "value": "Traitor"
+    },
+    {
+      "name": "Born Survivor"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Allegiance",
+      "value": "Loyalist"
+    },
+    {
+      "category": "Faction",
+      "value": "Sons of Horus"
+    },
+    {
+      "category": "Custom",
+      "value": "Master of the Legion"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Unique",
+    "Command"
+  ]
+}

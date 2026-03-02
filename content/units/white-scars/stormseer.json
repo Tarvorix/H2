@@ -1,0 +1,116 @@
+{
+  "id": "stormseer",
+  "name": "Stormseer",
+  "titles": "Stormseer",
+  "lore": "The Stormseers were the Librarian-adepts fielded by the White Scars Legion, their training and role dictated by the superstitions of the Chogorian tribespeople. They came to act as advisers to the Khans, more akin to primitive shamans to outside eyes than to the ideal of the warrior-scholar of the more orthodox Legions. The Stormseer Council, or Zadyin Arga in their native Chogorian, also exhibited a respect for the Warp, recognising its dangers and limiting their interactions with it accordingly, though when their natural calm was broken, they were capable of unleashing the full power of the storm upon their foes.",
+  "basePoints": 95,
+  "battlefieldRole": "Command",
+  "modelDefinitions": [
+    {
+      "name": "Stormseer",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 5,
+        "BS": 5,
+        "S": 4,
+        "T": 4,
+        "W": 3,
+        "I": 5,
+        "A": 4,
+        "LD": 8,
+        "CL": 7,
+        "WP": 10,
+        "IN": 8,
+        "SAV": 2,
+        "INV": 5
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "force-staff",
+    "bolt-pistol",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "This Model may have its bolt pistol exchanged for one item from the Legion Pistol List.",
+      "removes": [
+        "bolt-pistol"
+      ],
+      "adds": [
+        "item-from-the-legion-pistol-list"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "This Model may have up to two of the following Psychic Disciplines selected for it:",
+      "adds": [
+        "up-to-two-of-the-following-psychic-disciplines-selected-for-it"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Stormcalling",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Divination",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Thaumaturgy",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Telepathy",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "None"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Faction",
+      "value": "White Scars"
+    },
+    {
+      "category": "Custom",
+      "value": "Psyker"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Command"
+  ]
+}

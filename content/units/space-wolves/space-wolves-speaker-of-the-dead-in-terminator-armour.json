@@ -1,0 +1,119 @@
+{
+  "id": "space-wolves-speaker-of-the-dead-in-terminator-armour",
+  "name": "Space Wolves Speaker of the Dead in Terminator Armour",
+  "titles": "Space Wolves Speaker of the Dead in Terminator Armour",
+  "lore": "Bestriding the battlefield in ornate Terminator plate replete with esoteric tokens and bearing snarling masks, Speakers of the Dead are able to traverse even the most dangerous environments, ensuring the traditions of the VI th Legion are maintained.",
+  "basePoints": 120,
+  "battlefieldRole": "Command",
+  "modelDefinitions": [
+    {
+      "name": "Cataphractii Speaker of the Dead",
+      "baseSizeMM": 40,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 6,
+        "WS": 5,
+        "BS": 4,
+        "S": 4,
+        "T": 5,
+        "W": 4,
+        "I": 5,
+        "A": 4,
+        "LD": 9,
+        "CL": 10,
+        "WP": 8,
+        "IN": 8,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Tartaros Speaker of the Dead",
+      "baseSizeMM": 40,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 5,
+        "BS": 4,
+        "S": 4,
+        "T": 5,
+        "W": 4,
+        "I": 5,
+        "A": 4,
+        "LD": 9,
+        "CL": 10,
+        "WP": 8,
+        "IN": 8,
+        "SAV": 2,
+        "INV": 5
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "combi-bolter",
+    "crozius-arcanum",
+    "narthecium"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "This Model may have its combi-bolter exchanged for one volkite charger for Free or for one item from the Legion Combi-weapons list.",
+      "removes": [
+        "combi-bolter"
+      ],
+      "adds": [
+        "volkite-charger-for-free-or-for-one-item-from-the-legion-combi-weapons-list"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Bulky",
+      "value": "2"
+    },
+    {
+      "name": "Implacable Advance"
+    },
+    {
+      "name": "Slow and Purposeful"
+    },
+    {
+      "name": "Medic (5+) Tartaros Speaker of the Dead"
+    },
+    {
+      "name": "Bulky",
+      "value": "2"
+    },
+    {
+      "name": "Implacable Advance"
+    },
+    {
+      "name": "Medic",
+      "value": "5+"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Faction",
+      "value": "Space Wolves"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Command",
+    "Heavy"
+  ]
+}

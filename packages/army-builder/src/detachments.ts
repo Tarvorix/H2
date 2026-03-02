@@ -9,12 +9,12 @@
 
 import type {
   ArmyListDetachment,
+  ArmyFaction,
   ArmyListUnit,
   ForceOrgSlot,
 } from '@hh/types';
 import {
   BattlefieldRole,
-  LegionFaction,
 } from '@hh/types';
 import type { DetachmentTemplate, DetachmentSlotTemplate } from '@hh/data';
 
@@ -30,7 +30,7 @@ import type { DetachmentTemplate, DetachmentSlotTemplate } from '@hh/data';
  */
 export function createDetachment(
   template: DetachmentTemplate,
-  faction: LegionFaction,
+  faction: ArmyFaction,
   detachmentId: string,
 ): ArmyListDetachment {
   return {

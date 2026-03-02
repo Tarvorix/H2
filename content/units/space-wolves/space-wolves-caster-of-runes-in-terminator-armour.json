@@ -1,0 +1,148 @@
+{
+  "id": "space-wolves-caster-of-runes-in-terminator-armour",
+  "name": "Space Wolves Caster of Runes in Terminator Armour",
+  "titles": "Space Wolves Caster of Runes in Terminator Armour",
+  "lore": "The Varagyr elite and other Terminator retinues of the VI th Legion are often seen accompanied by the Space Wolves Casters of Runes, for such figures are highly valued as advisors by the Legion’s Wolf Lords and even Leman Russ himself. Upon the field of battle, these psykers stride into the fray encased in the same hulking armour as their compatriots, inured to bolt and blade as they pour forth the power of the Warp.",
+  "basePoints": 130,
+  "battlefieldRole": "Command",
+  "modelDefinitions": [
+    {
+      "name": "Cataphractii Caster of Runes",
+      "baseSizeMM": 40,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 6,
+        "WS": 5,
+        "BS": 5,
+        "S": 4,
+        "T": 5,
+        "W": 2,
+        "I": 5,
+        "A": 4,
+        "LD": 8,
+        "CL": 7,
+        "WP": 10,
+        "IN": 8,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Tartaros Caster of Runes",
+      "baseSizeMM": 40,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 5,
+        "BS": 5,
+        "S": 4,
+        "T": 5,
+        "W": 2,
+        "I": 5,
+        "A": 4,
+        "LD": 8,
+        "CL": 7,
+        "WP": 10,
+        "IN": 8,
+        "SAV": 2,
+        "INV": 5
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "force-staff",
+    "frost-axe"
+  ],
+  "wargearOptions": [
+    {
+      "type": "add",
+      "description": "This Model may have up to two of the following Psychic Disciplines selected for it:",
+      "adds": [
+        "up-to-two-of-the-following-psychic-disciplines-selected-for-it"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "Runecasting +15 Points per Model",
+      "adds": [
+        "runecasting"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Biomancy +20 Points per Model",
+      "adds": [
+        "biomancy"
+      ],
+      "pointsCost": 20,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Divination +20 Points per Model",
+      "adds": [
+        "divination"
+      ],
+      "pointsCost": 20,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Telekinesis +20 Points per Model",
+      "adds": [
+        "telekinesis"
+      ],
+      "pointsCost": 20,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Bulky",
+      "value": "2"
+    },
+    {
+      "name": "Implacable Advance"
+    },
+    {
+      "name": "Slow and Purposeful Tartaros Caster of Runes"
+    },
+    {
+      "name": "Bulky",
+      "value": "2"
+    },
+    {
+      "name": "Implacable Advance"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Faction",
+      "value": "Space Wolves"
+    },
+    {
+      "category": "Custom",
+      "value": "Psyker"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Command",
+    "Heavy"
+  ]
+}

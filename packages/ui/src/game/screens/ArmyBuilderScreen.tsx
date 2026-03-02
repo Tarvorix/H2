@@ -10,10 +10,10 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { ArmyList, ArmyListUnit, UnitProfile, BattlefieldRole } from '@hh/types';
-import { LegionFaction, Allegiance, DetachmentType } from '@hh/types';
+import type { ArmyFaction, ArmyList, ArmyListUnit, UnitProfile, BattlefieldRole } from '@hh/types';
+import { Allegiance, DetachmentType, LegionFaction, SpecialFaction } from '@hh/types';
 import {
-  validateArmyListForMvp,
+  validateArmyListWithDoctrine,
   exportArmyList,
   importArmyList,
   createDetachment,
@@ -30,12 +30,14 @@ import {
   findDetachmentTemplate,
   getAuxiliaryTemplates,
   getApexTemplates,
-  isMvpLegion,
-  getMvpLegions,
+  getBlackshieldsOaths,
+  isPlayableFaction,
+  getPlayableFactions,
 } from '@hh/data';
 import { AIStrategyTier } from '@hh/ai';
 import type { GameUIState, GameUIAction } from '../types';
 import { FactionSelector } from './army-builder/FactionSelector';
+import { DoctrineSelector } from './army-builder/DoctrineSelector';
 import { DetachmentPanel } from './army-builder/DetachmentPanel';
 import { UnitBrowser } from './army-builder/UnitBrowser';
 import { UnitConfigPanel } from './army-builder/UnitConfigPanel';
@@ -59,9 +61,64 @@ function generateId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
-function getDefaultAlliedFaction(primaryFaction: LegionFaction): LegionFaction {
-  const candidates = getMvpLegions().filter((f) => f !== primaryFaction);
+function getDefaultAlliedFaction(primaryFaction: ArmyFaction): ArmyFaction {
+  const candidates = getPlayableFactions()
+    .filter(isLegionFaction)
+    .filter((f) => f !== primaryFaction);
   return candidates[0] ?? primaryFaction;
+}
+
+function isLegionFaction(value: ArmyFaction): value is LegionFaction {
+  return Object.values(LegionFaction).includes(value as LegionFaction);
+}
+
+function getDefaultArmyDoctrineForFaction(
+  faction: ArmyFaction,
+): ArmyList['doctrine'] | undefined {
+  if (faction === SpecialFaction.Blackshields) {
+    const oathIds = getBlackshieldsOaths().slice(0, 2).map((oath) => oath.id);
+    return {
+      kind: 'blackshields',
+      oathIds,
+      selectedLegionForArmoury: LegionFaction.DarkAngels,
+    };
+  }
+
+  if (faction === SpecialFaction.ShatteredLegions) {
+    return {
+      kind: 'shatteredLegions',
+      selectedLegions: [LegionFaction.DarkAngels, LegionFaction.IronHands],
+    };
+  }
+
+  return undefined;
+}
+
+function getDefaultDetachmentDoctrine(
+  faction: ArmyFaction,
+  detachmentType: DetachmentType,
+): ArmyList['detachments'][number]['doctrine'] | undefined {
+  if (faction !== SpecialFaction.Blackshields) {
+    return undefined;
+  }
+
+  const oathIds = getBlackshieldsOaths().map((oath) => oath.id);
+  if (detachmentType === DetachmentType.Primary) {
+    return {
+      kind: 'blackshields',
+      oathIds: oathIds.slice(0, 2),
+      selectedLegionForArmoury: LegionFaction.DarkAngels,
+    };
+  }
+
+  if (detachmentType === DetachmentType.Allied) {
+    return {
+      kind: 'blackshields',
+      oathIds: oathIds.slice(0, 1),
+    };
+  }
+
+  return undefined;
 }
 
 export function ArmyBuilderScreen({ state, dispatch, onReturnToMenu }: ArmyBuilderScreenProps) {
@@ -115,7 +172,7 @@ export function ArmyBuilderScreen({ state, dispatch, onReturnToMenu }: ArmyBuild
         templateId: ALLIED_DETACHMENT.id,
         label: `Allied: ${ALLIED_DETACHMENT.name}`,
         disabled: alliedCount >= 1,
-        disabledReason: alliedCount >= 1 ? 'Only one allied detachment is supported in MVP.' : undefined,
+        disabledReason: alliedCount >= 1 ? 'Only one allied detachment is currently supported.' : undefined,
       },
       {
         templateId: WARLORD_DETACHMENT.id,
@@ -184,24 +241,45 @@ export function ArmyBuilderScreen({ state, dispatch, onReturnToMenu }: ArmyBuild
   );
 
   const handleFactionChange = useCallback(
-    (faction: LegionFaction) => {
-      if (!isMvpLegion(faction)) {
-        window.alert(`Faction "${faction}" is outside HHv2 MVP scope.`);
+    (faction: ArmyFaction) => {
+      if (!isPlayableFaction(faction)) {
+        window.alert(`Faction "${faction}" is not currently playable.`);
         return;
       }
 
-      // Auto-create a Primary Crusade detachment if none exists
+      // Auto-create a Primary Crusade detachment if none exists.
       const existingDetachments = currentArmyList?.detachments ?? [];
-      const detachments = existingDetachments.length > 0
+      let detachments = existingDetachments.length > 0
         ? existingDetachments.map((d) => {
             const template = findDetachmentTemplate(d.detachmentTemplateId);
-            if (template?.type === DetachmentType.Allied) {
-              const nextFaction = d.faction === faction ? getDefaultAlliedFaction(faction) : d.faction;
+            if (template?.type === DetachmentType.Allied && isLegionFaction(faction)) {
+              const nextFaction = d.faction === faction
+                ? getDefaultAlliedFaction(faction)
+                : d.faction;
               return { ...d, faction: nextFaction };
             }
-            return { ...d, faction };
+            return { ...d, faction: isLegionFaction(faction) ? d.faction : faction };
           })
         : [createDetachment(CRUSADE_PRIMARY, faction, generateId('det-primary'))];
+
+      const defaultParentDetachmentId = detachments.find(
+        (d) => d.type === DetachmentType.Primary || d.type === DetachmentType.Allied,
+      )?.id;
+      detachments = detachments.map((detachment) => ({
+        ...detachment,
+        faction:
+          !isLegionFaction(faction)
+            ? faction
+            : detachment.type === DetachmentType.Allied
+              ? detachment.faction
+              : faction,
+        doctrine: getDefaultDetachmentDoctrine(faction, detachment.type),
+        parentDetachmentId:
+          faction === SpecialFaction.Blackshields &&
+          (detachment.type === DetachmentType.Auxiliary || detachment.type === DetachmentType.Apex)
+            ? (detachment.parentDetachmentId ?? defaultParentDetachmentId)
+            : undefined,
+      }));
 
       const armyList: ArmyList = {
         playerName: currentArmyList?.playerName ?? `Player ${editingPlayerIndex + 1}`,
@@ -210,7 +288,8 @@ export function ArmyBuilderScreen({ state, dispatch, onReturnToMenu }: ArmyBuild
         pointsLimit: currentArmyList?.pointsLimit ?? 2000,
         totalPoints: currentArmyList?.totalPoints ?? 0,
         detachments,
-        riteOfWar: currentArmyList?.riteOfWar,
+        doctrine: getDefaultArmyDoctrineForFaction(faction),
+        riteOfWar: isLegionFaction(faction) ? currentArmyList?.riteOfWar : undefined,
       };
       dispatch({ type: 'SET_ARMY_LIST', playerIndex: editingPlayerIndex, armyList });
     },
@@ -244,6 +323,13 @@ export function ArmyBuilderScreen({ state, dispatch, onReturnToMenu }: ArmyBuild
   const handleRiteChange = useCallback(
     (riteId: string | null) => {
       dispatch({ type: 'SET_RITE_OF_WAR', playerIndex: editingPlayerIndex, riteId });
+    },
+    [dispatch, editingPlayerIndex],
+  );
+
+  const handleDoctrineChange = useCallback(
+    (armyList: ArmyList) => {
+      dispatch({ type: 'SET_ARMY_LIST', playerIndex: editingPlayerIndex, armyList });
     },
     [dispatch, editingPlayerIndex],
   );
@@ -316,6 +402,11 @@ export function ArmyBuilderScreen({ state, dispatch, onReturnToMenu }: ArmyBuild
         })),
         totalPoints: config.totalPoints,
         battlefieldRole: selectedProfile.battlefieldRole,
+        originLegion:
+          currentArmyList.faction === SpecialFaction.ShatteredLegions &&
+          currentArmyList.doctrine?.kind === 'shatteredLegions'
+            ? currentArmyList.doctrine.selectedLegions[0]
+            : (isLegionFaction(detachment.faction) ? detachment.faction : undefined),
       };
 
       const updatedDetachment = {
@@ -366,14 +457,26 @@ export function ArmyBuilderScreen({ state, dispatch, onReturnToMenu }: ArmyBuild
     }
 
     const faction =
-      template.type === DetachmentType.Allied
+      template.type === DetachmentType.Allied && isLegionFaction(currentArmyList.faction)
         ? getDefaultAlliedFaction(currentArmyList.faction)
         : currentArmyList.faction;
 
-    const newDetachment = createDetachment(template, faction, generateId(`det-${template.id}`));
+    const defaultParentDetachmentId = currentArmyList.detachments.find(
+      (d) => d.type === DetachmentType.Primary || d.type === DetachmentType.Allied,
+    )?.id;
+    const newDetachment = {
+      ...createDetachment(template, faction, generateId(`det-${template.id}`)),
+      doctrine: getDefaultDetachmentDoctrine(currentArmyList.faction, template.type),
+      parentDetachmentId:
+        currentArmyList.faction === SpecialFaction.Blackshields &&
+        (template.type === DetachmentType.Auxiliary || template.type === DetachmentType.Apex)
+          ? defaultParentDetachmentId
+          : undefined,
+    };
     const updatedArmyList: ArmyList = {
       ...currentArmyList,
       detachments: [...currentArmyList.detachments, newDetachment],
+      doctrine: currentArmyList.doctrine ?? getDefaultArmyDoctrineForFaction(currentArmyList.faction),
     };
 
     dispatch({ type: 'SET_ARMY_LIST', playerIndex: editingPlayerIndex, armyList: updatedArmyList });
@@ -463,7 +566,7 @@ export function ArmyBuilderScreen({ state, dispatch, onReturnToMenu }: ArmyBuild
 
   const handleValidate = useCallback(() => {
     if (!currentArmyList) return;
-    const result = validateArmyListForMvp(currentArmyList);
+    const result = validateArmyListWithDoctrine(currentArmyList);
     dispatch({ type: 'SET_ARMY_VALIDATION', playerIndex: editingPlayerIndex, result });
   }, [dispatch, editingPlayerIndex, currentArmyList]);
 
@@ -482,7 +585,7 @@ export function ArmyBuilderScreen({ state, dispatch, onReturnToMenu }: ArmyBuild
     if (!json) return;
     const result = importArmyList(json);
     if (result.armyList) {
-      const validation = validateArmyListForMvp(result.armyList);
+      const validation = validateArmyListWithDoctrine(result.armyList);
       dispatch({ type: 'SET_ARMY_LIST', playerIndex: editingPlayerIndex, armyList: result.armyList });
       dispatch({ type: 'SET_ARMY_VALIDATION', playerIndex: editingPlayerIndex, result: validation });
       if (!validation.isValid) {
@@ -502,14 +605,14 @@ export function ArmyBuilderScreen({ state, dispatch, onReturnToMenu }: ArmyBuild
       return;
     }
 
-    const validation0 = validateArmyListForMvp(player0);
-    const validation1 = validateArmyListForMvp(player1);
+    const validation0 = validateArmyListWithDoctrine(player0);
+    const validation1 = validateArmyListWithDoctrine(player1);
 
     dispatch({ type: 'SET_ARMY_VALIDATION', playerIndex: 0, result: validation0 });
     dispatch({ type: 'SET_ARMY_VALIDATION', playerIndex: 1, result: validation1 });
 
     if (!validation0.isValid || !validation1.isValid) {
-      window.alert('Cannot continue until both army lists are valid within HHv2 MVP scope.');
+      window.alert('Cannot continue until both army lists are valid.');
       return;
     }
 
@@ -596,6 +699,12 @@ export function ArmyBuilderScreen({ state, dispatch, onReturnToMenu }: ArmyBuild
           onPointsLimitChange={handlePointsLimitChange}
           onRiteChange={handleRiteChange}
         />
+        {currentArmyList && (
+          <DoctrineSelector
+            armyList={currentArmyList}
+            onArmyListChange={handleDoctrineChange}
+          />
+        )}
       </div>
 
       <div className="army-builder-content">

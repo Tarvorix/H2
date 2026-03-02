@@ -1,0 +1,96 @@
+{
+  "id": "qin-xa",
+  "name": "Qin Xa",
+  "titles": "Qin Xa Master of the Keshig, Chosen of the Khagan",
+  "lore": "An exceptional warrior even before he became a White Scar, Qin Xa mastered the art of the hunt at a young age and brought such skills to bear by the Primarch’s side during the Great Crusade and the Horus Heresy that was to follow. Though few outside of the Legion have spoken of Qin Xa’s prowess, it is often described within the records of the Legion that he took to the battlefield as a force of nature, with a fury and strength behind his aggression that, while apparently barbaric, was tempered by a keen intelligence and an innate sense for the ebb and flow of battle.",
+  "basePoints": 220,
+  "battlefieldRole": "High Command",
+  "modelDefinitions": [
+    {
+      "name": "Qin Xa",
+      "baseSizeMM": 40,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 6,
+        "BS": 4,
+        "S": 4,
+        "T": 5,
+        "W": 4,
+        "I": 5,
+        "A": 5,
+        "LD": 10,
+        "CL": 9,
+        "WP": 9,
+        "IN": 9,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "the-tails-of-the-dragon"
+  ],
+  "wargearOptions": [],
+  "specialRules": [
+    {
+      "name": "Bulky",
+      "value": "2"
+    },
+    {
+      "name": "Chosen of the Khagan"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Allegiance",
+      "value": "Loyalist"
+    },
+    {
+      "category": "Faction",
+      "value": "White Scars"
+    },
+    {
+      "category": "Custom",
+      "value": "Master of the Legion"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Unique",
+    "Command"
+  ],
+  "dedicatedWeapons": [
+    {
+      "id": "qin-xa-the-tails-of-the-dragon",
+      "name": "The Tails of the Dragon",
+      "category": "melee",
+      "profile": {
+        "initiativeModifier": "I",
+        "attacksModifier": "A",
+        "strengthModifier": {
+          "op": "add",
+          "value": 1
+        },
+        "ap": 2,
+        "damage": 1,
+        "specialRules": [
+          {
+            "name": "Critical Hit",
+            "value": "5+"
+          },
+          {
+            "name": "Precision",
+            "value": "3+"
+          }
+        ],
+        "traits": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,124 @@
+{
+  "id": "imperial-fists-huscarl-terminator-retinue",
+  "name": "Imperial Fists Huscarl Terminator Retinue",
+  "titles": "0-1 Imperial Fists Huscarl Terminator Retinue",
+  "lore": "One of a number of Huscarl formations that provide close protection to eminent members of the Imperial Fists, including Rogal Dorn himself, Huscarl Terminators utilise the most resilient equipment available, taking to the field clad in Cataphractii Terminator plate and bearing vast storm shields. Trusting in this almost inviolate wargear, these Huscarls form a nigh impenetrable wall between their charge and the foe, laying their lives on the line to ensure their safety and striking down any who seek to threaten those under their protection.",
+  "basePoints": 275,
+  "battlefieldRole": "Retinue",
+  "modelDefinitions": [
+    {
+      "name": "Huscarl Terminator Sergeant",
+      "baseSizeMM": 40,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 6,
+        "WS": 5,
+        "BS": 4,
+        "S": 4,
+        "T": 5,
+        "W": 2,
+        "I": 4,
+        "A": 3,
+        "LD": 9,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Huscarl Terminator",
+      "baseSizeMM": 40,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 6,
+        "WS": 5,
+        "BS": 4,
+        "S": 4,
+        "T": 5,
+        "W": 2,
+        "I": 4,
+        "A": 3,
+        "LD": 8,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 5,
+  "maxModels": 10,
+  "pointsPerAdditionalModel": 50,
+  "defaultWargear": [
+    "power-weapon",
+    "vigil-pattern-storm-shield"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its power weapon exchanged for one Solarite power gauntlet for +10 Points per Model.",
+      "removes": [
+        "power-weapon"
+      ],
+      "adds": [
+        "solarite-power-gauntlet-for-10-points-per-model"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "The Huscarl-master may have one grenade harness selected for it for +5 Points.",
+      "adds": [
+        "one-grenade-harness-selected-for-it"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Bulky",
+      "value": "2"
+    },
+    {
+      "name": "Implacable Advance"
+    },
+    {
+      "name": "Slow and Purposeful"
+    },
+    {
+      "name": "Eternal Warrior",
+      "value": "1"
+    },
+    {
+      "name": "Deep Strike"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Faction",
+      "value": "Imperial Fists"
+    },
+    {
+      "category": "Custom",
+      "value": "Shield"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Sergeant",
+    "Heavy"
+  ]
+}

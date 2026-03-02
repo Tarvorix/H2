@@ -33,7 +33,7 @@ export {
 // Army Validation
 export {
   validateArmyList,
-  validateArmyListForMvp,
+  validateArmyListWithDoctrine,
   validatePrimaryDetachment,
   validatePointsLimit,
   validateLordOfWarCap,
@@ -43,8 +43,9 @@ export {
   validateDetachmentCounts,
   validateUnitEligibility,
   validateWarlordDesignation,
-  validateMvpFactionScope,
+  validatePlayableFactionScope,
   validateUnitProfilesExist,
+  validateDoctrineConstraints,
 } from './validation';
 
 // Rite of War Enforcement

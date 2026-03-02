@@ -1,0 +1,109 @@
+{
+  "id": "sevatar",
+  "name": "Sevatar",
+  "titles": "Sevatar First Captain of the Night Lords, The Prince of Crows, and Master of the Atramentar",
+  "lore": "Sevatar is said to hold the dark honour of being the first Traitor to utter the words “Death to the false Emperor\". As arrogant as he is gifted, Sevatar is a ruthless, even dishonourable, combatant. This demeanour is carried through to his appearance, which is contrived to inspire fear in all who look upon him. His midnight-blue power armour is wreathed in flayed flesh and his helm is wrought in the form of a leering skull. Beneath that deathly visage lies not just the soul of a murderer but one gifted with latent, if repressed, psychic powers which, although unwelcome, serve to increase Sevatar’s already fearsome capabilities.",
+  "basePoints": 220,
+  "battlefieldRole": "High Command",
+  "modelDefinitions": [
+    {
+      "name": "Sevatar",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 7,
+        "BS": 5,
+        "S": 4,
+        "T": 4,
+        "W": 4,
+        "I": 5,
+        "A": 5,
+        "LD": 10,
+        "CL": 9,
+        "WP": 8,
+        "IN": 8,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "night-s-whisper",
+    "bolt-pistol",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [],
+  "specialRules": [
+    {
+      "name": "Precision",
+      "value": "4+"
+    },
+    {
+      "name": "Fear",
+      "value": "2"
+    },
+    {
+      "name": "Dirty Fighter"
+    },
+    {
+      "name": "Dark Dreams"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Allegiance",
+      "value": "Traitor"
+    },
+    {
+      "category": "Faction",
+      "value": "Night Lords"
+    },
+    {
+      "category": "Custom",
+      "value": "Master of the Legion"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Unique",
+    "Command"
+  ],
+  "dedicatedWeapons": [
+    {
+      "id": "sevatar-night-s-whisper",
+      "name": "Night’s Whisper",
+      "category": "melee",
+      "profile": {
+        "initiativeModifier": {
+          "op": "add",
+          "value": 1
+        },
+        "attacksModifier": "A",
+        "strengthModifier": {
+          "op": "add",
+          "value": 2
+        },
+        "ap": 2,
+        "damage": 1,
+        "specialRules": [
+          {
+            "name": "Critical Hit",
+            "value": "6+"
+          },
+          {
+            "name": "Shred",
+            "value": "5+"
+          }
+        ],
+        "traits": []
+      }
+    }
+  ]
+}

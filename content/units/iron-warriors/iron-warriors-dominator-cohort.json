@@ -1,0 +1,142 @@
+{
+  "id": "iron-warriors-dominator-cohort",
+  "name": "Iron Warriors Dominator Cohort",
+  "titles": "0-1 Iron Warriors Dominator Cohort",
+  "lore": "Once proudly honoured as peerless among their brethren and granted the role of retinue to their gene-sire, those of the Tyranthikos, or Dominators, were relieved of their most prized duty following the events of the Battle of Phall. Perturabo’s unveiling of his ‘Iron Circle’ automata displaced the former bodyguard of the Primarch and sent the veteran warriors back into the front lines of the Warmaster’s campaign towards Terra. With their battle-honed experience replaced by the calculated logic engines of the Iron Circle and their honour besmirched, the Dominators became increasingly resentful.",
+  "basePoints": 255,
+  "battlefieldRole": "Retinue",
+  "modelDefinitions": [
+    {
+      "name": "Dominator",
+      "baseSizeMM": 32,
+      "countInBase": 5,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 6,
+        "WS": 5,
+        "BS": 4,
+        "S": 4,
+        "T": 5,
+        "W": 2,
+        "I": 4,
+        "A": 3,
+        "LD": 9,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 5,
+  "maxModels": 10,
+  "pointsPerAdditionalModel": 45,
+  "defaultWargear": [
+    "combi-bolter",
+    "thunder-hammer"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "For every five Models in the Unit, one Dominator may have its combi-bolter exchanged for one of the following:",
+      "removes": [
+        "combi-bolter"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Heavy flamer +10 Points per Model",
+      "adds": [
+        "heavy-flamer"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Multi-melta +15 Points per Model",
+      "adds": [
+        "multi-melta"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Reaper autocannon +15 Points per Model",
+      "adds": [
+        "reaper-autocannon"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its thunder hammer exchanged for one chainfist for +5 Points per Model.",
+      "removes": [
+        "thunder-hammer"
+      ],
+      "adds": [
+        "chainfist-for-5-points-per-model"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its combi-bolter exchanged for one volkite charger for Free or for one item from the Legion Combi-weapons list.",
+      "removes": [
+        "combi-bolter"
+      ],
+      "adds": [
+        "volkite-charger-for-free-or-for-one-item-from-the-legion-combi-weapons-list"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Bulky",
+      "value": "2"
+    },
+    {
+      "name": "Implacable Advance"
+    },
+    {
+      "name": "Slow and Purposeful"
+    },
+    {
+      "name": "Expendable",
+      "value": "1"
+    },
+    {
+      "name": "Hatred",
+      "value": "Automata"
+    },
+    {
+      "name": "Those Once Honoured"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Faction",
+      "value": "Iron Warriors"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Heavy"
+  ]
+}

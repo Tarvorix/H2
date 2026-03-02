@@ -1,0 +1,102 @@
+{
+  "id": "ahzek-ahriman",
+  "name": "Ahzek Ahriman",
+  "titles": "Ahzek Ahriman Chief Librarian of the Thousand Sons, Arch-magister of the Corvidae, The Enduring Son",
+  "lore": "Ahriman was the first and last Chief Librarian of the Thousand Sons. Possessed of profound psychic strength and a deep intelligence, he rose to prominence during his Legion’s darkest days, and after the reunification of his Legion with their Primarch, he became Magnus’ foremost pupil and his chief lieutenant. The master of the warrior mystics of the Corvidae Cult, he was also a capable fighter and astute field commander, seasoned by over almost two centuries of warfare. In battle, Ahriman was often the linchpin of his Legion, foreseeing the actions of enemies and formulating intricate strategies to create a path to victory.",
+  "basePoints": 185,
+  "battlefieldRole": "High Command",
+  "modelDefinitions": [
+    {
+      "name": "Ahzek Ahriman",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 6,
+        "BS": 5,
+        "S": 4,
+        "T": 4,
+        "W": 4,
+        "I": 5,
+        "A": 5,
+        "LD": 10,
+        "CL": 9,
+        "WP": 9,
+        "IN": 9,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "the-corvidaean-sceptre",
+    "bolt-pistol",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [],
+  "specialRules": [
+    {
+      "name": "Arch-magister of the Corvidae"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Allegiance",
+      "value": "Traitor"
+    },
+    {
+      "category": "Faction",
+      "value": "Thousand Sons"
+    },
+    {
+      "category": "Custom",
+      "value": "Psyker"
+    },
+    {
+      "category": "Custom",
+      "value": "Master of the Legion"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Unique",
+    "Command"
+  ],
+  "dedicatedWeapons": [
+    {
+      "id": "ahzek-ahriman-the-corvidaean-sceptre",
+      "name": "The Corvidaean Sceptre",
+      "category": "melee",
+      "profile": {
+        "initiativeModifier": {
+          "op": "add",
+          "value": 1
+        },
+        "attacksModifier": "A",
+        "strengthModifier": {
+          "op": "add",
+          "value": 1
+        },
+        "ap": 2,
+        "damage": 1,
+        "specialRules": [
+          {
+            "name": "Force",
+            "value": "D"
+          },
+          {
+            "name": "Critical Hit",
+            "value": "6+"
+          }
+        ],
+        "traits": []
+      }
+    }
+  ]
+}

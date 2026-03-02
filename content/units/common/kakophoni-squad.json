@@ -1,0 +1,153 @@
+{
+  "id": "kakophoni-squad",
+  "name": "Kakophoni Squad",
+  "titles": "Kakophoni Squad",
+  "lore": "After the treachery at Isstvan III, a terrible force took hold of the Emperor’s Children and for many the fall was swift and terrible to behold. One of the first malignant tools made manifest were the strange and experimental psycho-sonic weapons that would come to be known as the ‘Kakophoni’; savagely powerful hut also dangerously unpredictable. On Isstvan V, the first of these weapons were unleashed by Emperor’s Children who had already begun to degenerate in response to the canker of warp-taint to which they had been exposed, a corruption that would accelerate at a frightening rate over the course of the Horus Heresy.",
+  "basePoints": 150,
+  "battlefieldRole": "Support",
+  "modelDefinitions": [
+    {
+      "name": "Orchestrator",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 7,
+        "WS": 4,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 1,
+        "I": 4,
+        "A": 1,
+        "LD": 10,
+        "CL": 9,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 3,
+        "INV": null
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Chora",
+      "baseSizeMM": 32,
+      "countInBase": 4,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 4,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 1,
+        "I": 4,
+        "A": 1,
+        "LD": 9,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 3,
+        "INV": null
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 5,
+  "maxModels": 10,
+  "pointsPerAdditionalModel": 25,
+  "defaultWargear": [
+    "the-cacophony",
+    "sonic-shriekers",
+    "bolt-pistol",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [
+    {
+      "type": "add",
+      "description": "The Orchestrator in this Unit may have one of the following selected for it:",
+      "adds": [
+        "one-of-the-following-selected-for-it"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Chainsword +2 Points",
+      "adds": [
+        "chainsword"
+      ],
+      "pointsCost": 2,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Power weapon +10 Points",
+      "adds": [
+        "power-weapon"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Power fist +15 Points",
+      "adds": [
+        "power-fist"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "None"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Allegiance",
+      "value": "Traitor"
+    },
+    {
+      "category": "Custom",
+      "value": "Emperor’s Children"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Sergeant"
+  ],
+  "dedicatedWeapons": [
+    {
+      "id": "kakophoni-squad-the-cacophony",
+      "name": "The Cacophony",
+      "category": "ranged",
+      "profile": {
+        "range": 36,
+        "hasTemplate": false,
+        "firepower": 3,
+        "rangedStrength": 6,
+        "ap": 5,
+        "damage": 1,
+        "specialRules": [
+          {
+            "name": "Overload",
+            "value": "1"
+          },
+          {
+            "name": "Stun",
+            "value": "2"
+          },
+          {
+            "name": "Critical Hit",
+            "value": "6+"
+          }
+        ],
+        "traits": []
+      }
+    }
+  ]
+}

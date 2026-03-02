@@ -6,12 +6,14 @@
  */
 
 import type { UnitProfile } from '@hh/types';
-import { BattlefieldRole, LegionFaction } from '@hh/types';
-import { MVP_UNIT_PROFILES } from './generated/mvp-unit-profiles';
+import { LegionFaction, SpecialFaction } from '@hh/types';
+import type { ArmyFaction } from '@hh/types';
+import { BattlefieldRole } from '@hh/types';
+import { ALL_UNIT_PROFILES } from './generated/unit-profiles';
 
 // ─── Registry State (auto-initialized at module load) ───────────────────────
 
-const _allProfiles: UnitProfile[] = MVP_UNIT_PROFILES;
+const _allProfiles: UnitProfile[] = ALL_UNIT_PROFILES;
 
 const _profileById: Map<string, UnitProfile> = new Map();
 const _profilesByRole: Map<BattlefieldRole, UnitProfile[]> = new Map();
@@ -54,7 +56,24 @@ export function getProfilesByRole(role: BattlefieldRole): UnitProfile[] {
  * A profile belongs to a faction if it has a matching Faction trait,
  * or if it has a "Legiones Astartes" trait (generic units available to all legions).
  */
-export function getProfilesByFaction(faction: LegionFaction): UnitProfile[] {
+export function getProfilesByFaction(faction: ArmyFaction): UnitProfile[] {
+  const legionFactions = new Set(Object.values(LegionFaction));
+
+  if (faction === SpecialFaction.Blackshields) {
+    // Blackshields can only use non-legion-specific profiles.
+    return _allProfiles.filter((profile) => {
+      const factionTraits = profile.traits
+        .filter((t) => t.category === 'Faction')
+        .map((t) => t.value);
+      return factionTraits.every((value) => !legionFactions.has(value as LegionFaction));
+    });
+  }
+
+  if (faction === SpecialFaction.ShatteredLegions) {
+    // Shattered Legions can draw from any legion profile; selected legions are validated later.
+    return [..._allProfiles];
+  }
+
   return _allProfiles.filter(profile => {
     const hasFactionTrait = profile.traits.some(
       t => t.category === 'Faction' && (t.value === faction || t.value === 'Legiones Astartes')
@@ -69,7 +88,7 @@ export function getProfilesByFaction(faction: LegionFaction): UnitProfile[] {
  * Get profiles filtered by both faction and battlefield role.
  */
 export function getProfilesByFactionAndRole(
-  faction: LegionFaction,
+  faction: ArmyFaction,
   role: BattlefieldRole,
 ): UnitProfile[] {
   return getProfilesByFaction(faction).filter(p => p.battlefieldRole === role);

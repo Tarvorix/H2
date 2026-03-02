@@ -1,0 +1,125 @@
+{
+  "id": "esoterist-in-terminator-armour",
+  "name": "Esoterist in Terminator Armour",
+  "titles": "Esoterist in Terminator Armour",
+  "lore": "The forbidden lore which distinguished the Esoterists from their orthodox Librarian peers often originated among the close confederates of certain Traitor Primarchs, resulting in a number of practitioners being drawn from elite Terminator cadres. In contrast, the Esoterist cadres of Loyalist Legions were often forced to don Terminator armour simply as a means of survival in the face of the horrifying warp entities against which they were pitted. USING THIS UNIT: This Unit counts as an Esoterist Unit for the purposes of selecting the Daemonic Manifestation Auxiliary Detachment.",
+  "basePoints": 125,
+  "battlefieldRole": "Command",
+  "modelDefinitions": [
+    {
+      "name": "Cataphractii Esoterist",
+      "baseSizeMM": 40,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 6,
+        "WS": 5,
+        "BS": 5,
+        "S": 4,
+        "T": 5,
+        "W": 4,
+        "I": 5,
+        "A": 4,
+        "LD": 7,
+        "CL": 8,
+        "WP": 10,
+        "IN": 8,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Tartaros Esoterist",
+      "baseSizeMM": 40,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 5,
+        "BS": 5,
+        "S": 4,
+        "T": 5,
+        "W": 4,
+        "I": 5,
+        "A": 4,
+        "LD": 7,
+        "CL": 8,
+        "WP": 10,
+        "IN": 8,
+        "SAV": 2,
+        "INV": 5
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "combi-bolter",
+    "force-weapon"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "This Model may have its combi-bolter exchanged for one volkite charger for Free or for one item from the Legion Combi-weapons list.",
+      "removes": [
+        "combi-bolter"
+      ],
+      "adds": [
+        "volkite-charger-for-free-or-for-one-item-from-the-legion-combi-weapons-list"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Anathemata Discipline"
+    },
+    {
+      "name": "Bulky",
+      "value": "2"
+    },
+    {
+      "name": "Implacable Advance"
+    },
+    {
+      "name": "Slow and Purposeful Tartaros Esoterist"
+    },
+    {
+      "name": "Anathemata Discipline"
+    },
+    {
+      "name": "Bulky",
+      "value": "2"
+    },
+    {
+      "name": "Implacable Advance"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    },
+    {
+      "category": "Custom",
+      "value": "Psyker"
+    },
+    {
+      "category": "Custom",
+      "value": "Anathemata"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Command",
+    "Heavy"
+  ]
+}

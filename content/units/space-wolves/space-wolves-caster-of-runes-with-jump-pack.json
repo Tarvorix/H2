@@ -1,0 +1,130 @@
+{
+  "id": "space-wolves-caster-of-runes-with-jump-pack",
+  "name": "Space Wolves Caster of Runes with Jump Pack",
+  "titles": "Space Wolves Caster of Runes with Jump Pack",
+  "lore": "Advisors and sages to the commanders of the VI th Legion, the Casters of Runes take to the field of battle in whatever configuration the warriors of Fenris demand, in many cases donning jump packs alongside more aggressive Space Wolves leaders to help curb any foolhardy impulses such figures might entertain. This panoply also grants these warrior-mystics significant manoeuvrability in the invocation of their psychic powers, allowing them to descend from the skies at the heart of warp-conjured blizzards.",
+  "basePoints": 140,
+  "battlefieldRole": "Command",
+  "modelDefinitions": [
+    {
+      "name": "Caster of Runes with Jump Pack",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 12,
+        "WS": 5,
+        "BS": 5,
+        "S": 4,
+        "T": 4,
+        "W": 3,
+        "I": 5,
+        "A": 4,
+        "LD": 8,
+        "CL": 7,
+        "WP": 10,
+        "IN": 8,
+        "SAV": 2,
+        "INV": 5
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "force-staff",
+    "frost-axe",
+    "bolt-pistol",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "This Model may have its bolt pistol exchanged for one item from the Legion Pistol list.",
+      "removes": [
+        "bolt-pistol"
+      ],
+      "adds": [
+        "item-from-the-legion-pistol-list"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "This Model may have up to two of the following Psychic Disciplines selected for it:",
+      "adds": [
+        "up-to-two-of-the-following-psychic-disciplines-selected-for-it"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "Runecasting +15 Points per Model",
+      "adds": [
+        "runecasting"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Biomancy +20 Points per Model",
+      "adds": [
+        "biomancy"
+      ],
+      "pointsCost": 20,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Divination +20 Points per Model",
+      "adds": [
+        "divination"
+      ],
+      "pointsCost": 20,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Telekinesis +20 Points per Model",
+      "adds": [
+        "telekinesis"
+      ],
+      "pointsCost": 20,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Bulky",
+      "value": "2"
+    },
+    {
+      "name": "Deep Strike"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Faction",
+      "value": "Space Wolves"
+    },
+    {
+      "category": "Custom",
+      "value": "Psyker"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Command",
+    "Antigrav"
+  ]
+}

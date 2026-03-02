@@ -1,0 +1,138 @@
+{
+  "id": "iron-father",
+  "name": "Iron Father",
+  "titles": "Iron Father",
+  "lore": "Taking traditions from the techno-shamanic orders of Medusa, the Iron Fathers were gifted war-smiths - though, unlike their brethren in the Salamanders Legion, they cared little for aesthetics and sought only brutal efficiency in their works. Within the Xth Legion, the Iron Fathers sat outside of the Legion command structure, their wisdom leveraged in an advisory role, or utilised to mediate disputes over operational command between elements from different Clans. Following the massacre at Isstvan V however, many would lead battlegroups directly where required, their martial fury equal to their technological skill.",
+  "basePoints": 175,
+  "battlefieldRole": "High Command",
+  "modelDefinitions": [
+    {
+      "name": "Iron Father",
+      "baseSizeMM": 40,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 6,
+        "WS": 6,
+        "BS": 5,
+        "S": 4,
+        "T": 5,
+        "W": 5,
+        "I": 5,
+        "A": 5,
+        "LD": 10,
+        "CL": 9,
+        "WP": 9,
+        "IN": 10,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "artificer-power-axe",
+    "volkite-charger",
+    "servo-arm",
+    "augury-scanner",
+    "cortex-controller"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "This Model may have its volkite charger exchanged for one item from the Legion Combi-weapon list.",
+      "removes": [
+        "volkite-charger"
+      ],
+      "adds": [
+        "item-from-the-legion-combi-weapon-list"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "exchange",
+      "description": "This Model may have its artificer power axe exchanged for one of the following:",
+      "removes": [
+        "artificer-power-axe"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "Thunder hammer +10 Points",
+      "adds": [
+        "thunder-hammer"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Paragon blade +15 Points",
+      "adds": [
+        "paragon-blade"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "This Model may have one cyber-familiar selected for it for +10 Points.",
+      "adds": [
+        "one-cyber-familiar-selected-for-it"
+      ],
+      "pointsCost": 10,
+      "scope": "one-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Bulky",
+      "value": "2"
+    },
+    {
+      "name": "Battlesmith",
+      "value": "2"
+    },
+    {
+      "name": "Feel No Pain",
+      "value": "5+"
+    },
+    {
+      "name": "Implacable Advance"
+    },
+    {
+      "name": "Slow and Purposeful"
+    },
+    {
+      "name": "Lord of Automata"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Faction",
+      "value": "Iron Hands"
+    },
+    {
+      "category": "Custom",
+      "value": "Master of the Legion"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Command",
+    "Heavy"
+  ]
+}

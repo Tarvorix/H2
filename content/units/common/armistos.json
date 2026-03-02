@@ -1,0 +1,79 @@
+{
+  "id": "armistos",
+  "name": "Armistos",
+  "titles": "Armistos",
+  "lore": "Few individuals are capable of the unending operation of maintaining, categorising, requisitioning and dispensing the vast arsenals of an entire Space Marine Legion. Beyond this, many such officers of the Legions work to improve the weaponry at their disposal, running simulations and field tests of augmented weaponry. The skills required of an Armistos are much sought after by the Legion’s Master of Arsenal, particularly in those Legionaries of level temperament who are not apt to charge into the fray but are capable of supporting and supplying their battle brothers without desire for aggrandisement.",
+  "basePoints": 70,
+  "battlefieldRole": "Command",
+  "modelDefinitions": [
+    {
+      "name": "Armistos",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 4,
+        "BS": 5,
+        "S": 4,
+        "T": 4,
+        "W": 3,
+        "I": 5,
+        "A": 3,
+        "LD": 9,
+        "CL": 8,
+        "WP": 8,
+        "IN": 8,
+        "SAV": 2,
+        "INV": 5
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "bolt-pistol",
+    "frag-grenades",
+    "krak-grenades",
+    "augury-scanner"
+  ],
+  "wargearOptions": [
+    {
+      "type": "upgrade",
+      "description": "This Model must have one item from the Legion Heavy Weapons list selected for it.",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "This Model may have one item from the Legion Sergeant Melee Weapons list selected for it.",
+      "adds": [
+        "one-item-from-the-legion-sergeant-melee-weapons-list-selected-for-it"
+      ],
+      "pointsCost": 0,
+      "scope": "leader"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Implacable Advance"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Command"
+  ]
+}

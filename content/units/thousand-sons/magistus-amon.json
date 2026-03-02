@@ -1,0 +1,95 @@
+{
+  "id": "magistus-amon",
+  "name": "Magistus Amon",
+  "titles": "Magistus Amon The Hidden One, Captain of the Ninth Fellowship, Tutor of Magnus, Keeper of the Keys",
+  "lore": "It was said of Amon that he had served as Magnus’ tutor once, before the coming of the Emperor to Prospero, though the student soon outstripped the master in all matters. If true then it is likely that he survived the conversion process to Legiones Astartes as an adult, perhaps aided by the Crimson King’s direct intervention, and emerged both as a potent warrior and powerful psyker. Master of his Legion’s intelligence gathering organisation, known as the ‘Hidden Ones’, Amon’s fate was to see him survive the Battle of Prospero an embittered and wounded figure, who became increasingly isolated from his one-time peers and master.",
+  "basePoints": 185,
+  "battlefieldRole": "High Command",
+  "modelDefinitions": [
+    {
+      "name": "Magistus Amon",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 6,
+        "BS": 5,
+        "S": 4,
+        "T": 4,
+        "W": 4,
+        "I": 5,
+        "A": 5,
+        "LD": 10,
+        "CL": 9,
+        "WP": 9,
+        "IN": 9,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "the-reliquary-of-dust",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [],
+  "specialRules": [
+    {
+      "name": "Infiltrate",
+      "value": "9"
+    },
+    {
+      "name": "Magister of Dust"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Allegiance",
+      "value": "Traitor"
+    },
+    {
+      "category": "Faction",
+      "value": "Thousand Sons"
+    },
+    {
+      "category": "Custom",
+      "value": "Psyker"
+    },
+    {
+      "category": "Custom",
+      "value": "Master of the Legion"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Unique",
+    "Command"
+  ],
+  "dedicatedWeapons": [
+    {
+      "id": "magistus-amon-the-reliquary-of-dust",
+      "name": "The Reliquary of Dust",
+      "category": "melee",
+      "profile": {
+        "initiativeModifier": "I",
+        "attacksModifier": "A",
+        "strengthModifier": "S",
+        "ap": 2,
+        "damage": 1,
+        "specialRules": [
+          {
+            "name": "Poisoned",
+            "value": "2+"
+          }
+        ],
+        "traits": []
+      }
+    }
+  ]
+}

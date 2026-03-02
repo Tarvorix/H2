@@ -1,0 +1,219 @@
+{
+  "id": "space-wolves-mounted-caster-of-runes",
+  "name": "Space Wolves Mounted Caster of Runes",
+  "titles": "Space Wolves Mounted Caster of Runes",
+  "lore": "While the Casters of Runes are valued as sages and moderating influences among their Legion, this does not mean they have any less ardour for battle than their kin, and many will ride to war alongside the Space Wolves’ fast attack elements mounted on bikes and jetbikes, rapidly closing with the foe to deliver ruin both mundane and sorcerous in nature.",
+  "basePoints": 150,
+  "battlefieldRole": "Command",
+  "modelDefinitions": [
+    {
+      "name": "Outrider Caster of Runes",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 14,
+        "WS": 5,
+        "BS": 5,
+        "S": 4,
+        "T": 4,
+        "W": 4,
+        "I": 5,
+        "A": 4,
+        "LD": 8,
+        "CL": 8,
+        "WP": 10,
+        "IN": 7,
+        "SAV": 2,
+        "INV": 5
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Caster of Runes on Scimitar Jetbike",
+      "baseSizeMM": 60,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 16,
+        "WS": 5,
+        "BS": 5,
+        "S": 4,
+        "T": 4,
+        "W": 4,
+        "I": 5,
+        "A": 4,
+        "LD": 8,
+        "CL": 8,
+        "WP": 10,
+        "IN": 8,
+        "SAV": 2,
+        "INV": 5
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "twin-bolter-outrider-caster-of-runes-only",
+    "heavy-bolter-caster-of-runes-on-scimitar-jetbike-only",
+    "force-staff",
+    "frost-axe",
+    "bolt-pistol",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "This Model may have its bolt pistol exchanged for one item from the Legion Pistol list.",
+      "removes": [
+        "bolt-pistol"
+      ],
+      "adds": [
+        "item-from-the-legion-pistol-list"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "This Model may have up to two of the following Psychic Disciplines selected for it:",
+      "adds": [
+        "up-to-two-of-the-following-psychic-disciplines-selected-for-it"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "Runecasting +15 Points per Model",
+      "adds": [
+        "runecasting"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Biomancy +20 Points per Model",
+      "adds": [
+        "biomancy"
+      ],
+      "pointsCost": 20,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Divination +20 Points per Model",
+      "adds": [
+        "divination"
+      ],
+      "pointsCost": 20,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Telekinesis +20 Points per Model",
+      "adds": [
+        "telekinesis"
+      ],
+      "pointsCost": 20,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "This Outrider Caster of Runes may have its twin bolter exchanged for one twin plasma gun for +15 Points.",
+      "removes": [
+        "twin-bolter"
+      ],
+      "adds": [
+        "twin-plasma-gun"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "This Caster of Runes on Scimitar Jetbike may have its heavy bolter exchanged for one of the following:",
+      "removes": [
+        "heavy-bolter"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Volkite culverin +10 Points",
+      "adds": [
+        "volkite-culverin"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Plasma cannon +15 Points",
+      "adds": [
+        "plasma-cannon"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Multi-melta +20 Points",
+      "adds": [
+        "multi-melta"
+      ],
+      "pointsCost": 20,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Bulky",
+      "value": "2"
+    },
+    {
+      "name": "Firestorm"
+    },
+    {
+      "name": "Implacable Advance"
+    },
+    {
+      "name": "Outflank Caster of Runes on Scimitar Jetbike"
+    },
+    {
+      "name": "Bulky",
+      "value": "3"
+    },
+    {
+      "name": "Deep Strike"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Faction",
+      "value": "Space Wolves"
+    },
+    {
+      "category": "Custom",
+      "value": "Psyker"
+    }
+  ],
+  "unitType": "Cavalry",
+  "unitSubTypes": [
+    "Command",
+    "Antigrav"
+  ]
+}

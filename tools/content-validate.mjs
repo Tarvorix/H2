@@ -14,9 +14,28 @@ const INDEXES_DIR = path.join(CONTENT_DIR, 'indexes');
 
 const UNIT_INDEX_PATH = path.join(INDEXES_DIR, 'unit-index.json');
 const LEGION_INDEX_PATH = path.join(INDEXES_DIR, 'legion-index.json');
-const WHITELIST_PATH = path.join(INDEXES_DIR, 'mvp-whitelist.json');
+const WHITELIST_PATH = path.join(INDEXES_DIR, 'unit-whitelist.json');
 
-const LEGIONS = ['world-eaters', 'alpha-legion', 'dark-angels'];
+const LEGIONS = [
+  'dark-angels',
+  'emperors-children',
+  'iron-warriors',
+  'white-scars',
+  'space-wolves',
+  'imperial-fists',
+  'night-lords',
+  'blood-angels',
+  'iron-hands',
+  'world-eaters',
+  'ultramarines',
+  'death-guard',
+  'thousand-sons',
+  'sons-of-horus',
+  'word-bearers',
+  'salamanders',
+  'raven-guard',
+  'alpha-legion',
+];
 
 function fail(message, errors) {
   errors.push(message);
@@ -62,11 +81,11 @@ function main() {
   const whitelist = readJson(WHITELIST_PATH);
 
   if (!Array.isArray(whitelist)) {
-    fail('mvp-whitelist.json must be an array of unit ids.', errors);
+    fail('unit-whitelist.json must be an array of unit ids.', errors);
   }
 
   if (!unique(whitelist)) {
-    fail('mvp-whitelist.json contains duplicate unit ids.', errors);
+    fail('unit-whitelist.json contains duplicate unit ids.', errors);
   }
 
   const whitelistSet = new Set(whitelist);
@@ -101,6 +120,13 @@ function main() {
 
     if (!Array.isArray(record.legionTags)) {
       fail(`unit-index entry for "${unitId}" must include legionTags array.`, errors);
+      continue;
+    }
+
+    for (const tag of record.legionTags) {
+      if (!LEGIONS.includes(tag)) {
+        fail(`unit-index entry for "${unitId}" has unknown legion tag: ${tag}`, errors);
+      }
     }
   }
 
@@ -147,11 +173,7 @@ function main() {
     return tags.length === 0;
   });
 
-  const legionSpecific = {
-    'world-eaters': new Set(),
-    'alpha-legion': new Set(),
-    'dark-angels': new Set(),
-  };
+  const legionSpecific = Object.fromEntries(LEGIONS.map((legion) => [legion, new Set()]));
 
   for (const unitId of unitIndexIds) {
     const tags = Array.isArray(unitIndex[unitId]?.legionTags) ? unitIndex[unitId].legionTags : [];

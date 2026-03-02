@@ -1,0 +1,102 @@
+{
+  "id": "hibou-khan",
+  "name": "Hibou Khan",
+  "titles": "Hibou Khan The Outcast Khan, Sagyar Mazan, Seeker of Atonement",
+  "lore": "Born on Terra, Hibou Khan was resentful of Jaghatai and the increasing Chogorian influences among the Legion. Upon receiving news of the Warmaster’s rebellion, Hibou made the decision alongside several other Khans to abandon their Primarch and pledged his Brotherhood of the Dawn Sky to the Traitor cause. When this plot was foiled, Hibou Khan surrendered himself to the Great Khan’s judgement and was sentenced to be stripped of his honour as one of the Sagyar Mazan, seeking absolution only in the spilled blood of Traitors.",
+  "basePoints": 165,
+  "battlefieldRole": "Command",
+  "modelDefinitions": [
+    {
+      "name": "Hibou Khan",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 6,
+        "BS": 5,
+        "S": 4,
+        "T": 4,
+        "W": 3,
+        "I": 5,
+        "A": 4,
+        "LD": 10,
+        "CL": 8,
+        "WP": 8,
+        "IN": 8,
+        "SAV": 2,
+        "INV": 5
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "the-breath-of-the-storm",
+    "bolt-pistol",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [],
+  "specialRules": [
+    {
+      "name": "Officer of the Line",
+      "value": "2"
+    },
+    {
+      "name": "Seeker of Atonement"
+    },
+    {
+      "name": "Expendable",
+      "value": "2"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Allegiance",
+      "value": "Loyalist"
+    },
+    {
+      "category": "Faction",
+      "value": "White Scars"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Unique",
+    "Command"
+  ],
+  "dedicatedWeapons": [
+    {
+      "id": "hibou-khan-the-breath-of-the-storm",
+      "name": "The Breath of the Storm",
+      "category": "melee",
+      "profile": {
+        "initiativeModifier": {
+          "op": "add",
+          "value": 1
+        },
+        "attacksModifier": "A",
+        "strengthModifier": {
+          "op": "add",
+          "value": 2
+        },
+        "ap": 3,
+        "damage": 1,
+        "specialRules": [
+          {
+            "name": "Critical Hit",
+            "value": "6+"
+          },
+          {
+            "name": "Breaching",
+            "value": "4+"
+          }
+        ],
+        "traits": []
+      }
+    }
+  ]
+}

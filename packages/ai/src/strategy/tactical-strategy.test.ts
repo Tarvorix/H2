@@ -338,7 +338,7 @@ describe('TacticalStrategy.generateNextCommand — phase delegation', () => {
     const command = strategy.generateNextCommand(state, 0, context);
 
     expect(command).not.toBeNull();
-    expect(command!.type).toBe('declareShooting');
+    expect(command!.type).toBe('endSubPhase');
   });
 
   it('delegates to assault handler in Assault phase', () => {

@@ -1,0 +1,208 @@
+{
+  "id": "death-guard-mortus-poisoner-squad",
+  "name": "Death Guard Mortus Poisoner Squad",
+  "titles": "Death Guard Mortus Poisoner Squad",
+  "lore": "Within the Death Guard Legion there existed a cadre of Destroyers equipped with weapons even the Destroyers of other Legions would baulk at. Often used as an act of censure or punishment, to be assigned to a Mortus Poisoner Squad was a death sentence, the weapons they carried to war ensuring its members suffered a withering unavoidable demise. There were, however, those within this benighted brotherhood who embraced the role enthusiastically, seeking to close with their foes and dispense toxic death upon them with disturbingly little heed for their own longevity.",
+  "basePoints": 70,
+  "battlefieldRole": "Elites",
+  "modelDefinitions": [
+    {
+      "name": "Poison-master",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 7,
+        "WS": 4,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 1,
+        "I": 4,
+        "A": 2,
+        "LD": 8,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 3,
+        "INV": null
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Mortus Poisoner",
+      "baseSizeMM": 32,
+      "countInBase": 4,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 4,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 1,
+        "I": 4,
+        "A": 2,
+        "LD": 7,
+        "CL": 7,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 3,
+        "INV": null
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 5,
+  "maxModels": 15,
+  "pointsPerAdditionalModel": 12,
+  "defaultWargear": [
+    "bolter",
+    "bolt-pistol",
+    "rad-grenades",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [
+    {
+      "type": "add",
+      "description": "Any Model in this Unit may have one chainsword selected for it for +2 Points per Model.",
+      "adds": [
+        "one-chainsword-selected-for-it-for-2-points-per-model"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Any Model in this Unit with a bolter may have one of the following selected for it:",
+      "adds": [
+        "one-of-the-following-selected-for-it"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Bayonet +1 Point per Model",
+      "adds": [
+        "bayonet"
+      ],
+      "pointsCost": 1,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Chain bayonet +2 Points per Model",
+      "adds": [
+        "chain-bayonet"
+      ],
+      "pointsCost": 2,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its bolter exchanged for one flamer for Free or one alchem flamer for +2 Points per Model.",
+      "removes": [
+        "bolter"
+      ],
+      "adds": [
+        "flamer-for-free-or-one-alchem-flamer-for-2-points-per-model"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "For every five Models in this Unit, one Mortus Poisoner may have its bolter exchanged for one heavy alchem flamer for +10 Points per Model.",
+      "removes": [
+        "bolter"
+      ],
+      "adds": [
+        "heavy-alchem-flamer-for-10-points-per-model"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "One Mortus Poisoner in this Unit may have one vexilla selected for it for +10 Points.",
+      "adds": [
+        "one-vexilla-selected-for-it"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Up to two Mortus Poisoners in this Unit may each have one item from the Legion Equipment list selected for them.",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "The Poison-master in this Unit may have one of the following selected for it:",
+      "adds": [
+        "one-of-the-following-selected-for-it"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Power weapon +10 Points",
+      "adds": [
+        "power-weapon"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Power scythe +15 Points",
+      "adds": [
+        "power-scythe"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "The Poison-master may have phosphex bombs selected for it for +10 Points.",
+      "adds": [
+        "phosphex-bombs-selected-for-it"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "The Poison-master may have melta bombs selected for it for +10 Points.",
+      "adds": [
+        "melta-bombs-selected-for-it"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Bitter Duty"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Faction",
+      "value": "Death Guard"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Sergeant"
+  ]
+}

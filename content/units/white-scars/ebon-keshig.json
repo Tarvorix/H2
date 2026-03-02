@@ -1,0 +1,122 @@
+{
+  "id": "ebon-keshig",
+  "name": "Ebon Keshig",
+  "titles": "Ebon Keshig",
+  "lore": "Taking their name from the black ceramite of their armour, the Kharash served as a ritual post of atonement for breaches of honour within the White Scars. Deployed in the vanguard of high-intensity’ conflicts, the Kharash served to shield the more fragile contingents of the White Scars, atoning for their perceived sins not only through the pursuit of martial glory, but through the protection of their brothers. Those who survived their service were deemed to have proven themselves worthy in the eyes of the Legion, often returning to either their previous posts or sometimes to other roles fitting their new mien.",
+  "basePoints": 200,
+  "battlefieldRole": "Heavy Assault",
+  "modelDefinitions": [
+    {
+      "name": "Kharash",
+      "baseSizeMM": 40,
+      "countInBase": 5,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 4,
+        "BS": 4,
+        "S": 4,
+        "T": 5,
+        "W": 2,
+        "I": 4,
+        "A": 3,
+        "LD": 10,
+        "CL": 9,
+        "WP": 9,
+        "IN": 8,
+        "SAV": 2,
+        "INV": 5
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 5,
+  "maxModels": 10,
+  "pointsPerAdditionalModel": 35,
+  "defaultWargear": [
+    "power-glaive"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its power glaive exchanged for one of the following: Combi-bolter and power weapon +5 Points per Model",
+      "removes": [
+        "power-glaive"
+      ],
+      "adds": [
+        "of-the-following-combi-bolter-and-power-weapon-5-points-per-model"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Combi-bolter and power fist +10 Points per Model",
+      "adds": [
+        "combi-bolter-and-power-fist"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit which has had its power glaive exchanged for one combi-bolter and one power weapon , or combi-bolter and power fist , may have its combi-bolter exchanged for one volkite charger for Free or for one item from the Legion Combi-weapons list.",
+      "removes": [
+        "combi-bolter"
+      ],
+      "adds": [
+        "volkite-charger-for-free-or-for-one-item-from-the-legion-combi-weapons-list"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "One Model in this Unit may have one vexilla selected for it for +10 Points.",
+      "adds": [
+        "one-vexilla-selected-for-it"
+      ],
+      "pointsCost": 10,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "Any Model in this Unit may have one grenade harness selected for it for +5 Points.",
+      "adds": [
+        "one-grenade-harness-selected-for-it"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Bulky",
+      "value": "2"
+    },
+    {
+      "name": "Vanguard",
+      "value": "3"
+    },
+    {
+      "name": "Feel No Pain",
+      "value": "6+"
+    },
+    {
+      "name": "Expendable",
+      "value": "2"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Faction",
+      "value": "White Scars"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": []
+}

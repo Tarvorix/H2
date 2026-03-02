@@ -1,0 +1,133 @@
+{
+  "id": "jaghatai-khan",
+  "name": "Jaghatai Khan",
+  "titles": "Jaghatai Khan Primarch of the White Scars, The Warhawk, Master of the Ice-blue Heavens",
+  "lore": "Jaghatai Khan was the unexpected storm, a sudden and devastating gale that came and went as it pleased. Of all his brothers, he had found the Great Crusade most to his liking, an endless hunt in the dark places of the galaxy. As the Great Crusade raged across the galaxy, he had sat at its heart, always fighting and always on the move, laughing as he killed. Yet the Great Khan was no simple berserker, for in even the simplest task, he sought perfection through discipline. His was the quiet competence of a master, seeking no acclaim from others, but only the satisfaction to be found in a perfect stroke of the sword or a well-placed word. Among the Emperor’s Primarchs, the Khan was among the most reclusive, hound to the hunt and the glory of the chase rather than parade ground or strategium hall, and was oft overlooked by the eyes of history. He managed no great empire, nor wrote any great treatise of war, yet his actions guided the course of the Great Crusade with the quiet skill that was the hallmark of his Legion.",
+  "basePoints": 440,
+  "battlefieldRole": "Warlord",
+  "modelDefinitions": [
+    {
+      "name": "Jaghatai Khan",
+      "baseSizeMM": 40,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 8,
+        "WS": 7,
+        "BS": 6,
+        "S": 6,
+        "T": 6,
+        "W": 6,
+        "I": 7,
+        "A": 7,
+        "LD": 12,
+        "CL": 10,
+        "WP": 10,
+        "IN": 10,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "the-white-tiger-dao",
+    "storm-s-voice",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [],
+  "specialRules": [
+    {
+      "name": "Sire of the White Scars"
+    },
+    {
+      "name": "Bulky",
+      "value": "4"
+    },
+    {
+      "name": "Death by a Thousand Cuts"
+    },
+    {
+      "name": "Eternal Warrior",
+      "value": "2"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Allegiance",
+      "value": "Loyalist"
+    },
+    {
+      "category": "Faction",
+      "value": "White Scars"
+    },
+    {
+      "category": "Custom",
+      "value": "Master of the Legion"
+    }
+  ],
+  "unitType": "Paragon",
+  "unitSubTypes": [
+    "Unique"
+  ],
+  "dedicatedWeapons": [
+    {
+      "id": "jaghatai-khan-the-white-tiger-dao",
+      "name": "The White Tiger Dao",
+      "category": "melee",
+      "profile": {
+        "initiativeModifier": {
+          "op": "add",
+          "value": 2
+        },
+        "attacksModifier": "A",
+        "strengthModifier": "S",
+        "ap": 2,
+        "damage": 2,
+        "specialRules": [
+          {
+            "name": "Impact",
+            "value": "AM"
+          },
+          {
+            "name": "Duellist’s Edge",
+            "value": "1"
+          }
+        ],
+        "traits": []
+      }
+    },
+    {
+      "id": "jaghatai-khan-storm-s-voice",
+      "name": "Storm’s Voice",
+      "category": "ranged",
+      "profile": {
+        "range": 12,
+        "hasTemplate": false,
+        "firepower": 2,
+        "rangedStrength": 6,
+        "ap": 4,
+        "damage": 2,
+        "specialRules": [
+          {
+            "name": "Breaching",
+            "value": "5+"
+          },
+          {
+            "name": "Deflagrate",
+            "value": "6"
+          },
+          {
+            "name": "Stun",
+            "value": "1"
+          }
+        ],
+        "traits": []
+      }
+    }
+  ]
+}

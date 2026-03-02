@@ -1,0 +1,229 @@
+{
+  "id": "salamanders-sanctifier-squad",
+  "name": "Salamanders Sanctifier Squad",
+  "titles": "Salamanders Sanctifier Squad",
+  "lore": "One of several subdivisions that would come to largely replace the Destroyer Companies of the old XVIII th Legion, so-called ‘Sanctifier’ squads were temporary units composed of veteran Legionaries, outfitted with a variety of weapons which permitted a tactical flexibility beyond that of standard squad configurations. Employed where Vulkan would not conscience the deployment of his Legion’s remaining Destroyers – the ill-omened ‘Scoria’ xenocide cadre – Sanctifiers were specialised in pacification and containment operations, called upon to seek out and eliminate their foes amongst labyrinthine hives or cavernous starships.",
+  "basePoints": 90,
+  "battlefieldRole": "Support",
+  "modelDefinitions": [
+    {
+      "name": "Consecrator",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 7,
+        "WS": 5,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 2,
+        "I": 4,
+        "A": 2,
+        "LD": 8,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 3,
+        "INV": null
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Sanctifier",
+      "baseSizeMM": 32,
+      "countInBase": 4,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 5,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 2,
+        "I": 4,
+        "A": 2,
+        "LD": 8,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 3,
+        "INV": null
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 5,
+  "maxModels": 10,
+  "pointsPerAdditionalModel": 16,
+  "defaultWargear": [
+    "bolter",
+    "bolt-pistol",
+    "chainsword",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its bolter and bolt pistol exchanged for one of the following:",
+      "removes": [
+        "bolter-and-bolt-pistol"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Two bolt pistols Free",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Two volkite serpentas +5 Points per Model",
+      "adds": [
+        "two-volkite-serpentas"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Two hand flamers +10 Points per Model",
+      "adds": [
+        "two-hand-flamers"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "For every five Models in this Unit, one Sanctifier in this Unit may have its bolter exchanged for one obsidite rotor cannon for +10 Points.",
+      "removes": [
+        "bolter"
+      ],
+      "adds": [
+        "obsidite-rotor-cannon"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "For every five models in this Unit, one Sanctifier in this Unit may have its chainsword exchanged for one item from the Legion Sergeant Melee Weapons list.",
+      "removes": [
+        "chainsword"
+      ],
+      "adds": [
+        "item-from-the-legion-sergeant-melee-weapons-list"
+      ],
+      "pointsCost": 0,
+      "scope": "leader"
+    },
+    {
+      "type": "exchange",
+      "description": "The Consecrator in this Unit may have its bolter and bolt pistol exchanged for two forge-crafted hand flamers for +15 Points.",
+      "removes": [
+        "bolter-and-bolt-pistol"
+      ],
+      "adds": [
+        "two-forge-crafted-hand-flamers"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "The Consecrator in this Unit may have its chainsword exchanged for one item from the Legion Sergeant Melee Weapons list.",
+      "removes": [
+        "chainsword"
+      ],
+      "adds": [
+        "item-from-the-legion-sergeant-melee-weapons-list"
+      ],
+      "pointsCost": 0,
+      "scope": "leader"
+    },
+    {
+      "type": "add",
+      "description": "One Sanctifier in this Unit may have one vexilla selected for it for +10 Points.",
+      "adds": [
+        "one-vexilla-selected-for-it"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Up to two Sanctifiers in this Unit may have one item each from the Legion Equipment list selected for them.",
+      "adds": [
+        "one-item-each-from-the-legion-equipment-list-selected-for-them"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Every Model in the Unit may have melta bombs selected for them for +25 Points.",
+      "adds": [
+        "melta-bombs-selected-for-them"
+      ],
+      "pointsCost": 25,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Firestorm"
+    },
+    {
+      "name": "Vanguard",
+      "value": "3"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Faction",
+      "value": "Salamanders"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Sergeant"
+  ],
+  "dedicatedWeapons": [
+    {
+      "id": "salamanders-sanctifier-squad-slug-rounds",
+      "name": "- Slug rounds",
+      "category": "ranged",
+      "profile": {
+        "range": 24,
+        "hasTemplate": false,
+        "firepower": 3,
+        "rangedStrength": 3,
+        "ap": null,
+        "damage": 1,
+        "specialRules": [
+          {
+            "name": "Heavy",
+            "value": "FP"
+          },
+          {
+            "name": "Suppressive",
+            "value": "1"
+          }
+        ],
+        "traits": []
+      }
+    }
+  ]
+}

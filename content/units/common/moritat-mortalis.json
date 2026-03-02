@@ -1,0 +1,85 @@
+{
+  "id": "moritat-mortalis",
+  "name": "Moritat Mortalis",
+  "titles": "Moritat Mortalis",
+  "lore": "Lone killers unbound by the precepts of standard Legion doctrine, some Moritats eschew the mobility of jump packs to prowl the battlefield on foot, passing unnoticed at the fringes of combat until their chosen moment to strike. These so-called ‘Moritats Mortalis’ are also frequently seen in Zone Mortalis engagements, where they are unleashed into the depths of void craft and terrestrial catacombs to turn the close press of corridors and vaults to their advantage.",
+  "basePoints": 85,
+  "battlefieldRole": "Command",
+  "modelDefinitions": [
+    {
+      "name": "Moritat Mortalis",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 4,
+        "BS": 6,
+        "S": 4,
+        "T": 4,
+        "W": 3,
+        "I": 5,
+        "A": 3,
+        "LD": 8,
+        "CL": 9,
+        "WP": 8,
+        "IN": 8,
+        "SAV": 2,
+        "INV": 5
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "two-overcharged-volkite-serpentas",
+    "frag-grenades",
+    "krak-grenades",
+    "rad-grenades"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "This Model may have both its overcharged volkite serpentas exchanged for two overcharged plasma pistol s for +10 Points.",
+      "removes": [
+        "have-both-its-overcharged-volkite-serpentas"
+      ],
+      "adds": [
+        "two-overcharged-plasma-pistol-s"
+      ],
+      "pointsCost": 10,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "This Model may have melta bombs selected for it for +5 Points.",
+      "adds": [
+        "melta-bombs-selected-for-it"
+      ],
+      "pointsCost": 5,
+      "scope": "one-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Firestorm"
+    },
+    {
+      "name": "Bitter Duty"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": []
+}

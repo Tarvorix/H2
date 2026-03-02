@@ -7,21 +7,23 @@
 
 import type {
   ArmyList,
+  ArmyFaction,
 } from '@hh/types';
 import {
   Allegiance,
   DetachmentType,
   LegionFaction,
+  SpecialFaction,
 } from '@hh/types';
 
 // ─── Schema Version ──────────────────────────────────────────────────────────
 
 /** Current serialization schema version */
-export const ARMY_LIST_SCHEMA_VERSION = 1;
+export const ARMY_LIST_SCHEMA_VERSION = 2;
 
 // ─── Serialization Types ─────────────────────────────────────────────────────
 
-interface SerializedArmyList {
+interface SerializedArmyListV2 {
   schemaVersion: number;
   armyList: ArmyList;
 }
@@ -40,11 +42,91 @@ interface ImportResult {
  * @returns JSON string representation of the army list
  */
 export function exportArmyList(armyList: ArmyList): string {
-  const serialized: SerializedArmyList = {
+  const serialized: SerializedArmyListV2 = {
     schemaVersion: ARMY_LIST_SCHEMA_VERSION,
     armyList,
   };
   return JSON.stringify(serialized, null, 2);
+}
+
+function isArmyFaction(value: unknown): value is ArmyFaction {
+  if (typeof value !== 'string') return false;
+  return (
+    Object.values(LegionFaction).includes(value as LegionFaction) ||
+    Object.values(SpecialFaction).includes(value as SpecialFaction)
+  );
+}
+
+function inferParentDetachmentId(
+  detachments: Array<Record<string, unknown>>,
+  currentIndex: number,
+): string | undefined {
+  for (let i = currentIndex - 1; i >= 0; i--) {
+    const candidate = detachments[i];
+    const candidateType = candidate?.type;
+    const candidateId = candidate?.id;
+    if (typeof candidateId !== 'string' || typeof candidateType !== 'string') continue;
+    if (candidateType === DetachmentType.Primary || candidateType === DetachmentType.Allied) {
+      return candidateId;
+    }
+  }
+
+  const firstPrimary = detachments.find(
+    (det) => det?.type === DetachmentType.Primary && typeof det?.id === 'string',
+  );
+  return typeof firstPrimary?.id === 'string' ? firstPrimary.id : undefined;
+}
+
+function migrateArmyListV1ToV2(armyList: Record<string, unknown>): ArmyList {
+  const detachmentsRaw = Array.isArray(armyList.detachments)
+    ? (armyList.detachments as Array<Record<string, unknown>>)
+    : [];
+
+  const migratedDetachments = detachmentsRaw.map((detachment, index) => {
+    const type = detachment.type;
+    const parentDetachmentId =
+      detachment.parentDetachmentId === undefined
+        ? (type === DetachmentType.Auxiliary || type === DetachmentType.Apex
+            ? inferParentDetachmentId(detachmentsRaw, index)
+            : undefined)
+        : detachment.parentDetachmentId;
+
+    const unitsRaw = Array.isArray(detachment.units)
+      ? (detachment.units as Array<Record<string, unknown>>)
+      : [];
+
+    const units = unitsRaw.map((unit) => ({
+      ...unit,
+      originLegion:
+        unit.originLegion !== undefined
+          ? unit.originLegion
+          : (Object.values(LegionFaction).includes(detachment.faction as LegionFaction)
+              ? detachment.faction
+              : undefined),
+    }));
+
+    return {
+      ...detachment,
+      parentDetachmentId,
+      doctrine: detachment.doctrine ?? undefined,
+      units,
+    };
+  });
+
+  return {
+    playerName: String(armyList.playerName ?? ''),
+    pointsLimit: Number(armyList.pointsLimit ?? 0),
+    totalPoints: Number(armyList.totalPoints ?? 0),
+    faction: armyList.faction as ArmyList['faction'],
+    allegiance: armyList.allegiance as Allegiance,
+    doctrine: armyList.doctrine as ArmyList['doctrine'],
+    riteOfWar: typeof armyList.riteOfWar === 'string' ? armyList.riteOfWar : undefined,
+    detachments: migratedDetachments as ArmyList['detachments'],
+    warlordUnitId:
+      typeof armyList.warlordUnitId === 'string'
+        ? armyList.warlordUnitId
+        : undefined,
+  };
 }
 
 // ─── Import ──────────────────────────────────────────────────────────────────
@@ -91,8 +173,14 @@ export function importArmyList(json: string): ImportResult {
     };
   }
 
+  // Migrate v1 payloads deterministically before validation.
+  const candidateArmyList =
+    obj.schemaVersion === 1
+      ? migrateArmyListV1ToV2(obj.armyList as Record<string, unknown>)
+      : (obj.armyList as ArmyList);
+
   // Validate army list structure
-  const structureErrors = validateArmyListStructure(obj.armyList as Record<string, unknown>);
+  const structureErrors = validateArmyListStructure(candidateArmyList as unknown as Record<string, unknown>);
   if (structureErrors.length > 0) {
     return { armyList: null, errors: [...errors, ...structureErrors] };
   }
@@ -101,7 +189,7 @@ export function importArmyList(json: string): ImportResult {
     return { armyList: null, errors };
   }
 
-  return { armyList: obj.armyList as ArmyList, errors: [] };
+  return { armyList: candidateArmyList, errors: [] };
 }
 
 // ─── Structure Validation ────────────────────────────────────────────────────
@@ -122,7 +210,7 @@ export function validateArmyListStructure(obj: Record<string, unknown>): string[
   }
   if (typeof obj.faction !== 'string') {
     errors.push('Missing or invalid "faction" (expected string).');
-  } else if (!Object.values(LegionFaction).includes(obj.faction as LegionFaction)) {
+  } else if (!isArmyFaction(obj.faction)) {
     errors.push(`Invalid "faction" value: "${obj.faction}".`);
   }
   if (typeof obj.allegiance !== 'string') {
@@ -176,6 +264,8 @@ function validateDetachmentStructure(
   }
   if (typeof det.faction !== 'string') {
     errors.push(`${prefix}: Missing or invalid "faction" (expected string).`);
+  } else if (!isArmyFaction(det.faction)) {
+    errors.push(`${prefix}: Invalid "faction" value: "${det.faction}".`);
   }
 
   if (!Array.isArray(det.units)) {

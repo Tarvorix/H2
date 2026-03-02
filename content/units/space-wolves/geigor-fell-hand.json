@@ -1,0 +1,91 @@
+{
+  "id": "geigor-fell-hand",
+  "name": "Geigor Fell hand",
+  "titles": "Geigor Fell-hand Thegn of the Space Wolves, Commander of the Broken Claw",
+  "lore": "A prideful Thegn known for his fury, Geigor’s otherwise notably valiant record as a warrior was marred by a history which had suffered several reversals on the field of battle as a commander. The worst of these was alongside the Thousand Sons during the Great Crusade, a battle in which he believed that his Space Wolves had been betrayed by their erstwhile allies. It was a wound which festered in Geigor’s soul and, when the orders came for the Censure of Prospero, his voice was one of the loudest in the Legion’s council baying for the Thousand Sons’ slaughter.",
+  "basePoints": 105,
+  "battlefieldRole": "Command",
+  "modelDefinitions": [
+    {
+      "name": "Geigor Fell-Hand",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 5,
+        "BS": 5,
+        "S": 4,
+        "T": 4,
+        "W": 3,
+        "I": 5,
+        "A": 4,
+        "LD": 10,
+        "CL": 8,
+        "WP": 9,
+        "IN": 8,
+        "SAV": 2,
+        "INV": 5
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "bolter",
+    "bolt-pistol",
+    "the-fell-hand",
+    "frag-grenades",
+    "krak-grenades",
+    "hand-for-the-death-they-have-reaved-on-the-battlefield"
+  ],
+  "wargearOptions": [],
+  "specialRules": [
+    {
+      "name": "Officer of the Line",
+      "value": "2"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Allegiance",
+      "value": "Loyalist"
+    },
+    {
+      "category": "Faction",
+      "value": "Space Wolves"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Unique",
+    "Command"
+  ],
+  "dedicatedWeapons": [
+    {
+      "id": "geigor-fell-hand-the-fell-hand",
+      "name": "The Fell-Hand",
+      "category": "melee",
+      "profile": {
+        "initiativeModifier": "I",
+        "attacksModifier": "A",
+        "strengthModifier": "S",
+        "ap": 3,
+        "damage": 1,
+        "specialRules": [
+          {
+            "name": "Breaching",
+            "value": "4+"
+          },
+          {
+            "name": "Shred",
+            "value": "5+"
+          }
+        ],
+        "traits": []
+      }
+    }
+  ]
+}

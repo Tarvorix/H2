@@ -1,0 +1,304 @@
+{
+  "id": "thousand-sons-numerologist-cabal",
+  "name": "Thousand Sons Numerologist Cabal",
+  "titles": "0-1 Thousand Sons Numerologist Cabal",
+  "lore": "In the XV th Legion, responsibility for the maintenance of wargear, void ships and war machines lay with the Order of Ruin. High-ranking members of the Order were commonly referred to as Numerologists and, in addition to performing the role of Techmarines, they were also known for possessing considerable tactical acumen. Records note that XV th Legion battlegroups containing Numerologists could react to changes in tactical plans with fluid synchronicity, even when separated by hundreds of kilometres, a phenomena no doubt linked to the practise of powers that would eventually damn the Thousand Sons.",
+  "basePoints": 130,
+  "battlefieldRole": "Elites",
+  "modelDefinitions": [
+    {
+      "name": "Numerologist",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 7,
+        "WS": 5,
+        "BS": 5,
+        "S": 4,
+        "T": 4,
+        "W": 2,
+        "I": 5,
+        "A": 2,
+        "LD": 8,
+        "CL": 7,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 2,
+        "INV": null
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Life Ward",
+      "baseSizeMM": 32,
+      "countInBase": 4,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 4,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 1,
+        "I": 4,
+        "A": 2,
+        "LD": 7,
+        "CL": 7,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 3,
+        "INV": null
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 5,
+  "maxModels": 10,
+  "pointsPerAdditionalModel": 15,
+  "defaultWargear": [
+    "bolt-pistol",
+    "chainsword",
+    "frag-grenades",
+    "krak-grenades",
+    "servo-arm-numerologist-only"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "The Numerologist in this Unit may have its chainsword exchanged for one of the following:",
+      "removes": [
+        "chainsword"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Power axe +5 Points",
+      "adds": [
+        "power-axe"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Achea pattern force sword +10 Points",
+      "adds": [
+        "achea-pattern-force-sword"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Thunder hammer +15 Points",
+      "adds": [
+        "thunder-hammer"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "The Numerologist in this Unit may have its bolt pistol exchanged for one bolter for Free, for one item from the Legion Combi-weapons list or for one of the following:",
+      "removes": [
+        "bolt-pistol"
+      ],
+      "adds": [
+        "bolter-for-free-for-one-item-from-the-legion-combi-weapons-list-or-for-one-of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Volkite charger +5 Points",
+      "adds": [
+        "volkite-charger"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Plasma pistol +5 Points",
+      "adds": [
+        "plasma-pistol"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Flamer +5 Points",
+      "adds": [
+        "flamer"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Plasma gun +10 Points",
+      "adds": [
+        "plasma-gun"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Meltagun +15 Points",
+      "adds": [
+        "meltagun"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Graviton gun +15 Points",
+      "adds": [
+        "graviton-gun"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Æther-fire blaster +15 Points",
+      "adds": [
+        "ther-fire-blaster"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "The Numerologist in this Unit may have one cyber-familiar selected for it for +10 Points.",
+      "adds": [
+        "one-cyber-familiar-selected-for-it"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "One Life Ward may have its chainsword exchanged for one of the following:",
+      "removes": [
+        "chainsword"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Power weapon +10 Points",
+      "adds": [
+        "power-weapon"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Power fist +15 Points",
+      "adds": [
+        "power-fist"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "For every five Models in this Unit, one Life Ward in this Unit may have its bolt pistol exchanged for one of the following:",
+      "removes": [
+        "bolt-pistol"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Volkite caliver +5 Points per Model",
+      "adds": [
+        "volkite-caliver"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Rotor cannon +5 Points per Model",
+      "adds": [
+        "rotor-cannon"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "One Life Ward in this Unit may have one vexilla selected for it for +10 Points.",
+      "adds": [
+        "one-vexilla-selected-for-it"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Up to two Life Wards in this Unit may each have one item from the Legion Equipment list selected for them.",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Numerologist Order"
+    },
+    {
+      "name": "Battlesmith (2) Life Ward"
+    },
+    {
+      "name": "Life Wards"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Faction",
+      "value": "Thousand Sons"
+    },
+    {
+      "category": "Custom",
+      "value": "Psyker"
+    },
+    {
+      "category": "Custom",
+      "value": "Diviner (Numerologist only)"
+    },
+    {
+      "category": "Custom",
+      "value": "Telepath (Numerologist only)"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Sergeant"
+  ]
+}

@@ -1,0 +1,172 @@
+{
+  "id": "sons-of-horus-reaver-aggressor-squad",
+  "name": "Sons of Horus Reaver Aggressor Squad",
+  "titles": "Sons of Horus Reaver Aggressor Squad",
+  "lore": "An evolution of the Despoiler and Assault squads found in the order of battle of the Luna Wolves, the jump pack-equipped Reaver Aggressor squads in many ways epitomised the Sons of Horus’ way of warfare. Heavily influenced by the hit-and-run tactics of the seething and incessant gang warfare of Cthonia, Reaver Aggressor units specialised in lightning swift assaults which maimed and disabled a foe, eliminating leaders, mercilessly cutting down any who were weak or isolated, and sowing panic and disorder in any who remained. Of these, the Catulan Reavers were the most infamous during the early battles of the Horus Heresy, and were active at both Isstvan III and V, but there were many more.",
+  "basePoints": 165,
+  "battlefieldRole": "Heavy Assault",
+  "modelDefinitions": [
+    {
+      "name": "Reaver Chieftain with Jump Pack",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 12,
+        "WS": 5,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 2,
+        "I": 4,
+        "A": 3,
+        "LD": 9,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 3,
+        "INV": null
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Reaver with Jump Pack",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 12,
+        "WS": 5,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 2,
+        "I": 4,
+        "A": 3,
+        "LD": 8,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 3,
+        "INV": null
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 5,
+  "maxModels": 20,
+  "pointsPerAdditionalModel": 27,
+  "defaultWargear": [
+    "chainaxe",
+    "bolt-pistol",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its chainaxe exchanged for one chainsword for Free, or for one item from the Legion Sergeant Melee Weapons list.",
+      "removes": [
+        "chainaxe"
+      ],
+      "adds": [
+        "chainsword-for-free-or-for-one-item-from-the-legion-sergeant-melee-weapons-list"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its bolt pistol exchanged for one item from the Legion Pistols list.",
+      "removes": [
+        "bolt-pistol"
+      ],
+      "adds": [
+        "item-from-the-legion-pistols-list"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "For every five Models in this Unit, one Reaver with Jump Pack in this Unit may have its chainaxe exchanged for one item from the Legion Special Weapons list.",
+      "removes": [
+        "chainaxe"
+      ],
+      "adds": [
+        "item-from-the-legion-special-weapons-list"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "One Reaver with Jump Pack in this Unit may have one vexilla selected for it for +10 Points.",
+      "adds": [
+        "one-vexilla-selected-for-it"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Up to two Reavers with Jump Packs in this Unit may each have one item from the Legion Equipment list selected for them.",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its bolt pistol and chainaxe exchanged for one pair of lightning claws for +10 Points per Model.",
+      "removes": [
+        "bolt-pistol-and-chainaxe"
+      ],
+      "adds": [
+        "pair-of-lightning-claws-for-10-points-per-model"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "The Reaver Chieftain may have melta bombs selected for it for +10 Points.",
+      "adds": [
+        "melta-bombs-selected-for-it"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Precision",
+      "value": "6+"
+    },
+    {
+      "name": "Vanguard",
+      "value": "3"
+    },
+    {
+      "name": "Bulky",
+      "value": "2"
+    },
+    {
+      "name": "Deep Strike"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Faction",
+      "value": "Sons of Horus"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Sergeant",
+    "Antigrav"
+  ]
+}

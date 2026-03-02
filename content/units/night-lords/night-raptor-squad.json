@@ -1,0 +1,196 @@
+{
+  "id": "night-raptor-squad",
+  "name": "Night Raptor Squad",
+  "titles": "Night Raptor Squad",
+  "lore": "The Night Raptors are less a martial elite than a bloody coterie of murderers joined by similar proclivities and chosen styles of warfare. The Night Raptors find bleak joy in soaring above the battlefield like screaming predators bunting for victims and savour most that stark moment of clarity when a victim witnesses their death reflected back to them in the eyes of their killer. In battle they emerge adorned in grisly trophies and draped in flayed human skin, their intent to strike abject fear into the hearts of their enemies.",
+  "basePoints": 150,
+  "battlefieldRole": "Fast Attack",
+  "modelDefinitions": [
+    {
+      "name": "Huntmaster",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 12,
+        "WS": 5,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 2,
+        "I": 4,
+        "A": 3,
+        "LD": 8,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 3,
+        "INV": null
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Night Raptor",
+      "baseSizeMM": 32,
+      "countInBase": 4,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 12,
+        "WS": 5,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 2,
+        "I": 4,
+        "A": 3,
+        "LD": 8,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 3,
+        "INV": null
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 5,
+  "maxModels": 15,
+  "pointsPerAdditionalModel": 25,
+  "defaultWargear": [
+    "chainsword",
+    "bolt-pistol",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its chainsword exchanged for one chainglaive for +5 Points per Model or one item from the Legion Sergeant Melee Weapons list.",
+      "removes": [
+        "chainsword"
+      ],
+      "adds": [
+        "chainglaive-for-5-points-per-model-or-one-item-from-the-legion-sergeant-melee-weapons-list"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its chainsword exchanged for one chainblade for +5 Points per Model.",
+      "removes": [
+        "chainsword"
+      ],
+      "adds": [
+        "chainblade-for-5-points-per-model"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its bolt pistol and chainsword exchanged for one pair of lightning claws for +10 Points per Model.",
+      "removes": [
+        "bolt-pistol-and-chainsword"
+      ],
+      "adds": [
+        "pair-of-lightning-claws-for-10-points-per-model"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "For every five Models in this Unit, one Night Raptor in this Unit may have its bolt pistol exchanged for one of the following:",
+      "removes": [
+        "bolt-pistol"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Flamer +5 Points per Model",
+      "adds": [
+        "flamer"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Meltagun +15 Points per Model",
+      "adds": [
+        "meltagun"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Plasma gun +10 Points per Model",
+      "adds": [
+        "plasma-gun"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Plasma pistol +5 Points per Model",
+      "adds": [
+        "plasma-pistol"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Volkite serpenta +5 Points per Model",
+      "adds": [
+        "volkite-serpenta"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Impact",
+      "value": "I"
+    },
+    {
+      "name": "Fear",
+      "value": "1"
+    },
+    {
+      "name": "Vanguard",
+      "value": "4"
+    },
+    {
+      "name": "Bulky",
+      "value": "2"
+    },
+    {
+      "name": "Deep Strike"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Faction",
+      "value": "Night Lords"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Sergeant",
+    "Antigrav"
+  ]
+}

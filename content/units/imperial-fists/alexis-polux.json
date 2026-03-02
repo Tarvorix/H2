@@ -1,0 +1,79 @@
+{
+  "id": "alexis-polux",
+  "name": "Alexis Polux",
+  "titles": "Alexis Polux Captain of the 405 th Company of the Imperial Fists, The Crimson Fist",
+  "lore": "Captain of the 405th Company of the Imperial Fists Legion, Polux was a warrior of unique promise. When Rogal Dorn sent his Retribution fleet to Isstvan V, Polux had many years of proving ahead of him before he attained high command, but cruel chance and the death of his mentors saw such command thrust upon him, and with it the fate of much of his Legion lay in his hands. With a talent for void warfare and an emotionless and unyielding character, Polux’s reputation before the Battle of Phall rested as much on his strength in the bloody melee of close quarters combat as in command.",
+  "basePoints": 185,
+  "battlefieldRole": "Command",
+  "modelDefinitions": [
+    {
+      "name": "Alexis Polux",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 6,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 3,
+        "I": 5,
+        "A": 3,
+        "LD": 9,
+        "CL": 9,
+        "WP": 8,
+        "IN": 8,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "solarite-power-gauntlet",
+    "vigil-pattern-storm-shield",
+    "combi-melta",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [],
+  "specialRules": [
+    {
+      "name": "Officer of the Line",
+      "value": "2"
+    },
+    {
+      "name": "Deep Strike"
+    },
+    {
+      "name": "Hammerblow"
+    },
+    {
+      "name": "Void Commander"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Allegiance",
+      "value": "Loyalist"
+    },
+    {
+      "category": "Faction",
+      "value": "Imperial Fists"
+    },
+    {
+      "category": "Custom",
+      "value": "Shield"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Unique",
+    "Command",
+    "Heavy"
+  ]
+}

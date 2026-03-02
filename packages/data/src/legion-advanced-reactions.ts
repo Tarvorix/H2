@@ -16,6 +16,7 @@
  */
 
 import { LegionFaction, Phase, SubPhase, Allegiance } from '@hh/types';
+import type { ArmyFaction } from '@hh/types';
 import type { AdvancedReactionDefinition, AdvancedReactionTrigger } from '@hh/types';
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -699,6 +700,6 @@ export function findAdvancedReaction(id: string): AdvancedReactionDefinition | u
  * This includes the legion's standard reaction plus any Hereticus reactions
  * for legions that have them.
  */
-export function getAdvancedReactionsForLegion(legion: LegionFaction): AdvancedReactionDefinition[] {
+export function getAdvancedReactionsForLegion(legion: ArmyFaction): AdvancedReactionDefinition[] {
   return LEGION_ADVANCED_REACTIONS.filter(r => r.legion === legion);
 }

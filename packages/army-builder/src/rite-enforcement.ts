@@ -14,7 +14,7 @@ import type {
 } from '@hh/types';
 import {
   Allegiance,
-  LegionFaction,
+  ArmyFaction,
   BattlefieldRole,
 } from '@hh/types';
 import type { RiteOfWarDefinition, RiteOfWarRestriction } from '@hh/types';
@@ -35,7 +35,7 @@ import { buildRiteDetachmentTemplates } from '@hh/data';
  */
 export function isRiteAvailable(
   rite: RiteOfWarDefinition,
-  faction: LegionFaction,
+  faction: ArmyFaction,
   allegiance: Allegiance,
   pointsLimit: number,
 ): boolean {

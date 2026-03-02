@@ -1,0 +1,174 @@
+{
+  "id": "world-eaters-red-hand-destroyer-mortalis-squad",
+  "name": "World Eaters Red Hand Destroyer Mortalis Squad",
+  "titles": "World Eaters Red Hand Destroyer Mortalis Squad",
+  "lore": "Amongst the XII th Legion, those who proudly bore the mark of the blood hand – or as it was known by some, the ‘butcher’s mark’ – upon their armour would be drawn together, known amongst their brethren as Red Hand squads. As the Horus Heresy unfolded, these squads would consistently take their place in the vanguard, roaring cries of bloodlust as they sought to prove themselves ever worthy of bearing this gory embellishment. Those who faced them in battle knew that to cross blades with one such marked was to invite a bloody and brutal death.",
+  "basePoints": 85,
+  "battlefieldRole": "Elites",
+  "modelDefinitions": [
+    {
+      "name": "Blood Bonded",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 7,
+        "WS": 4,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 1,
+        "I": 4,
+        "A": 3,
+        "LD": 8,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 3,
+        "INV": null
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Ravager",
+      "baseSizeMM": 32,
+      "countInBase": 4,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 4,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 1,
+        "I": 4,
+        "A": 2,
+        "LD": 7,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 3,
+        "INV": null
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 5,
+  "maxModels": 15,
+  "pointsPerAdditionalModel": 15,
+  "defaultWargear": [
+    "two-bolt-pistols",
+    "chainsword",
+    "rad-grenades",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its chainsword exchanged for one Caedere weapon for +10 Points per Model.",
+      "removes": [
+        "chainsword"
+      ],
+      "adds": [
+        "caedere-weapon-for-10-points-per-model"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "For every five Models in this Unit, one Ravager may have one bolt pistol exchanged for one of the following options:",
+      "removes": [
+        "have-one-bolt-pistol"
+      ],
+      "adds": [
+        "of-the-following-options"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Destroyer missile launcher with rad missiles +15 Points per Model",
+      "adds": [
+        "destroyer-missile-launcher-with-rad-missiles"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Thunder hammer +15 points Per Model",
+      "adds": [
+        "thunder-hammer"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "The Blood Bonded in this Unit may have its chainsword exchanged for one item from the Legion Sergeant Melee Weapons list.",
+      "removes": [
+        "chainsword"
+      ],
+      "adds": [
+        "item-from-the-legion-sergeant-melee-weapons-list"
+      ],
+      "pointsCost": 0,
+      "scope": "leader"
+    },
+    {
+      "type": "add",
+      "description": "The Blood Bonded in this Unit may have any of the following items selected for them:",
+      "adds": [
+        "any-of-the-following-items-selected-for-them"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Phosphex bombs +10 Points",
+      "adds": [
+        "phosphex-bombs"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Melta bombs +10 Points",
+      "adds": [
+        "melta-bombs"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Firestorm"
+    },
+    {
+      "name": "Bearers of the Blood Hand"
+    },
+    {
+      "name": "Bitter Duty"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Faction",
+      "value": "World Eaters"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Sergeant"
+  ]
+}

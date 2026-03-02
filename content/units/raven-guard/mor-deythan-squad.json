@@ -1,0 +1,215 @@
+{
+  "id": "mor-deythan-squad",
+  "name": "Mor Deythan Squad",
+  "titles": "Mor Deythan Squad",
+  "lore": "Informally known as the ‘Shadow Masters’, the Mor Deythan are a small cadre of infiltration squads within a Legion already well known for its nigh unsurpassed skill in such tactics. At the beginning of the Horus Heresy, the Mor Deythan were few in number, having fought countless campaigns over eight decades at their master’s side, and they rarely admit new recruits into their ranks. Most who remain are grizzled veterans, supremely confident in their abilities. They are adept at moving silent and unseen through the shadows and attacking as and where they will, unleashing deadly accurate sniper fire upon their foes.",
+  "basePoints": 175,
+  "battlefieldRole": "Elites",
+  "modelDefinitions": [
+    {
+      "name": "Mor Deythan Shade",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 7,
+        "WS": 4,
+        "BS": 5,
+        "S": 4,
+        "T": 4,
+        "W": 2,
+        "I": 4,
+        "A": 1,
+        "LD": 9,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 3,
+        "INV": null
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Mor Deythan",
+      "baseSizeMM": 32,
+      "countInBase": 4,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 4,
+        "BS": 5,
+        "S": 4,
+        "T": 4,
+        "W": 2,
+        "I": 4,
+        "A": 1,
+        "LD": 8,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 3,
+        "INV": null
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 5,
+  "maxModels": 10,
+  "pointsPerAdditionalModel": 30,
+  "defaultWargear": [
+    "nemesis-bolter",
+    "bolt-pistol",
+    "frag-grenades",
+    "krak-grenades",
+    "cameleoline"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its Nemesis bolter exchanged for an Astartes shotgun for Free.",
+      "removes": [
+        "nemesis-bolter"
+      ],
+      "adds": [
+        "an-astartes-shotgun"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Any Model in this Unit may have one of the following selected for it:",
+      "adds": [
+        "one-of-the-following-selected-for-it"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Charnabal sabre +5 Points per Model",
+      "adds": [
+        "charnabal-sabre"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Power weapon +10 Points per Model",
+      "adds": [
+        "power-weapon"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its Nemesis bolter exchanged for one item from the Legion Combi-weapons list.",
+      "removes": [
+        "nemesis-bolter"
+      ],
+      "adds": [
+        "item-from-the-legion-combi-weapons-list"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "For every three Models in this Unit, one Model in this Unit may have its Nemesis bolter exchanged for one of the following:",
+      "removes": [
+        "nemesis-bolter"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Plasma pistol Free",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Volkite charger Free",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Flamer Free",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Plasma gun +5 Points per Model",
+      "adds": [
+        "plasma-gun"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Meltagun +10 Points per Model",
+      "adds": [
+        "meltagun"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Missile launcher +10 Points per Model",
+      "adds": [
+        "missile-launcher"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "The Mor Deythan Shade in this Unit may have melta bombs selected for it for +5 Points.",
+      "adds": [
+        "melta-bombs-selected-for-it"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Infiltrate",
+      "value": "8"
+    },
+    {
+      "name": "Fatal Strike"
+    },
+    {
+      "name": "Move Through Cover"
+    },
+    {
+      "name": "Support Unit",
+      "value": "1"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Faction",
+      "value": "Raven Guard"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Sergeant",
+    "Skirmish"
+  ]
+}

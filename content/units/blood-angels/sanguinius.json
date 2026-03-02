@@ -1,0 +1,196 @@
+{
+  "id": "sanguinius",
+  "name": "Sanguinius",
+  "titles": "Sanguinius The Great Angel, The Brightest One, Master of Hosts, Primarch of the Blood Angels",
+  "lore": "Often considered to be the greatest of his kin, Sanguinius is a peerless warrior, masterful strategist and beloved hero of the Imperium. Among the Primarchs, there were few who would speak ill of him, with even grim figures such as Perturabo and Ferrus Manus offering grudging praise of their winged brother. Many among that legendary brotherhood were surprised to find that the Emperor named Horus as the first among them, rather than choosing Sanguinius, and those who survived the Age of Darkness have been known to speculate that this was their father’s great mistake. For even as the wars of the Horus Heresy tore the Imperium apart and set even the noblest of his brothers on dark paths, Sanguinius remained untarnished and resolute, a beacon of hope that outshone even the darkness of that age.",
+  "basePoints": 485,
+  "battlefieldRole": "Warlord",
+  "modelDefinitions": [
+    {
+      "name": "Sanguinius",
+      "baseSizeMM": 40,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 16,
+        "WS": 8,
+        "BS": 6,
+        "S": 6,
+        "T": 6,
+        "W": 6,
+        "I": 6,
+        "A": 6,
+        "LD": 12,
+        "CL": 10,
+        "WP": 10,
+        "IN": 10,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "infernus",
+    "the-blade-encarmine",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "This Model may have its The Blade Encarmine exchanged for one Spear of Telesto and one Moonsilver Blade for Free.",
+      "removes": [
+        "the-blade-encarmine"
+      ],
+      "adds": [
+        "spear-of-telesto-and-one-moonsilver-blade"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Sire of the Blood Angels"
+    },
+    {
+      "name": "Bulky",
+      "value": "6"
+    },
+    {
+      "name": "Angelic Descent"
+    },
+    {
+      "name": "Deep Strike"
+    },
+    {
+      "name": "Eternal Warrior",
+      "value": "2"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Allegiance",
+      "value": "Loyalist"
+    },
+    {
+      "category": "Faction",
+      "value": "Blood Angels"
+    },
+    {
+      "category": "Custom",
+      "value": "Master of the Legion"
+    }
+  ],
+  "unitType": "Paragon",
+  "unitSubTypes": [
+    "Unique",
+    "Antigrav"
+  ],
+  "dedicatedWeapons": [
+    {
+      "id": "sanguinius-infernus",
+      "name": "Infernus",
+      "category": "ranged",
+      "profile": {
+        "range": 18,
+        "hasTemplate": false,
+        "firepower": 2,
+        "rangedStrength": 8,
+        "ap": 2,
+        "damage": 3,
+        "specialRules": [
+          {
+            "name": "Melta",
+            "value": "12"
+          },
+          {
+            "name": "Limited",
+            "value": "1"
+          }
+        ],
+        "traits": []
+      }
+    },
+    {
+      "id": "sanguinius-the-blade-encarmine",
+      "name": "The Blade Encarmine",
+      "category": "melee",
+      "profile": {
+        "initiativeModifier": "I",
+        "attacksModifier": "A",
+        "strengthModifier": {
+          "op": "add",
+          "value": 1
+        },
+        "ap": 2,
+        "damage": 2,
+        "specialRules": [
+          {
+            "name": "Critical Hit",
+            "value": "5+"
+          },
+          {
+            "name": "Impact",
+            "value": "AM"
+          }
+        ],
+        "traits": []
+      }
+    },
+    {
+      "id": "sanguinius-spear-of-telesto",
+      "name": "Spear of Telesto",
+      "category": "melee",
+      "profile": {
+        "initiativeModifier": {
+          "op": "subtract",
+          "value": 1
+        },
+        "attacksModifier": {
+          "op": "subtract",
+          "value": 2
+        },
+        "strengthModifier": {
+          "op": "add",
+          "value": 3
+        },
+        "ap": 2,
+        "damage": 2,
+        "specialRules": [
+          {
+            "name": "Armourbane"
+          },
+          {
+            "name": "Shock",
+            "value": "Suppressed"
+          }
+        ],
+        "traits": []
+      }
+    },
+    {
+      "id": "sanguinius-moonsilver-blade",
+      "name": "Moonsilver Blade",
+      "category": "melee",
+      "profile": {
+        "initiativeModifier": "I",
+        "attacksModifier": "A",
+        "strengthModifier": "S",
+        "ap": 3,
+        "damage": 2,
+        "specialRules": [
+          {
+            "name": "Duellist’s Edge",
+            "value": "1"
+          }
+        ],
+        "traits": []
+      }
+    }
+  ]
+}

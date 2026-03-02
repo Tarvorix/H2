@@ -21,7 +21,7 @@ describe('UnitConfigPanel', () => {
     ).not.toThrow();
   });
 
-  it('renders every MVP profile without throwing', () => {
+  it('renders every runtime profile without throwing', () => {
     const profiles = getAllProfiles();
     expect(profiles.length).toBeGreaterThan(0);
 

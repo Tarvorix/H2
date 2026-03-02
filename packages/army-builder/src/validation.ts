@@ -7,17 +7,27 @@
 
 import type {
   ArmyList,
+  ArmyListUnit,
+  ShatteredLegionsDoctrine,
   ArmyValidationResult,
   ArmyValidationError,
 } from '@hh/types';
 import {
   BattlefieldRole,
   DetachmentType,
+  LegionFaction,
+  SpecialFaction,
 } from '@hh/types';
 import {
+  findBlackshieldsOath,
   findDetachmentTemplate,
   getProfileById,
-  isMvpLegion,
+  getBlackshieldsOathLimit,
+  isProfileAllowedForBlackshields,
+  isPlayableFaction,
+  isValidShatteredLegion,
+  SHATTERED_LEGIONS_MAX_SELECTED,
+  SHATTERED_LEGIONS_MIN_SELECTED,
 } from '@hh/data';
 import {
   calculateArmyTotalPoints,
@@ -77,16 +87,17 @@ export function validateArmyList(armyList: ArmyList): ArmyValidationResult {
 }
 
 /**
- * Validate an army list against HHv2 MVP scope.
+ * Validate an army list with faction/doctrine legality checks.
  * Extends core legality checks with:
- * - faction scope restriction (3 launch legions only)
- * - unit profile existence in the MVP profile registry
+ * - faction scope restriction (playable factions only)
+ * - unit profile existence in the active profile registry
  */
-export function validateArmyListForMvp(armyList: ArmyList): ArmyValidationResult {
+export function validateArmyListWithDoctrine(armyList: ArmyList): ArmyValidationResult {
   const base = validateArmyList(armyList);
   const extraErrors: ArmyValidationError[] = [
-    ...validateMvpFactionScope(armyList),
+    ...validatePlayableFactionScope(armyList),
     ...validateUnitProfilesExist(armyList),
+    ...validateDoctrineConstraints(armyList),
   ];
 
   const allErrors = [...base.errors, ...extraErrors.filter((e) => e.severity === 'error')];
@@ -225,7 +236,7 @@ export function validateAlliedDetachment(armyList: ArmyList): ArmyValidationErro
 
   // Check faction is different from primary
   for (const allied of alliedDetachments) {
-    if (allied.faction === armyList.faction) {
+    if (allied.faction === armyList.faction && isLegionFactionValue(armyList.faction)) {
       errors.push({
         severity: 'error',
         scope: 'detachment',
@@ -416,26 +427,26 @@ export function validateWarlordDesignation(armyList: ArmyList): ArmyValidationEr
 }
 
 /**
- * Validate legion scope for HHv2 MVP.
+ * Validate faction scope for currently playable factions.
  */
-export function validateMvpFactionScope(armyList: ArmyList): ArmyValidationError[] {
+export function validatePlayableFactionScope(armyList: ArmyList): ArmyValidationError[] {
   const errors: ArmyValidationError[] = [];
 
-  if (!isMvpLegion(armyList.faction)) {
+  if (!isPlayableFaction(armyList.faction)) {
     errors.push({
       severity: 'error',
       scope: 'army',
-      message: `Faction "${armyList.faction}" is outside HHv2 MVP legion scope.`,
+      message: `Faction "${armyList.faction}" is not currently playable.`,
     });
   }
 
   for (const detachment of armyList.detachments) {
-    if (!isMvpLegion(detachment.faction)) {
+    if (!isPlayableFaction(detachment.faction)) {
       errors.push({
         severity: 'error',
         scope: 'detachment',
         elementId: detachment.id,
-        message: `Detachment "${detachment.id}" faction "${detachment.faction}" is outside HHv2 MVP legion scope.`,
+        message: `Detachment "${detachment.id}" faction "${detachment.faction}" is not currently playable.`,
       });
     }
   }
@@ -460,6 +471,325 @@ export function validateUnitProfilesExist(armyList: ArmyList): ArmyValidationErr
         });
       }
     }
+  }
+
+  return errors;
+}
+
+function isLegionFactionValue(value: unknown): value is LegionFaction {
+  return typeof value === 'string' && Object.values(LegionFaction).includes(value as LegionFaction);
+}
+
+function collectAllUnits(armyList: ArmyList): ArmyListUnit[] {
+  return armyList.detachments.flatMap((detachment) => detachment.units);
+}
+
+function validateBlackshieldsDoctrine(
+  armyList: ArmyList,
+): ArmyValidationError[] {
+  const errors: ArmyValidationError[] = [];
+  const byDetachmentId = new Map(
+    armyList.detachments.map((detachment) => [detachment.id, detachment] as const),
+  );
+
+  for (const detachment of armyList.detachments) {
+    if (detachment.faction !== SpecialFaction.Blackshields) {
+      errors.push({
+        severity: 'error',
+        scope: 'detachment',
+        elementId: detachment.id,
+        message: `Blackshields army includes non-Blackshields detachment "${detachment.id}".`,
+      });
+      continue;
+    }
+
+    const doctrine = detachment.doctrine;
+    const oathLimit = getBlackshieldsOathLimit(detachment.type);
+
+    if (oathLimit > 0) {
+      if (!doctrine || doctrine.kind !== 'blackshields') {
+        errors.push({
+          severity: 'error',
+          scope: 'detachment',
+          elementId: detachment.id,
+          message: `Detachment "${detachment.id}" must define Blackshields doctrine with exactly ${oathLimit} oath(s).`,
+        });
+      } else {
+        const oathIds = doctrine.oathIds ?? [];
+        if (oathIds.length !== oathLimit) {
+          errors.push({
+            severity: 'error',
+            scope: 'detachment',
+            elementId: detachment.id,
+            message: `Detachment "${detachment.id}" must select exactly ${oathLimit} oath(s) (selected ${oathIds.length}).`,
+          });
+        }
+
+        if (new Set(oathIds).size !== oathIds.length) {
+          errors.push({
+            severity: 'error',
+            scope: 'detachment',
+            elementId: detachment.id,
+            message: `Detachment "${detachment.id}" includes duplicate Blackshields oath selections.`,
+          });
+        }
+
+        const selectedOaths = oathIds
+          .map((oathId) => findBlackshieldsOath(oathId))
+          .filter((oath): oath is NonNullable<typeof oath> => oath !== undefined);
+
+        for (const oathId of oathIds) {
+          if (!findBlackshieldsOath(oathId)) {
+            errors.push({
+              severity: 'error',
+              scope: 'detachment',
+              elementId: detachment.id,
+              message: `Detachment "${detachment.id}" selected unknown Blackshields oath "${oathId}".`,
+            });
+          }
+        }
+
+        for (const oath of selectedOaths) {
+          if (oath.requiresSelectedLegionForArmoury && !doctrine.selectedLegionForArmoury) {
+            errors.push({
+              severity: 'error',
+              scope: 'detachment',
+              elementId: detachment.id,
+              message: `Detachment "${detachment.id}" must select a legion for armoury access because "${oath.name}" is active.`,
+            });
+          }
+
+          for (const incompatible of oath.incompatibleWith ?? []) {
+            if (oathIds.includes(incompatible)) {
+              const incompatibleOath = findBlackshieldsOath(incompatible);
+              errors.push({
+                severity: 'error',
+                scope: 'detachment',
+                elementId: detachment.id,
+                message: `Detachment "${detachment.id}" cannot combine "${oath.name}" with "${incompatibleOath?.name ?? incompatible}".`,
+              });
+            }
+          }
+        }
+      }
+    }
+
+    if (detachment.type === DetachmentType.Auxiliary || detachment.type === DetachmentType.Apex) {
+      if (!detachment.parentDetachmentId) {
+        errors.push({
+          severity: 'error',
+          scope: 'detachment',
+          elementId: detachment.id,
+          message: `Blackshields ${detachment.type} detachment "${detachment.id}" must link to a parent detachment.`,
+        });
+      } else {
+        const parent = byDetachmentId.get(detachment.parentDetachmentId);
+        if (!parent) {
+          errors.push({
+            severity: 'error',
+            scope: 'detachment',
+            elementId: detachment.id,
+            message: `Blackshields detachment "${detachment.id}" references unknown parent detachment "${detachment.parentDetachmentId}".`,
+          });
+        } else if (parent.faction !== SpecialFaction.Blackshields) {
+          errors.push({
+            severity: 'error',
+            scope: 'detachment',
+            elementId: detachment.id,
+            message: `Blackshields detachment "${detachment.id}" parent "${parent.id}" must also be Blackshields.`,
+          });
+        } else if (parent.doctrine?.kind === 'blackshields' && detachment.doctrine?.kind === 'blackshields') {
+          const parentOaths = parent.doctrine.oathIds ?? [];
+          const childOaths = detachment.doctrine.oathIds ?? [];
+          if (JSON.stringify(parentOaths) !== JSON.stringify(childOaths)) {
+            errors.push({
+              severity: 'error',
+              scope: 'detachment',
+              elementId: detachment.id,
+              message: `Blackshields detachment "${detachment.id}" must inherit parent oath selection from "${parent.id}".`,
+            });
+          }
+        }
+      }
+    }
+
+    for (const unit of detachment.units) {
+      const profile = getProfileById(unit.profileId);
+      if (!profile) continue;
+      if (!isProfileAllowedForBlackshields(profile)) {
+        errors.push({
+          severity: 'error',
+          scope: 'unit',
+          elementId: unit.id,
+          message: `Unit "${unit.id}" uses legion-specific profile "${unit.profileId}" which is not allowed in Blackshields detachments.`,
+        });
+      }
+    }
+  }
+
+  return errors;
+}
+
+function inferUnitLegionFromProfile(unit: ArmyListUnit): LegionFaction | undefined {
+  if (unit.originLegion) return unit.originLegion;
+  const profile = getProfileById(unit.profileId);
+  if (!profile) return undefined;
+  const factionTraits = profile.traits
+    .filter((trait) => trait.category === 'Faction')
+    .map((trait) => trait.value)
+    .filter(isLegionFactionValue);
+
+  if (factionTraits.length === 1) {
+    return factionTraits[0];
+  }
+  return undefined;
+}
+
+function validateShatteredLegionsDoctrine(
+  armyList: ArmyList,
+  doctrine: ShatteredLegionsDoctrine,
+): ArmyValidationError[] {
+  const errors: ArmyValidationError[] = [];
+  const selectedLegions = doctrine.selectedLegions ?? [];
+  const uniqueSelected = new Set(selectedLegions);
+
+  if (
+    selectedLegions.length < SHATTERED_LEGIONS_MIN_SELECTED ||
+    selectedLegions.length > SHATTERED_LEGIONS_MAX_SELECTED
+  ) {
+    errors.push({
+      severity: 'error',
+      scope: 'army',
+      message:
+        `Shattered Legions must select exactly ${SHATTERED_LEGIONS_MIN_SELECTED} or ` +
+        `${SHATTERED_LEGIONS_MAX_SELECTED} legions (selected ${selectedLegions.length}).`,
+    });
+  }
+
+  if (uniqueSelected.size !== selectedLegions.length) {
+    errors.push({
+      severity: 'error',
+      scope: 'army',
+      message: 'Shattered Legions selectedLegions cannot contain duplicates.',
+    });
+  }
+
+  for (const legion of selectedLegions) {
+    if (!isValidShatteredLegion(legion)) {
+      errors.push({
+        severity: 'error',
+        scope: 'army',
+        message: `Shattered Legions selectedLegions contains invalid legion "${legion}".`,
+      });
+    }
+  }
+
+  for (const detachment of armyList.detachments) {
+    if (detachment.faction !== SpecialFaction.ShatteredLegions) {
+      errors.push({
+        severity: 'error',
+        scope: 'detachment',
+        elementId: detachment.id,
+        message: `Shattered Legions army includes non-Shattered detachment "${detachment.id}".`,
+      });
+      continue;
+    }
+
+    for (const unit of detachment.units) {
+      const lineage = inferUnitLegionFromProfile(unit);
+      if (!lineage) {
+        errors.push({
+          severity: 'error',
+          scope: 'unit',
+          elementId: unit.id,
+          message: `Unit "${unit.id}" must declare originLegion (or use a uniquely legion-tagged profile) in Shattered Legions armies.`,
+        });
+        continue;
+      }
+
+      if (!uniqueSelected.has(lineage)) {
+        errors.push({
+          severity: 'error',
+          scope: 'unit',
+          elementId: unit.id,
+          message: `Unit "${unit.id}" origin legion "${lineage}" is not in the selected Shattered Legions set.`,
+        });
+      }
+    }
+  }
+
+  if (doctrine.exemplarLegionByPrimeUnitId) {
+    const allUnits = collectAllUnits(armyList);
+    for (const [primeUnitId, legion] of Object.entries(doctrine.exemplarLegionByPrimeUnitId)) {
+      const unit = allUnits.find((candidate) => candidate.id === primeUnitId);
+      if (!unit) {
+        errors.push({
+          severity: 'error',
+          scope: 'army',
+          message: `Shattered Legions exemplar map references unknown prime unit "${primeUnitId}".`,
+        });
+        continue;
+      }
+      if (unit.battlefieldRole !== BattlefieldRole.Command) {
+        errors.push({
+          severity: 'error',
+          scope: 'unit',
+          elementId: unit.id,
+          message: `Shattered Legions exemplar unit "${unit.id}" must be a Command Battlefield Role unit.`,
+        });
+      }
+      if (!uniqueSelected.has(legion)) {
+        errors.push({
+          severity: 'error',
+          scope: 'unit',
+          elementId: unit.id,
+          message: `Shattered Legions exemplar unit "${unit.id}" references non-selected legion "${legion}".`,
+        });
+      }
+    }
+  }
+
+  return errors;
+}
+
+/**
+ * Validate faction doctrine payload and doctrine-dependent composition rules.
+ */
+export function validateDoctrineConstraints(armyList: ArmyList): ArmyValidationError[] {
+  const errors: ArmyValidationError[] = [];
+
+  if (
+    armyList.faction === SpecialFaction.Blackshields &&
+    armyList.doctrine &&
+    armyList.doctrine.kind !== 'blackshields'
+  ) {
+    errors.push({
+      severity: 'error',
+      scope: 'army',
+      message: 'Blackshields armies must use Blackshields doctrine payloads.',
+    });
+  }
+
+  if (
+    armyList.faction === SpecialFaction.ShatteredLegions &&
+    (!armyList.doctrine || armyList.doctrine.kind !== 'shatteredLegions')
+  ) {
+    errors.push({
+      severity: 'error',
+      scope: 'army',
+      message: 'Shattered Legions armies must define a Shattered Legions doctrine payload.',
+    });
+  }
+
+  if (armyList.faction === SpecialFaction.Blackshields) {
+    errors.push(...validateBlackshieldsDoctrine(armyList));
+  }
+
+  if (
+    armyList.faction === SpecialFaction.ShatteredLegions &&
+    armyList.doctrine?.kind === 'shatteredLegions'
+  ) {
+    errors.push(...validateShatteredLegionsDoctrine(armyList, armyList.doctrine));
   }
 
   return errors;

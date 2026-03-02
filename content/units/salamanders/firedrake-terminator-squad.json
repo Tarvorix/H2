@@ -1,0 +1,159 @@
+{
+  "id": "firedrake-terminator-squad",
+  "name": "Firedrake Terminator Squad",
+  "titles": "Firedrake Terminator Squad",
+  "lore": "The elite of the Salamanders Legion are those Legionaries known as the Firedrakes, veterans chosen not simply for their martial skill, but also because of their mental resilience and capacity for discipline and self-sacrifice. Striding through the fires of battle clad in Terminator plate draped with drakenscale trophies, they strike down any who resist their advance with their artificer- crafted hammers. Each sets an indefatigable and relentless example to their brothers in the XVIIIth Legion, possessing a singular focus in battle and never allowing themselves to fall before the enemy are defeated.",
+  "basePoints": 250,
+  "battlefieldRole": "Elites",
+  "modelDefinitions": [
+    {
+      "name": "Firedrake Master",
+      "baseSizeMM": 40,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 6,
+        "WS": 5,
+        "BS": 4,
+        "S": 4,
+        "T": 5,
+        "W": 2,
+        "I": 4,
+        "A": 2,
+        "LD": 9,
+        "CL": 8,
+        "WP": 8,
+        "IN": 8,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Firedrake",
+      "baseSizeMM": 40,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 6,
+        "WS": 5,
+        "BS": 4,
+        "S": 4,
+        "T": 5,
+        "W": 2,
+        "I": 4,
+        "A": 2,
+        "LD": 9,
+        "CL": 8,
+        "WP": 8,
+        "IN": 8,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 5,
+  "maxModels": 10,
+  "pointsPerAdditionalModel": 45,
+  "defaultWargear": [
+    "forge-crafted-thunder-hammer",
+    "drakenscale"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its forge-crafted thunder hammer exchanged for one of the following:",
+      "removes": [
+        "forge-crafted-thunder-hammer"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Power weapon Free",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Power fist Free",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Chainfist +5 Points per Model",
+      "adds": [
+        "chainfist"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "Any Model in this Unit may have its Drakenscale exchanged for one combi-bolter for Free or for one item from the Legion Combi-weapons list. Any Model that has its Drakenscale exchanged for any Wargear option loses the Shield Trait.",
+      "removes": [
+        "drakenscale"
+      ],
+      "adds": [
+        "combi-bolter-for-free-or-for-one-item-from-the-legion-combi-weapons-list-any-model-that-has-its-drakenscale-exchanged-for-any-wargear-option-loses-the-shield-trait"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "One Firedrake in this Unit may have its Drakenscale exchanged for one forge-crafted heavy flamer for +10 Points. Any Model that has its Drakenscale exchanged for any Wargear option loses the Shield Trait.",
+      "removes": [
+        "drakenscale"
+      ],
+      "adds": [
+        "forge-crafted-heavy-flamer-for-10-points-any-model-that-has-its-drakenscale-exchanged-for-any-wargear-option-loses-the-shield-trait"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Bulky",
+      "value": "2"
+    },
+    {
+      "name": "Implacable Advance"
+    },
+    {
+      "name": "Slow and Purposeful"
+    },
+    {
+      "name": "Vanguard",
+      "value": "4"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Faction",
+      "value": "Salamanders"
+    },
+    {
+      "category": "Custom",
+      "value": "Shield"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Sergeant",
+    "Heavy"
+  ]
+}

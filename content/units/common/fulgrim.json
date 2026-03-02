@@ -1,0 +1,120 @@
+{
+  "id": "fulgrim",
+  "name": "Fulgrim",
+  "titles": "Fulgrim Primarch of the Emperor’s Children, The Phoenician, The Prefector of Chemos",
+  "lore": "The mercurial and prideful Fulgrim was the Primarch of the Emperor’s Children Legion. Fulgrim strove to be a paragon in all things: generalship, martial skill, governance, reason and endeavour, and passed on his values to the Legion where they became enshrined as a remorseless dedication to perfection in war. The Emperor’s Children under his rule rose from the ashes of near-extinction to become shining exemplars of the Emperor’s vision for the Legiones Astartes. Fulgrim maintained clear and rigid lines of authority within his Legion; his personal beliefs, opinions and inclinations in all matters filtered down through the ranks as ironclad doctrine that was not to be questioned. His sons modelled their lives around him, adoring him and striving to reach the ever-rising heights of his ambitions.",
+  "basePoints": 425,
+  "battlefieldRole": "Warlord",
+  "modelDefinitions": [
+    {
+      "name": "Fulgrim",
+      "baseSizeMM": 40,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 8,
+        "WS": 8,
+        "BS": 6,
+        "S": 6,
+        "T": 6,
+        "W": 6,
+        "I": 8,
+        "A": 6,
+        "LD": 12,
+        "CL": 10,
+        "WP": 10,
+        "IN": 10,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "laeran-blade",
+    "firebrand"
+  ],
+  "wargearOptions": [],
+  "specialRules": [
+    {
+      "name": "Sire of the Emperor’s Children"
+    },
+    {
+      "name": "Bulky",
+      "value": "4"
+    },
+    {
+      "name": "Sublime Swordsman"
+    },
+    {
+      "name": "Eternal Warrior",
+      "value": "2"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Allegiance",
+      "value": "Traitor"
+    },
+    {
+      "category": "Custom",
+      "value": "Emperor’s Children"
+    },
+    {
+      "category": "Custom",
+      "value": "Master of the Legion"
+    }
+  ],
+  "unitType": "Paragon",
+  "unitSubTypes": [
+    "Unique"
+  ],
+  "dedicatedWeapons": [
+    {
+      "id": "fulgrim-laeran-blade",
+      "name": "Laeran Blade",
+      "category": "melee",
+      "profile": {
+        "initiativeModifier": "I",
+        "attacksModifier": "A",
+        "strengthModifier": "S",
+        "ap": 2,
+        "damage": 2,
+        "specialRules": [
+          {
+            "name": "Duellist’s Edge",
+            "value": "1"
+          }
+        ],
+        "traits": []
+      }
+    },
+    {
+      "id": "fulgrim-firebrand",
+      "name": "Firebrand",
+      "category": "ranged",
+      "profile": {
+        "range": 15,
+        "hasTemplate": false,
+        "firepower": 2,
+        "rangedStrength": 6,
+        "ap": 2,
+        "damage": 1,
+        "specialRules": [
+          {
+            "name": "Shred",
+            "value": "5+"
+          },
+          {
+            "name": "Deflagrate",
+            "value": "6"
+          }
+        ],
+        "traits": []
+      }
+    }
+  ]
+}

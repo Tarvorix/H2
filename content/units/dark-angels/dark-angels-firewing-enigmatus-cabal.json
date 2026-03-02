@@ -1,0 +1,113 @@
+{
+  "id": "dark-angels-firewing-enigmatus-cabal",
+  "name": "Dark Angels Firewing Enigmatus Cabal",
+  "titles": "Dark Angels Firewing Enigmatus Cabal",
+  "lore": "The Firewing exists to prosecute a swift and silent style of war, to smother the enemy’s ability to resist, steal their will to fight with precision strikes, and gain the acquisition of key intelligence for use by other forces. The Enigmatii are the foremost practitioners of this style of war, operating in small elite units to eliminate the enemy’s leaders, disrupt their lines of advance and throw their plans into disarray. Armed and equipped with the finest weapons and equipment available, they are a deadly threat to those deemed dangerous enough by the Lion to warrant their attention.",
+  "basePoints": 90,
+  "battlefieldRole": "Elites",
+  "modelDefinitions": [
+    {
+      "name": "Firewing Enigmatii",
+      "baseSizeMM": 32,
+      "countInBase": 3,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 12,
+        "WS": 5,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 2,
+        "I": 4,
+        "A": 3,
+        "LD": 8,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 3,
+        "INV": null
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 3,
+  "maxModels": 3,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "calibanite-charge-blade",
+    "needle-pistol",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [
+    {
+      "type": "add",
+      "description": "One Model in this Unit may have one Enigmatus missile launcher selected for it for +15 Points.",
+      "adds": [
+        "one-enigmatus-missile-launcher-selected-for-it"
+      ],
+      "pointsCost": 15,
+      "scope": "one-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Outflank"
+    },
+    {
+      "name": "Bulky",
+      "value": "2"
+    },
+    {
+      "name": "Deep Strike"
+    },
+    {
+      "name": "Vanguard",
+      "value": "2"
+    },
+    {
+      "name": "Marked For Death",
+      "value": "1"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Faction",
+      "value": "Dark Angels"
+    },
+    {
+      "category": "Custom",
+      "value": "Smokescreen"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Antigrav"
+  ],
+  "dedicatedWeapons": [
+    {
+      "id": "dark-angels-firewing-enigmatus-cabal-frag-missile",
+      "name": "- Frag missile",
+      "category": "ranged",
+      "profile": {
+        "range": 24,
+        "hasTemplate": false,
+        "firepower": 1,
+        "rangedStrength": 3,
+        "ap": 6,
+        "damage": 1,
+        "specialRules": [
+          {
+            "name": "Blast",
+            "value": "3\""
+          }
+        ],
+        "traits": []
+      }
+    }
+  ]
+}

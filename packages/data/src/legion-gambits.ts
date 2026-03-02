@@ -13,6 +13,7 @@
  */
 
 import { LegionFaction } from '@hh/types';
+import type { ArmyFaction } from '@hh/types';
 import type { LegionGambitDefinition } from '@hh/types';
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -424,6 +425,6 @@ export function findLegionGambit(id: string): LegionGambitDefinition | undefined
  * Get all gambits available to a specific legion.
  * This includes all standard gambits for the legion plus any Hereticus gambits.
  */
-export function getLegionGambitsForLegion(legion: LegionFaction): LegionGambitDefinition[] {
+export function getLegionGambitsForLegion(legion: ArmyFaction): LegionGambitDefinition[] {
   return LEGION_GAMBITS.filter(g => g.legion === legion);
 }

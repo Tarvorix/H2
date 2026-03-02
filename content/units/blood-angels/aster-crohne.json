@@ -1,0 +1,95 @@
+{
+  "id": "aster-crohne",
+  "name": "Aster Crohne",
+  "titles": "Aster Crohne Captain of the 94 th Company, The Shroudmaker",
+  "lore": "A veteran of the IXth Legion, having served in the days before the return of the Great Angel, Aster Crohne was recruited from the killing fields of Saiph. While the bloody, practical skills he had perfected on Saiph and as a Judiciar were the terror of his foe, his true talent had always been an instinct for survival that defied belief. Of all of the officers attached to the Blood Angels 94th Company, only Aster emerged from the fires of Signus alive. In the years since, Sanguinius has tasked Crohne with rebuilding his former company, casting aside his Judiciar role for the greater glory of the IXth.",
+  "basePoints": 155,
+  "battlefieldRole": "Command",
+  "modelDefinitions": [
+    {
+      "name": "Aster Crohne",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 5,
+        "BS": 5,
+        "S": 4,
+        "T": 4,
+        "W": 3,
+        "I": 5,
+        "A": 3,
+        "LD": 9,
+        "CL": 8,
+        "WP": 8,
+        "IN": 8,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "two-hand-flamers",
+    "saiphan-shard-axe",
+    "frag-grenades",
+    "krak-grenades",
+    "rad-grenades"
+  ],
+  "wargearOptions": [],
+  "specialRules": [
+    {
+      "name": "Officer of the Line",
+      "value": "2"
+    },
+    {
+      "name": "The Ghost of Saiph"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Allegiance",
+      "value": "Loyalist"
+    },
+    {
+      "category": "Faction",
+      "value": "Blood Angels"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Unique",
+    "Command"
+  ],
+  "dedicatedWeapons": [
+    {
+      "id": "aster-crohne-saiphan-shard-axe",
+      "name": "Saiphan Shard-axe",
+      "category": "melee",
+      "profile": {
+        "initiativeModifier": "I",
+        "attacksModifier": {
+          "op": "add",
+          "value": 1
+        },
+        "strengthModifier": {
+          "op": "add",
+          "value": 1
+        },
+        "ap": 3,
+        "damage": 1,
+        "specialRules": [
+          {
+            "name": "Breaching",
+            "value": "4+"
+          }
+        ],
+        "traits": []
+      }
+    }
+  ]
+}

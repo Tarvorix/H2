@@ -1,0 +1,104 @@
+{
+  "id": "fafnir-rann",
+  "name": "Fafnir Rann",
+  "titles": "Fafnir Rann Lord Seneschal, Commander of the Persephone, Captain of the First Assault Cadre",
+  "lore": "The sons of Dorn are well known to be disciplined and methodical, and in Fafnir Rann those qualities were coupled with a bellicose nature more akin to one of Russ’ Space Wolves. Born of Inwit, he is recorded to have been one ofRogal Dorn’s most ruthless commanders. Rann rose to the esteemed rank of Lord Seneschal and captain of the Imperial Fists First Assault Cadre, and led his battle-brothers upon hundreds of battlefields of the Great Crusade and the Horus Heresy. His combat prowess was not measured in the Legion’s duelling floors but was proven in the tally of corpses left behind by his twin power axes.",
+  "basePoints": 175,
+  "battlefieldRole": "High Command",
+  "modelDefinitions": [
+    {
+      "name": "Fafnir Rann",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 6,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 4,
+        "I": 5,
+        "A": 4,
+        "LD": 9,
+        "CL": 8,
+        "WP": 8,
+        "IN": 8,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "the-headsman-and-the-hunter",
+    "bolt-pistol",
+    "frag-grenades",
+    "krak-grenades",
+    "boarding-shield"
+  ],
+  "wargearOptions": [],
+  "specialRules": [
+    {
+      "name": "Impact",
+      "value": "A"
+    },
+    {
+      "name": "Shield Master"
+    },
+    {
+      "name": "Executioner’s Tax"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Allegiance",
+      "value": "Loyalist"
+    },
+    {
+      "category": "Faction",
+      "value": "Imperial Fists"
+    },
+    {
+      "category": "Custom",
+      "value": "Master of the Legion"
+    },
+    {
+      "category": "Custom",
+      "value": "Shield"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Unique",
+    "Command",
+    "Heavy"
+  ],
+  "dedicatedWeapons": [
+    {
+      "id": "fafnir-rann-the-headsman-and-the-hunter",
+      "name": "The Headsman and The Hunter",
+      "category": "melee",
+      "profile": {
+        "initiativeModifier": "I",
+        "attacksModifier": "A",
+        "strengthModifier": {
+          "op": "add",
+          "value": 2
+        },
+        "ap": 3,
+        "damage": 1,
+        "specialRules": [
+          {
+            "name": "Breaching",
+            "value": "4+"
+          }
+        ],
+        "traits": []
+      }
+    }
+  ]
+}

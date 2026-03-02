@@ -1,0 +1,79 @@
+{
+  "id": "prosperine-sorcerer",
+  "name": "Prosperine Sorcerer",
+  "titles": "Prosperine Sorcerer",
+  "lore": "One of many cults within the Thousand Sons, the Sortiarae consisted of warriors whose abilities were focused into elemental destruction. While their brethren practised in meditative calm, these living artillery pieces strode through the maelstrom of battle, atomising foes with flame-infused lightning, conjuring swirling tornadoes of destructive energy and crushing even the mightiest armoured vehicles with shattering tectonic force. In the wake of the destruction of Prospero, the Sorcerer cabals found new fuel for their psychic destruction, with some among their Legion distancing themselves from these reckless practitioners.",
+  "basePoints": 105,
+  "battlefieldRole": "Command",
+  "modelDefinitions": [
+    {
+      "name": "Prosperine Sorcerer",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 5,
+        "BS": 5,
+        "S": 4,
+        "T": 4,
+        "W": 3,
+        "I": 5,
+        "A": 4,
+        "LD": 8,
+        "CL": 7,
+        "WP": 9,
+        "IN": 8,
+        "SAV": 2,
+        "INV": 5
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "prosperine-spirestave",
+    "bolt-pistol",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "This Model may have its bolt pistol exchanged for one item from the Legion Pistol list.",
+      "removes": [
+        "bolt-pistol"
+      ],
+      "adds": [
+        "item-from-the-legion-pistol-list"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Prosperine Sorcery"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Faction",
+      "value": "Thousand Sons"
+    },
+    {
+      "category": "Custom",
+      "value": "Psyker"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Command"
+  ]
+}

@@ -1,0 +1,122 @@
+{
+  "id": "wolf-kin-of-russ",
+  "name": "Wolf kin of Russ",
+  "titles": "Wolf-kin of Russ",
+  "lore": "Said to be companions of the Wolf King from his earliest days as a foundling upon Fenris, these are beasts of prodigious size and formidable intelligence. The guardians of the Wolf King’s hearth, when he calls, they follow alongside him into battle, and to the Space Wolves Legion, they have come to symbolise, not only their own bestial natures, hut their spiritual connection to cold Fenris itself Both have long-served their bellicose master on countless battlefields as friends and protectors, tearing apart his foes with tooth and claw.",
+  "basePoints": 100,
+  "battlefieldRole": "Retinue",
+  "modelDefinitions": [
+    {
+      "name": "Freki",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 10,
+        "WS": 5,
+        "BS": 0,
+        "S": 5,
+        "T": 5,
+        "W": 4,
+        "I": 5,
+        "A": 4,
+        "LD": 8,
+        "CL": 5,
+        "WP": 5,
+        "IN": 3,
+        "SAV": 5,
+        "INV": null
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Geri",
+      "baseSizeMM": 32,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 10,
+        "WS": 7,
+        "BS": 0,
+        "S": 5,
+        "T": 5,
+        "W": 4,
+        "I": 5,
+        "A": 3,
+        "LD": 8,
+        "CL": 5,
+        "WP": 5,
+        "IN": 3,
+        "SAV": 5,
+        "INV": null
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 2,
+  "maxModels": 2,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "tooth-claw"
+  ],
+  "wargearOptions": [],
+  "specialRules": [
+    {
+      "name": "Fear",
+      "value": "1"
+    },
+    {
+      "name": "Heedless"
+    },
+    {
+      "name": "Bulky",
+      "value": "4"
+    },
+    {
+      "name": "Feel No Pain",
+      "value": "5+"
+    },
+    {
+      "name": "Fast",
+      "value": "2"
+    },
+    {
+      "name": "Wolf-kin of Russ"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Allegiance",
+      "value": "Loyalist"
+    },
+    {
+      "category": "Faction",
+      "value": "Space Wolves"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Unique"
+  ],
+  "dedicatedWeapons": [
+    {
+      "id": "wolf-kin-of-russ-tooth-claw",
+      "name": "Tooth & Claw",
+      "category": "melee",
+      "profile": {
+        "initiativeModifier": "I",
+        "attacksModifier": "A",
+        "strengthModifier": "S",
+        "ap": 4,
+        "damage": 2,
+        "specialRules": [
+          {
+            "name": "Breaching",
+            "value": "6+"
+          }
+        ],
+        "traits": []
+      }
+    }
+  ]
+}

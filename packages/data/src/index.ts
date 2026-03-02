@@ -180,7 +180,28 @@ export {
 } from './profile-registry';
 
 export {
-  MVP_LEGIONS,
-  getMvpLegions,
-  isMvpLegion,
-} from './mvp-scope';
+  getAllLegions,
+  getPlayableFactions,
+  isPlayableFaction,
+} from './faction-scope';
+
+export {
+  BLACKSHIELDS_TACTICA_ID,
+  BLACKSHIELDS_GAMBIT_ID,
+  BLACKSHIELDS_OATHS,
+  getBlackshieldsOathLimit,
+  getBlackshieldsOaths,
+  findBlackshieldsOath,
+  isProfileAllowedForBlackshields,
+} from './blackshields';
+
+export {
+  SHATTERED_LEGIONS_TACTICA_ID,
+  SHATTERED_LEGIONS_GAMBIT_ID,
+  SHATTERED_LEGIONS_ADVANCED_REACTION_ID,
+  SHATTERED_LEGIONS_MIN_SELECTED,
+  SHATTERED_LEGIONS_MAX_SELECTED,
+  SHATTERED_LEGIONS_MUTABLE_TACTICS,
+  isValidShatteredLegion,
+  getMutableTacticsBenefit,
+} from './shattered-legions';

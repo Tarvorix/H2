@@ -1,0 +1,120 @@
+{
+  "id": "space-wolves-speaker-of-the-dead",
+  "name": "Space Wolves Speaker of the Dead",
+  "titles": "Space Wolves Speaker of the Dead",
+  "lore": "Servants and leaders both of the Cult of Morkai – the Fenrisian wolf-aspect of death – the Speakers of the Dead are the instillers of fear, masters of discipline and keepers of the Legion’s culture and histories. These blood-soaked priests of Fenris enact strange rites, wear esoteric masks and carry curious tokens. Each Speaker of the Dead makes a baleful oath before battle, and its chanted memetics can take root within the minds of the Legion, providing deadly results.",
+  "basePoints": 100,
+  "battlefieldRole": "Command",
+  "modelDefinitions": [
+    {
+      "name": "Speaker of the Dead",
+      "baseSizeMM": 40,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 5,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 3,
+        "I": 5,
+        "A": 4,
+        "LD": 9,
+        "CL": 10,
+        "WP": 8,
+        "IN": 8,
+        "SAV": 2,
+        "INV": 5
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Speaker of the Dead with Jump Pack",
+      "baseSizeMM": 40,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 12,
+        "WS": 5,
+        "BS": 4,
+        "S": 4,
+        "T": 4,
+        "W": 3,
+        "I": 5,
+        "A": 4,
+        "LD": 9,
+        "CL": 10,
+        "WP": 8,
+        "IN": 8,
+        "SAV": 2,
+        "INV": 5
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "bolt-pistol",
+    "crozius-arcanum",
+    "narthecium",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "This Model may have its bolt pistol exchanged for one item from the Legion Pistol list.",
+      "removes": [
+        "bolt-pistol"
+      ],
+      "adds": [
+        "item-from-the-legion-pistol-list"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "This Model may have melta bombs selected for it for +5 Points.",
+      "adds": [
+        "melta-bombs-selected-for-it"
+      ],
+      "pointsCost": 5,
+      "scope": "one-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Medic (5+) Speaker of the Dead with Jump Pack"
+    },
+    {
+      "name": "Medic",
+      "value": "5+"
+    },
+    {
+      "name": "Bulky",
+      "value": "2"
+    },
+    {
+      "name": "Deep Strike"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Faction",
+      "value": "Space Wolves"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Command",
+    "Antigrav"
+  ]
+}

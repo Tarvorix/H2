@@ -78,8 +78,16 @@ export function findUnitArmy(state: GameState, unitId: string): ArmyState | unde
  * Returns undefined if the unit is not found.
  */
 export function getUnitLegion(state: GameState, unitId: string): LegionFaction | undefined {
+  const unit = findUnit(state, unitId);
+  if (!unit) return undefined;
+  if (unit.originLegion) return unit.originLegion;
+
   const army = findUnitArmy(state, unitId);
-  return army?.faction;
+  if (!army) return undefined;
+  if (Object.values(LegionFaction).includes(army.faction as LegionFaction)) {
+    return army.faction as LegionFaction;
+  }
+  return undefined;
 }
 
 /**

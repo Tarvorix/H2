@@ -1,0 +1,124 @@
+{
+  "id": "contemptor-incaendius-dreadnought",
+  "name": "Contemptor Incaendius Dreadnought",
+  "titles": "Contemptor-Incaendius Dreadnought",
+  "lore": "The Incaendius subclass is a Contemptor Dreadnought chassis manufactured exclusively for the IXth Legion. Similar in most respects to the widely used Contemptor chassis, the Incaendius differs in one key aspect: the external booster pack secured to its back. This volatile, single-burn, magnetoplasma engine is powerful enough to propel it in a shallow leap at significant velocity, despite the bulk of its armour and ceramite endoskeleton, into the heart of the enemy where its talons of perdition and flamers reap a fearful tally of foes.",
+  "basePoints": 200,
+  "battlefieldRole": "War-Engine",
+  "modelDefinitions": [
+    {
+      "name": "Contemptor-Incaendius",
+      "baseSizeMM": 60,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 8,
+        "WS": 4,
+        "BS": 4,
+        "S": 7,
+        "T": 7,
+        "W": 6,
+        "I": 4,
+        "A": 4,
+        "LD": 12,
+        "CL": 10,
+        "WP": 7,
+        "IN": 5,
+        "SAV": 2,
+        "INV": 5
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "paired-talons-of-perdition",
+    "two-heavy-flamers"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "Both of this Model’s heavy flamers may be exchanged for one of the following:",
+      "removes": [
+        "be"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "Two meltaguns +20 Points",
+      "adds": [
+        "two-meltaguns"
+      ],
+      "pointsCost": 20,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Two Iliastus assault cannon +30 Points",
+      "adds": [
+        "two-iliastus-assault-cannon"
+      ],
+      "pointsCost": 30,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Bulky",
+      "value": "7"
+    },
+    {
+      "name": "Explodes",
+      "value": "4+"
+    },
+    {
+      "name": "Incaendius Boost Pack"
+    },
+    {
+      "name": "Deep Strike"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Faction",
+      "value": "Blood Angels"
+    }
+  ],
+  "unitType": "Walker",
+  "unitSubTypes": [],
+  "dedicatedWeapons": [
+    {
+      "id": "contemptor-incaendius-dreadnought-paired-talons-of-perdition",
+      "name": "Paired Talons of Perdition",
+      "category": "melee",
+      "profile": {
+        "initiativeModifier": "I",
+        "attacksModifier": {
+          "op": "add",
+          "value": 2
+        },
+        "strengthModifier": "S",
+        "ap": 2,
+        "damage": 2,
+        "specialRules": [
+          {
+            "name": "Aflame",
+            "value": "2"
+          }
+        ],
+        "traits": []
+      }
+    }
+  ]
+}

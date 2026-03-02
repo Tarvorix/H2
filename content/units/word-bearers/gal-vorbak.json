@@ -1,0 +1,173 @@
+{
+  "id": "gal-vorbak",
+  "name": "Gal Vorbak",
+  "titles": "Gal Vorbak",
+  "lore": "The Gal Vorbak is built upon the remnants of the Serrated Sun Chapter of the Word Bearers Legion, who looked into the depths of the Eye of Terror itself and in doing so were changed for all time. Their psyches infiltrated by creatures from the darkness of the æther, the survivors are named the Gal Vorbak, or ‘Blessed Sons’ in the language of Colchis. In battle, their already mighty forms swell, armour running like tallow into horrific new forms as hands turn into rending talons and jaws into slavering, fang-filed maws. Even as these changes are upon them, these bestial killers pounce upon their horrified foe, tearing them apart.",
+  "basePoints": 250,
+  "battlefieldRole": "Elites",
+  "modelDefinitions": [
+    {
+      "name": "Dark Brethren",
+      "baseSizeMM": 40,
+      "countInBase": 5,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 8,
+        "WS": 5,
+        "BS": 4,
+        "S": 5,
+        "T": 5,
+        "W": 3,
+        "I": 5,
+        "A": 3,
+        "LD": 9,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 3,
+        "INV": null
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 5,
+  "maxModels": 10,
+  "pointsPerAdditionalModel": 50,
+  "defaultWargear": [
+    "tainted-talons",
+    "bolter",
+    "frag-grenades",
+    "krak-grenades"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "For every five Models in this Unit, one Model in this Unit may have its bolter exchanged for one of the following:",
+      "removes": [
+        "bolter"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "Flamer +5 Points per Model",
+      "adds": [
+        "flamer"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Meltagun +15 Points per Model",
+      "adds": [
+        "meltagun"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Warpfire blaster +15 Points per Model",
+      "adds": [
+        "warpfire-blaster"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "For every five Models in this Unit, one Model in this Unit may have its tainted talons exchanged for one of the following:",
+      "removes": [
+        "tainted-talons"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "upgrade",
+      "description": "Power weapon Free",
+      "adds": [],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Power fist +10 Points per Model",
+      "adds": [
+        "power-fist"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Bulky",
+      "value": "2"
+    },
+    {
+      "name": "Feel No Pain",
+      "value": "5+"
+    },
+    {
+      "name": "Implacable Advance"
+    },
+    {
+      "name": "Vanguard",
+      "value": "3"
+    },
+    {
+      "name": "Fear",
+      "value": "1"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Allegiance",
+      "value": "Traitor"
+    },
+    {
+      "category": "Faction",
+      "value": "Word Bearers"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [],
+  "dedicatedWeapons": [
+    {
+      "id": "gal-vorbak-tainted-talons",
+      "name": "Tainted talons",
+      "category": "melee",
+      "profile": {
+        "initiativeModifier": "I",
+        "attacksModifier": "A",
+        "strengthModifier": "S",
+        "ap": 3,
+        "damage": 1,
+        "specialRules": [
+          {
+            "name": "Breaching",
+            "value": "6+"
+          },
+          {
+            "name": "Shred",
+            "value": "6+"
+          },
+          {
+            "name": "Phage",
+            "value": "S"
+          }
+        ],
+        "traits": []
+      }
+    }
+  ]
+}

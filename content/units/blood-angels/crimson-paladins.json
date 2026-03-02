@@ -1,0 +1,192 @@
+{
+  "id": "crimson-paladins",
+  "name": "Crimson Paladins",
+  "titles": "Crimson Paladins",
+  "lore": "The Crimson Paladins are one of the Warrior Orders of the First Sphere, standing as the guardians of the Primarch’s halls, a grim counterpart to the Sanguinary Guard. When these warriors take to the field, clad in the reliquary armour of their Order and cloaked in the names of the Immortals, they stand as a bulwark against the foe and a shield for the sons of Sanguinius. They form the unyielding anchor upon which the Crimson Host turns; a single unshakeable bastion of blades and power shields. By their sacrifice and indomitable resolve are the Blood Angels freed to give vent to the noble fury of their Legion.",
+  "basePoints": 225,
+  "battlefieldRole": "Elites",
+  "modelDefinitions": [
+    {
+      "name": "Crimson Exemplar",
+      "baseSizeMM": 40,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 6,
+        "WS": 5,
+        "BS": 4,
+        "S": 4,
+        "T": 5,
+        "W": 2,
+        "I": 4,
+        "A": 3,
+        "LD": 9,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Crimson Paladin",
+      "baseSizeMM": 40,
+      "countInBase": 4,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 6,
+        "WS": 5,
+        "BS": 4,
+        "S": 4,
+        "T": 5,
+        "W": 2,
+        "I": 4,
+        "A": 3,
+        "LD": 8,
+        "CL": 8,
+        "WP": 7,
+        "IN": 7,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": false
+    }
+  ],
+  "minModels": 5,
+  "maxModels": 10,
+  "pointsPerAdditionalModel": 40,
+  "defaultWargear": [
+    "power-sword",
+    "coriolis-pattern-power-shield"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "The Crimson Exemplar in this Unit may have its power sword and Coriolis pattern power shield exchanged for one Perdition weapon for Free.",
+      "removes": [
+        "power-sword-and-coriolis-pattern-power-shield"
+      ],
+      "adds": [
+        "perdition-weapon"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "For every five Models in this Unit, one Crimson Paladin in this Unit may have its Coriolis pattern power shield exchanged for one of the following:",
+      "removes": [
+        "coriolis-pattern-power-shield"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Heavy flamer +5 Points per Model",
+      "adds": [
+        "heavy-flamer"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Iliastus assault cannon +15 Points per Model",
+      "adds": [
+        "iliastus-assault-cannon"
+      ],
+      "pointsCost": 15,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Plasma blaster +10 Points per Model",
+      "adds": [
+        "plasma-blaster"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "exchange",
+      "description": "Up to two Crimson Paladins in this Unit may have their power sword exchanged for one of the following:",
+      "removes": [
+        "power-sword"
+      ],
+      "adds": [
+        "of-the-following"
+      ],
+      "pointsCost": 0,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Power fist +5 Points per Model",
+      "adds": [
+        "power-fist"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "Chainfist +10 Points per Model",
+      "adds": [
+        "chainfist"
+      ],
+      "pointsCost": 10,
+      "scope": "any-model"
+    },
+    {
+      "type": "add",
+      "description": "The Crimson Exemplar in this Unit may have one grenade harness selected for it for +5 Points.",
+      "adds": [
+        "one-grenade-harness-selected-for-it"
+      ],
+      "pointsCost": 5,
+      "scope": "any-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Bulky",
+      "value": "2"
+    },
+    {
+      "name": "Implacable Advance"
+    },
+    {
+      "name": "Slow and Purposeful"
+    },
+    {
+      "name": "Line",
+      "value": "1"
+    },
+    {
+      "name": "Deep Strike"
+    },
+    {
+      "name": "The Blood is Forever"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Faction",
+      "value": "Blood Angels"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Sergeant",
+    "Heavy"
+  ]
+}

@@ -1,0 +1,127 @@
+{
+  "id": "konrad-curze",
+  "name": "Konrad Curze",
+  "titles": "Konrad Curze Primarch of the Night Lords, The Night Haunter, The Last Judge, The King of Terrors",
+  "lore": "Called the ‘Night Haunter’ by the people of his home world of Nostramo, Konrad Curze was from his earliest days a figure of dark renown. Instituting a reign of terror that cowed criminal and tyrant alike, the Night Haunter brought order, of a kind, to Nostramo. When at last the Emperor came, Curze had foreseen his life, his role as Primarch and his ultimate end, his sanity’ ever stretched taut by grim visions of the horrors soon to overwhelm the galaxy. Having been granted command of the VIIIth Legion, which the Primarch named the Night Lords, Curze set about imposing his particular notions of order and justice upon the wider galaxy. At the urging of his brother, the Warmaster, Curze would throw in his lot with the Traitors, his cruel ire now directed against his own brothers and their Legions.",
+  "basePoints": 450,
+  "battlefieldRole": "Warlord",
+  "modelDefinitions": [
+    {
+      "name": "Konrad Curze",
+      "baseSizeMM": 40,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 8,
+        "WS": 7,
+        "BS": 7,
+        "S": 6,
+        "T": 6,
+        "W": 6,
+        "I": 7,
+        "A": 6,
+        "LD": 12,
+        "CL": 10,
+        "WP": 8,
+        "IN": 10,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "mercy-and-forgiveness",
+    "the-widowmakers"
+  ],
+  "wargearOptions": [],
+  "specialRules": [
+    {
+      "name": "Sire of the Night Lords"
+    },
+    {
+      "name": "Bulky",
+      "value": "4"
+    },
+    {
+      "name": "A Death Long Foreseen"
+    },
+    {
+      "name": "Fear",
+      "value": "2"
+    },
+    {
+      "name": "Eternal Warrior",
+      "value": "2"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Allegiance",
+      "value": "Traitor"
+    },
+    {
+      "category": "Faction",
+      "value": "Night Lords"
+    },
+    {
+      "category": "Custom",
+      "value": "Master of the Legion"
+    }
+  ],
+  "unitType": "Paragon",
+  "unitSubTypes": [
+    "Unique"
+  ],
+  "dedicatedWeapons": [
+    {
+      "id": "konrad-curze-mercy-and-forgiveness",
+      "name": "Mercy and Forgiveness",
+      "category": "melee",
+      "profile": {
+        "initiativeModifier": "I",
+        "attacksModifier": {
+          "op": "add",
+          "value": 2
+        },
+        "strengthModifier": "S",
+        "ap": 2,
+        "damage": 1,
+        "specialRules": [
+          {
+            "name": "Critical Hit",
+            "value": "5+"
+          },
+          {
+            "name": "Shred",
+            "value": "4+"
+          }
+        ],
+        "traits": []
+      }
+    },
+    {
+      "id": "konrad-curze-the-widowmakers",
+      "name": "The Widowmakers",
+      "category": "ranged",
+      "profile": {
+        "range": 12,
+        "hasTemplate": false,
+        "firepower": 3,
+        "rangedStrength": 4,
+        "ap": 5,
+        "damage": 1,
+        "specialRules": [
+          {
+            "name": "Breaching",
+            "value": "4+"
+          }
+        ],
+        "traits": []
+      }
+    }
+  ]
+}

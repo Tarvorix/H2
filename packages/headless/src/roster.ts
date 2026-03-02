@@ -1,6 +1,6 @@
 import type { ArmyList, ArmyValidationResult, GameState } from '@hh/types';
-import { BattlefieldRole } from '@hh/types';
-import { validateArmyListForMvp } from '@hh/army-builder';
+import { BattlefieldRole, LegionFaction } from '@hh/types';
+import { validateArmyListWithDoctrine } from '@hh/army-builder';
 import type { HeadlessArmySetup, HeadlessGameSetupOptions } from './setup';
 import { createHeadlessGameState } from './setup';
 
@@ -44,6 +44,11 @@ function convertArmyListToHeadlessArmySetup(armyList: ArmyList): HeadlessArmySet
         modelCount: unit.modelCount,
         unitId: unit.id,
         isWarlord,
+        originLegion:
+          unit.originLegion ??
+          (Object.values(LegionFaction).includes(detachment.faction as LegionFaction)
+            ? (detachment.faction as LegionFaction)
+            : undefined),
       };
     }),
   );
@@ -52,20 +57,21 @@ function convertArmyListToHeadlessArmySetup(armyList: ArmyList): HeadlessArmySet
     playerName: armyList.playerName,
     faction: armyList.faction,
     allegiance: armyList.allegiance,
+    doctrine: armyList.doctrine,
     pointsLimit: armyList.pointsLimit,
     units,
   };
 }
 
 /**
- * Validate two army lists against the HHv2 MVP scope for headless usage.
+ * Validate two army lists for headless usage.
  * This is the headless entrypoint guard for roster legality.
  */
-export function validateHeadlessArmyListsForMvp(
+export function validateHeadlessArmyLists(
   armyLists: [ArmyList, ArmyList],
 ): HeadlessArmyListValidationSummary {
-  const player0 = validateArmyListForMvp(armyLists[0]);
-  const player1 = validateArmyListForMvp(armyLists[1]);
+  const player0 = validateArmyListWithDoctrine(armyLists[0]);
+  const player1 = validateArmyListWithDoctrine(armyLists[1]);
 
   return {
     isValid: player0.isValid && player1.isValid,
@@ -79,12 +85,12 @@ export function validateHeadlessArmyListsForMvp(
 
 /**
  * Create a mission-initialized headless GameState from two ArmyList payloads.
- * Throws if either army list is invalid for HHv2 MVP.
+ * Throws if either army list is invalid.
  */
 export function createHeadlessGameStateFromArmyLists(
   options: HeadlessArmyListGameSetupOptions,
 ): GameState {
-  const validation = validateHeadlessArmyListsForMvp(options.armyLists);
+  const validation = validateHeadlessArmyLists(options.armyLists);
   if (!validation.isValid) {
     throw new Error(
       `Cannot create headless game state from invalid army list(s):\n${validation.errors.join('\n')}`,

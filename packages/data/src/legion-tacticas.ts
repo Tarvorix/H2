@@ -9,6 +9,7 @@
  */
 
 import { LegionFaction, TacticalStatus } from '@hh/types';
+import type { ArmyFaction } from '@hh/types';
 import { LegionTacticaEffectType } from '@hh/types';
 import type { LegionTactica } from '@hh/types';
 import type { LegionTacticaEffect } from '@hh/types';
@@ -505,7 +506,7 @@ export const LEGION_TACTICA_EFFECTS: Record<string, LegionTacticaEffect[]> = {
  * Returns the first tactica matching the legion (the base tactica, not Hereticus variants).
  */
 export function findLegionTactica(
-  legion: LegionFaction,
+  legion: ArmyFaction,
 ): LegionTactica | undefined {
   return LEGION_TACTICAS.find((t) => t.legion === legion);
 }
@@ -526,7 +527,7 @@ export function getLegionTacticaEffects(
  * tactica and returns its effects. Returns empty array if none found.
  */
 export function getTacticaEffectsForLegion(
-  legion: LegionFaction,
+  legion: ArmyFaction,
 ): LegionTacticaEffect[] {
   const tactica = findLegionTactica(legion);
   if (!tactica) return [];

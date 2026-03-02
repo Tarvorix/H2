@@ -1,0 +1,147 @@
+{
+  "id": "forge-lord-in-terminator-armour",
+  "name": "Forge Lord in Terminator Armour",
+  "titles": "Forge Lord in Terminator Armour",
+  "lore": "War leaders and artificers in equal measure, Forge Lords are often found among heavier Legion elements in battle, harnessing their technological skills to augment and restore hulking Dreadnoughts and slab-sided siege vehicles. As such, they frequently fight as part of Terminator units, clad in masterwork analogues of the hulking armours which surround them.",
+  "basePoints": 130,
+  "battlefieldRole": "Command",
+  "modelDefinitions": [
+    {
+      "name": "Cataphractii Forge Lord",
+      "baseSizeMM": 40,
+      "countInBase": 1,
+      "isAdditionalModelType": false,
+      "characteristics": {
+        "M": 6,
+        "WS": 5,
+        "BS": 5,
+        "S": 4,
+        "T": 5,
+        "W": 4,
+        "I": 5,
+        "A": 4,
+        "LD": 9,
+        "CL": 8,
+        "WP": 8,
+        "IN": 10,
+        "SAV": 2,
+        "INV": 4
+      },
+      "isLeader": true
+    },
+    {
+      "name": "Tartaros Forge Lord",
+      "baseSizeMM": 40,
+      "countInBase": 1,
+      "isAdditionalModelType": true,
+      "characteristics": {
+        "M": 7,
+        "WS": 5,
+        "BS": 5,
+        "S": 4,
+        "T": 5,
+        "W": 4,
+        "I": 5,
+        "A": 4,
+        "LD": 9,
+        "CL": 8,
+        "WP": 8,
+        "IN": 10,
+        "SAV": 2,
+        "INV": 5
+      },
+      "isLeader": true
+    }
+  ],
+  "minModels": 1,
+  "maxModels": 1,
+  "pointsPerAdditionalModel": 0,
+  "defaultWargear": [
+    "power-axe",
+    "combi-bolter",
+    "machinator-array"
+  ],
+  "wargearOptions": [
+    {
+      "type": "exchange",
+      "description": "This Model may have its combi-bolter exchanged for one volkite charger for Free or for one item from the Legion Combi-weapons list.",
+      "removes": [
+        "combi-bolter"
+      ],
+      "adds": [
+        "volkite-charger-for-free-or-for-one-item-from-the-legion-combi-weapons-list"
+      ],
+      "pointsCost": 0,
+      "scope": "one-model"
+    },
+    {
+      "type": "exchange",
+      "description": "This Model may have its power axe exchanged for one thunder hammer for +5 Points.",
+      "removes": [
+        "power-axe"
+      ],
+      "adds": [
+        "thunder-hammer"
+      ],
+      "pointsCost": 5,
+      "scope": "one-model"
+    },
+    {
+      "type": "add",
+      "description": "This Model may have a cyber-familiar selected for it for +10 Points.",
+      "adds": [
+        "cyber-familiar-selected-for-it"
+      ],
+      "pointsCost": 10,
+      "scope": "one-model"
+    }
+  ],
+  "specialRules": [
+    {
+      "name": "Battlesmith",
+      "value": "2"
+    },
+    {
+      "name": "Bulky",
+      "value": "2"
+    },
+    {
+      "name": "Implacable Advance"
+    },
+    {
+      "name": "Slow and Purposeful"
+    },
+    {
+      "name": "Legiones Thallaxes Tartaros Forge Lord"
+    },
+    {
+      "name": "Battlesmith",
+      "value": "2"
+    },
+    {
+      "name": "Bulky",
+      "value": "2"
+    },
+    {
+      "name": "Implacable Advance"
+    },
+    {
+      "name": "Legiones Thallaxes"
+    }
+  ],
+  "traits": [
+    {
+      "category": "Custom",
+      "value": "[Allegiance]"
+    },
+    {
+      "category": "Custom",
+      "value": "[Legiones Astartes]"
+    }
+  ],
+  "unitType": "Infantry",
+  "unitSubTypes": [
+    "Command",
+    "Heavy"
+  ]
+}
