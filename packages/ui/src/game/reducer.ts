@@ -12,6 +12,7 @@
 
 import type { Position, ArmyList, GameState } from '@hh/types';
 import type { CommandResult } from '@hh/engine';
+import { getModelInitiative, getModelMovement } from '@hh/engine';
 import { findMission, getProfileById } from '@hh/data';
 import type { ArmyConfig, UnitSelection } from './types';
 import {
@@ -150,6 +151,7 @@ function buildTranslatedUnitMovePositions(
   gameState: GameState,
   unitId: string,
   destination: Position,
+  isRush: boolean,
 ): { modelPositions: { modelId: string; position: Position }[] | null; error: string | null } {
   for (const army of gameState.armies) {
     const unit = army.units.find(u => u.id === unitId);
@@ -163,6 +165,12 @@ function buildTranslatedUnitMovePositions(
       };
     }
 
+    const refModel = aliveModels[0];
+    const maxDistance = isRush
+      ? getModelMovement(refModel.unitProfileId, refModel.profileModelName) +
+        getModelInitiative(refModel.unitProfileId, refModel.profileModelName)
+      : getModelMovement(refModel.unitProfileId, refModel.profileModelName);
+
     const centroid = aliveModels.reduce(
       (acc, model) => ({
         x: acc.x + model.position.x,
@@ -174,6 +182,14 @@ function buildTranslatedUnitMovePositions(
     const centerY = centroid.y / aliveModels.length;
     const dx = destination.x - centerX;
     const dy = destination.y - centerY;
+    const intendedDistance = Math.sqrt(dx * dx + dy * dy);
+
+    if (intendedDistance > maxDistance + 0.001) {
+      return {
+        modelPositions: null,
+        error: `Destination is out of range (${intendedDistance.toFixed(1)}" / ${maxDistance.toFixed(1)}").`,
+      };
+    }
 
     return {
       modelPositions: aliveModels.map(model => ({
@@ -917,6 +933,7 @@ export function gameReducer(
         state.gameState,
         moveStep.unitId,
         action.position,
+        moveStep.isRush,
       );
       if (!translatedMove.modelPositions) {
         return {

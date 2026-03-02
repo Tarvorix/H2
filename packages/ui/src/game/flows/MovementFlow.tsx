@@ -7,11 +7,48 @@
  */
 
 import { useCallback } from 'react';
+import { getModelInitiative, getModelMovement } from '@hh/engine';
 import type { GameUIState, GameUIAction } from '../types';
 
 interface MovementFlowProps {
   state: GameUIState;
   dispatch: React.Dispatch<GameUIAction>;
+}
+
+function distanceInches(a: { x: number; y: number }, b: { x: number; y: number }): number {
+  const dx = a.x - b.x;
+  const dy = a.y - b.y;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+function getUnitMoveLimit(
+  unit: NonNullable<GameUIState['gameState']>['armies'][number]['units'][number],
+  isRush: boolean,
+): number {
+  const aliveModel = unit.models.find(m => !m.isDestroyed);
+  if (!aliveModel) return 0;
+
+  const movement = getModelMovement(aliveModel.unitProfileId, aliveModel.profileModelName);
+  if (!isRush) return movement;
+
+  const initiative = getModelInitiative(aliveModel.unitProfileId, aliveModel.profileModelName);
+  return movement + initiative;
+}
+
+function getUnitCentroid(
+  unit: NonNullable<GameUIState['gameState']>['armies'][number]['units'][number],
+): { x: number; y: number } | null {
+  const aliveModels = unit.models.filter(m => !m.isDestroyed);
+  if (aliveModels.length === 0) return null;
+
+  const sum = aliveModels.reduce(
+    (acc, model) => ({ x: acc.x + model.position.x, y: acc.y + model.position.y }),
+    { x: 0, y: 0 },
+  );
+  return {
+    x: sum.x / aliveModels.length,
+    y: sum.y / aliveModels.length,
+  };
 }
 
 export function MovementFlow({ state, dispatch }: MovementFlowProps) {
@@ -21,18 +58,46 @@ export function MovementFlow({ state, dispatch }: MovementFlowProps) {
   const gs = state.gameState;
   if (!gs) return null;
 
+  const movingUnitId =
+    step.step === 'selectDestination' || step.step === 'confirmMove'
+      ? step.unitId
+      : null;
+  if (!movingUnitId) return null;
+
+  const isRush =
+    step.step === 'selectDestination' || step.step === 'confirmMove'
+      ? step.isRush
+      : false;
+
   // Find the unit being moved
-  let unitName = 'Unknown Unit';
+  let movingUnit: (typeof gs.armies)[number]['units'][number] | null = null;
   for (const army of gs.armies) {
     for (const unit of army.units) {
-      if (
-        (step.step === 'selectDestination' && unit.id === step.unitId) ||
-        (step.step === 'confirmMove' && unit.id === step.unitId)
-      ) {
-        unitName = unit.profileId;
+      if (unit.id === movingUnitId) {
+        movingUnit = unit;
       }
     }
   }
+  if (!movingUnit) return null;
+
+  const unitName = movingUnit.profileId;
+  const moveLimit = getUnitMoveLimit(movingUnit, isRush);
+  const unitCentroid = getUnitCentroid(movingUnit);
+
+  const cursorDistance = step.step === 'selectDestination' && state.mouseWorldPos && unitCentroid
+    ? distanceInches(state.mouseWorldPos, unitCentroid)
+    : null;
+  const cursorInRange = cursorDistance !== null
+    ? cursorDistance <= moveLimit + 0.001
+    : null;
+
+  const plannedDistance = step.step === 'confirmMove' && step.modelPositions.length > 0
+    ? (() => {
+        const first = step.modelPositions[0];
+        const origin = movingUnit.models.find(m => m.id === first.modelId)?.position;
+        return origin ? distanceInches(origin, first.position) : null;
+      })()
+    : null;
 
   const handleConfirmMove = useCallback(() => {
     dispatch({ type: 'CONFIRM_MOVE' });
@@ -45,18 +110,37 @@ export function MovementFlow({ state, dispatch }: MovementFlowProps) {
   return (
     <div className="flow-panel">
       <div className="flow-panel-title">
-        {step.step === 'selectDestination' && step.isRush ? 'Rush' : 'Move'}: {unitName}
+        {step.step === 'selectDestination' && isRush ? 'Rush' : 'Move'}: {unitName}
       </div>
 
       {step.step === 'selectDestination' && (
-        <div className="flow-panel-step">
-          Click on the battlefield to set the destination.
-          {step.isRush && (
-            <span style={{ color: '#fbbf24', marginLeft: 8 }}>
-              (Rush — double movement, cannot shoot this turn)
+        <>
+          <div className="flow-panel-step">
+            Click on the battlefield to set the destination.
+            {isRush && (
+              <span style={{ color: '#fbbf24', marginLeft: 8 }}>
+                (Rush — double movement, cannot shoot this turn)
+              </span>
+            )}
+          </div>
+          <div className="panel-row">
+            <span className="panel-row-label">Move Limit</span>
+            <span className="panel-row-value">{moveLimit.toFixed(1)}"</span>
+          </div>
+          <div className="panel-row">
+            <span className="panel-row-label">Cursor Distance</span>
+            <span
+              className="panel-row-value"
+              style={
+                cursorInRange === null
+                  ? undefined
+                  : { color: cursorInRange ? '#22c55e' : '#ef4444' }
+              }
+            >
+              {cursorDistance !== null ? `${cursorDistance.toFixed(1)}"` : '--'}
             </span>
-          )}
-        </div>
+          </div>
+        </>
       )}
 
       {step.step === 'confirmMove' && (
@@ -68,21 +152,26 @@ export function MovementFlow({ state, dispatch }: MovementFlowProps) {
             <span className="panel-row-label">Models to move</span>
             <span className="panel-row-value">{step.modelPositions.length}</span>
           </div>
-          {step.modelPositions.map((mp, i) => (
-            <div key={i} className="panel-row">
-              <span className="panel-row-label">Model {i + 1}</span>
-              <span className="panel-row-value">
-                ({mp.position.x.toFixed(1)}", {mp.position.y.toFixed(1)}")
-              </span>
-            </div>
-          ))}
+          <div className="panel-row">
+            <span className="panel-row-label">Planned Distance</span>
+            <span
+              className="panel-row-value"
+              style={
+                plannedDistance === null
+                  ? undefined
+                  : { color: plannedDistance <= moveLimit + 0.001 ? '#22c55e' : '#ef4444' }
+              }
+            >
+              {plannedDistance !== null ? `${plannedDistance.toFixed(1)}" / ${moveLimit.toFixed(1)}"` : '--'}
+            </span>
+          </div>
         </>
       )}
 
       <div className="flow-panel-actions">
         {step.step === 'confirmMove' && (
           <button className="toolbar-btn" onClick={handleConfirmMove}>
-            Confirm {step.isRush ? 'Rush' : 'Move'}
+            Confirm {isRush ? 'Rush' : 'Move'}
           </button>
         )}
         <button className="toolbar-btn" onClick={handleCancel}>

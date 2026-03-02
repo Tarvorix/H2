@@ -1077,6 +1077,14 @@
   animation: flow-panel-slide-up 0.2s ease-out;
 }
 
+.flow-panel-shooting {
+  width: min(860px, calc(100vw - 32px));
+  max-width: 860px;
+  max-height: calc(100vh - 84px);
+  display: flex;
+  flex-direction: column;
+}
+
 @keyframes flow-panel-slide-up {
   from {
     opacity: 0;
@@ -1105,6 +1113,18 @@
   display: flex;
   gap: 8px;
   margin-top: 12px;
+}
+
+.flow-panel-body {
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.flow-panel-shooting .flow-panel-actions {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(42, 74, 111, 0.65);
 }
 
 /* ─── Reaction Modal ───────────────────────────────────────────────────────── */
@@ -1262,6 +1282,9 @@
   border: 1px solid #2a4a6f;
   border-radius: 8px;
   padding: 16px;
+  max-height: min(48vh, 460px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .weapon-selection-model {
@@ -1269,6 +1292,10 @@
   padding: 8px;
   background: #1a1a2e;
   border-radius: 4px;
+}
+
+.weapon-selection-model:last-child {
+  margin-bottom: 0;
 }
 
 .weapon-selection-model-name {
@@ -2308,6 +2335,11 @@
     max-width: none;
     border-radius: 8px 8px 0 0;
     padding: 12px;
+  }
+
+  .flow-panel-shooting {
+    width: auto;
+    max-height: calc(100vh - 104px);
   }
 
   .reaction-modal,

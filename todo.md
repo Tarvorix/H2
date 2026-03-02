@@ -38,6 +38,14 @@ Execute `plan.md` phase-by-phase with continuously enforced MVP scope (3 legions
 ## Hotfix Verification (Move Click Regression - 2026-03-01)
 - `pnpm --filter @hh/ui typecheck`: PASS
 
+## Feature Plan (Shooting Panel + Movement Range UX - 2026-03-01)
+- [x] Make shooting weapon selection flow panel scrollable/responsive so large unit weapon lists are fully accessible.
+- [x] Add movement range feedback (max range and live cursor distance) and block clearly out-of-range destinations before confirm.
+- [x] Run targeted verification and record results.
+
+## Feature Verification (Shooting Panel + Movement Range UX - 2026-03-01)
+- `pnpm --filter @hh/ui typecheck`: PASS
+
 ## Guardrails
 - Use only units from `HH_v2_units.md`.
 - MVP legions: World Eaters, Alpha Legion, Dark Angels.
