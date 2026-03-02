@@ -10,6 +10,7 @@
  */
 
 import type { GameState } from '@hh/types';
+import { getPhaseUxStatus } from '@hh/engine';
 import { Phase } from '@hh/types';
 
 interface PhaseTrackerProps {
@@ -36,6 +37,14 @@ export function PhaseTracker({ gameState }: PhaseTrackerProps) {
   const activeArmy = gameState.armies[gameState.activePlayerIndex];
   const reactiveArmy = gameState.armies[gameState.activePlayerIndex === 0 ? 1 : 0];
   const currentPhaseIndex = PHASE_ORDER.indexOf(gameState.currentPhase);
+  const phaseStatus = getPhaseUxStatus(gameState);
+  const phaseStatusLabel = gameState.awaitingReaction
+    ? 'Reaction'
+    : phaseStatus.state === 'decision'
+      ? 'Decision'
+      : phaseStatus.state === 'auto'
+        ? 'Auto'
+        : 'Blocked';
 
   return (
     <div className="phase-tracker">
@@ -90,12 +99,27 @@ export function PhaseTracker({ gameState }: PhaseTrackerProps) {
 
       <div className="toolbar-separator" />
 
+      <div className="toolbar-group">
+        <span className="toolbar-label">Status</span>
+        <span className={`phase-tracker-status phase-tracker-status-${phaseStatus.state}`}>
+          {phaseStatusLabel}
+        </span>
+      </div>
+
+      <div className="toolbar-separator" />
+
       {/* Reaction Allotment */}
       <div className="toolbar-group">
         <span className="toolbar-label">Reactions</span>
         <span className="phase-tracker-value">
           {reactiveArmy?.reactionAllotmentRemaining ?? 0}
         </span>
+      </div>
+
+      <div className="toolbar-separator" />
+
+      <div className="toolbar-group">
+        <span className="phase-tracker-hint">{phaseStatus.message}</span>
       </div>
 
       {/* Awaiting Reaction Indicator */}

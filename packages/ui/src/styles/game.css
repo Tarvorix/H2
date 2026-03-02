@@ -448,6 +448,30 @@
   white-space: nowrap;
 }
 
+.phase-tracker-status {
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.phase-tracker-status-auto {
+  color: #34d399;
+}
+
+.phase-tracker-status-decision {
+  color: #fbbf24;
+}
+
+.phase-tracker-status-blocked {
+  color: #f87171;
+}
+
+.phase-tracker-hint {
+  font-size: 11px;
+  color: #94a3b8;
+  white-space: nowrap;
+}
+
 @keyframes pulse-alert {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
@@ -546,6 +570,36 @@
 
 .action-bar {
   margin-bottom: 16px;
+}
+
+.action-bar-phase-status,
+.action-bar-automation-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.action-bar-phase-state {
+  font-weight: 600;
+}
+
+.action-bar-phase-state-auto {
+  color: #34d399;
+}
+
+.action-bar-phase-state-decision {
+  color: #fbbf24;
+}
+
+.action-bar-phase-state-blocked {
+  color: #f87171;
+}
+
+.action-bar-phase-message {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-bottom: 8px;
 }
 
 .action-bar-buttons {

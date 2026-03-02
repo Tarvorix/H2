@@ -23,6 +23,7 @@ import { ChallengeFlow } from './flows/ChallengeFlow';
 import { DiceDisplay } from './components/DiceDisplay';
 import { useAITurn } from './hooks/useAITurn';
 import { useAIDeployment } from './hooks/useAIDeployment';
+import { usePhaseAutomation } from './hooks/usePhaseAutomation';
 import { GameBattlefieldCanvas } from './canvas/GameBattlefieldCanvas';
 import { VPTracker } from './panels/VPTracker';
 import {
@@ -37,10 +38,12 @@ interface GameSessionProps {
 export function GameSession({ onReturnToMenu }: GameSessionProps) {
   const [state, dispatch] = useReducer(gameReducer, undefined, createInitialGameUIState);
   const [rendererMode, setRendererMode] = useState<RendererAssetMode>('placeholder');
+  const [phaseAutomationPaused, setPhaseAutomationPaused] = useState(false);
 
   // AI hooks — internally guard on phase and aiConfig
   useAITurn(state, dispatch);
   useAIDeployment(state, dispatch);
+  usePhaseAutomation(state, dispatch, { paused: phaseAutomationPaused });
 
   // Auto-dismiss notifications after their duration
   useEffect(() => {
@@ -73,6 +76,10 @@ export function GameSession({ onReturnToMenu }: GameSessionProps) {
 
   const handleDismissDice = useCallback(() => {
     dispatch({ type: 'HIDE_DICE_ANIMATION' });
+  }, []);
+
+  const handleTogglePhaseAutomation = useCallback(() => {
+    setPhaseAutomationPaused(current => !current);
   }, []);
 
   // Pre-game setup phases
@@ -119,17 +126,8 @@ export function GameSession({ onReturnToMenu }: GameSessionProps) {
         )}
         <div className="toolbar-separator" />
         <div className="toolbar-group">
-          <button
-            className="toolbar-btn"
-            onClick={() => dispatch({ type: 'END_SUB_PHASE' })}
-          >
-            End Sub-Phase
-          </button>
-          <button
-            className="toolbar-btn"
-            onClick={() => dispatch({ type: 'END_PHASE' })}
-          >
-            End Phase
+          <button className="toolbar-btn" onClick={handleTogglePhaseAutomation}>
+            Auto: {phaseAutomationPaused ? 'Paused' : 'On'}
           </button>
         </div>
         <div className="toolbar-separator" />
@@ -179,6 +177,8 @@ export function GameSession({ onReturnToMenu }: GameSessionProps) {
           <ActionBar
             state={state}
             dispatch={dispatch}
+            phaseAutomationPaused={phaseAutomationPaused}
+            onTogglePhaseAutomation={handleTogglePhaseAutomation}
           />
         )}
 

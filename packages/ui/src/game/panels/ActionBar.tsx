@@ -7,20 +7,27 @@
  */
 
 import { useCallback, useMemo } from 'react';
+import { getPhaseUxStatus } from '@hh/engine';
 import { Phase, SubPhase } from '@hh/types';
 import type { GameUIState, GameUIAction, AvailableAction } from '../types';
 
 interface ActionBarProps {
   state: GameUIState;
   dispatch: React.Dispatch<GameUIAction>;
+  phaseAutomationPaused: boolean;
+  onTogglePhaseAutomation: () => void;
 }
 
-function getAvailableActions(state: GameUIState): AvailableAction[] {
+function getAvailableActions(
+  state: GameUIState,
+  phaseAutomationPaused: boolean,
+): AvailableAction[] {
   const actions: AvailableAction[] = [];
   const gs = state.gameState;
   if (!gs) return actions;
 
   const hasSelectedUnit = state.selectedUnitId !== null;
+  const phaseStatus = getPhaseUxStatus(gs);
 
   // If awaiting reaction, only show reaction actions
   if (gs.awaitingReaction) {
@@ -101,28 +108,49 @@ function getAvailableActions(state: GameUIState): AvailableAction[] {
     });
   }
 
-  // Always available phase control
-  actions.push({
-    id: 'end-sub-phase',
-    label: 'End Sub-Phase',
-    enabled: state.flowState.type === 'idle',
-    disabledReason: state.flowState.type !== 'idle' ? 'Complete or cancel current action first' : undefined,
-    action: { type: 'END_SUB_PHASE' },
-  });
-  actions.push({
-    id: 'end-phase',
-    label: 'End Phase',
-    enabled: state.flowState.type === 'idle',
-    disabledReason: state.flowState.type !== 'idle' ? 'Complete or cancel current action first' : undefined,
-    action: { type: 'END_PHASE' },
-    shortcut: 'E',
-  });
+  const shouldShowContinue =
+    !gs.isGameOver && (phaseAutomationPaused || phaseStatus.isDecisionPoint);
+
+  if (shouldShowContinue) {
+    actions.push({
+      id: 'continue-sub-phase',
+      label: phaseStatus.isDecisionPoint ? 'Continue (Skip)' : 'Continue',
+      enabled: state.flowState.type === 'idle',
+      disabledReason: state.flowState.type !== 'idle'
+        ? 'Complete or cancel current action first'
+        : undefined,
+      action: { type: 'END_SUB_PHASE' },
+      shortcut: 'E',
+    });
+  }
 
   return actions;
 }
 
-export function ActionBar({ state, dispatch }: ActionBarProps) {
-  const actions = useMemo(() => getAvailableActions(state), [state]);
+function getPhaseStatusLabel(
+  phaseStatus: ReturnType<typeof getPhaseUxStatus>,
+  awaitingReaction: boolean,
+): string {
+  if (awaitingReaction) return 'Reaction Pending';
+  if (phaseStatus.state === 'decision') return 'Decision Required';
+  if (phaseStatus.state === 'auto') return 'Auto-Advance';
+  return 'Blocked';
+}
+
+export function ActionBar({
+  state,
+  dispatch,
+  phaseAutomationPaused,
+  onTogglePhaseAutomation,
+}: ActionBarProps) {
+  const actions = useMemo(
+    () => getAvailableActions(state, phaseAutomationPaused),
+    [state, phaseAutomationPaused],
+  );
+  const phaseStatus = useMemo(
+    () => (state.gameState ? getPhaseUxStatus(state.gameState) : null),
+    [state.gameState],
+  );
 
   const handleClick = useCallback(
     (action: GameUIAction) => {
@@ -134,6 +162,28 @@ export function ActionBar({ state, dispatch }: ActionBarProps) {
   return (
     <div className="panel-section action-bar">
       <div className="panel-title">Actions</div>
+      {phaseStatus && state.gameState && (
+        <>
+          <div className="action-bar-phase-status">
+            <span className="panel-row-label">Phase</span>
+            <span
+              className={`panel-row-value action-bar-phase-state action-bar-phase-state-${phaseStatus.state}`}
+            >
+              {getPhaseStatusLabel(phaseStatus, state.gameState.awaitingReaction)}
+            </span>
+          </div>
+          <div className="action-bar-phase-message">{phaseStatus.message}</div>
+          <div className="action-bar-automation-controls">
+            <span className="panel-row-label">Automation</span>
+            <button
+              className="action-bar-btn"
+              onClick={onTogglePhaseAutomation}
+            >
+              {phaseAutomationPaused ? 'Resume Auto' : 'Pause Auto'}
+            </button>
+          </div>
+        </>
+      )}
       <div className="action-bar-buttons">
         {actions.map(a => (
           <button

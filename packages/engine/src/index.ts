@@ -218,6 +218,15 @@ export {
   initializeGamePhase,
 } from './state-machine';
 
+// ─── Phase UX ────────────────────────────────────────────────────────────────
+export type {
+  PhaseUxMode,
+  PhaseUxState,
+  PhaseUxBlocker,
+  PhaseUxStatus,
+} from './phase-ux';
+export { getPhaseUxStatus } from './phase-ux';
+
 // ─── Command Processor ──────────────────────────────────────────────────────
 export { processCommand, getValidCommands } from './command-processor';
 

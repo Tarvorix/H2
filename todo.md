@@ -1,6 +1,6 @@
 # HHv2 TODO
 
-Last Updated: 2026-02-28
+Last Updated: 2026-03-01
 
 ## Active Goal
 Execute `plan.md` phase-by-phase with continuously enforced MVP scope (3 legions, units from `HH_v2_units.md` only) while keeping build/test green.
@@ -45,6 +45,29 @@ Execute `plan.md` phase-by-phase with continuously enforced MVP scope (3 legions
 
 ## Feature Verification (Shooting Panel + Movement Range UX - 2026-03-01)
 - `pnpm --filter @hh/ui typecheck`: PASS
+
+## Feature Plan (Phase/Subphase UX Overhaul - 2026-03-01)
+- [x] Define and codify a phase UX model that distinguishes `auto`, `decision-required`, and `conditional` subphases so users only see controls when needed.
+- [x] Add a phase progression helper in engine that exposes actionable phase status (what decision is pending vs why auto-advance is safe) for UI and AI parity.
+- [x] Implement a UI phase automation controller that auto-advances non-decision subphases and idle decision subphases only when no valid tactical actions remain.
+- [x] Preserve explicit user control with a manual pause/step mode, plus a visible `Continue` action when automation is paused or a decision is required.
+- [x] Replace always-on `End Sub-Phase` / `End Phase` controls with context-aware controls and clear blocker messaging (for example: unit/action still available, reaction pending, or flow in progress).
+- [x] Redesign Phase Tracker to show concise progression, current decision point, and reactive interrupts instead of exposing raw subphase churn.
+- [x] Add combat-log/system-log entries for auto-advances and skipped subphases so players can audit what happened and why.
+- [x] Add regression coverage for auto-advance gating, reaction interrupts, and no-decision fast-forward chains; run targeted UI + engine verification.
+
+## Feature Verification (Phase/Subphase UX Overhaul - 2026-03-01)
+- `pnpm test -- packages/engine/src/phase-ux.test.ts`: PASS (1 file, 7 tests)
+- `pnpm --filter @hh/engine typecheck`: PASS
+- `pnpm --filter @hh/engine build`: PASS
+- `pnpm --filter @hh/ui typecheck`: PASS
+- `pnpm typecheck`: PASS
+
+## Feature Validation Criteria (Phase/Subphase UX Overhaul - 2026-03-01)
+- [ ] Player can complete a full turn without pressing manual end controls in routine cases.
+- [ ] Game never auto-skips a real decision point (movement/shooting/charge/fight/aftermath/challenge when choices exist).
+- [ ] Reaction prompts always interrupt automation immediately and resume safely after response.
+- [ ] AI and human turns follow the same phase-gating rules to avoid desync in behavior.
 
 ## Guardrails
 - Use only units from `HH_v2_units.md`.
