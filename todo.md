@@ -582,3 +582,9 @@ Remove all MVP hardwires and fully implement Blackshields + Shattered Legions as
 - [x] Add an "Advanced AI Army List Builder" section to `MixedSearch_NNUE_Plan.md`.
 - [x] Document roster-generation architecture (interfaces, constraints, mixed-search flow, NNUE scoring, UI/headless integration).
 - [x] Add explicit roster validation and deterministic reproducibility gates.
+
+## Documentation Polish (2026-03-04)
+- [x] Add explicit Turbo decision-time profile guidance (`800–1000ms`) while keeping `500ms` UI default.
+- [x] Add worker progress telemetry cadence requirements (50–100ms updates with depth/nodes/PV).
+- [x] Expand reaction fingerprint definition for transposition determinism (`hasReactedThisTurn`, allotments, advanced reaction usage).
+- [x] Add exact deterministic seed schedule + PRNG specification for mixed-search rollouts.

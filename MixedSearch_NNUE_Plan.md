@@ -39,8 +39,19 @@
 - Use alpha-beta on player decision nodes.
 - Use stochastic handling at chance-heavy nodes:
   - Fast expected-value pre-pass for ordering.
-  - Rollout sampling on top candidates (`rolloutCount`) with fixed seed schedule per root move.
+  - Rollout sampling on top candidates (`rolloutCount`) with a deterministic seed schedule per root move.
+  - Deterministic seed schedule spec:
+    - `baseSeed` defaults to `0x1234ABCD` unless provided in config.
+    - `rootSeed = (baseSeed + rootMoveIndex) >>> 0`.
+    - Example: root move `0` uses `0x1234ABCD`, root move `1` uses `0x1234ABCE`.
+    - Per rollout/chance node, derive `nodeSeed = hash32(rootSeed, ply, rolloutIndex, chanceNodeIndex)`.
+    - Use a fixed PRNG implementation (`mulberry32`) in both UI worker and headless paths.
 - Add transposition table keyed by `hashGameState + sideToAct + pendingReaction fingerprint + depth`.
+- Define `pendingReaction fingerprint` to include:
+  - `pendingReaction` identity fields (`reactionType`, sorted `eligibleUnitIds`, `triggerSourceUnitId`)
+  - both players' `reactionAllotmentRemaining`
+  - per-unit `hasReactedThisTurn` flags
+  - `advancedReactionsUsed` snapshot
 - Add move ordering: TT move, tactical captures/finishing shots, killer/history heuristics, NNUE prior.
 - Add fail-soft aspiration windows and fallback to best completed depth on timeout.
 
@@ -66,6 +77,10 @@
 ### 5) UI and Headless Integration
 - Integrate `Engine` strategy in `generateNextCommand`.
 - Add search cancellation token and run search in a UI Worker to avoid blocking render/input.
+- Make worker progress updates mandatory:
+  - worker posts `searchProgress` every ~50 ms (configurable 50–100 ms).
+  - include `elapsedMs`, `depth`, `nodes`, `nps`, `bestScore`, `principalVariation`.
+  - UI displays live "thinking" telemetry without blocking input/render.
 - Surface diagnostics (optional): depth, nodes, nps, eval, principal variation.
 - Keep deployment AI path unchanged initially, then optionally migrate to search later.
 - Extend headless CLI to choose `Engine` tier and NNUE model for both players.
@@ -147,6 +162,9 @@
 - Correctness gate:
   - 100% command legality from generated macro-actions in regression suite.
   - deterministic replay parity with fixed dice/model/version.
+- Determinism gate:
+  - identical best move, PV, and final decision score for same `GameState + baseSeed + config`.
+  - seed schedule and PRNG outputs match exactly between UI worker and headless runner.
 - Strength gate:
   - `Engine` (same time budget) wins >55% vs current Tactical over fixed-seed match set.
 - Performance gate:
@@ -179,6 +197,9 @@
 - Inference target: shared UI + headless.
 - Training bootstrap: self-play + heuristic teacher labels.
 - Time budget default: 500ms per decision (within 300–800ms target).
+- Turbo mode:
+  - headless/ladder profile defaults to `800–1000ms` per decision.
+  - UI default remains `500ms`; Turbo UI is optional and user-toggleable.
 - Army builder AI default:
   - beam-first legal construction, then NNUE + headless matchup ranking on top candidates.
   - deterministic seed mode available for reproducible testing.
