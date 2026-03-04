@@ -7,7 +7,7 @@
  */
 
 import { useCallback, useMemo } from 'react';
-import { getPhaseUxStatus } from '@hh/engine';
+import { canUnitShoot, getPhaseUxStatus } from '@hh/engine';
 import { Phase, SubPhase } from '@hh/types';
 import type { GameUIState, GameUIAction, AvailableAction } from '../types';
 
@@ -16,6 +16,17 @@ interface ActionBarProps {
   dispatch: React.Dispatch<GameUIAction>;
   phaseAutomationPaused: boolean;
   onTogglePhaseAutomation: () => void;
+}
+
+function findUnitById(state: GameUIState, unitId: string) {
+  const gs = state.gameState;
+  if (!gs) return null;
+  for (const army of gs.armies) {
+    for (const unit of army.units) {
+      if (unit.id === unitId) return unit;
+    }
+  }
+  return null;
 }
 
 function getAvailableActions(
@@ -27,6 +38,8 @@ function getAvailableActions(
   if (!gs) return actions;
 
   const hasSelectedUnit = state.selectedUnitId !== null;
+  const selectedUnit = state.selectedUnitId ? findUnitById(state, state.selectedUnitId) : null;
+  const selectedUnitCanShoot = selectedUnit ? canUnitShoot(selectedUnit) : false;
   const phaseStatus = getPhaseUxStatus(gs);
 
   // If awaiting reaction, only show reaction actions
@@ -36,6 +49,24 @@ function getAvailableActions(
       label: 'Decline Reaction',
       enabled: true,
       action: { type: 'DECLINE_REACTION' },
+      shortcut: 'Esc',
+    });
+    return actions;
+  }
+
+  // If a flow is already active, only allow canceling that flow.
+  if (state.flowState.type !== 'idle') {
+    actions.push({
+      id: 'cancel',
+      label: 'Cancel',
+      enabled: true,
+      action: state.flowState.type === 'movement'
+        ? { type: 'CANCEL_MOVE' }
+        : state.flowState.type === 'shooting'
+          ? { type: 'CANCEL_SHOOTING' }
+          : state.flowState.type === 'assault'
+            ? { type: 'CANCEL_CHARGE' }
+            : { type: 'SET_FLOW_STATE', flowState: { type: 'idle' } },
       shortcut: 'Esc',
     });
     return actions;
@@ -69,8 +100,14 @@ function getAvailableActions(
         actions.push({
           id: 'shoot',
           label: 'Shoot',
-          enabled: hasSelectedUnit,
-          disabledReason: !hasSelectedUnit ? 'Select a unit first' : undefined,
+          enabled: hasSelectedUnit && selectedUnitCanShoot,
+          disabledReason: !hasSelectedUnit
+            ? 'Select a unit first'
+            : !selectedUnit
+              ? 'Selected unit was not found'
+              : !selectedUnitCanShoot
+                ? 'Selected unit is not eligible to shoot'
+                : undefined,
           action: { type: 'START_SHOOTING_FLOW' },
           shortcut: 'S',
         });
@@ -89,23 +126,6 @@ function getAvailableActions(
         });
       }
       break;
-  }
-
-  // Cancel current flow
-  if (state.flowState.type !== 'idle') {
-    actions.push({
-      id: 'cancel',
-      label: 'Cancel',
-      enabled: true,
-      action: state.flowState.type === 'movement'
-        ? { type: 'CANCEL_MOVE' }
-        : state.flowState.type === 'shooting'
-          ? { type: 'CANCEL_SHOOTING' }
-          : state.flowState.type === 'assault'
-            ? { type: 'CANCEL_CHARGE' }
-            : { type: 'SET_FLOW_STATE', flowState: { type: 'idle' } },
-      shortcut: 'Esc',
-    });
   }
 
   const shouldShowContinue =

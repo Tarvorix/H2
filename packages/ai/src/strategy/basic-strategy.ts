@@ -3,7 +3,7 @@
  *
  * Random valid action strategy — no tactical intelligence.
  * Picks random targets, random movement destinations, and randomly
- * decides whether to charge or use reactions.
+ * decides whether to charge. Reactions are accepted whenever legal.
  *
  * This is the foundation strategy that proves the AI system works.
  */

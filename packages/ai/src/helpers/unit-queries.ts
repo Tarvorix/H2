@@ -18,6 +18,7 @@ import {
   findUnitPlayerIndex,
   hasLOSToUnit,
   getClosestModelDistance,
+  getModelMovement,
 } from '@hh/engine';
 
 // ─── Movement Queries ────────────────────────────────────────────────────────
@@ -153,12 +154,11 @@ export function getUnitEquippedWeapons(unit: UnitState): Map<string, string[]> {
 }
 
 /**
- * Get the default movement characteristic for a model.
- * Standard Astartes M = 7". This is the default used throughout the engine.
+ * Get the movement characteristic for a model from its profile.
+ * Falls back to 7" via engine profile lookup if profile data is unavailable.
  */
-export function getModelMovementCharacteristic(_model: ModelState): number {
-  // Default Astartes movement — engine uses 7 as the baseline
-  return 7;
+export function getModelMovementCharacteristic(model: ModelState): number {
+  return getModelMovement(model.unitProfileId, model.profileModelName);
 }
 
 /**

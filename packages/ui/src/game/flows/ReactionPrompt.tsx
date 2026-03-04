@@ -18,15 +18,15 @@ interface ReactionPromptProps {
 const REACTION_INFO: Record<string, { name: string; description: string }> = {
   [CoreReaction.Reposition]: {
     name: 'Reposition',
-    description: 'Move a unit up to its Movement value in response to an enemy movement. Cannot move within 1" of enemy models.',
+    description: 'Move each model up to its Initiative value after an enemy unit ends a move within 12" and Line of Sight.',
   },
   [CoreReaction.ReturnFire]: {
     name: 'Return Fire',
-    description: 'Immediately fire back at the enemy unit that just shot at you. Only Defensive weapons may be used. Treated as Snap Shots.',
+    description: 'In Shooting Step 3, declare this for the targeted unit. Resolve your reaction shooting attack before the original attack finishes casualty removal.',
   },
   [CoreReaction.Overwatch]: {
     name: 'Overwatch',
-    description: 'Fire at an enemy unit that is declaring a charge against you. Resolved as Snap Shots before the charge is resolved.',
+    description: 'In Charge Step 4, fire at full BS with any ranged weapon instead of a snap-shot volley. No separate measurement declaration is required.',
   },
 };
 

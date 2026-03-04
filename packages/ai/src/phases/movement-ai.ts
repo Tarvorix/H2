@@ -109,7 +109,7 @@ function generateMoveCommand(
  */
 function continueMovingUnit(
   state: GameState,
-  _playerIndex: number,
+  playerIndex: number,
   context: AITurnContext,
   strategy: StrategyMode,
   bfWidth: number,
@@ -123,8 +123,17 @@ function continueMovingUnit(
     context.actedUnitIds.add(unitId);
     context.currentMovingUnitId = null;
     context.movedModelIds.clear();
-    // Return null to trigger picking the next unit on the next call
-    return null;
+
+    // Immediately continue to the next unit in the same Move sub-phase.
+    // Returning null here causes the strategy layer to emit endSubPhase too early.
+    const remainingMovableUnits = getMovableUnits(state, playerIndex, context.actedUnitIds);
+    if (remainingMovableUnits.length === 0) {
+      return null;
+    }
+
+    const nextUnit = remainingMovableUnits[0];
+    context.currentMovingUnitId = nextUnit.id;
+    return moveNextModel(state, nextUnit.id, context, strategy, bfWidth, bfHeight);
   }
 
   return result;

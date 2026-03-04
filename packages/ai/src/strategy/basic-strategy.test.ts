@@ -201,16 +201,6 @@ describe('BasicStrategy.generateNextCommand — auto-advance sub-phases', () => 
 // ─── Reaction Tests ──────────────────────────────────────────────────────────
 
 describe('BasicStrategy.generateNextCommand — reactions', () => {
-  let mathRandomSpy: ReturnType<typeof vi.spyOn>;
-
-  beforeEach(() => {
-    mathRandomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.1);
-  });
-
-  afterEach(() => {
-    mathRandomSpy.mockRestore();
-  });
-
   it('returns reaction command when awaiting reaction', () => {
     const strategy = new BasicStrategy();
     const state = createGameState({
@@ -230,7 +220,6 @@ describe('BasicStrategy.generateNextCommand — reactions', () => {
     const command = strategy.generateNextCommand(state, 1, context);
 
     expect(command).not.toBeNull();
-    // With Math.random=0.1 < 0.3, basic strategy should accept
     expect(command!.type).toBe('selectReaction');
   });
 

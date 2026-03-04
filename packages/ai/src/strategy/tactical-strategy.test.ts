@@ -224,7 +224,7 @@ describe('TacticalStrategy.generateNextCommand — reactions', () => {
     expect(command!.type).toBe('selectReaction');
   });
 
-  it('returns declineReaction when allotment is low (<=1)', () => {
+  it('accepts reaction when allotment is low but still legal', () => {
     const strategy = new TacticalStrategy();
     const state = createGameState({
       activePlayerIndex: 0,
@@ -246,7 +246,7 @@ describe('TacticalStrategy.generateNextCommand — reactions', () => {
     const command = strategy.generateNextCommand(state, 1, context);
 
     expect(command).not.toBeNull();
-    expect(command!.type).toBe('declineReaction');
+    expect(command!.type).toBe('selectReaction');
   });
 
   it('returns declineReaction when AI is not reactive player', () => {

@@ -212,9 +212,9 @@ export function offerOverwatch(
  * - The army's reaction allotment is decremented
  * - If all charging models are destroyed, the charge ends
  *
- * Note: The actual shooting resolution (hit tests, wound tests, saves, damage)
- * will be handled by the shooting pipeline when fully integrated (Step 17).
- * This function handles the Overwatch-specific state changes.
+ * Note: The command processor resolves the Overwatch shooting attack before
+ * calling this function. This function handles the Overwatch-specific state
+ * changes (reaction usage bookkeeping and reaction event emission).
  *
  * @param state - Current game state
  * @param reactingUnitId - Unit using Overwatch (the charged target)

@@ -90,7 +90,12 @@ export function determineSnapShots(
   weaponProfile: ResolvedWeaponProfile,
   forceSnapShots: boolean = false,   // Legion tactica forces snap shots (e.g., Raven Guard at 18"+)
   countsAsStationary: boolean = false, // Legion tactica treats unit as stationary (e.g., Death Guard heavy after ≤4" move)
+  forceNoSnapShots: boolean = false, // Reaction shots like Overwatch fire at full BS regardless of normal snap-shot gates
 ): boolean {
+  if (forceNoSnapShots) {
+    return false;
+  }
+
   // Legion tactica: force snap shots regardless of other conditions
   if (forceSnapShots) {
     return true;

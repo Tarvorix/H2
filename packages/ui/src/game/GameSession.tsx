@@ -35,6 +35,9 @@ interface GameSessionProps {
   onReturnToMenu: () => void;
 }
 
+const MIN_NOTIFICATION_DURATION_MS = 8000;
+const MIN_DICE_OVERLAY_DURATION_MS = 6000;
+
 export function GameSession({ onReturnToMenu }: GameSessionProps) {
   const [state, dispatch] = useReducer(gameReducer, undefined, createInitialGameUIState);
   const [rendererMode, setRendererMode] = useState<RendererAssetMode>('placeholder');
@@ -50,7 +53,8 @@ export function GameSession({ onReturnToMenu }: GameSessionProps) {
     if (state.notifications.length === 0) return;
     const timers = state.notifications.map(n => {
       const elapsed = Date.now() - n.timestamp;
-      const remaining = Math.max(0, n.duration - elapsed);
+      const displayDuration = Math.max(n.duration, MIN_NOTIFICATION_DURATION_MS);
+      const remaining = Math.max(0, displayDuration - elapsed);
       return setTimeout(() => {
         dispatch({ type: 'DISMISS_NOTIFICATION', timestamp: n.timestamp });
       }, remaining);
@@ -62,7 +66,8 @@ export function GameSession({ onReturnToMenu }: GameSessionProps) {
   useEffect(() => {
     if (!state.diceAnimation.isVisible) return;
     const elapsed = Date.now() - state.diceAnimation.startTime;
-    const remaining = Math.max(0, state.diceAnimation.duration - elapsed);
+    const displayDuration = Math.max(state.diceAnimation.duration, MIN_DICE_OVERLAY_DURATION_MS);
+    const remaining = Math.max(0, displayDuration - elapsed);
     const timer = setTimeout(() => {
       dispatch({ type: 'HIDE_DICE_ANIMATION' });
     }, remaining);

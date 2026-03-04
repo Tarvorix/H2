@@ -6,7 +6,7 @@
  * - Target prioritization (wounded > exposed > high-threat)
  * - Position evaluation (objectives, cover, firing lanes)
  * - Charge evaluation (only charge favorable combats)
- * - Smart reaction usage (save allotments for high-value opportunities)
+ * - Rules-valid reaction handling (accept legal reaction opportunities)
  * - Role-based deployment (ranged units back, melee units forward)
  */
 

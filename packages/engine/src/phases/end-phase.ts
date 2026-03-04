@@ -40,11 +40,12 @@ export function handleEndEffects(
   const activeArmy = getActiveArmy(state);
 
   for (const unit of activeArmy.units) {
-    // Reset hasReactedThisTurn
-    if (unit.hasReactedThisTurn) {
+    // Reset per-turn reaction/shooting usage flags
+    if (unit.hasReactedThisTurn || unit.hasShotThisTurn === true) {
       newState = updateUnitInGameState(newState, unit.id, (u) => ({
         ...u,
         hasReactedThisTurn: false,
+        hasShotThisTurn: false,
       }));
     }
 

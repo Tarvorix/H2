@@ -258,6 +258,6 @@ describe('headless replay artifacts', () => {
 
     expect(strategicCommandCount).toBeGreaterThan(0);
     expect(signature).toBe('0:endSubPhase|0:endSubPhase|0:moveModel|0:moveModel|0:moveModel|0:moveModel|0:moveModel|0:moveModel|0:moveModel|0:moveModel|0:moveModel|0:moveModel|0:endSubPhase|0:endSubPhase|0:endSubPhase|0:endSubPhase|0:endSubPhase|0:endSubPhase|0:endSubPhase|0:endSubPhase|0:endSubPhase|0:endSubPhase|0:endSubPhase|1:endSubPhase|1:endSubPhase|1:moveModel|1:moveModel|1:moveModel|1:moveModel|1:moveModel|1:moveModel|1:moveModel|1:moveModel|1:moveModel|1:moveModel|1:endSubPhase|1:endSubPhase|1:endSubPhase|1:endSubPhase|1:endSubPhase');
-    expect(runResult.finalStateHash).toBe('703ce1186438b65e');
+    expect(runResult.finalStateHash).toBe('5267e59c79cc8dad');
   });
 });

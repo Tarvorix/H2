@@ -671,7 +671,7 @@ export function createDefaultDiceAnimationState(): DiceAnimationState {
     isVisible: false,
     roll: null,
     startTime: 0,
-    duration: 3000,
+    duration: 6000,
   };
 }
 

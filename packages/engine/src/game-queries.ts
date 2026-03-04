@@ -328,6 +328,8 @@ export function canUnitShoot(unit: UnitState): boolean {
   if (!unit.isDeployed) return false;
   // Must not be embarked
   if (unit.embarkedOnId !== null) return false;
+  // Must not have already made a normal shooting attack this turn
+  if (unit.hasShotThisTurn === true) return false;
   // Must not have rushed
   if (unit.movementState === UnitMovementState.Rushed) return false;
   // Must not be locked in combat

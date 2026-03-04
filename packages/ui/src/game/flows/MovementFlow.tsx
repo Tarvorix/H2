@@ -15,6 +15,8 @@ interface MovementFlowProps {
   dispatch: React.Dispatch<GameUIAction>;
 }
 
+const MOVE_DISTANCE_EPSILON = 0.005;
+
 function distanceInches(a: { x: number; y: number }, b: { x: number; y: number }): number {
   const dx = a.x - b.x;
   const dy = a.y - b.y;
@@ -88,7 +90,7 @@ export function MovementFlow({ state, dispatch }: MovementFlowProps) {
     ? distanceInches(state.mouseWorldPos, unitCentroid)
     : null;
   const cursorInRange = cursorDistance !== null
-    ? cursorDistance <= moveLimit + 0.001
+    ? cursorDistance <= moveLimit + MOVE_DISTANCE_EPSILON
     : null;
 
   const plannedDistance = step.step === 'confirmMove' && step.modelPositions.length > 0
@@ -125,7 +127,7 @@ export function MovementFlow({ state, dispatch }: MovementFlowProps) {
           </div>
           <div className="panel-row">
             <span className="panel-row-label">Move Limit</span>
-            <span className="panel-row-value">{moveLimit.toFixed(1)}"</span>
+            <span className="panel-row-value">{moveLimit.toFixed(2)}"</span>
           </div>
           <div className="panel-row">
             <span className="panel-row-label">Cursor Distance</span>
@@ -137,7 +139,7 @@ export function MovementFlow({ state, dispatch }: MovementFlowProps) {
                   : { color: cursorInRange ? '#22c55e' : '#ef4444' }
               }
             >
-              {cursorDistance !== null ? `${cursorDistance.toFixed(1)}"` : '--'}
+              {cursorDistance !== null ? `${cursorDistance.toFixed(2)}"` : '--'}
             </span>
           </div>
         </>
@@ -159,10 +161,10 @@ export function MovementFlow({ state, dispatch }: MovementFlowProps) {
               style={
                 plannedDistance === null
                   ? undefined
-                  : { color: plannedDistance <= moveLimit + 0.001 ? '#22c55e' : '#ef4444' }
+                  : { color: plannedDistance <= moveLimit + MOVE_DISTANCE_EPSILON ? '#22c55e' : '#ef4444' }
               }
             >
-              {plannedDistance !== null ? `${plannedDistance.toFixed(1)}" / ${moveLimit.toFixed(1)}"` : '--'}
+              {plannedDistance !== null ? `${plannedDistance.toFixed(2)}" / ${moveLimit.toFixed(2)}"` : '--'}
             </span>
           </div>
         </>

@@ -1137,11 +1137,17 @@
 }
 
 .flow-panel-shooting {
-  width: min(860px, calc(100vw - 32px));
-  max-width: 860px;
-  max-height: calc(100dvh - 84px - var(--safe-top) - var(--safe-bottom));
+  width: min(680px, calc(100vw - 32px));
+  max-width: 680px;
+  max-height: min(72dvh, calc(100dvh - 120px - var(--safe-top) - var(--safe-bottom)));
   display: flex;
   flex-direction: column;
+}
+
+.flow-panel-shooting-compact {
+  width: min(520px, calc(100vw - 32px));
+  max-width: 520px;
+  max-height: min(48dvh, calc(100dvh - 180px - var(--safe-top) - var(--safe-bottom)));
 }
 
 @keyframes flow-panel-slide-up {
@@ -1184,6 +1190,12 @@
   margin-top: 10px;
   padding-top: 10px;
   border-top: 1px solid rgba(42, 74, 111, 0.65);
+}
+
+.shooting-resolution-groups {
+  max-height: 160px;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
 /* ─── Reaction Modal ───────────────────────────────────────────────────────── */
@@ -2097,6 +2109,7 @@
 
 .objective-placement-canvas {
   flex: 1;
+  min-width: 0;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -2104,6 +2117,7 @@
 }
 
 .battlefield-preview {
+  width: min(100%, 960px);
   background: #0a0a1a;
   border: 1px solid #2d4a7a;
   border-radius: 4px;
@@ -2112,19 +2126,20 @@
 
 .battlefield-outline {
   position: relative;
+  width: 100%;
   background: #111827;
   border: 2px solid #1a2744;
 }
 
 .objective-marker {
   position: absolute;
-  width: 24px;
-  height: 24px;
+  width: clamp(16px, 2.2vw, 24px);
+  height: clamp(16px, 2.2vw, 24px);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: clamp(9px, 1vw, 10px);
   font-weight: 700;
   transform: translate(-50%, -50%);
 }
@@ -2404,7 +2419,11 @@
 
   .flow-panel-shooting {
     width: auto;
-    max-height: calc(100dvh - 104px - var(--safe-top) - var(--safe-bottom));
+    max-height: min(68dvh, calc(100dvh - 104px - var(--safe-top) - var(--safe-bottom)));
+  }
+
+  .flow-panel-shooting-compact {
+    max-height: min(54dvh, calc(100dvh - 140px - var(--safe-top) - var(--safe-bottom)));
   }
 
   .reaction-modal,

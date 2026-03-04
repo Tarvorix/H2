@@ -27,6 +27,22 @@ function buildFallbackCommand(
   gameState: NonNullable<GameUIState['gameState']>,
 ): import('@hh/types').GameCommand | null {
   if (gameState.awaitingReaction) {
+    const pending = gameState.pendingReaction;
+    const reactivePlayerIndex = gameState.activePlayerIndex === 0 ? 1 : 0;
+    const reactiveArmy = gameState.armies[reactivePlayerIndex];
+
+    if (
+      pending &&
+      pending.eligibleUnitIds.length > 0 &&
+      reactiveArmy.reactionAllotmentRemaining > 0
+    ) {
+      return {
+        type: 'selectReaction',
+        unitId: pending.eligibleUnitIds[0],
+        reactionType: String(pending.reactionType),
+      };
+    }
+
     return { type: 'declineReaction' };
   }
 
@@ -34,6 +50,18 @@ function buildFallbackCommand(
   if (valid.has('endSubPhase')) return { type: 'endSubPhase' };
   if (valid.has('endPhase')) return { type: 'endPhase' };
   return null;
+}
+
+function buildAiStateKey(
+  gameState: NonNullable<GameUIState['gameState']>,
+): string {
+  return [
+    gameState.currentBattleTurn,
+    gameState.activePlayerIndex,
+    gameState.currentPhase,
+    gameState.currentSubPhase,
+    gameState.awaitingReaction ? 'reaction' : 'normal',
+  ].join(':');
 }
 
 /**
@@ -49,6 +77,12 @@ export function useAITurn(
   const contextRef = useRef<AITurnContext>(createTurnContext());
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isProcessingRef = useRef(false);
+  const latestStateKeyRef = useRef('');
+  const aiStateKey = state.gameState ? buildAiStateKey(state.gameState) : '';
+
+  useEffect(() => {
+    latestStateKeyRef.current = aiStateKey;
+  }, [aiStateKey]);
 
   const processAITurn = useCallback(() => {
     if (!state.aiConfig || !state.gameState) return;
@@ -70,15 +104,8 @@ export function useAITurn(
 
     isProcessingRef.current = true;
 
-    const shouldPreferFallback =
-      state.lastCommandResult !== null &&
-      !state.lastCommandResult.accepted;
-
-    const command = shouldPreferFallback
-      ? buildFallbackCommand(state.gameState) ??
-        generateNextCommand(state.gameState, config, contextRef.current)
-      : generateNextCommand(state.gameState, config, contextRef.current) ??
-        buildFallbackCommand(state.gameState);
+    const command = generateNextCommand(state.gameState, config, contextRef.current) ??
+      buildFallbackCommand(state.gameState);
 
     if (command === null) {
       isProcessingRef.current = false;
@@ -88,12 +115,25 @@ export function useAITurn(
 
     // Dispatch with delay for visual pacing
     const delay = config.commandDelayMs;
+    const scheduledStateKey = buildAiStateKey(state.gameState);
     if (delay > 0) {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
       timerRef.current = setTimeout(() => {
+        timerRef.current = null;
+        if (latestStateKeyRef.current !== scheduledStateKey) {
+          isProcessingRef.current = false;
+          return;
+        }
         dispatch({ type: 'DISPATCH_ENGINE_COMMAND', command });
         isProcessingRef.current = false;
       }, delay);
     } else {
+      if (latestStateKeyRef.current !== scheduledStateKey) {
+        isProcessingRef.current = false;
+        return;
+      }
       dispatch({ type: 'DISPATCH_ENGINE_COMMAND', command });
       isProcessingRef.current = false;
     }

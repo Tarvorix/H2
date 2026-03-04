@@ -176,6 +176,36 @@ describe('generateMovementCommand — Move sub-phase', () => {
     expect(ctx.actedUnitIds.has('unit-1')).toBe(true);
   });
 
+  it('continues to the next movable unit after finishing the current unit', () => {
+    const movedModel = createModel({ id: 'model-1' });
+    const nextModel = createModel({ id: 'model-2' });
+    const firstUnit = createUnit({
+      id: 'unit-1',
+      models: [movedModel],
+      movementState: UnitMovementState.Moved,
+    });
+    const secondUnit = createUnit({
+      id: 'unit-2',
+      models: [nextModel],
+      movementState: UnitMovementState.Stationary,
+    });
+
+    const state = createGameState({ currentSubPhase: SubPhase.Move });
+    state.armies[0] = createArmy({ playerIndex: 0, units: [firstUnit, secondUnit] });
+
+    const ctx = createContext();
+    ctx.currentMovingUnitId = 'unit-1';
+    ctx.movedModelIds.add('model-1');
+
+    const result = generateMovementCommand(state, 0, ctx, 'basic');
+
+    expect(result).not.toBeNull();
+    expect(result!.type).toBe('moveModel');
+    expect((result as any).modelId).toBe('model-2');
+    expect(ctx.currentMovingUnitId).toBe('unit-2');
+    expect(ctx.actedUnitIds.has('unit-1')).toBe(true);
+  });
+
   it('moves target position within battlefield bounds', () => {
     const m1 = createModel({ id: 'model-1', position: { x: 70, y: 46 } });
     const unit = createUnit({ id: 'unit-1', models: [m1], movementState: UnitMovementState.Stationary });

@@ -10,7 +10,7 @@
  * a custom render callback injected into the renderer pipeline.
  */
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import type { DebugVisualizerState, DebugVisualizerAction } from '../../state/types';
 import type { GameUIState, GameUIAction } from '../types';
 import { BattlefieldCanvas } from '../../canvas/BattlefieldCanvas';
@@ -83,6 +83,12 @@ export function GameBattlefieldCanvas({
   dispatch,
   rendererMode = 'placeholder',
 }: GameBattlefieldCanvasProps) {
+  const stateRef = useRef(state);
+
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
+
   /**
    * Dispatch bridge: translates DebugVisualizerAction → GameUIAction.
    * Camera actions forward directly (same shape).
@@ -90,8 +96,14 @@ export function GameBattlefieldCanvas({
    */
   const bridgeDispatch = useCallback(
     (action: DebugVisualizerAction) => {
+      const currentState = stateRef.current;
+
       switch (action.type) {
         // Camera actions — forward directly (same payload shape)
+        case 'SET_CAMERA':
+          dispatch({ type: 'SET_CAMERA', camera: action.camera });
+          break;
+
         case 'ZOOM_AT':
           dispatch({ type: 'ZOOM_AT', screenX: action.screenX, screenY: action.screenY, delta: action.delta });
           break;
@@ -108,12 +120,12 @@ export function GameBattlefieldCanvas({
           dispatch({ type: 'MOUSE_MOVE', screenX: action.screenX, screenY: action.screenY });
 
           // Hit-test for model hover
-          if (state.gameState) {
-            const worldX = (action.screenX - state.camera.offsetX) / state.camera.zoom;
-            const worldY = (action.screenY - state.camera.offsetY) / state.camera.zoom;
-            const modelId = hitTestGameModels(state.gameState, worldX, worldY);
+          if (currentState.gameState) {
+            const worldX = (action.screenX - currentState.camera.offsetX) / currentState.camera.zoom;
+            const worldY = (action.screenY - currentState.camera.offsetY) / currentState.camera.zoom;
+            const modelId = hitTestGameModels(currentState.gameState, worldX, worldY);
             if (modelId) {
-              const unitId = findUnitIdForModel(state.gameState, modelId);
+              const unitId = findUnitIdForModel(currentState.gameState, modelId);
               dispatch({ type: 'HOVER_UNIT', unitId });
               dispatch({ type: 'HOVER_MODEL', modelId });
             } else {
@@ -138,13 +150,13 @@ export function GameBattlefieldCanvas({
 
           // Movement flow destination selection uses battlefield click as unit destination.
           if (
-            state.flowState.type === 'movement' &&
-            state.flowState.step.step === 'selectDestination'
+            currentState.flowState.type === 'movement' &&
+            currentState.flowState.step.step === 'selectDestination'
           ) {
-            const worldX = (action.screenX - state.camera.offsetX) / state.camera.zoom;
-            const worldY = (action.screenY - state.camera.offsetY) / state.camera.zoom;
-            const clampedX = Math.max(0, Math.min(state.battlefieldWidth, worldX));
-            const clampedY = Math.max(0, Math.min(state.battlefieldHeight, worldY));
+            const worldX = (action.screenX - currentState.camera.offsetX) / currentState.camera.zoom;
+            const worldY = (action.screenY - currentState.camera.offsetY) / currentState.camera.zoom;
+            const clampedX = Math.max(0, Math.min(currentState.battlefieldWidth, worldX));
+            const clampedY = Math.max(0, Math.min(currentState.battlefieldHeight, worldY));
             dispatch({
               type: 'SET_MOVE_DESTINATION',
               position: { x: clampedX, y: clampedY },
@@ -153,12 +165,12 @@ export function GameBattlefieldCanvas({
           }
 
           // Left click → hit test for unit selection
-          if (state.gameState) {
-            const worldX = (action.screenX - state.camera.offsetX) / state.camera.zoom;
-            const worldY = (action.screenY - state.camera.offsetY) / state.camera.zoom;
-            const modelId = hitTestGameModels(state.gameState, worldX, worldY);
+          if (currentState.gameState) {
+            const worldX = (action.screenX - currentState.camera.offsetX) / currentState.camera.zoom;
+            const worldY = (action.screenY - currentState.camera.offsetY) / currentState.camera.zoom;
+            const modelId = hitTestGameModels(currentState.gameState, worldX, worldY);
             if (modelId) {
-              const unitId = findUnitIdForModel(state.gameState, modelId);
+              const unitId = findUnitIdForModel(currentState.gameState, modelId);
               dispatch({ type: 'SELECT_UNIT', unitId });
             } else {
               dispatch({ type: 'SELECT_UNIT', unitId: null });
@@ -189,7 +201,6 @@ export function GameBattlefieldCanvas({
         case 'START_DRAG':
         case 'END_DRAG':
         case 'SET_MODE':
-        case 'SET_CAMERA':
         case 'PAN':
         case 'SET_LOS_MODEL_A':
         case 'SET_LOS_MODEL_B':
@@ -218,14 +229,7 @@ export function GameBattlefieldCanvas({
           break;
       }
     },
-    [
-      dispatch,
-      state.gameState,
-      state.camera,
-      state.flowState,
-      state.battlefieldWidth,
-      state.battlefieldHeight,
-    ],
+    [dispatch],
   );
 
   const visualizerState = useMemo(() => buildVisualizerState(state), [state]);

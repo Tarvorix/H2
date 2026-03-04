@@ -21,7 +21,7 @@ export function DiceDisplay({ animation, onDismiss }: DiceDisplayProps) {
   useEffect(() => {
     if (!animation.isVisible || !animation.roll) return;
 
-    const fadeStartTime = animation.duration * 0.7;
+    const fadeStartTime = animation.duration * 0.85;
     const elapsed = Date.now() - animation.startTime;
 
     if (elapsed >= fadeStartTime) {

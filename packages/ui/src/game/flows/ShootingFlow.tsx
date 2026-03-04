@@ -12,18 +12,102 @@ import { useCallback } from 'react';
 import type { GameUIState, GameUIAction } from '../types';
 import { WeaponSelectionPanel } from './WeaponSelectionPanel';
 import { FireGroupDisplay } from './FireGroupDisplay';
+import { findWeapon, findLegionWeapon, isRangedWeapon } from '@hh/data';
+import { checkWeaponRange, getClosestModelDistance, hasLOSToUnit } from '@hh/engine';
+import type { GameState, UnitState } from '@hh/types';
 
 interface ShootingFlowProps {
   state: GameUIState;
   dispatch: React.Dispatch<GameUIAction>;
 }
 
+interface ShootingTargetInfo {
+  target: UnitState;
+  closestDistance: number;
+  maxAttackerRange: number;
+  hasLOS: boolean;
+  hasAnyWeaponInRange: boolean;
+  canTarget: boolean;
+}
+
+function lookupWeapon(weaponId: string) {
+  return findWeapon(weaponId) ?? findLegionWeapon(weaponId);
+}
+
+function findUnitById(gs: GameState, unitId: string): UnitState | null {
+  for (const army of gs.armies) {
+    for (const unit of army.units) {
+      if (unit.id === unitId) return unit;
+    }
+  }
+  return null;
+}
+
+function getRangedWeaponIdsForModel(model: UnitState['models'][number]): string[] {
+  if (model.equippedWargear.length > 0) {
+    return model.equippedWargear;
+  }
+  // Preset fallback: no explicit wargear loaded, treat as bolter-armed.
+  return ['bolter'];
+}
+
+function getShootingTargetInfo(
+  gs: GameState,
+  attackerUnitId: string,
+): ShootingTargetInfo[] {
+  const attacker = findUnitById(gs, attackerUnitId);
+  if (!attacker) return [];
+
+  const aliveAttackers = attacker.models.filter(m => !m.isDestroyed);
+  const maxAttackerRange = aliveAttackers.reduce((maxRange, model) => {
+    const ranges = getRangedWeaponIdsForModel(model)
+      .map((weaponId) => lookupWeapon(weaponId))
+      .filter((weapon): weapon is ReturnType<typeof lookupWeapon> & { range: number } => !!weapon && isRangedWeapon(weapon))
+      .map((weapon) => weapon.range)
+      .filter(range => range > 0);
+
+    const modelMaxRange = ranges.length > 0 ? Math.max(...ranges) : 0;
+    return Math.max(maxRange, modelMaxRange);
+  }, 0);
+
+  return gs.armies[1 - gs.activePlayerIndex].units
+    .filter(unit => unit.isDeployed && !unit.models.every(m => m.isDestroyed))
+    .map((target): ShootingTargetInfo => {
+      const targetAliveModels = target.models.filter(m => !m.isDestroyed);
+      const closestDistance = getClosestModelDistance(gs, attacker.id, target.id);
+      const hasLOS = hasLOSToUnit(gs, attacker.id, target.id);
+
+      const hasAnyWeaponInRange = aliveAttackers.some((attackerModel) => {
+        return getRangedWeaponIdsForModel(attackerModel).some((weaponId) => {
+          const weapon = lookupWeapon(weaponId);
+          if (!weapon || !isRangedWeapon(weapon) || weapon.range <= 0) return false;
+          return checkWeaponRange(attackerModel.position, targetAliveModels, weapon.range);
+        });
+      });
+
+      const canTarget = hasLOS && hasAnyWeaponInRange;
+      return {
+        target,
+        closestDistance,
+        maxAttackerRange,
+        hasLOS,
+        hasAnyWeaponInRange,
+        canTarget,
+      };
+    });
+}
+
 export function ShootingFlow({ state, dispatch }: ShootingFlowProps) {
   if (state.flowState.type !== 'shooting') return null;
 
   const step = state.flowState.step;
+  const isCompactPanelStep =
+    step.step === 'resolving' || step.step === 'showResults' || step.step === 'resolveMorale';
   const gs = state.gameState;
   if (!gs) return null;
+  const shootingTargetInfo = step.step === 'selectTarget'
+    ? getShootingTargetInfo(gs, step.attackerUnitId)
+    : [];
 
   // Look up unit names
   const findUnitName = (unitId: string): string => {
@@ -55,7 +139,7 @@ export function ShootingFlow({ state, dispatch }: ShootingFlowProps) {
   }, [dispatch]);
 
   return (
-    <div className="flow-panel flow-panel-shooting">
+    <div className={`flow-panel flow-panel-shooting${isCompactPanelStep ? ' flow-panel-shooting-compact' : ''}`}>
       <div className="flow-panel-title">Shooting Attack</div>
 
       <div className="flow-panel-body">
@@ -66,21 +150,38 @@ export function ShootingFlow({ state, dispatch }: ShootingFlowProps) {
               Attacker: {findUnitName(step.attackerUnitId)}
             </div>
             <div className="flow-panel-step">
-              Click an enemy unit to select as the target.
+              Choose an enemy unit in range. Distances are measured now (before attack confirmation).
             </div>
             {/* Show eligible targets */}
             <div style={{ marginTop: 8 }}>
-              {gs.armies[1 - gs.activePlayerIndex].units
-                .filter(u => u.isDeployed && !u.models.every(m => m.isDestroyed))
-                .map(u => (
+              {shootingTargetInfo.map((targetInfo) => (
+                <div key={targetInfo.target.id} style={{ marginBottom: 6 }}>
                   <button
-                    key={u.id}
                     className="reaction-modal-unit-btn"
-                    onClick={() => handleSelectTarget(u.id)}
+                    onClick={() => handleSelectTarget(targetInfo.target.id)}
+                    disabled={!targetInfo.canTarget}
+                    title={!targetInfo.canTarget
+                      ? !targetInfo.hasLOS
+                        ? 'No line of sight to target'
+                        : 'No ranged weapons can reach this target'
+                      : undefined}
                   >
-                    {u.profileId} ({u.models.filter(m => !m.isDestroyed).length} models alive)
+                    {targetInfo.target.profileId} ({targetInfo.target.models.filter(m => !m.isDestroyed).length} models alive)
                   </button>
-                ))}
+                  <div className="panel-row" style={{ padding: '2px 4px' }}>
+                    <span className="panel-row-label">
+                      Closest {Number.isFinite(targetInfo.closestDistance) ? `${targetInfo.closestDistance.toFixed(1)}"` : '—'}
+                      {' • '}Max gun {targetInfo.maxAttackerRange.toFixed(1)}"
+                    </span>
+                    <span
+                      className="panel-row-value"
+                      style={{ color: targetInfo.canTarget ? '#22c55e' : '#ef4444' }}
+                    >
+                      {targetInfo.canTarget ? 'In Range' : 'Out of Range'}
+                    </span>
+                  </div>
+                </div>
+              ))}
             </div>
           </>
         )}
@@ -118,10 +219,12 @@ export function ShootingFlow({ state, dispatch }: ShootingFlowProps) {
             </div>
             {/* Show fire groups if available from shootingAttackState */}
             {gs.shootingAttackState && (
-              <FireGroupDisplay
-                fireGroups={gs.shootingAttackState.fireGroups}
-                currentIndex={gs.shootingAttackState.currentFireGroupIndex}
-              />
+              <div className="shooting-resolution-groups">
+                <FireGroupDisplay
+                  fireGroups={gs.shootingAttackState.fireGroups}
+                  currentIndex={gs.shootingAttackState.currentFireGroupIndex}
+                />
+              </div>
             )}
           </>
         )}
@@ -134,6 +237,9 @@ export function ShootingFlow({ state, dispatch }: ShootingFlowProps) {
             </div>
             <div className="flow-panel-step" style={{ color: '#22c55e' }}>
               Results are shown in the combat log.
+            </div>
+            <div className="flow-panel-step" style={{ color: '#93c5fd' }}>
+              Click Resolve Casualties to finish this attack and close the panel.
             </div>
             <button className="toolbar-btn" onClick={handleResolveCasualties} style={{ marginTop: 8, width: '100%' }}>
               Resolve Casualties

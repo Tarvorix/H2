@@ -77,8 +77,8 @@ export function ObjectivePlacementScreen({ state, dispatch, onReturnToMenu }: Ob
           {/* Battlefield representation */}
           <div className="battlefield-preview">
             <div className="battlefield-outline" style={{
-              width: `${state.battlefieldWidth * 4}px`,
-              height: `${state.battlefieldHeight * 4}px`,
+              aspectRatio: `${state.battlefieldWidth} / ${state.battlefieldHeight}`,
+              minHeight: '180px',
             }}
             onClick={handleBattlefieldClick}
             >
@@ -88,8 +88,8 @@ export function ObjectivePlacementScreen({ state, dispatch, onReturnToMenu }: Ob
                   key={obj.id}
                   className="objective-marker placed"
                   style={{
-                    left: `${obj.position.x * 4}px`,
-                    top: `${obj.position.y * 4}px`,
+                    left: `${(obj.position.x / state.battlefieldWidth) * 100}%`,
+                    top: `${(obj.position.y / state.battlefieldHeight) * 100}%`,
                   }}
                   title={`Objective ${i + 1}: ${obj.label} (${obj.vpValue}VP)`}
                 >
@@ -102,8 +102,8 @@ export function ObjectivePlacementScreen({ state, dispatch, onReturnToMenu }: Ob
                 <div
                   className="objective-marker pending"
                   style={{
-                    left: `${pendingPosition.x * 4}px`,
-                    top: `${pendingPosition.y * 4}px`,
+                    left: `${(pendingPosition.x / state.battlefieldWidth) * 100}%`,
+                    top: `${(pendingPosition.y / state.battlefieldHeight) * 100}%`,
                   }}
                 >
                   ?

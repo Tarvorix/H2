@@ -10,6 +10,7 @@ import { useCallback } from 'react';
 import type { GameUIState, GameUIAction, WeaponSelection } from '../types';
 import type { RangedWeaponProfile, MeleeWeaponProfile } from '@hh/types';
 import { findWeapon, findLegionWeapon, isRangedWeapon, isMeleeWeapon } from '@hh/data';
+import { checkWeaponRange, getClosestModelDistance } from '@hh/engine';
 
 /**
  * Look up a weapon by ID, checking both generic and legion-specific databases.
@@ -45,6 +46,7 @@ export function WeaponSelectionPanel({
   state,
   dispatch,
   attackerUnitId,
+  targetUnitId,
 }: WeaponSelectionPanelProps) {
   const gs = state.gameState;
   if (!gs) return null;
@@ -59,6 +61,20 @@ export function WeaponSelectionPanel({
     }
   }
   if (!attackingUnit) return null;
+
+  // Find the target unit
+  let targetUnit = null;
+  for (const army of gs.armies) {
+    for (const unit of army.units) {
+      if (unit.id === targetUnitId) {
+        targetUnit = unit;
+      }
+    }
+  }
+  if (!targetUnit) return null;
+
+  const targetAliveModels = targetUnit.models.filter(m => !m.isDestroyed);
+  const closestDistance = getClosestModelDistance(gs, attackerUnitId, targetUnitId);
 
   // Get current weapon selections from the flow state
   const currentSelections: WeaponSelection[] =
@@ -87,6 +103,12 @@ export function WeaponSelectionPanel({
 
   return (
     <div className="weapon-selection-panel">
+      <div className="panel-row" style={{ padding: '2px 0 8px 0' }}>
+        <span className="panel-row-label">Closest Distance</span>
+        <span className="panel-row-value">
+          {Number.isFinite(closestDistance) ? `${closestDistance.toFixed(1)}"` : '—'}
+        </span>
+      </div>
       {aliveModels.map((model, idx) => {
         const selectedWeapon = currentSelections.find(ws => ws.modelId === model.id);
         const weapons = model.equippedWargear;
@@ -111,16 +133,34 @@ export function WeaponSelectionPanel({
                 const weapon = lookupWeapon(weaponId);
                 const displayName = weapon ? weapon.name : weaponId;
                 const stats = weapon ? formatWeaponStats(weapon) : '';
+                const canShootWithWeapon = weapon && isRangedWeapon(weapon)
+                  ? weapon.range > 0 && checkWeaponRange(model.position, targetAliveModels, weapon.range)
+                  : false;
+                const isMeleeOnly = !!weapon && isMeleeWeapon(weapon);
+                const isDisabled = weapon ? !canShootWithWeapon : false;
                 return (
                   <div key={weaponId} className="weapon-option">
                     <input
                       type="radio"
                       name={`weapon-${model.id}`}
                       checked={selectedWeapon?.weaponId === weaponId}
+                      disabled={isDisabled}
                       onChange={() => handleSelectWeapon(model.id, weaponId, displayName)}
                     />
                     <span className="weapon-option-name">{displayName}</span>
                     {stats && <span className="weapon-option-stats">{stats}</span>}
+                    {weapon && (
+                      <span
+                        className="weapon-option-stats"
+                        style={{ color: canShootWithWeapon ? '#22c55e' : '#ef4444' }}
+                      >
+                        {canShootWithWeapon
+                          ? 'In Range'
+                          : isMeleeOnly
+                            ? 'Melee Only'
+                            : 'Out of Range'}
+                      </span>
+                    )}
                   </div>
                 );
               })
@@ -131,16 +171,26 @@ export function WeaponSelectionPanel({
               const bolter = lookupWeapon('bolter');
               const bolterName = bolter ? bolter.name : 'Bolter';
               const bolterStats = bolter ? formatWeaponStats(bolter) : '24" S4 AP5 Rapid Fire';
+              const bolterInRange = bolter && isRangedWeapon(bolter)
+                ? bolter.range > 0 && checkWeaponRange(model.position, targetAliveModels, bolter.range)
+                : false;
               return (
                 <div className="weapon-option">
                   <input
                     type="radio"
                     name={`weapon-${model.id}`}
                     checked={selectedWeapon?.weaponId === 'bolter'}
+                    disabled={!bolterInRange}
                     onChange={() => handleSelectWeapon(model.id, 'bolter', bolterName)}
                   />
                   <span className="weapon-option-name">{bolterName}</span>
                   <span className="weapon-option-stats">{bolterStats}</span>
+                  <span
+                    className="weapon-option-stats"
+                    style={{ color: bolterInRange ? '#22c55e' : '#ef4444' }}
+                  >
+                    {bolterInRange ? 'In Range' : 'Out of Range'}
+                  </span>
                 </div>
               );
             })()}

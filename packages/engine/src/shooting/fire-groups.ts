@@ -155,6 +155,8 @@ export function formFireGroups(
   attackerUnit: UnitState,
   modelsWithLOS: string[],
   targetDistance: number,
+  countsAsStationary: boolean = false,
+  forceNoSnapShots: boolean = false,
 ): FireGroup[] {
   // Map to accumulate attacks by group key
   const groupMap = new Map<string, {
@@ -191,7 +193,13 @@ export function formFireGroups(
     const bs = getModelBS(assignment.modelId, attackerUnit);
 
     // Determine if this model fires as snap shots
-    const isSnapShot = determineSnapShots(attackerUnit, weaponProfile);
+    const isSnapShot = determineSnapShots(
+      attackerUnit,
+      weaponProfile,
+      false,
+      countsAsStationary,
+      forceNoSnapShots,
+    );
 
     // Calculate effective firepower (Rapid Fire doubling at half range)
     const effectiveFirepower = calculateEffectiveFirepower(weaponProfile, targetDistance);

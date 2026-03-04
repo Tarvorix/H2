@@ -127,7 +127,7 @@ describe('generateReactionCommand', () => {
     expect(result!.type).toBe('declineReaction');
   });
 
-  it('basic strategy returns either selectReaction or declineReaction', () => {
+  it('basic strategy accepts a valid pending reaction', () => {
     const state = createGameState({
       activePlayerIndex: 0,
       awaitingReaction: true,
@@ -139,16 +139,10 @@ describe('generateReactionCommand', () => {
     });
     state.armies[1].reactionAllotmentRemaining = 2;
 
-    // Run multiple times since it's random
-    const results = new Set<string>();
-    for (let i = 0; i < 50; i++) {
-      const result = generateReactionCommand(state, 1, 'basic');
-      expect(result).not.toBeNull();
-      results.add(result!.type);
-    }
-
-    // Should see both accept and decline over 50 iterations
-    expect(results.has('selectReaction') || results.has('declineReaction')).toBe(true);
+    const result = generateReactionCommand(state, 1, 'basic');
+    expect(result).not.toBeNull();
+    expect(result!.type).toBe('selectReaction');
+    expect((result as any).reactionType).toBe('ReturnFire');
   });
 
   it('tactical strategy accepts ReturnFire with sufficient allotment', () => {
@@ -169,7 +163,7 @@ describe('generateReactionCommand', () => {
     expect((result as any).reactionType).toBe('ReturnFire');
   });
 
-  it('tactical strategy declines when allotment is at reserve level', () => {
+  it('tactical strategy still accepts when allotment is low but legal', () => {
     const state = createGameState({
       activePlayerIndex: 0,
       awaitingReaction: true,
@@ -183,7 +177,8 @@ describe('generateReactionCommand', () => {
 
     const result = generateReactionCommand(state, 1, 'tactical');
     expect(result).not.toBeNull();
-    expect(result!.type).toBe('declineReaction');
+    expect(result!.type).toBe('selectReaction');
+    expect((result as any).reactionType).toBe('ReturnFire');
   });
 
   it('tactical strategy accepts Overwatch reactions', () => {

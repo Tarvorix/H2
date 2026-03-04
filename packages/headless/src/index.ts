@@ -164,8 +164,19 @@ function getDecisionPlayerIndex(state: GameState): number {
   return state.activePlayerIndex;
 }
 
-function buildFallbackCommand(state: GameState): GameCommand | null {
+export function buildFallbackCommand(state: GameState): GameCommand | null {
   if (state.awaitingReaction) {
+    const pending = state.pendingReaction;
+    const fallbackUnitId = pending?.eligibleUnitIds.find((unitId) => unitId.length > 0);
+
+    if (pending && fallbackUnitId) {
+      return {
+        type: 'selectReaction',
+        unitId: fallbackUnitId,
+        reactionType: String(pending.reactionType),
+      };
+    }
+
     return { type: 'declineReaction' };
   }
 

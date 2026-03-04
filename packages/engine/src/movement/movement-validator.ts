@@ -28,6 +28,11 @@ import type { ValidationError } from '../types';
  * Reference: HH_Principles.md — "Difficult Terrain: −2" to M"
  */
 export const DIFFICULT_TERRAIN_PENALTY = 2;
+/**
+ * Movement range comparisons are displayed to 0.01", so allow half-step
+ * float noise before failing validation.
+ */
+const MOVEMENT_RANGE_ROUNDING_EPSILON = 0.005;
 
 /**
  * Compute the terrain penalty for a move from start to end.
@@ -184,10 +189,10 @@ export function validateModelMove(
   const effectiveMove = Math.max(0, maxMoveDistance - terrainPenalty);
   const moveDistance = vec2Distance(startPosition, targetPosition);
 
-  if (moveDistance > effectiveMove + EPSILON) {
+  if (moveDistance > effectiveMove + MOVEMENT_RANGE_ROUNDING_EPSILON) {
     errors.push({
       code: 'EXCEEDS_MOVEMENT',
-      message: `Move distance ${moveDistance.toFixed(2)}" exceeds effective movement ${effectiveMove}"`,
+      message: `Move distance ${moveDistance.toFixed(2)}" exceeds effective movement ${effectiveMove.toFixed(2)}"`,
       context: { moveDistance, maxMoveDistance, terrainPenalty, effectiveMove },
     });
   }

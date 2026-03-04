@@ -57,6 +57,7 @@ export function usePhaseAutomation(
     if (options.paused) return;
     if (flowType !== 'idle') return;
     if (gs.isGameOver) return;
+    if (state.aiConfig && gs.activePlayerIndex === state.aiConfig.playerIndex) return;
 
     const phaseStatus = getPhaseUxStatus(gs);
     if (!phaseStatus.canAutoAdvance) return;
@@ -108,6 +109,7 @@ export function usePhaseAutomation(
     gs,
     options.paused,
     phaseKey,
+    state.aiConfig,
     state.uiPhase,
   ]);
 }

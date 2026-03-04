@@ -140,6 +140,7 @@ function resetArmyTurnState(state: GameState, playerIndex: number): GameState {
     units: armies[playerIndex].units.map(unit => ({
       ...unit,
       hasReactedThisTurn: false,
+      hasShotThisTurn: false,
       movementState: UnitMovementState.Stationary,
     })),
     reactionAllotmentRemaining: armies[playerIndex].baseReactionAllotment,

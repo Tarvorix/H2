@@ -12,8 +12,9 @@
 
 import type { Position, ArmyList, GameState } from '@hh/types';
 import type { CommandResult } from '@hh/engine';
-import { getModelInitiative, getModelMovement } from '@hh/engine';
-import { findMission, getProfileById } from '@hh/data';
+import { getModelInitiative, getModelMovement, canUnitShoot } from '@hh/engine';
+import { checkWeaponRange, getClosestModelDistance, hasLOSToUnit } from '@hh/engine';
+import { findMission, getProfileById, findWeapon, findLegionWeapon, isRangedWeapon } from '@hh/data';
 import type { ArmyConfig, UnitSelection } from './types';
 import {
   executeCommand,
@@ -61,6 +62,54 @@ function screenToWorld(
 
 function clampZoom(zoom: number): number {
   return Math.max(4, Math.min(40, zoom));
+}
+
+const MOVE_DISTANCE_EPSILON = 0.005;
+
+function findUnitById(
+  gameState: GameState,
+  unitId: string,
+): GameState['armies'][number]['units'][number] | null {
+  for (const army of gameState.armies) {
+    for (const unit of army.units) {
+      if (unit.id === unitId) return unit;
+    }
+  }
+  return null;
+}
+
+function lookupWeapon(weaponId: string) {
+  return findWeapon(weaponId) ?? findLegionWeapon(weaponId);
+}
+
+function getRangedWeaponIdsForModel(model: GameState['armies'][number]['units'][number]['models'][number]): string[] {
+  if (model.equippedWargear.length > 0) {
+    return model.equippedWargear;
+  }
+  // Preset fallback: no explicit wargear loaded, treat as bolter-armed.
+  return ['bolter'];
+}
+
+function canAnyWeaponReachTarget(
+  gameState: GameState,
+  attackerUnitId: string,
+  targetUnitId: string,
+): boolean {
+  const attacker = findUnitById(gameState, attackerUnitId);
+  const target = findUnitById(gameState, targetUnitId);
+  if (!attacker || !target) return false;
+
+  const aliveAttackers = attacker.models.filter(model => !model.isDestroyed);
+  const aliveTargets = target.models.filter(model => !model.isDestroyed);
+  if (aliveAttackers.length === 0 || aliveTargets.length === 0) return false;
+
+  return aliveAttackers.some((attackerModel) =>
+    getRangedWeaponIdsForModel(attackerModel).some((weaponId) => {
+      const weapon = lookupWeapon(weaponId);
+      if (!weapon || !isRangedWeapon(weapon) || weapon.range <= 0) return false;
+      return checkWeaponRange(attackerModel.position, aliveTargets, weapon.range);
+    }),
+  );
 }
 
 function applySetupDeploymentPlacement(
@@ -184,10 +233,10 @@ function buildTranslatedUnitMovePositions(
     const dy = destination.y - centerY;
     const intendedDistance = Math.sqrt(dx * dx + dy * dy);
 
-    if (intendedDistance > maxDistance + 0.001) {
+    if (intendedDistance > maxDistance + MOVE_DISTANCE_EPSILON) {
       return {
         modelPositions: null,
-        error: `Destination is out of range (${intendedDistance.toFixed(1)}" / ${maxDistance.toFixed(1)}").`,
+        error: `Destination is out of range (${intendedDistance.toFixed(2)}" / ${maxDistance.toFixed(2)}").`,
       };
     }
 
@@ -195,8 +244,8 @@ function buildTranslatedUnitMovePositions(
       modelPositions: aliveModels.map(model => ({
         modelId: model.id,
         position: {
-          x: Math.round((model.position.x + dx) * 10) / 10,
-          y: Math.round((model.position.y + dy) * 10) / 10,
+          x: model.position.x + dx,
+          y: model.position.y + dy,
         },
       })),
       error: null,
@@ -285,7 +334,7 @@ function applyEngineCommand(
     combatLog: [...state.combatLog, ...newLogEntries],
     ghostTrails: [...state.ghostTrails, ...newGhostTrails],
     diceAnimation: diceRoll
-      ? { isVisible: true, roll: diceRoll, startTime: Date.now(), duration: 3000 }
+      ? { isVisible: true, roll: diceRoll, startTime: Date.now(), duration: 6000 }
       : state.diceAnimation,
     flowState,
     lastCommandResult: result,
@@ -902,6 +951,7 @@ export function gameReducer(
 
     // ── Movement Flow ───────────────────────────────────────────────────
     case 'START_MOVE_FLOW': {
+      if (state.flowState.type !== 'idle') return state;
       if (!state.selectedUnitId) return state;
       return {
         ...state,
@@ -914,6 +964,7 @@ export function gameReducer(
     }
 
     case 'START_RUSH_FLOW': {
+      if (state.flowState.type !== 'idle') return state;
       if (!state.selectedUnitId) return state;
       return {
         ...state,
@@ -1004,7 +1055,26 @@ export function gameReducer(
 
     // ── Shooting Flow ───────────────────────────────────────────────────
     case 'START_SHOOTING_FLOW': {
+      if (state.flowState.type !== 'idle') return state;
       if (!state.selectedUnitId) return state;
+      if (!state.gameState) return state;
+
+      const attacker = findUnitById(state.gameState, state.selectedUnitId);
+      if (!attacker || !canUnitShoot(attacker)) {
+        return {
+          ...state,
+          notifications: [
+            ...state.notifications,
+            {
+              message: 'Cannot start shooting: selected unit is not eligible to shoot.',
+              type: 'warning' as const,
+              timestamp: Date.now(),
+              duration: 3000,
+            },
+          ],
+        };
+      }
+
       return {
         ...state,
         flowState: {
@@ -1019,6 +1089,27 @@ export function gameReducer(
       if (state.flowState.type !== 'shooting') return state;
       const shootStep = state.flowState.step;
       if (shootStep.step !== 'selectTarget') return state;
+      if (!state.gameState) return state;
+
+      const hasLOS = hasLOSToUnit(state.gameState, shootStep.attackerUnitId, action.targetUnitId);
+      const inRange = canAnyWeaponReachTarget(state.gameState, shootStep.attackerUnitId, action.targetUnitId);
+      if (!hasLOS || !inRange) {
+        return {
+          ...state,
+          notifications: [
+            ...state.notifications,
+            {
+              message: !hasLOS
+                ? 'Cannot select target: no line of sight.'
+                : 'Cannot select target: no equipped ranged weapon is currently in range.',
+              type: 'warning' as const,
+              timestamp: Date.now(),
+              duration: 3500,
+            },
+          ],
+        };
+      }
+
       return {
         ...state,
         flowState: {
@@ -1081,16 +1172,35 @@ export function gameReducer(
           shootStep.weaponSelections,
         ),
       );
+
+      // If the attack triggered a reaction window, applyEngineCommand already
+      // switched flowState to reaction prompt. Do not overwrite it.
+      if (newState.flowState.type === 'reaction') {
+        return newState;
+      }
+
+      // If a shooting attack state exists, show compact results/morale step.
+      // This avoids trapping the UI in a long "resolving" view.
+      if (newState.gameState?.shootingAttackState) {
+        return {
+          ...newState,
+          flowState: {
+            type: 'shooting',
+            step: {
+              step: 'showResults',
+              attackerUnitId: shootStep.attackerUnitId,
+              targetUnitId: shootStep.targetUnitId,
+              events: newState.lastCommandResult?.events ?? [],
+            },
+          },
+        };
+      }
+
+      // Fallback: if no attack state was produced, close the flow.
       return {
         ...newState,
-        flowState: {
-          type: 'shooting',
-          step: {
-            step: 'resolving',
-            attackerUnitId: shootStep.attackerUnitId,
-            targetUnitId: shootStep.targetUnitId,
-          },
-        },
+        flowState: { type: 'idle' },
+        overlayVisibility: { ...newState.overlayVisibility, los: false },
       };
     }
 
@@ -1112,6 +1222,7 @@ export function gameReducer(
 
     // ── Assault Flow ────────────────────────────────────────────────────
     case 'START_CHARGE_FLOW': {
+      if (state.flowState.type !== 'idle') return state;
       if (!state.selectedUnitId) return state;
       return {
         ...state,
@@ -1126,6 +1237,31 @@ export function gameReducer(
       if (state.flowState.type !== 'assault') return state;
       const assaultStep = state.flowState.step;
       if (assaultStep.step !== 'selectTarget') return state;
+      if (!state.gameState) return state;
+
+      const hasLOS = hasLOSToUnit(state.gameState, assaultStep.chargingUnitId, action.targetUnitId);
+      const closestDistance = getClosestModelDistance(
+        state.gameState,
+        assaultStep.chargingUnitId,
+        action.targetUnitId,
+      );
+      if (!hasLOS || closestDistance > 12.001) {
+        return {
+          ...state,
+          notifications: [
+            ...state.notifications,
+            {
+              message: !hasLOS
+                ? 'Cannot declare charge: no line of sight.'
+                : `Cannot declare charge: target is ${closestDistance.toFixed(1)}" away (max 12.0").`,
+              type: 'warning' as const,
+              timestamp: Date.now(),
+              duration: 3500,
+            },
+          ],
+        };
+      }
+
       return {
         ...state,
         flowState: {
@@ -1261,7 +1397,7 @@ export function gameReducer(
           isVisible: true,
           roll: action.roll,
           startTime: Date.now(),
-          duration: 3000,
+          duration: 6000,
         },
       };
 

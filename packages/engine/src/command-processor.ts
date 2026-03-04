@@ -21,22 +21,31 @@ import {
   advanceSubPhase,
   advancePhase,
 } from './state-machine';
-import { setAwaitingReaction } from './state-helpers';
+import {
+  setAwaitingReaction,
+  clearAssaultAttackState,
+  clearShootingAttackState,
+  setAssaultAttackState,
+} from './state-helpers';
 import {
   resolveAdvancedReaction,
   checkMovementAdvancedReactionTriggers,
+  checkAssaultAdvancedReactionTriggers,
+  registerAllAdvancedReactions,
 } from './legion/advanced-reaction-registry';
 
 // Movement handlers
 import { handleMoveModel, handleRushUnit } from './movement/move-handler';
 import { handleReservesTest, handleReservesEntry } from './movement/reserves-handler';
 import { handleEmbark, handleDisembark } from './movement/embark-disembark-handler';
-import { checkRepositionTrigger } from './movement/reposition-handler';
+import { checkRepositionTrigger, handleRepositionReaction } from './movement/reposition-handler';
 
 // Shooting handlers
 import { handleShootingAttack, handleShootingMorale } from './phases/shooting-phase';
 import { countCasualtiesPerUnit } from './shooting/casualty-removal';
 import type { PendingMoraleCheck } from './shooting/shooting-types';
+import { resolveWeaponAssignment } from './shooting/weapon-declaration';
+import { isDefensiveWeapon, markUnitReacted } from './shooting/return-fire-handler';
 
 // Assault handlers
 import {
@@ -48,10 +57,29 @@ import {
   handleFight,
   handleSelectAftermath,
 } from './phases/assault-phase';
+import { resolveVolleyAttacks } from './assault/volley-attack-handler';
+import { resolveChargeMove } from './assault/charge-move-handler';
+import { checkOverwatchTrigger, resolveOverwatch, declineOverwatch } from './assault/overwatch-handler';
 
 // Phase lifecycle handlers
 import { handleStartPhase } from './phases/start-phase';
 import { handleEndEffects, handleStatusCleanup, handleVictoryCheck } from './phases/end-phase';
+import {
+  findUnit,
+  getAliveModels,
+  getClosestModelDistance,
+  getModelsWithLOSToUnit,
+  isVehicleUnit,
+  findUnitPlayerIndex,
+} from './game-queries';
+
+let advancedReactionHandlersInitialized = false;
+
+function ensureAdvancedReactionHandlersRegistered(): void {
+  if (advancedReactionHandlersInitialized) return;
+  registerAllAdvancedReactions();
+  advancedReactionHandlersInitialized = true;
+}
 
 // ─── processCommand ──────────────────────────────────────────────────────────
 
@@ -71,6 +99,8 @@ export function processCommand(
   command: GameCommand,
   dice: DiceProvider,
 ): CommandResult {
+  ensureAdvancedReactionHandlersRegistered();
+
   // Game over — no commands accepted
   if (state.isGameOver) {
     return reject(state, 'GAME_OVER', 'The game is over. No further commands can be processed.');
@@ -82,7 +112,7 @@ export function processCommand(
       return processSelectReaction(state, command, dice);
     }
     if (command.type === 'declineReaction') {
-      return processDeclineReaction(state);
+      return processDeclineReaction(state, dice);
     }
     return reject(state, 'AWAITING_REACTION', 'A reaction decision is pending. Only selectReaction or declineReaction commands are accepted.');
   }
@@ -350,6 +380,7 @@ function processDeclareCharge(
   if (state.currentPhase !== Phase.Assault || state.currentSubPhase !== SubPhase.Charge) {
     return reject(state, 'WRONG_PHASE', `declareCharge requires Assault/Charge phase`);
   }
+
   return handleCharge(state, command, dice);
 }
 
@@ -508,12 +539,426 @@ function processEndPhase(state: GameState, dice: DiceProvider): CommandResult {
 // ─── Reaction Commands ───────────────────────────────────────────────────────
 
 /**
+ * Resume a paused charge sequence after an Overwatch accept/decline decision.
+ *
+ * The charge flow pauses at AWAITING_OVERWATCH (after setup move).
+ * Once the reaction is resolved, we continue:
+ * - Step 4b: volley attacks (target volley suppressed if Overwatch accepted)
+ * - Step 5: charge roll and move (if neither side was wiped by volleys)
+ *
+ * The temporary assault attack state used for the pause is cleared after resume.
+ */
+function resumeChargeAfterOverwatchDecision(
+  state: GameState,
+  dice: DiceProvider,
+  overwatchAccepted: boolean,
+): { state: GameState; events: GameEvent[] } {
+  const attackState = state.assaultAttackState;
+  if (!attackState || attackState.chargeStep !== 'AWAITING_OVERWATCH') {
+    return { state, events: [] };
+  }
+
+  const events: GameEvent[] = [];
+  const { chargingUnitId, targetUnitId, isDisordered, closestDistance } = attackState;
+
+  // Overwatch replaces the defender's snap-shot volley.
+  const volleyResult = resolveVolleyAttacks(
+    state,
+    chargingUnitId,
+    targetUnitId,
+    isDisordered,
+    dice,
+    true,
+    !overwatchAccepted,
+  );
+  let resumedState = volleyResult.state;
+  events.push(...volleyResult.events);
+
+  if (!volleyResult.chargerWipedOut && !volleyResult.targetWipedOut) {
+    const afterVolleyTrigger = checkAssaultAdvancedReactionTriggers(
+      resumedState,
+      'afterVolleyAttacks',
+      chargingUnitId,
+      targetUnitId,
+    );
+    if (afterVolleyTrigger) {
+      const playerIndex = afterVolleyTrigger.eligibleUnitIds.length > 0
+        ? findUnitPlayerIndex(resumedState, afterVolleyTrigger.eligibleUnitIds[0]) ?? -1
+        : -1;
+
+      const reactionState = setAwaitingReaction(resumedState, true, {
+        reactionType: afterVolleyTrigger.reactionId,
+        isAdvancedReaction: true,
+        eligibleUnitIds: afterVolleyTrigger.eligibleUnitIds,
+        triggerDescription: `Charge advanced reaction "${afterVolleyTrigger.reactionId}" triggered by charger "${chargingUnitId}"`,
+        triggerSourceUnitId: chargingUnitId,
+      });
+
+      return {
+        state: setAssaultAttackState(reactionState, {
+          ...attackState,
+          chargeStep: 'CHARGE_ROLL',
+          closestDistance,
+        }),
+        events: [
+          ...events,
+          {
+            type: 'advancedReactionDeclared' as const,
+            reactionId: afterVolleyTrigger.reactionId,
+            reactionName: afterVolleyTrigger.reactionId,
+            reactingUnitId: '',
+            triggerSourceUnitId: chargingUnitId,
+            playerIndex,
+          },
+        ],
+      };
+    }
+
+    const chargeResult = resolveChargeMove(
+      resumedState,
+      chargingUnitId,
+      targetUnitId,
+      dice,
+      closestDistance,
+    );
+    resumedState = chargeResult.state;
+    events.push(...chargeResult.events);
+  }
+
+  return {
+    state: clearAssaultAttackState(resumedState),
+    events,
+  };
+}
+
+/**
+ * Build a deterministic default weapon selection set for reaction shooting.
+ *
+ * Rules alignment:
+ * - Only weapons in range can be selected.
+ * - Vehicle units can only fire Defensive weapons during Return Fire.
+ * - Models without LOS are excluded.
+ */
+function buildReactionWeaponSelections(
+  state: GameState,
+  reactingUnitId: string,
+  targetUnitId: string,
+): Array<{ modelId: string; weaponId: string; profileName?: string }> {
+  const reactingUnit = findUnit(state, reactingUnitId);
+  if (!reactingUnit) return [];
+
+  const targetDistance = getClosestModelDistance(state, reactingUnitId, targetUnitId);
+  if (!Number.isFinite(targetDistance)) return [];
+
+  const modelsWithLOS = new Set(
+    getModelsWithLOSToUnit(state, reactingUnitId, targetUnitId).map((model) => model.id),
+  );
+  const defensiveOnly = isVehicleUnit(reactingUnit);
+  const weaponSelections: Array<{ modelId: string; weaponId: string; profileName?: string }> = [];
+
+  for (const model of getAliveModels(reactingUnit)) {
+    if (!modelsWithLOS.has(model.id)) continue;
+
+    for (const weaponId of model.equippedWargear) {
+      const weaponProfile = resolveWeaponAssignment(
+        { modelId: model.id, weaponId },
+        reactingUnit,
+      );
+      if (!weaponProfile) continue;
+      if (defensiveOnly && !isDefensiveWeapon(weaponProfile.rangedStrength, weaponProfile.traits)) {
+        continue;
+      }
+      if (!weaponProfile.hasTemplate && targetDistance > weaponProfile.range) continue;
+
+      weaponSelections.push({ modelId: model.id, weaponId });
+      break;
+    }
+  }
+
+  return weaponSelections;
+}
+
+/**
+ * Once Return Fire is accepted/declined, the original shooting attack leaves
+ * the reaction gate and can proceed to morale resolution.
+ */
+function finalizePendingReturnFireAttackState(state: GameState): GameState {
+  if (!state.shootingAttackState) return state;
+  if (
+    state.shootingAttackState.currentStep !== 'AWAITING_RETURN_FIRE' &&
+    state.shootingAttackState.returnFireResolved
+  ) {
+    return state;
+  }
+
+  return {
+    ...state,
+    shootingAttackState: {
+      ...state.shootingAttackState,
+      returnFireResolved: true,
+      currentStep: 'COMPLETE',
+    },
+  };
+}
+
+function executeOverwatchReaction(
+  state: GameState,
+  reactingUnitId: string,
+  chargingUnitId: string,
+  dice: DiceProvider,
+): { state: GameState; events: GameEvent[]; chargerWipedOut: boolean } {
+  let currentState = setAwaitingReaction(state, false);
+  const events: GameEvent[] = [];
+  const weaponSelections = buildReactionWeaponSelections(currentState, reactingUnitId, chargingUnitId);
+
+  if (weaponSelections.length > 0) {
+    const overwatchCommand: DeclareShootingCommand = {
+      type: 'declareShooting',
+      attackingUnitId: reactingUnitId,
+      targetUnitId: chargingUnitId,
+      weaponSelections,
+    };
+
+    const overwatchAttack = handleShootingAttack(currentState, overwatchCommand, dice, {
+      allowOutOfPhaseAttack: true,
+      allowNonActiveAttacker: true,
+      ignoreRushedRestriction: true,
+      ignoreHasShotRestriction: true,
+      countsAsStationary: true,
+      forceNoSnapShots: true,
+      allowReturnFireTrigger: false,
+      suppressMoraleAndStatusChecks: true,
+      blockShroudedDamageMitigation: true,
+      persistShootingAttackState: false,
+      consumeShootingAction: false,
+    });
+
+    if (overwatchAttack.accepted) {
+      currentState = overwatchAttack.state;
+      events.push(...overwatchAttack.events);
+    }
+  }
+
+  const resolved = resolveOverwatch(currentState, reactingUnitId, chargingUnitId);
+  events.push(...resolved.events);
+
+  return {
+    state: resolved.state,
+    events,
+    chargerWipedOut: resolved.chargerWipedOut,
+  };
+}
+
+function continueChargeFromAdvancedStepFour(
+  state: GameState,
+  dice: DiceProvider,
+): CommandResult {
+  const attackState = state.assaultAttackState;
+  if (!attackState) {
+    return { state, events: [], errors: [], accepted: true };
+  }
+
+  const events: GameEvent[] = [];
+  const { chargingUnitId, targetUnitId, isDisordered, closestDistance } = attackState;
+  let newState = state;
+
+  const overwatchCheck = checkOverwatchTrigger(newState, chargingUnitId, targetUnitId);
+  if (overwatchCheck.canOverwatch) {
+    const reactionState = setAwaitingReaction(newState, true, {
+      reactionType: CoreReaction.Overwatch,
+      isAdvancedReaction: false,
+      eligibleUnitIds: overwatchCheck.eligibleUnitIds,
+      triggerDescription: `Unit "${chargingUnitId}" is charging. Overwatch available.`,
+      triggerSourceUnitId: chargingUnitId,
+    });
+    events.push(...overwatchCheck.events);
+
+    return {
+      state: setAssaultAttackState(reactionState, {
+        ...attackState,
+        chargeStep: 'AWAITING_OVERWATCH',
+        overwatchResolved: false,
+      }),
+      events,
+      errors: [],
+      accepted: true,
+    };
+  }
+
+  const volleyResult = resolveVolleyAttacks(
+    newState,
+    chargingUnitId,
+    targetUnitId,
+    isDisordered,
+    dice,
+  );
+  newState = volleyResult.state;
+  events.push(...volleyResult.events);
+
+  if (!volleyResult.chargerWipedOut && !volleyResult.targetWipedOut) {
+    const afterVolleyTrigger = checkAssaultAdvancedReactionTriggers(
+      newState,
+      'afterVolleyAttacks',
+      chargingUnitId,
+      targetUnitId,
+    );
+
+    if (afterVolleyTrigger) {
+      const playerIndex = afterVolleyTrigger.eligibleUnitIds.length > 0
+        ? findUnitPlayerIndex(newState, afterVolleyTrigger.eligibleUnitIds[0]) ?? -1
+        : -1;
+
+      const reactionState = setAwaitingReaction(newState, true, {
+        reactionType: afterVolleyTrigger.reactionId,
+        isAdvancedReaction: true,
+        eligibleUnitIds: afterVolleyTrigger.eligibleUnitIds,
+        triggerDescription: `Charge advanced reaction "${afterVolleyTrigger.reactionId}" triggered by charger "${chargingUnitId}"`,
+        triggerSourceUnitId: chargingUnitId,
+      });
+
+      return {
+        state: setAssaultAttackState(reactionState, {
+          ...attackState,
+          chargeStep: 'CHARGE_ROLL',
+          closestDistance,
+        }),
+        events: [
+          ...events,
+          {
+            type: 'advancedReactionDeclared',
+            reactionId: afterVolleyTrigger.reactionId,
+            reactionName: afterVolleyTrigger.reactionId,
+            reactingUnitId: '',
+            triggerSourceUnitId: chargingUnitId,
+            playerIndex,
+          } as GameEvent,
+        ],
+        errors: [],
+        accepted: true,
+      };
+    }
+
+    const chargeResult = resolveChargeMove(
+      newState,
+      chargingUnitId,
+      targetUnitId,
+      dice,
+      closestDistance,
+    );
+    newState = chargeResult.state;
+    events.push(...chargeResult.events);
+  }
+
+  return {
+    state: clearAssaultAttackState(newState),
+    events,
+    errors: [],
+    accepted: true,
+  };
+}
+
+function resumePendingActionAfterAdvancedReaction(
+  state: GameState,
+  dice: DiceProvider,
+  leadingEvents: GameEvent[] = [],
+): CommandResult {
+  if (state.shootingAttackState?.currentStep === 'DECLARING') {
+    const pendingAttack = state.shootingAttackState;
+    const resumeCommand: DeclareShootingCommand = {
+      type: 'declareShooting',
+      attackingUnitId: pendingAttack.attackerUnitId,
+      targetUnitId: pendingAttack.targetUnitId,
+      weaponSelections: pendingAttack.weaponAssignments.map((assignment) => ({
+        modelId: assignment.modelId,
+        weaponId: assignment.weaponId,
+        profileName: assignment.profileName,
+      })),
+    };
+
+    const resumed = handleShootingAttack(
+      clearShootingAttackState(state),
+      resumeCommand,
+      dice,
+      { skipAdvancedReactionChecks: true },
+    );
+
+    return {
+      ...resumed,
+      events: [...leadingEvents, ...resumed.events],
+    };
+  }
+
+  if (
+    state.currentSubPhase === SubPhase.Charge &&
+    state.assaultAttackState?.chargeStep === 'DECLARING'
+  ) {
+    const pendingCharge = state.assaultAttackState;
+    const resumeCommand: DeclareChargeCommand = {
+      type: 'declareCharge',
+      chargingUnitId: pendingCharge.chargingUnitId,
+      targetUnitId: pendingCharge.targetUnitId,
+    };
+
+    const resumed = handleCharge(
+      clearAssaultAttackState(state),
+      resumeCommand,
+      dice,
+      { skipAdvancedReactionChecks: true },
+    );
+
+    return {
+      ...resumed,
+      events: [...leadingEvents, ...resumed.events],
+    };
+  }
+
+  if (
+    state.currentSubPhase === SubPhase.Charge &&
+    state.assaultAttackState?.chargeStep === 'VOLLEY_ATTACKS'
+  ) {
+    const resumed = continueChargeFromAdvancedStepFour(state, dice);
+    return {
+      ...resumed,
+      events: [...leadingEvents, ...resumed.events],
+    };
+  }
+
+  if (
+    state.currentSubPhase === SubPhase.Charge &&
+    state.assaultAttackState?.chargeStep === 'CHARGE_ROLL'
+  ) {
+    const pendingCharge = state.assaultAttackState;
+    const chargeResult = resolveChargeMove(
+      state,
+      pendingCharge.chargingUnitId,
+      pendingCharge.targetUnitId,
+      dice,
+      pendingCharge.closestDistance,
+    );
+
+    return {
+      state: clearAssaultAttackState(chargeResult.state),
+      events: [...leadingEvents, ...chargeResult.events],
+      errors: [],
+      accepted: true,
+    };
+  }
+
+  return {
+    state,
+    events: leadingEvents,
+    errors: [],
+    accepted: true,
+  };
+}
+
+/**
  * Process a selectReaction command (reactive player chooses to react).
  */
 function processSelectReaction(
   state: GameState,
   command: { type: 'selectReaction'; unitId: string; reactionType: string },
-  _dice: DiceProvider,
+  dice: DiceProvider,
 ): CommandResult {
   if (!state.pendingReaction) {
     return reject(state, 'NO_REACTION_PENDING', 'No reaction is currently pending.');
@@ -526,46 +971,106 @@ function processSelectReaction(
 
   // Handle Reposition reaction
   if (state.pendingReaction.reactionType === CoreReaction.Reposition) {
-    // Clear the awaiting reaction state — the reaction will be executed
-    // when the reactive player provides model positions via a follow-up command.
-    // For the command processor, accepting selectReaction means the reaction is
-    // approved and the system transitions to accept reaction model moves.
-
-    // For Reposition, we need model positions. The selectReaction command
-    // signals intent to react. The actual movement will come as a separate
-    // handleRepositionReaction call. For simplicity in the command processor,
-    // we clear the pending state and note the reaction was accepted.
-    const newState = setAwaitingReaction(state, false);
+    // Current command shape does not include model destinations, so execute a
+    // legal 0" reposition (up to Initiative allows remaining stationary).
+    const repositionResult = handleRepositionReaction(state, command.unitId, [], dice);
+    if (!repositionResult.accepted) {
+      return repositionResult;
+    }
+    const newState = setAwaitingReaction(repositionResult.state, false);
 
     return {
       state: newState,
-      events: [],
-      errors: [],
+      events: repositionResult.events,
+      errors: repositionResult.errors,
       accepted: true,
     };
   }
 
   // Handle Return Fire reaction
   if (state.pendingReaction.reactionType === CoreReaction.ReturnFire) {
-    // Handle Return Fire — the selected unit will execute a return fire attack.
-    // For now, clear the reaction and mark the reacting unit.
-    // The actual Return Fire execution happens when the reactive player responds
-    // with a separate declareShooting command (marked as Return Fire).
-    const newState = setAwaitingReaction(state, false);
-    return { state: newState, events: [], errors: [], accepted: true };
+    const targetUnitId = state.pendingReaction.triggerSourceUnitId;
+    if (!targetUnitId) {
+      return reject(state, 'RETURN_FIRE_SOURCE_MISSING', 'Unable to resolve Return Fire target unit.');
+    }
+
+    let newState = setAwaitingReaction(state, false);
+    const events: GameEvent[] = [];
+    const weaponSelections = buildReactionWeaponSelections(newState, command.unitId, targetUnitId);
+
+    if (weaponSelections.length > 0) {
+      const returnFireCommand: DeclareShootingCommand = {
+        type: 'declareShooting',
+        attackingUnitId: command.unitId,
+        targetUnitId,
+        weaponSelections,
+      };
+
+      const returnFireAttack = handleShootingAttack(newState, returnFireCommand, dice, {
+        allowNonActiveAttacker: true,
+        ignoreRushedRestriction: true,
+        ignoreHasShotRestriction: true,
+        countsAsStationary: true,
+        allowReturnFireTrigger: false,
+        suppressMoraleAndStatusChecks: true,
+        persistShootingAttackState: false,
+        consumeShootingAction: false,
+      });
+
+      if (returnFireAttack.accepted) {
+        newState = returnFireAttack.state;
+        events.push(...returnFireAttack.events);
+      }
+    }
+
+    // Declared reactions consume allotment even when no weapons can be brought to bear.
+    newState = markUnitReacted(newState, command.unitId);
+    newState = finalizePendingReturnFireAttackState(newState);
+    newState = setAwaitingReaction(newState, false);
+
+    return { state: newState, events, errors: [], accepted: true };
   }
 
   // Handle Overwatch reaction
   if (state.pendingReaction.reactionType === CoreReaction.Overwatch) {
-    const newState = setAwaitingReaction(state, false);
-    return { state: newState, events: [], errors: [], accepted: true };
+    const chargingUnitId =
+      state.pendingReaction.triggerSourceUnitId || state.assaultAttackState?.chargingUnitId;
+    if (!chargingUnitId) {
+      return reject(state, 'OVERWATCH_SOURCE_MISSING', 'Unable to resolve Overwatch source unit for pending charge.');
+    }
+
+    const overwatchResult = executeOverwatchReaction(state, command.unitId, chargingUnitId, dice);
+    const resumedCharge = resumeChargeAfterOverwatchDecision(
+      overwatchResult.state,
+      dice,
+      true,
+    );
+    return {
+      state: resumedCharge.state,
+      events: [...overwatchResult.events, ...resumedCharge.events],
+      errors: [],
+      accepted: true,
+    };
   }
 
   // Handle Advanced Reactions (legion-specific)
   if (state.pendingReaction.isAdvancedReaction) {
     const reactionId = state.pendingReaction.reactionType as string;
     const triggerSourceUnitId = state.pendingReaction.triggerSourceUnitId ?? '';
-    return resolveAdvancedReaction(state, reactionId, command.unitId, triggerSourceUnitId, _dice);
+    const resolution = resolveAdvancedReaction(state, reactionId, command.unitId, triggerSourceUnitId, dice);
+    if (!resolution.accepted) {
+      return resolution;
+    }
+
+    const postResolutionState = resolution.state.awaitingReaction
+      ? setAwaitingReaction(resolution.state, false)
+      : resolution.state;
+
+    return resumePendingActionAfterAdvancedReaction(
+      postResolutionState,
+      dice,
+      resolution.events,
+    );
   }
 
   return reject(state, 'UNSUPPORTED_REACTION', `Reaction type "${state.pendingReaction.reactionType}" is not yet supported.`);
@@ -574,12 +1079,41 @@ function processSelectReaction(
 /**
  * Process a declineReaction command (reactive player passes on the reaction).
  */
-function processDeclineReaction(state: GameState): CommandResult {
+function processDeclineReaction(state: GameState, dice: DiceProvider): CommandResult {
   if (!state.pendingReaction) {
     return reject(state, 'NO_REACTION_PENDING', 'No reaction is currently pending.');
   }
 
-  const newState = setAwaitingReaction(state, false);
+  if (state.pendingReaction.reactionType === CoreReaction.Overwatch) {
+    const chargingUnitId =
+      state.pendingReaction.triggerSourceUnitId || state.assaultAttackState?.chargingUnitId;
+    if (!chargingUnitId) {
+      return reject(state, 'OVERWATCH_SOURCE_MISSING', 'Unable to resolve Overwatch source unit for pending charge.');
+    }
+
+    const declineResult = declineOverwatch(state, chargingUnitId);
+    const resumedCharge = resumeChargeAfterOverwatchDecision(
+      declineResult.state,
+      dice,
+      false,
+    );
+
+    return {
+      state: resumedCharge.state,
+      events: [...declineResult.events, ...resumedCharge.events],
+      errors: [],
+      accepted: true,
+    };
+  }
+
+  let newState = setAwaitingReaction(state, false);
+  if (state.pendingReaction.reactionType === CoreReaction.ReturnFire) {
+    newState = finalizePendingReturnFireAttackState(newState);
+  }
+
+  if (state.pendingReaction.isAdvancedReaction) {
+    return resumePendingActionAfterAdvancedReaction(newState, dice);
+  }
 
   return {
     state: newState,

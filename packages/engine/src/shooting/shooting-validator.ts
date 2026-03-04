@@ -29,6 +29,19 @@ export interface ValidationResult {
   errors: ValidationError[];
 }
 
+/**
+ * Optional attacker validation overrides for special-case shooting flows
+ * like reaction attacks.
+ */
+export interface AttackerValidationOptions {
+  /** Allow attacker to shoot even if it is not owned by active player */
+  allowNonActivePlayerAttack?: boolean;
+  /** Ignore the normal "rushed units cannot shoot" restriction */
+  ignoreRushedRestriction?: boolean;
+  /** Ignore the normal "unit has already shot this turn" restriction */
+  ignoreHasShotRestriction?: boolean;
+}
+
 // ─── Step 1: Validate Shooting Target ─────────────────────────────────────────
 
 /**
@@ -157,6 +170,7 @@ export function validateShootingTarget(
 export function validateAttackerEligibility(
   state: GameState,
   attackerUnitId: string,
+  options: AttackerValidationOptions = {},
 ): ValidationResult {
   const errors: ValidationError[] = [];
 
@@ -173,7 +187,7 @@ export function validateAttackerEligibility(
 
   // Attacker must belong to the active player
   const attackerPlayerIndex = findUnitPlayerIndex(state, attackerUnitId);
-  if (attackerPlayerIndex !== state.activePlayerIndex) {
+  if (!options.allowNonActivePlayerAttack && attackerPlayerIndex !== state.activePlayerIndex) {
     errors.push({
       code: 'ATTACKER_NOT_ACTIVE_PLAYER',
       message: 'Attacking unit does not belong to the active player',
@@ -182,11 +196,20 @@ export function validateAttackerEligibility(
   }
 
   // Must not have Rushed this turn
-  if (attackerUnit.movementState === UnitMovementState.Rushed) {
+  if (!options.ignoreRushedRestriction && attackerUnit.movementState === UnitMovementState.Rushed) {
     errors.push({
       code: 'ATTACKER_RUSHED',
       message: 'Unit that Rushed this turn cannot shoot',
       context: { attackerUnitId, movementState: attackerUnit.movementState },
+    });
+  }
+
+  // Must not have already made a normal shooting attack this turn
+  if (!options.ignoreHasShotRestriction && attackerUnit.hasShotThisTurn === true) {
+    errors.push({
+      code: 'ATTACKER_ALREADY_SHOT',
+      message: 'Unit has already made a shooting attack this turn',
+      context: { attackerUnitId },
     });
   }
 

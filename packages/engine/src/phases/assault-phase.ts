@@ -13,6 +13,7 @@
 
 import type {
   GameState,
+  AssaultChargeStep,
   DeclareChargeCommand,
   DeclareChallengeCommand,
   SelectGambitCommand,
@@ -23,8 +24,9 @@ import type {
 } from '@hh/types';
 import { AftermathOption, CoreReaction, TacticalStatus } from '@hh/types';
 import type { CommandResult, DiceProvider, GameEvent } from '../types';
-import { findUnit, getAliveModels } from '../game-queries';
+import { findUnit, findUnitPlayerIndex, getAliveModels } from '../game-queries';
 import { setAwaitingReaction } from '../state-helpers';
+import { checkAssaultAdvancedReactionTriggers } from '../legion/advanced-reaction-registry';
 
 // Assault handler imports
 import {
@@ -55,6 +57,69 @@ import {
 
 // ─── Charge Sub-Phase ──────────────────────────────────────────────────────
 
+export interface ChargeExecutionOptions {
+  /** Skip advanced reaction windows when resuming a paused charge flow. */
+  skipAdvancedReactionChecks?: boolean;
+}
+
+function offerChargeAdvancedReaction(
+  state: GameState,
+  existingEvents: GameEvent[],
+  reactionId: string,
+  eligibleUnitIds: string[],
+  chargingUnitId: string,
+  targetUnitId: string,
+  chargeStep: AssaultChargeStep,
+  setupMoveDistance: number,
+  isDisordered: boolean,
+  closestDistance: number,
+  modelsWithLOS: string[],
+): CommandResult {
+  const playerIndex = eligibleUnitIds.length > 0
+    ? findUnitPlayerIndex(state, eligibleUnitIds[0]) ?? -1
+    : -1;
+
+  const reactionState = setAwaitingReaction(state, true, {
+    reactionType: reactionId,
+    isAdvancedReaction: true,
+    eligibleUnitIds,
+    triggerDescription: `Charge advanced reaction "${reactionId}" triggered by charger "${chargingUnitId}"`,
+    triggerSourceUnitId: chargingUnitId,
+  });
+
+  return {
+    state: {
+      ...reactionState,
+      assaultAttackState: {
+        chargingUnitId,
+        targetUnitId,
+        chargerPlayerIndex: state.activePlayerIndex,
+        chargeStep,
+        setupMoveDistance,
+        chargeRoll: 0,
+        isDisordered,
+        chargeCompleteViaSetup: false,
+        overwatchResolved: false,
+        closestDistance,
+        modelsWithLOS,
+      },
+    },
+    events: [
+      ...existingEvents,
+      {
+        type: 'advancedReactionDeclared',
+        reactionId,
+        reactionName: reactionId,
+        reactingUnitId: '',
+        triggerSourceUnitId: chargingUnitId,
+        playerIndex,
+      } as GameEvent,
+    ],
+    errors: [],
+    accepted: true,
+  };
+}
+
 /**
  * Process a declareCharge command.
  * Orchestrates the full charge sequence: validate → setup move → volley → charge roll/move.
@@ -68,6 +133,7 @@ export function handleCharge(
   state: GameState,
   command: DeclareChargeCommand,
   dice: DiceProvider,
+  options: ChargeExecutionOptions = {},
 ): CommandResult {
   const events: GameEvent[] = [];
   const { chargingUnitId, targetUnitId } = command;
@@ -102,6 +168,54 @@ export function handleCharge(
 
   const disordered = isDisorderedCharge(chargingUnit);
 
+  if (options.skipAdvancedReactionChecks !== true) {
+    const step2Trigger = checkAssaultAdvancedReactionTriggers(
+      state,
+      'duringChargeStep',
+      chargingUnitId,
+      targetUnitId,
+      2,
+    );
+    if (step2Trigger) {
+      return offerChargeAdvancedReaction(
+        state,
+        events,
+        step2Trigger.reactionId,
+        step2Trigger.eligibleUnitIds,
+        chargingUnitId,
+        targetUnitId,
+        'DECLARING',
+        0,
+        disordered,
+        targetValidation.closestDistance,
+        targetValidation.modelsWithLOS,
+      );
+    }
+
+    const step3Trigger = checkAssaultAdvancedReactionTriggers(
+      state,
+      'duringChargeStep',
+      chargingUnitId,
+      targetUnitId,
+      3,
+    );
+    if (step3Trigger) {
+      return offerChargeAdvancedReaction(
+        state,
+        events,
+        step3Trigger.reactionId,
+        step3Trigger.eligibleUnitIds,
+        chargingUnitId,
+        targetUnitId,
+        'DECLARING',
+        0,
+        disordered,
+        targetValidation.closestDistance,
+        targetValidation.modelsWithLOS,
+      );
+    }
+  }
+
   events.push({
     type: 'chargeDeclared',
     chargingUnitId,
@@ -129,6 +243,31 @@ export function handleCharge(
       errors: [],
       accepted: true,
     };
+  }
+
+  if (options.skipAdvancedReactionChecks !== true) {
+    const step4Trigger = checkAssaultAdvancedReactionTriggers(
+      newState,
+      'duringChargeStep',
+      chargingUnitId,
+      targetUnitId,
+      4,
+    );
+    if (step4Trigger) {
+      return offerChargeAdvancedReaction(
+        newState,
+        events,
+        step4Trigger.reactionId,
+        step4Trigger.eligibleUnitIds,
+        chargingUnitId,
+        targetUnitId,
+        'VOLLEY_ATTACKS',
+        setupResult.setupMoveDistance,
+        disordered,
+        targetValidation.closestDistance,
+        targetValidation.modelsWithLOS,
+      );
+    }
   }
 
   // Step 4: Check Overwatch trigger
@@ -186,6 +325,30 @@ export function handleCharge(
   }
   if (volleyResult.targetWipedOut) {
     return { state: newState, events, errors: [], accepted: true };
+  }
+
+  if (options.skipAdvancedReactionChecks !== true) {
+    const afterVolleyTrigger = checkAssaultAdvancedReactionTriggers(
+      newState,
+      'afterVolleyAttacks',
+      chargingUnitId,
+      targetUnitId,
+    );
+    if (afterVolleyTrigger) {
+      return offerChargeAdvancedReaction(
+        newState,
+        events,
+        afterVolleyTrigger.reactionId,
+        afterVolleyTrigger.eligibleUnitIds,
+        chargingUnitId,
+        targetUnitId,
+        'CHARGE_ROLL',
+        setupResult.setupMoveDistance,
+        disordered,
+        targetValidation.closestDistance,
+        targetValidation.modelsWithLOS,
+      );
+    }
   }
 
   // Step 5: Charge Roll & Move

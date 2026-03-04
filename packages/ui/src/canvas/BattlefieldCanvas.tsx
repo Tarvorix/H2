@@ -9,6 +9,7 @@ import { useRef, useEffect, useCallback } from 'react';
 import type { DebugVisualizerState, DebugVisualizerAction } from '../state/types';
 import { renderFrame } from './renderer';
 import type { RenderFrameOptions } from './renderer';
+import { fitBattlefield } from './camera';
 
 interface BattlefieldCanvasProps {
   state: DebugVisualizerState;
@@ -22,6 +23,8 @@ export function BattlefieldCanvas({ state, dispatch, renderOptions }: Battlefiel
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const hasInitializedCameraRef = useRef(false);
+  const viewportSizeRef = useRef<{ width: number; height: number } | null>(null);
   const stateRef = useRef(state);
   const renderOptionsRef = useRef(renderOptions);
   stateRef.current = state;
@@ -58,13 +61,72 @@ export function BattlefieldCanvas({ state, dispatch, renderOptions }: Battlefiel
     if (!canvas || !container) return;
 
     const rect = container.getBoundingClientRect();
+    const measuredWidth = rect.width > 0 ? rect.width : container.clientWidth;
+    const measuredHeight = rect.height > 0 ? rect.height : container.clientHeight;
+    if (measuredWidth <= 0 || measuredHeight <= 0) return;
+
+    const cssWidth = measuredWidth;
+    const cssHeight = measuredHeight;
     const dpr = window.devicePixelRatio || 1;
 
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
-    canvas.style.width = `${rect.width}px`;
-    canvas.style.height = `${rect.height}px`;
-  }, []);
+    canvas.width = Math.round(cssWidth * dpr);
+    canvas.height = Math.round(cssHeight * dpr);
+    canvas.style.width = `${cssWidth}px`;
+    canvas.style.height = `${cssHeight}px`;
+
+    const previousViewport = viewportSizeRef.current;
+
+    if (!hasInitializedCameraRef.current) {
+      const fittedCamera = fitBattlefield(
+        cssWidth,
+        cssHeight,
+        stateRef.current.battlefieldWidth,
+        stateRef.current.battlefieldHeight,
+      );
+      dispatch({ type: 'SET_CAMERA', camera: fittedCamera });
+      hasInitializedCameraRef.current = true;
+      viewportSizeRef.current = { width: cssWidth, height: cssHeight };
+      return;
+    }
+
+    if (previousViewport) {
+      const viewportChanged = Math.abs(previousViewport.width - cssWidth) > 0.5
+        || Math.abs(previousViewport.height - cssHeight) > 0.5;
+
+      if (viewportChanged) {
+        const camera = stateRef.current.camera;
+        const hasValidCamera = Number.isFinite(camera.zoom)
+          && camera.zoom > 0
+          && Number.isFinite(camera.offsetX)
+          && Number.isFinite(camera.offsetY);
+
+        if (!hasValidCamera) {
+          const fittedCamera = fitBattlefield(
+            cssWidth,
+            cssHeight,
+            stateRef.current.battlefieldWidth,
+            stateRef.current.battlefieldHeight,
+          );
+          dispatch({ type: 'SET_CAMERA', camera: fittedCamera });
+          viewportSizeRef.current = { width: cssWidth, height: cssHeight };
+          return;
+        }
+
+        const centerWorldX = (previousViewport.width * 0.5 - camera.offsetX) / camera.zoom;
+        const centerWorldY = (previousViewport.height * 0.5 - camera.offsetY) / camera.zoom;
+
+        dispatch({
+          type: 'SET_CAMERA',
+          camera: {
+            offsetX: cssWidth * 0.5 - centerWorldX * camera.zoom,
+            offsetY: cssHeight * 0.5 - centerWorldY * camera.zoom,
+          },
+        });
+      }
+    }
+
+    viewportSizeRef.current = { width: cssWidth, height: cssHeight };
+  }, [dispatch]);
 
   // ── Animation frame loop ────────────────────────────────────────────────────
   useEffect(() => {
@@ -112,6 +174,13 @@ export function BattlefieldCanvas({ state, dispatch, renderOptions }: Battlefiel
     observer.observe(container);
     return () => observer.disconnect();
   }, [updateCanvasSize]);
+
+  // Re-fit if battlefield dimensions change (scenario swap, mission setup differences).
+  useEffect(() => {
+    hasInitializedCameraRef.current = false;
+    viewportSizeRef.current = null;
+    updateCanvasSize();
+  }, [state.battlefieldWidth, state.battlefieldHeight, updateCanvasSize]);
 
   // ── Mouse event helpers ─────────────────────────────────────────────────────
   const getCanvasCoords = useCallback((e: React.MouseEvent<HTMLCanvasElement>): { x: number; y: number } => {
@@ -162,7 +231,6 @@ export function BattlefieldCanvas({ state, dispatch, renderOptions }: Battlefiel
 
   const handleWheel = useCallback(
     (e: React.WheelEvent<HTMLCanvasElement>) => {
-      e.preventDefault();
       const { x, y } = getCanvasCoords(e as unknown as React.MouseEvent<HTMLCanvasElement>);
       dispatch({ type: 'ZOOM_AT', screenX: x, screenY: y, delta: e.deltaY });
     },
@@ -176,8 +244,6 @@ export function BattlefieldCanvas({ state, dispatch, renderOptions }: Battlefiel
   // ── Touch handlers (tap select, drag pan, pinch zoom, long-press pan) ─────
   const handleTouchStart = useCallback(
     (e: React.TouchEvent<HTMLCanvasElement>) => {
-      e.preventDefault();
-
       const touches = e.touches;
       if (touches.length === 0) return;
 
@@ -214,8 +280,6 @@ export function BattlefieldCanvas({ state, dispatch, renderOptions }: Battlefiel
 
   const handleTouchMove = useCallback(
     (e: React.TouchEvent<HTMLCanvasElement>) => {
-      e.preventDefault();
-
       const touches = e.touches;
       if (touches.length === 0) return;
 
@@ -279,7 +343,6 @@ export function BattlefieldCanvas({ state, dispatch, renderOptions }: Battlefiel
 
   const handleTouchEnd = useCallback(
     (e: React.TouchEvent<HTMLCanvasElement>) => {
-      e.preventDefault();
       clearLongPressTimer();
 
       const touches = e.touches;
@@ -312,8 +375,7 @@ export function BattlefieldCanvas({ state, dispatch, renderOptions }: Battlefiel
   );
 
   const handleTouchCancel = useCallback(
-    (e: React.TouchEvent<HTMLCanvasElement>) => {
-      e.preventDefault();
+    (_e: React.TouchEvent<HTMLCanvasElement>) => {
       clearLongPressTimer();
       if (touchStateRef.current.mode === 'panning') {
         dispatch({ type: 'PAN_END' });

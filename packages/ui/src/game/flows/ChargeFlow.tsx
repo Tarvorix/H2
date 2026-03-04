@@ -7,6 +7,7 @@
 
 import { useCallback } from 'react';
 import type { GameUIState, GameUIAction } from '../types';
+import { getClosestModelDistance, hasLOSToUnit } from '@hh/engine';
 
 interface ChargeFlowProps {
   state: GameUIState;
@@ -60,15 +61,40 @@ export function ChargeFlow({ state, dispatch }: ChargeFlowProps) {
           <div style={{ marginTop: 8 }}>
             {gs.armies[1 - gs.activePlayerIndex].units
               .filter(u => u.isDeployed && !u.models.every(m => m.isDestroyed))
-              .map(u => (
-                <button
-                  key={u.id}
-                  className="reaction-modal-unit-btn"
-                  onClick={() => handleSelectTarget(u.id)}
-                >
-                  {u.profileId} ({u.models.filter(m => !m.isDestroyed).length} models alive)
-                </button>
-              ))}
+              .map(u => {
+                const closestDistance = getClosestModelDistance(gs, step.chargingUnitId, u.id);
+                const hasLOS = hasLOSToUnit(gs, step.chargingUnitId, u.id);
+                const isWithinDeclareRange = closestDistance <= 12.001;
+                const canChargeDeclare = isWithinDeclareRange && hasLOS;
+
+                return (
+                  <div key={u.id} style={{ marginBottom: 6 }}>
+                    <button
+                      className="reaction-modal-unit-btn"
+                      onClick={() => handleSelectTarget(u.id)}
+                      disabled={!canChargeDeclare}
+                      title={!canChargeDeclare
+                        ? !hasLOS
+                          ? 'No line of sight to target'
+                          : 'Target is outside 12" charge declaration range'
+                        : undefined}
+                    >
+                      {u.profileId} ({u.models.filter(m => !m.isDestroyed).length} models alive)
+                    </button>
+                    <div className="panel-row" style={{ padding: '2px 4px' }}>
+                      <span className="panel-row-label">
+                        Closest {Number.isFinite(closestDistance) ? `${closestDistance.toFixed(1)}"` : '—'} / 12.0"
+                      </span>
+                      <span
+                        className="panel-row-value"
+                        style={{ color: canChargeDeclare ? '#22c55e' : '#ef4444' }}
+                      >
+                        {canChargeDeclare ? 'In Range' : 'Out of Range'}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
           </div>
         </>
       )}

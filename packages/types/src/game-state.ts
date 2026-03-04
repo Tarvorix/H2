@@ -144,6 +144,8 @@ export interface UnitState {
   statuses: TacticalStatus[];
   /** Whether this unit has reacted during the current Player Turn */
   hasReactedThisTurn: boolean;
+  /** Whether this unit has already made a normal Shooting Attack this Player Turn */
+  hasShotThisTurn?: boolean;
   /** Movement state for current turn */
   movementState: UnitMovementState;
   /** Whether this unit is locked in combat */

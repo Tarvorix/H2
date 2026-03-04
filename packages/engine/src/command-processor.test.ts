@@ -134,6 +134,114 @@ describe('processCommand', () => {
 
       expect(result.accepted).toBe(true);
       expect(result.state.awaitingReaction).toBe(false);
+      expect(result.state.armies[1].reactionAllotmentRemaining).toBe(0);
+      expect(result.state.armies[1].units[0].hasReactedThisTurn).toBe(true);
+      expect(result.events.some((event) => event.type === 'repositionExecuted')).toBe(true);
+    });
+
+    it('should execute Return Fire and finalize the pending shooting attack window', () => {
+      const attackerUnit = createUnit(
+        'a-u1',
+        [createModel('a-m0', 24, 24)],
+      );
+      const reactiveUnit = createUnit(
+        'r-u1',
+        [{ ...createModel('r-m0', 36, 24), equippedWargear: ['bolter'] }],
+      );
+      const state = createGameState({
+        currentPhase: Phase.Shooting,
+        currentSubPhase: SubPhase.Attack,
+        awaitingReaction: true,
+        shootingAttackState: {
+          attackerUnitId: 'a-u1',
+          targetUnitId: 'r-u1',
+          attackerPlayerIndex: 0,
+          targetFacing: null,
+          weaponAssignments: [],
+          fireGroups: [],
+          currentFireGroupIndex: 0,
+          currentStep: 'AWAITING_RETURN_FIRE',
+          accumulatedGlancingHits: [],
+          accumulatedCasualties: [],
+          unitSizesAtStart: { 'a-u1': 1, 'r-u1': 1 },
+          pendingMoraleChecks: [],
+          returnFireResolved: false,
+          isReturnFire: false,
+          modelsWithLOS: [],
+        } as any,
+        pendingReaction: {
+          reactionType: CoreReaction.ReturnFire,
+          eligibleUnitIds: ['r-u1'],
+          triggerDescription: 'test',
+          triggerSourceUnitId: 'a-u1',
+        },
+        armies: [
+          createArmy(0, [attackerUnit]),
+          createArmy(1, [reactiveUnit]),
+        ],
+      });
+
+      const dice = new FixedDiceProvider([6, 6, 1, 1, 1, 1]);
+      const result = processCommand(state, {
+        type: 'selectReaction',
+        unitId: 'r-u1',
+        reactionType: 'ReturnFire',
+      }, dice);
+
+      expect(result.accepted).toBe(true);
+      expect(result.state.awaitingReaction).toBe(false);
+      expect(result.state.pendingReaction).toBeUndefined();
+      expect(result.state.armies[1].reactionAllotmentRemaining).toBe(0);
+      expect(result.state.armies[1].units[0].hasReactedThisTurn).toBe(true);
+      expect(result.state.armies[1].units[0].hasShotThisTurn).not.toBe(true);
+      expect(result.state.shootingAttackState?.returnFireResolved).toBe(true);
+      expect(result.state.shootingAttackState?.currentStep).toBe('COMPLETE');
+      expect(result.events.some((event) => event.type === 'shootingAttackDeclared')).toBe(true);
+    });
+
+    it('should finalize pending shooting attack window when Return Fire is declined', () => {
+      const attackerUnit = createUnit('a-u1', [createModel('a-m0', 24, 24)]);
+      const reactiveUnit = createUnit('r-u1', [createModel('r-m0', 36, 24)]);
+      const state = createGameState({
+        currentPhase: Phase.Shooting,
+        currentSubPhase: SubPhase.Attack,
+        awaitingReaction: true,
+        shootingAttackState: {
+          attackerUnitId: 'a-u1',
+          targetUnitId: 'r-u1',
+          attackerPlayerIndex: 0,
+          targetFacing: null,
+          weaponAssignments: [],
+          fireGroups: [],
+          currentFireGroupIndex: 0,
+          currentStep: 'AWAITING_RETURN_FIRE',
+          accumulatedGlancingHits: [],
+          accumulatedCasualties: [],
+          unitSizesAtStart: { 'a-u1': 1, 'r-u1': 1 },
+          pendingMoraleChecks: [],
+          returnFireResolved: false,
+          isReturnFire: false,
+          modelsWithLOS: [],
+        } as any,
+        pendingReaction: {
+          reactionType: CoreReaction.ReturnFire,
+          eligibleUnitIds: ['r-u1'],
+          triggerDescription: 'test',
+          triggerSourceUnitId: 'a-u1',
+        },
+        armies: [
+          createArmy(0, [attackerUnit]),
+          createArmy(1, [reactiveUnit]),
+        ],
+      });
+
+      const dice = new FixedDiceProvider([]);
+      const result = processCommand(state, { type: 'declineReaction' }, dice);
+
+      expect(result.accepted).toBe(true);
+      expect(result.state.awaitingReaction).toBe(false);
+      expect(result.state.shootingAttackState?.returnFireResolved).toBe(true);
+      expect(result.state.shootingAttackState?.currentStep).toBe('COMPLETE');
     });
 
     it('should reject selectReaction for ineligible unit', () => {
@@ -501,6 +609,35 @@ describe('processCommand', () => {
 
       expect(result.accepted).toBe(false);
       expect(result.errors[0].code).toBe('WRONG_PHASE');
+    });
+
+    it('should reject a second normal shooting attack from the same unit in the same turn', () => {
+      const attackerModel = { ...createModel('a-m0', 24, 24), equippedWargear: ['bolter'] };
+      const attackerUnit = createUnit('a-u1', [attackerModel]);
+      const targetUnit = createUnit('r-u1', [createModel('r-m0', 30, 24)]);
+      const state = createGameState({
+        currentPhase: Phase.Shooting,
+        currentSubPhase: SubPhase.Attack,
+        armies: [
+          createArmy(0, [attackerUnit]),
+          createArmy(1, [targetUnit], { reactionAllotmentRemaining: 0 }),
+        ],
+      });
+
+      const command = {
+        type: 'declareShooting' as const,
+        attackingUnitId: 'a-u1',
+        targetUnitId: 'r-u1',
+        weaponSelections: [{ modelId: 'a-m0', weaponId: 'bolter' }],
+      };
+
+      const first = processCommand(state, command, new FixedDiceProvider([6, 6, 6, 6, 6, 6]));
+      expect(first.accepted).toBe(true);
+      expect(first.state.armies[0].units[0].hasShotThisTurn).toBe(true);
+
+      const second = processCommand(first.state, command, new FixedDiceProvider([6, 6, 6, 6, 6, 6]));
+      expect(second.accepted).toBe(false);
+      expect(second.errors[0].code).toBe('ATTACKER_ALREADY_SHOT');
     });
   });
 
@@ -1097,6 +1234,352 @@ describe('processCommand', () => {
 
       expect(result.accepted).toBe(false);
       expect(result.errors[0].code).toBe('AWAITING_REACTION');
+    });
+
+    it('should resume charge after accepting Overwatch and skip defender snap-shot volley', () => {
+      const chargerUnit = createUnit('charger-u1', [createModel('c-m0', 10, 10)]);
+      const targetUnit = createUnit('target-u1', [createModel('t-m0', 12, 10)]);
+      const state = createGameState({
+        currentPhase: Phase.Assault,
+        currentSubPhase: SubPhase.Charge,
+        awaitingReaction: true,
+        pendingReaction: {
+          reactionType: CoreReaction.Overwatch,
+          eligibleUnitIds: ['target-u1'],
+          triggerDescription: 'Unit "charger-u1" is charging. Overwatch available.',
+          triggerSourceUnitId: 'charger-u1',
+        },
+        assaultAttackState: {
+          chargingUnitId: 'charger-u1',
+          targetUnitId: 'target-u1',
+          chargerPlayerIndex: 0,
+          chargeStep: 'AWAITING_OVERWATCH',
+          setupMoveDistance: 0,
+          chargeRoll: 0,
+          isDisordered: false,
+          chargeCompleteViaSetup: false,
+          overwatchResolved: false,
+          closestDistance: 2,
+          modelsWithLOS: ['c-m0'],
+        },
+        armies: [
+          createArmy(0, [chargerUnit]),
+          createArmy(1, [targetUnit], { reactionAllotmentRemaining: 2 }),
+        ],
+      });
+
+      const dice = new FixedDiceProvider([6, 1]);
+      const result = processCommand(state, {
+        type: 'selectReaction',
+        unitId: 'target-u1',
+        reactionType: 'Overwatch',
+      }, dice);
+
+      expect(result.accepted).toBe(true);
+      expect(result.state.awaitingReaction).toBe(false);
+      expect(result.state.assaultAttackState).toBeUndefined();
+
+      const volleyEvents = result.events
+        .filter(e => e.type === 'volleyAttack') as Array<{ attackerUnitId: string }>;
+      expect(volleyEvents).toHaveLength(1);
+      expect(volleyEvents[0].attackerUnitId).toBe('charger-u1');
+
+      expect(result.events.some(e => e.type === 'overwatchResolved')).toBe(true);
+      expect(result.events.some(e => e.type === 'chargeRoll')).toBe(true);
+    });
+
+    it('should resume charge after declining Overwatch and allow both snap-shot volleys', () => {
+      const chargerUnit = createUnit('charger-u1', [createModel('c-m0', 10, 10)]);
+      const targetUnit = createUnit('target-u1', [createModel('t-m0', 12, 10)]);
+      const state = createGameState({
+        currentPhase: Phase.Assault,
+        currentSubPhase: SubPhase.Charge,
+        awaitingReaction: true,
+        pendingReaction: {
+          reactionType: CoreReaction.Overwatch,
+          eligibleUnitIds: ['target-u1'],
+          triggerDescription: 'Unit "charger-u1" is charging. Overwatch available.',
+          triggerSourceUnitId: 'charger-u1',
+        },
+        assaultAttackState: {
+          chargingUnitId: 'charger-u1',
+          targetUnitId: 'target-u1',
+          chargerPlayerIndex: 0,
+          chargeStep: 'AWAITING_OVERWATCH',
+          setupMoveDistance: 0,
+          chargeRoll: 0,
+          isDisordered: false,
+          chargeCompleteViaSetup: false,
+          overwatchResolved: false,
+          closestDistance: 2,
+          modelsWithLOS: ['c-m0'],
+        },
+        armies: [
+          createArmy(0, [chargerUnit]),
+          createArmy(1, [targetUnit], { reactionAllotmentRemaining: 2 }),
+        ],
+      });
+
+      const dice = new FixedDiceProvider([6, 1]);
+      const result = processCommand(state, { type: 'declineReaction' }, dice);
+
+      expect(result.accepted).toBe(true);
+      expect(result.state.awaitingReaction).toBe(false);
+      expect(result.state.assaultAttackState).toBeUndefined();
+
+      const volleyEvents = result.events
+        .filter(e => e.type === 'volleyAttack') as Array<{ attackerUnitId: string }>;
+      expect(volleyEvents).toHaveLength(2);
+      expect(volleyEvents.map(e => e.attackerUnitId)).toEqual(['charger-u1', 'target-u1']);
+
+      expect(result.events.some(e => e.type === 'overwatchResolved')).toBe(true);
+      expect(result.events.some(e => e.type === 'chargeRoll')).toBe(true);
+    });
+
+    it('should execute a real Overwatch shooting attack at full BS before charge resume', () => {
+      const chargerUnit = createUnit('charger-u1', [
+        createModel('c-m0', 10, 10),
+        createModel('c-m1', 10, 11),
+        createModel('c-m2', 10, 12),
+      ]);
+      const targetUnit = createUnit('target-u1', [
+        { ...createModel('t-m0', 12, 10), equippedWargear: ['bolter'] },
+      ]);
+      const state = createGameState({
+        currentPhase: Phase.Assault,
+        currentSubPhase: SubPhase.Charge,
+        awaitingReaction: true,
+        pendingReaction: {
+          reactionType: CoreReaction.Overwatch,
+          eligibleUnitIds: ['target-u1'],
+          triggerDescription: 'Unit "charger-u1" is charging. Overwatch available.',
+          triggerSourceUnitId: 'charger-u1',
+        },
+        assaultAttackState: {
+          chargingUnitId: 'charger-u1',
+          targetUnitId: 'target-u1',
+          chargerPlayerIndex: 0,
+          chargeStep: 'AWAITING_OVERWATCH',
+          setupMoveDistance: 0,
+          chargeRoll: 0,
+          isDisordered: false,
+          chargeCompleteViaSetup: false,
+          overwatchResolved: false,
+          closestDistance: 2,
+          modelsWithLOS: ['c-m0', 'c-m1', 'c-m2'],
+        },
+        armies: [
+          createArmy(0, [chargerUnit]),
+          createArmy(1, [targetUnit], { reactionAllotmentRemaining: 2 }),
+        ],
+      });
+
+      const dice = new FixedDiceProvider([6, 6, 6, 6, 1, 6, 1]);
+      const result = processCommand(state, {
+        type: 'selectReaction',
+        unitId: 'target-u1',
+        reactionType: 'Overwatch',
+      }, dice);
+
+      expect(result.accepted).toBe(true);
+      expect(result.events.some(event => event.type === 'shootingAttackDeclared')).toBe(true);
+      const shootingEvent = result.events.find(
+        (event) => event.type === 'shootingAttackDeclared',
+      ) as { fireGroups: Array<{ isSnapShot: boolean }> } | undefined;
+      expect(shootingEvent?.fireGroups[0]?.isSnapShot).toBe(false);
+      expect(result.events.some(event => event.type === 'overwatchResolved')).toBe(true);
+    });
+  });
+
+  describe('advanced reaction trigger wiring', () => {
+    it('offers a shooting advanced reaction at step 3 and resumes the shot after decline', () => {
+      const attackerUnit = createUnit('attacker-u1', [
+        { ...createModel('a-m0', 20, 20), equippedWargear: ['bolter'] },
+      ]);
+      const targetUnit = createUnit('target-u1', [createModel('t-m0', 28, 20)]);
+      const state = createGameState({
+        currentPhase: Phase.Shooting,
+        currentSubPhase: SubPhase.Attack,
+        armies: [
+          createArmy(0, [attackerUnit], { faction: LegionFaction.DarkAngels }),
+          createArmy(1, [targetUnit], { faction: LegionFaction.IronWarriors }),
+        ],
+      });
+
+      const offerDice = new FixedDiceProvider([]);
+      const offer = processCommand(state, {
+        type: 'declareShooting',
+        attackingUnitId: 'attacker-u1',
+        targetUnitId: 'target-u1',
+        weaponSelections: [{ modelId: 'a-m0', weaponId: 'bolter' }],
+      }, offerDice);
+
+      expect(offer.accepted).toBe(true);
+      expect(offer.state.awaitingReaction).toBe(true);
+      expect(offer.state.pendingReaction?.isAdvancedReaction).toBe(true);
+      expect(offer.state.pendingReaction?.reactionType).toBe('iw-bitter-fury');
+
+      const resumeDice = new FixedDiceProvider([6, 6, 1, 1, 6, 1]);
+      const declined = processCommand(offer.state, { type: 'declineReaction' }, resumeDice);
+
+      expect(declined.accepted).toBe(true);
+      expect(declined.events.some(event => event.type === 'shootingAttackDeclared')).toBe(true);
+    });
+
+    it('offers an assault advanced reaction at charge step 2 and resumes charge flow after decline', () => {
+      const chargerUnit = createUnit('charger-u1', [createModel('c-m0', 10, 10)]);
+      const targetUnit = createUnit('target-u1', [createModel('t-m0', 18, 10)]);
+      const state = createGameState({
+        currentPhase: Phase.Assault,
+        currentSubPhase: SubPhase.Charge,
+        armies: [
+          createArmy(0, [chargerUnit], {
+            faction: LegionFaction.DarkAngels,
+            allegiance: Allegiance.Loyalist,
+          }),
+          createArmy(1, [targetUnit], {
+            faction: LegionFaction.EmperorsChildren,
+            allegiance: Allegiance.Traitor,
+          }),
+        ],
+      });
+
+      const offerDice = new FixedDiceProvider([]);
+      const offer = processCommand(state, {
+        type: 'declareCharge',
+        chargingUnitId: 'charger-u1',
+        targetUnitId: 'target-u1',
+      }, offerDice);
+
+      expect(offer.accepted).toBe(true);
+      expect(offer.state.awaitingReaction).toBe(true);
+      expect(offer.state.pendingReaction?.isAdvancedReaction).toBe(true);
+      expect(offer.state.pendingReaction?.reactionType).toBe('ec-h-twisted-desire');
+
+      const declined = processCommand(offer.state, { type: 'declineReaction' }, new FixedDiceProvider([]));
+      expect(declined.accepted).toBe(true);
+      expect(declined.events.some(event => event.type === 'chargeDeclared')).toBe(true);
+    });
+
+    it('offers a shooting advanced reaction at step 4 when the reacting legion trigger is step 4', () => {
+      const attackerUnit = createUnit('attacker-u1', [
+        { ...createModel('a-m0', 20, 20), equippedWargear: ['bolter'] },
+      ]);
+      const targetUnit = createUnit('target-u1', [createModel('t-m0', 28, 20)]);
+      const state = createGameState({
+        currentPhase: Phase.Shooting,
+        currentSubPhase: SubPhase.Attack,
+        armies: [
+          createArmy(0, [attackerUnit], { faction: LegionFaction.DarkAngels }),
+          createArmy(1, [targetUnit], { faction: LegionFaction.BloodAngels }),
+        ],
+      });
+
+      const result = processCommand(state, {
+        type: 'declareShooting',
+        attackingUnitId: 'attacker-u1',
+        targetUnitId: 'target-u1',
+        weaponSelections: [{ modelId: 'a-m0', weaponId: 'bolter' }],
+      }, new FixedDiceProvider([]));
+
+      expect(result.accepted).toBe(true);
+      expect(result.state.awaitingReaction).toBe(true);
+      expect(result.state.pendingReaction?.isAdvancedReaction).toBe(true);
+      expect(result.state.pendingReaction?.reactionType).toBe('ba-wrath-of-angels');
+    });
+
+    it('offers a shooting advanced reaction at step 5 when the reacting legion trigger is step 5', () => {
+      const attackerUnit = createUnit('attacker-u1', [
+        { ...createModel('a-m0', 20, 20), equippedWargear: ['bolter'] },
+      ]);
+      const targetUnit = createUnit('target-u1', [createModel('t-m0', 28, 20)]);
+      const state = createGameState({
+        currentPhase: Phase.Shooting,
+        currentSubPhase: SubPhase.Attack,
+        armies: [
+          createArmy(0, [attackerUnit], { faction: LegionFaction.DarkAngels }),
+          createArmy(1, [targetUnit], { faction: LegionFaction.WordBearers }),
+        ],
+      });
+
+      const result = processCommand(state, {
+        type: 'declareShooting',
+        attackingUnitId: 'attacker-u1',
+        targetUnitId: 'target-u1',
+        weaponSelections: [{ modelId: 'a-m0', weaponId: 'bolter' }],
+      }, new FixedDiceProvider([]));
+
+      expect(result.accepted).toBe(true);
+      expect(result.state.awaitingReaction).toBe(true);
+      expect(result.state.pendingReaction?.isAdvancedReaction).toBe(true);
+      expect(result.state.pendingReaction?.reactionType).toBe('wb-glorious-martyrdom');
+    });
+
+    it('offers an assault advanced reaction at charge step 4 and resumes to Overwatch after decline', () => {
+      const chargerUnit = createUnit('charger-u1', [createModel('c-m0', 10, 10)]);
+      const targetUnit = createUnit('target-u1', [createModel('t-m0', 18, 10)]);
+      const state = createGameState({
+        currentPhase: Phase.Assault,
+        currentSubPhase: SubPhase.Charge,
+        armies: [
+          createArmy(0, [chargerUnit], { faction: LegionFaction.DarkAngels }),
+          createArmy(1, [targetUnit], { faction: LegionFaction.NightLords }),
+        ],
+      });
+
+      const offered = processCommand(state, {
+        type: 'declareCharge',
+        chargingUnitId: 'charger-u1',
+        targetUnitId: 'target-u1',
+      }, new FixedDiceProvider([]));
+
+      expect(offered.accepted).toBe(true);
+      expect(offered.state.awaitingReaction).toBe(true);
+      expect(offered.state.pendingReaction?.reactionType).toBe('nl-better-part');
+
+      const declined = processCommand(offered.state, { type: 'declineReaction' }, new FixedDiceProvider([]));
+      expect(declined.accepted).toBe(true);
+      expect(declined.state.awaitingReaction).toBe(true);
+      expect(declined.state.pendingReaction?.reactionType).toBe(CoreReaction.Overwatch);
+    });
+
+    it('offers an assault advanced reaction after volley attacks when applicable', () => {
+      const chargerUnit = createUnit('charger-u1', [createModel('c-m0', 10, 10)]);
+      const targetUnit = createUnit('target-u1', [createModel('t-m0', 18, 10)]);
+      const state = createGameState({
+        currentPhase: Phase.Assault,
+        currentSubPhase: SubPhase.Charge,
+        armies: [
+          createArmy(0, [chargerUnit], {
+            faction: LegionFaction.DarkAngels,
+            allegiance: Allegiance.Loyalist,
+          }),
+          createArmy(1, [targetUnit], {
+            faction: LegionFaction.WorldEaters,
+            allegiance: Allegiance.Traitor,
+            reactionAllotmentRemaining: 2,
+          }),
+        ],
+      });
+
+      const declared = processCommand(state, {
+        type: 'declareCharge',
+        chargingUnitId: 'charger-u1',
+        targetUnitId: 'target-u1',
+      }, new FixedDiceProvider([]));
+      expect(declared.accepted).toBe(true);
+      expect(declared.state.pendingReaction?.reactionType).toBe(CoreReaction.Overwatch);
+
+      const declinedOverwatch = processCommand(
+        declared.state,
+        { type: 'declineReaction' },
+        new FixedDiceProvider([]),
+      );
+
+      expect(declinedOverwatch.accepted).toBe(true);
+      expect(declinedOverwatch.state.awaitingReaction).toBe(true);
+      expect(declinedOverwatch.state.pendingReaction?.isAdvancedReaction).toBe(true);
+      expect(declinedOverwatch.state.pendingReaction?.reactionType).toBe('we-h-furious-charge');
     });
   });
 });
