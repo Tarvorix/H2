@@ -18,8 +18,7 @@ import { findMission, getProfileById, findWeapon, findLegionWeapon, isRangedWeap
 import type { ArmyConfig, UnitSelection } from './types';
 import {
   executeCommand,
-  buildMoveCommand,
-  buildRushCommand,
+  buildMoveUnitCommand,
   buildShootingCommand,
   buildChargeCommand,
   buildReactionCommand,
@@ -339,6 +338,33 @@ function applyEngineCommand(
     flowState,
     lastCommandResult: result,
     lastErrors: [],
+  };
+}
+
+/**
+ * Preserve reaction prompt flow when the engine state still has a pending reaction.
+ * This prevents chained reaction windows from being hidden by caller flow overrides.
+ */
+function withReactionFlowPriority(
+  state: GameUIState,
+  fallbackFlowState: GameUIState['flowState'],
+): GameUIState {
+  if (state.gameState?.awaitingReaction && state.gameState.pendingReaction) {
+    return {
+      ...state,
+      flowState: {
+        type: 'reaction',
+        step: {
+          step: 'prompt',
+          pendingReaction: state.gameState.pendingReaction,
+        },
+      },
+    };
+  }
+
+  return {
+    ...state,
+    flowState: fallbackFlowState,
   };
 }
 
@@ -1021,27 +1047,20 @@ export function gameReducer(
       if (state.flowState.type !== 'movement') return state;
       const moveStep = state.flowState.step;
       if (moveStep.step === 'confirmMove') {
-        // Dispatch move commands for each model (full-unit translation).
-        // Stop on first rejected command to avoid additional partial movement.
-        let newState = state;
-        if (moveStep.isRush) {
-          newState = applyEngineCommand(newState, buildRushCommand(moveStep.unitId));
-          if (newState.lastErrors.length > 0) {
-            return newState;
-          }
+        // Execute movement atomically for normal moves and Rush moves.
+        const newState = applyEngineCommand(
+          state,
+          buildMoveUnitCommand(moveStep.unitId, moveStep.modelPositions, moveStep.isRush),
+        );
+        if (newState.lastErrors.length > 0) {
+          return newState;
         }
-        for (const mp of moveStep.modelPositions) {
-          newState = applyEngineCommand(newState, buildMoveCommand(mp.modelId, mp.position));
-          if (newState.lastErrors.length > 0) {
-            return newState;
-          }
-        }
-        return {
+        const baseState = {
           ...newState,
-          flowState: { type: 'idle' },
           selectedUnitId: null,
           overlayVisibility: { ...newState.overlayVisibility, movement: false },
         };
+        return withReactionFlowPriority(baseState, { type: 'idle' });
       }
       return state;
     }
@@ -1319,12 +1338,12 @@ export function gameReducer(
         state,
         buildReactionCommand(action.unitId, action.reactionType),
       );
-      return { ...newState, flowState: { type: 'idle' } };
+      return withReactionFlowPriority(newState, { type: 'idle' });
     }
 
     case 'DECLINE_REACTION': {
       const newState = applyEngineCommand(state, buildDeclineReactionCommand());
-      return { ...newState, flowState: { type: 'idle' } };
+      return withReactionFlowPriority(newState, { type: 'idle' });
     }
 
     // ── Challenge Flow ──────────────────────────────────────────────────

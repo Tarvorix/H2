@@ -310,7 +310,7 @@ describe('TacticalStrategy.generateNextCommand — phase delegation', () => {
     const command = strategy.generateNextCommand(state, 0, context);
 
     expect(command).not.toBeNull();
-    expect(command!.type).toBe('moveModel');
+    expect(command!.type).toBe('moveUnit');
   });
 
   it('delegates to shooting handler in Shooting phase', () => {
@@ -412,8 +412,8 @@ describe('TacticalStrategy.generateNextCommand — phase delegation', () => {
     const command = strategy.generateNextCommand(state, 0, context);
 
     expect(command).not.toBeNull();
-    expect(command!.type).toBe('moveModel');
-    const pos = (command as any).targetPosition;
+    expect(command!.type).toBe('moveUnit');
+    const pos = (command as any).modelPositions[0].position;
     // Should move toward enemy (x=60, y=40) from (x=10, y=10)
     expect(pos.x).toBeGreaterThan(10);
     expect(pos.y).toBeGreaterThan(10);

@@ -5,7 +5,7 @@
  * Handles reserves testing, unit movement, and rush decisions.
  */
 
-import type { GameState, GameCommand, Position } from '@hh/types';
+import type { GameState, GameCommand, Position, UnitState, ModelState } from '@hh/types';
 import { SubPhase } from '@hh/types';
 import { getAliveModels } from '@hh/engine';
 import type { AITurnContext, StrategyMode } from '../types';
@@ -74,7 +74,7 @@ function generateReservesCommand(
 
 /**
  * Generate move commands for units.
- * Moves one model at a time (engine processes moveModel per-model).
+ * Issues atomic moveUnit commands so model destinations resolve together.
  */
 function generateMoveCommand(
   state: GameState,
@@ -85,113 +85,20 @@ function generateMoveCommand(
   const bfWidth = state.battlefield?.width ?? DEFAULT_BATTLEFIELD_WIDTH;
   const bfHeight = state.battlefield?.height ?? DEFAULT_BATTLEFIELD_HEIGHT;
 
-  // If we're in the middle of moving a unit's models, continue
-  if (context.currentMovingUnitId) {
-    return continueMovingUnit(state, playerIndex, context, strategy, bfWidth, bfHeight);
-  }
-
-  // Find the next unit to move
   const movableUnits = getMovableUnits(state, playerIndex, context.actedUnitIds);
   if (movableUnits.length === 0) {
     return null; // No more units to move
   }
 
-  // Pick the first movable unit and start moving its models
+  // Pick the next movable unit and move it as a coherent block.
   const unit = movableUnits[0];
-  context.currentMovingUnitId = unit.id;
+  const command = buildUnitTranslationCommand(state, unit, strategy, bfWidth, bfHeight);
+  if (!command) return null;
+
+  context.actedUnitIds.add(unit.id);
+  context.currentMovingUnitId = null;
   context.movedModelIds.clear();
-
-  return moveNextModel(state, unit.id, context, strategy, bfWidth, bfHeight);
-}
-
-/**
- * Continue moving models of the current unit.
- */
-function continueMovingUnit(
-  state: GameState,
-  playerIndex: number,
-  context: AITurnContext,
-  strategy: StrategyMode,
-  bfWidth: number,
-  bfHeight: number,
-): GameCommand | null {
-  const unitId = context.currentMovingUnitId!;
-  const result = moveNextModel(state, unitId, context, strategy, bfWidth, bfHeight);
-
-  if (result === null) {
-    // All models in this unit have been moved
-    context.actedUnitIds.add(unitId);
-    context.currentMovingUnitId = null;
-    context.movedModelIds.clear();
-
-    // Immediately continue to the next unit in the same Move sub-phase.
-    // Returning null here causes the strategy layer to emit endSubPhase too early.
-    const remainingMovableUnits = getMovableUnits(state, playerIndex, context.actedUnitIds);
-    if (remainingMovableUnits.length === 0) {
-      return null;
-    }
-
-    const nextUnit = remainingMovableUnits[0];
-    context.currentMovingUnitId = nextUnit.id;
-    return moveNextModel(state, nextUnit.id, context, strategy, bfWidth, bfHeight);
-  }
-
-  return result;
-}
-
-/**
- * Move the next un-moved model in a unit.
- */
-function moveNextModel(
-  state: GameState,
-  unitId: string,
-  context: AITurnContext,
-  strategy: StrategyMode,
-  bfWidth: number,
-  bfHeight: number,
-): GameCommand | null {
-  // Find the unit
-  const army0 = state.armies[0];
-  const army1 = state.armies[1];
-  const unit = army0.units.find((u) => u.id === unitId) ?? army1.units.find((u) => u.id === unitId);
-  if (!unit) return null;
-
-  const aliveModels = getAliveModels(unit);
-  const unmovedModel = aliveModels.find((m) => !context.movedModelIds.has(m.id));
-
-  if (!unmovedModel) {
-    return null; // All models moved
-  }
-
-  context.movedModelIds.add(unmovedModel.id);
-
-  const maxMove = getModelMovementCharacteristic(unmovedModel);
-  let targetPosition: Position;
-
-  if (strategy === 'basic') {
-    targetPosition = calculateRandomMovePosition(
-      unmovedModel.position,
-      maxMove,
-      bfWidth,
-      bfHeight,
-    );
-  } else {
-    // Tactical: move toward the nearest enemy or objectives
-    targetPosition = calculateTacticalMovePosition(
-      state,
-      unit.id,
-      unmovedModel.position,
-      maxMove,
-      bfWidth,
-      bfHeight,
-    );
-  }
-
-  return {
-    type: 'moveModel',
-    modelId: unmovedModel.id,
-    targetPosition,
-  };
+  return command;
 }
 
 /**
@@ -245,4 +152,57 @@ function calculateTacticalMovePosition(
     bfWidth,
     bfHeight,
   );
+}
+
+function buildUnitTranslationCommand(
+  state: GameState,
+  unit: UnitState,
+  strategy: StrategyMode,
+  bfWidth: number,
+  bfHeight: number,
+): GameCommand | null {
+  const aliveModels = getAliveModels(unit);
+  if (aliveModels.length === 0) return null;
+
+  const originCentroid = getUnitCentroid(unit);
+  if (!originCentroid) return null;
+
+  const maxMove = getUnitMaxSafeTranslation(aliveModels);
+  let targetCentroid: Position;
+
+  if (strategy === 'basic') {
+    targetCentroid = calculateRandomMovePosition(originCentroid, maxMove, bfWidth, bfHeight);
+  } else {
+    targetCentroid = calculateTacticalMovePosition(
+      state,
+      unit.id,
+      originCentroid,
+      maxMove,
+      bfWidth,
+      bfHeight,
+    );
+  }
+
+  const dx = targetCentroid.x - originCentroid.x;
+  const dy = targetCentroid.y - originCentroid.y;
+  const modelPositions = aliveModels.map((model) => ({
+    modelId: model.id,
+    position: {
+      x: model.position.x + dx,
+      y: model.position.y + dy,
+    },
+  }));
+
+  return {
+    type: 'moveUnit',
+    unitId: unit.id,
+    modelPositions,
+  };
+}
+
+function getUnitMaxSafeTranslation(models: ModelState[]): number {
+  return models.reduce((minValue, model) => {
+    const movement = getModelMovementCharacteristic(model);
+    return Math.min(minValue, movement);
+  }, Number.POSITIVE_INFINITY);
 }

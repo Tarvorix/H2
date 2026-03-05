@@ -5,9 +5,8 @@
  * Reference: HH_Rules_Battle.md -- "Movement Phase"
  * Reference: HH_Principles.md -- "Terrain", "1" Exclusion Zone", "Coherency"
  *
- * Models are moved individually within a unit. The unit tracks whether it has
- * moved (UnitMovementState.Moved) or rushed (UnitMovementState.Rushed).
- * Individual models are moved one at a time to their target positions.
+ * Supports both per-model moves and atomic full-unit moves. The unit tracks
+ * whether it has moved (UnitMovementState.Moved) or rushed (UnitMovementState.Rushed).
  *
  * Move flow:
  * 1. Validate model exists and belongs to active player
@@ -23,6 +22,7 @@
 import type {
   GameState,
   Position,
+  UnitState,
 } from '@hh/types';
 import {
   UnitMovementState,
@@ -83,6 +83,25 @@ const DANGEROUS_TERRAIN_FAIL_THRESHOLD = 1;
  * Damage value for wounds caused by dangerous terrain test failures.
  */
 const DANGEROUS_TERRAIN_DAMAGE = 1;
+
+function getCannotRushReason(unit: UnitState): string {
+  if (unit.statuses.includes(TacticalStatus.Pinned)) {
+    return 'Unit is Pinned';
+  }
+  if (unit.isLockedInCombat) {
+    return 'Unit is locked in combat';
+  }
+  if (!unit.isDeployed) {
+    return 'Unit is not deployed';
+  }
+  if (unit.embarkedOnId !== null) {
+    return 'Unit is embarked on a transport';
+  }
+  if (unit.movementState !== UnitMovementState.Stationary) {
+    return `Unit has already ${unit.movementState === UnitMovementState.Moved ? 'moved' : 'acted'} this turn`;
+  }
+  return 'Unknown';
+}
 
 // ─── handleMoveModel ────────────────────────────────────────────────────────
 
@@ -329,6 +348,344 @@ export function handleMoveModel(
   };
 }
 
+// ─── handleMoveUnit ─────────────────────────────────────────────────────────
+
+/**
+ * Handle moving an entire unit atomically using explicit per-model destinations.
+ *
+ * This validates each model movement against the current battlefield state, then
+ * applies all model position updates in one command so coherency is evaluated only
+ * on the final arrangement.
+ *
+ * @param state - Current game state
+ * @param unitId - ID of the unit to move
+ * @param modelPositions - Destination positions for all alive models in the unit
+ * @param dice - Dice provider for dangerous terrain tests
+ * @returns CommandResult with updated state, events, and errors
+ */
+export function handleMoveUnit(
+  state: GameState,
+  unitId: string,
+  modelPositions: { modelId: string; position: Position }[],
+  dice: DiceProvider,
+  options: { isRush?: boolean } = {},
+): CommandResult {
+  const events: GameEvent[] = [];
+  const isRush = options.isRush === true;
+
+  // ── Step 1: Find unit and validate ownership ─────────────────────────
+
+  const unit = findUnit(state, unitId);
+  if (!unit) {
+    return {
+      state,
+      events: [],
+      errors: [{
+        code: 'UNIT_NOT_FOUND',
+        message: `Unit "${unitId}" not found`,
+        context: { unitId },
+      }],
+      accepted: false,
+    };
+  }
+
+  const playerIndex = findUnitPlayerIndex(state, unitId);
+  if (playerIndex === undefined || playerIndex !== state.activePlayerIndex) {
+    return {
+      state,
+      events: [],
+      errors: [{
+        code: 'NOT_ACTIVE_PLAYER',
+        message: 'Unit does not belong to the active player',
+        context: { unitId, playerIndex, activePlayerIndex: state.activePlayerIndex },
+      }],
+      accepted: false,
+    };
+  }
+
+  // ── Step 2: Validate unit movement eligibility ───────────────────────
+
+  if (isRush) {
+    if (!canUnitRush(unit)) {
+      const reason = getCannotRushReason(unit);
+      return {
+        state,
+        events: [],
+        errors: [{
+          code: 'UNIT_CANNOT_RUSH',
+          message: `Unit "${unitId}" cannot rush: ${reason}`,
+          context: { unitId, reason, movementState: unit.movementState, statuses: unit.statuses },
+        }],
+        accepted: false,
+      };
+    }
+  } else {
+    if (!canUnitMove(unit)) {
+      return {
+        state,
+        events: [],
+        errors: [{
+          code: 'UNIT_CANNOT_MOVE',
+          message: `Unit "${unitId}" cannot move (pinned, locked in combat, embarked, or not deployed)`,
+          context: { unitId, movementState: unit.movementState, statuses: unit.statuses },
+        }],
+        accepted: false,
+      };
+    }
+
+    if (unit.movementState === UnitMovementState.Rushed) {
+      return {
+        state,
+        events: [],
+        errors: [{
+          code: 'UNIT_ALREADY_RUSHED',
+          message: `Unit "${unitId}" has already rushed this turn and cannot make normal moves`,
+          context: { unitId },
+        }],
+        accepted: false,
+      };
+    }
+  }
+
+  const aliveModels = unit.models.filter(m => !m.isDestroyed);
+  if (aliveModels.length === 0) {
+    return {
+      state,
+      events: [],
+      errors: [{
+        code: 'UNIT_HAS_NO_ALIVE_MODELS',
+        message: `Unit "${unitId}" has no alive models to move`,
+        context: { unitId },
+      }],
+      accepted: false,
+    };
+  }
+
+  // Atomic unit move requires a destination for every alive model.
+  if (modelPositions.length !== aliveModels.length) {
+    return {
+      state,
+      events: [],
+      errors: [{
+        code: 'MODEL_POSITION_COUNT_MISMATCH',
+        message: `Expected ${aliveModels.length} model positions, received ${modelPositions.length}`,
+        context: { unitId, expected: aliveModels.length, received: modelPositions.length },
+      }],
+      accepted: false,
+    };
+  }
+
+  const aliveModelIds = new Set(aliveModels.map(m => m.id));
+  const targetPositionByModelId = new Map<string, Position>();
+
+  for (const mp of modelPositions) {
+    if (!aliveModelIds.has(mp.modelId)) {
+      return {
+        state,
+        events: [],
+        errors: [{
+          code: 'MODEL_NOT_IN_UNIT',
+          message: `Model "${mp.modelId}" is not an alive member of unit "${unitId}"`,
+          context: { unitId, modelId: mp.modelId },
+        }],
+        accepted: false,
+      };
+    }
+    if (targetPositionByModelId.has(mp.modelId)) {
+      return {
+        state,
+        events: [],
+        errors: [{
+          code: 'DUPLICATE_MODEL_POSITION',
+          message: `Duplicate destination provided for model "${mp.modelId}"`,
+          context: { unitId, modelId: mp.modelId },
+        }],
+        accepted: false,
+      };
+    }
+    targetPositionByModelId.set(mp.modelId, mp.position);
+  }
+
+  for (const model of aliveModels) {
+    if (!targetPositionByModelId.has(model.id)) {
+      return {
+        state,
+        events: [],
+        errors: [{
+          code: 'MISSING_MODEL_POSITION',
+          message: `Missing destination for model "${model.id}" in unit "${unitId}"`,
+          context: { unitId, modelId: model.id },
+        }],
+        accepted: false,
+      };
+    }
+  }
+
+  // ── Step 3: Compute tactica movement modifiers ───────────────────────
+
+  let movementBonus = 0;
+  let ignoresDifficultTerrain = false;
+  const unitLegion = getUnitLegion(state, unitId);
+  if (unitLegion) {
+    const effects = getTacticaEffectsForLegion(unitLegion);
+    const tacticaResult = applyLegionTactica(unitLegion, PipelineHook.Movement, {
+      state,
+      unit,
+      effects,
+      hook: PipelineHook.Movement,
+      moveDistance: 0,
+      entireUnitHasTactica: true,
+    });
+    if (tacticaResult.movementBonus) {
+      movementBonus = tacticaResult.movementBonus;
+    }
+    if (tacticaResult.ignoresDifficultTerrain) {
+      ignoresDifficultTerrain = true;
+    }
+  }
+
+  // ── Step 4: Validate every model against final arrangement ───────────
+
+  const enemyShapes = getEnemyModelShapes(state, playerIndex);
+
+  for (const model of aliveModels) {
+    const targetPosition = targetPositionByModelId.get(model.id)!;
+    const maxMoveDistance =
+      getModelMovement(model.unitProfileId, model.profileModelName)
+      + (isRush ? getModelInitiative(model.unitProfileId, model.profileModelName) : 0)
+      + movementBonus;
+
+    const friendlyShapes = aliveModels
+      .filter(other => other.id !== model.id)
+      .map((other) => {
+        const otherTarget = targetPositionByModelId.get(other.id) ?? other.position;
+        return getModelShape({ ...other, position: otherTarget });
+      });
+
+    const moveErrors = validateModelMove(
+      model,
+      targetPosition,
+      maxMoveDistance,
+      state.terrain,
+      enemyShapes,
+      friendlyShapes,
+      state.battlefield.width,
+      state.battlefield.height,
+    );
+
+    if (moveErrors.length > 0) {
+      return {
+        state,
+        events: [],
+        errors: moveErrors,
+        accepted: false,
+      };
+    }
+  }
+
+  // ── Step 5: Apply dangerous terrain and movement updates atomically ──
+
+  let newState = state;
+
+  for (const model of aliveModels) {
+    const targetPosition = targetPositionByModelId.get(model.id)!;
+
+    if (!ignoresDifficultTerrain && isInDangerousTerrain(targetPosition, state.terrain)) {
+      const dangerousResult = handleDangerousTerrainTest(model.id, unitId, dice);
+      events.push(dangerousResult.event);
+
+      if (!dangerousResult.passed) {
+        newState = updateUnitInGameState(newState, unitId, (u) =>
+          updateModelInUnit(u, model.id, (m) => {
+            const newWounds = m.currentWounds - DANGEROUS_TERRAIN_DAMAGE;
+            return {
+              ...m,
+              currentWounds: newWounds,
+              isDestroyed: newWounds <= 0,
+            };
+          }),
+        );
+      }
+    }
+
+    const fromPosition = model.position;
+    const distanceMoved = vec2Distance(fromPosition, targetPosition);
+
+    newState = updateUnitInGameState(newState, unitId, (u) =>
+      updateModelInUnit(u, model.id, (m) => moveModel(m, targetPosition)),
+    );
+
+    const movedEvent: ModelMovedEvent = {
+      type: 'modelMoved',
+      modelId: model.id,
+      unitId,
+      fromPosition,
+      toPosition: targetPosition,
+      distanceMoved,
+    };
+    events.push(movedEvent);
+  }
+
+  // ── Step 6: Track that the unit has moved ────────────────────────────
+
+  if (isRush) {
+    newState = updateUnitInGameState(newState, unitId, (u) =>
+      setMovementState(u, UnitMovementState.Rushed),
+    );
+
+    const refModel = aliveModels[0];
+    const rushDistance =
+      getModelMovement(refModel.unitProfileId, refModel.profileModelName)
+      + getModelInitiative(refModel.unitProfileId, refModel.profileModelName)
+      + movementBonus;
+
+    const rushedEvent: UnitRushedEvent = {
+      type: 'unitRushed',
+      unitId,
+      rushDistance,
+    };
+    events.push(rushedEvent);
+  } else {
+    const currentUnit = findUnit(newState, unitId);
+    if (currentUnit && currentUnit.movementState === UnitMovementState.Stationary) {
+      newState = updateUnitInGameState(newState, unitId, (u) =>
+        setMovementState(u, UnitMovementState.Moved),
+      );
+    }
+  }
+
+  // ── Step 7: Check coherency once on final arrangement ────────────────
+
+  const updatedUnit = findUnit(newState, unitId);
+  if (updatedUnit) {
+    const aliveAfterMove = updatedUnit.models.filter(m => !m.isDestroyed);
+    if (aliveAfterMove.length > 1) {
+      const unitShapes = aliveAfterMove.map(m => getModelShape(m));
+      const coherencyResult = checkCoherency(unitShapes, STANDARD_COHERENCY_RANGE);
+
+      if (!coherencyResult.isCoherent) {
+        newState = updateUnitInGameState(newState, unitId, (u) =>
+          addStatus(u, TacticalStatus.Suppressed),
+        );
+
+        const suppressedEvent: StatusAppliedEvent = {
+          type: 'statusApplied',
+          unitId,
+          status: TacticalStatus.Suppressed,
+        };
+        events.push(suppressedEvent);
+      }
+    }
+  }
+
+  return {
+    state: newState,
+    events,
+    errors: [],
+    accepted: true,
+  };
+}
+
 // ─── handleRushUnit ─────────────────────────────────────────────────────────
 
 /**
@@ -393,19 +750,7 @@ export function handleRushUnit(
   // ── Step 2: Validate the unit can rush ────────────────────────────────
 
   if (!canUnitRush(unit)) {
-    // Determine the specific reason
-    let reason = 'Unknown';
-    if (unit.statuses.includes(TacticalStatus.Pinned)) {
-      reason = 'Unit is Pinned';
-    } else if (unit.isLockedInCombat) {
-      reason = 'Unit is locked in combat';
-    } else if (!unit.isDeployed) {
-      reason = 'Unit is not deployed';
-    } else if (unit.embarkedOnId !== null) {
-      reason = 'Unit is embarked on a transport';
-    } else if (unit.movementState !== UnitMovementState.Stationary) {
-      reason = `Unit has already ${unit.movementState === UnitMovementState.Moved ? 'moved' : 'acted'} this turn`;
-    }
+    const reason = getCannotRushReason(unit);
 
     return {
       state,

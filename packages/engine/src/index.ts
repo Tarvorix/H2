@@ -243,6 +243,7 @@ export {
   DIFFICULT_TERRAIN_PENALTY,
   // Move handler
   handleMoveModel,
+  handleMoveUnit,
   handleRushUnit,
   handleDangerousTerrainTest,
   DEFAULT_MOVEMENT,

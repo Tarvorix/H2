@@ -652,6 +652,7 @@ export interface TurnHistoryEntry {
  */
 export type GameCommand =
   | MoveModelCommand
+  | MoveUnitCommand
   | DeclareShootingCommand
   | ResolveShootingCasualtiesCommand
   | DeclareChargeCommand
@@ -681,6 +682,14 @@ export interface MoveModelCommand {
   type: 'moveModel';
   modelId: string;
   targetPosition: Position;
+}
+
+export interface MoveUnitCommand {
+  type: 'moveUnit';
+  unitId: string;
+  modelPositions: { modelId: string; position: Position }[];
+  /** Whether this move is a Rush (M+I) movement. */
+  isRush?: boolean;
 }
 
 export interface DeclareShootingCommand {

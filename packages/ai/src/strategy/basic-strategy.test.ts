@@ -281,7 +281,7 @@ describe('BasicStrategy.generateNextCommand — phase delegation', () => {
     const command = strategy.generateNextCommand(state, 0, context);
 
     expect(command).not.toBeNull();
-    expect(command!.type).toBe('moveModel');
+    expect(command!.type).toBe('moveUnit');
   });
 
   it('delegates to shooting handler in Shooting phase', () => {

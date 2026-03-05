@@ -56,6 +56,22 @@ export function buildMoveCommand(
 }
 
 /**
+ * Build a MoveUnit command (atomic full-unit movement).
+ */
+export function buildMoveUnitCommand(
+  unitId: string,
+  modelPositions: { modelId: string; position: Position }[],
+  isRush: boolean = false,
+): GameCommand {
+  return {
+    type: 'moveUnit',
+    unitId,
+    modelPositions,
+    isRush,
+  };
+}
+
+/**
  * Build a RushUnit command.
  */
 export function buildRushCommand(unitId: string): GameCommand {

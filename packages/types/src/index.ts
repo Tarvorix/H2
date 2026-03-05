@@ -87,6 +87,7 @@ export type {
   TurnHistoryEntry,
   GameCommand,
   MoveModelCommand,
+  MoveUnitCommand,
   DeclareShootingCommand,
   ResolveShootingCasualtiesCommand,
   DeclareChargeCommand,

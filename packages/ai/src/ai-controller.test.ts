@@ -156,15 +156,14 @@ describe('shouldAIAct', () => {
     expect(shouldAIAct(state, config)).toBe(false);
   });
 
-  it('returns false when awaiting reaction but AI is the active player, not reactive', () => {
+  it('returns false when awaiting reaction and AI is the active player, not reactive', () => {
     const state = createGameState({
       activePlayerIndex: 0,
       awaitingReaction: true,
     });
     // AI is player 0 (the active player, not the reactive one)
     const config = createConfig({ playerIndex: 0 });
-    // Active player match returns true regardless of awaitingReaction
-    expect(shouldAIAct(state, config)).toBe(true);
+    expect(shouldAIAct(state, config)).toBe(false);
   });
 });
 

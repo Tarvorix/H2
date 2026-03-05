@@ -79,14 +79,14 @@ export function shouldAIAct(state: GameState, config: AIPlayerConfig): boolean {
   if (!config.enabled) return false;
   if (state.isGameOver) return false;
 
-  // Active player's turn
-  if (state.activePlayerIndex === config.playerIndex) return true;
-
-  // Reactive player decision (reaction prompt)
+  // Reaction windows are owned by the reactive player, not the active player.
   if (state.awaitingReaction) {
     const reactiveIndex = state.activePlayerIndex === 0 ? 1 : 0;
-    if (reactiveIndex === config.playerIndex) return true;
+    return reactiveIndex === config.playerIndex;
   }
+
+  // Active player's turn
+  if (state.activePlayerIndex === config.playerIndex) return true;
 
   return false;
 }

@@ -27,6 +27,7 @@ import { createRectTerrain } from '@hh/geometry';
 import { FixedDiceProvider } from '../dice';
 import {
   handleMoveModel,
+  handleMoveUnit,
   handleRushUnit,
   handleDangerousTerrainTest,
   DEFAULT_MOVEMENT,
@@ -541,6 +542,119 @@ describe('handleMoveModel', () => {
 
     expect(result.accepted).toBe(true);
     expect(result.state.armies[0].units[0].models[0].position).toEqual({ x: 10, y: 24 });
+  });
+});
+
+// ─── handleMoveUnit Tests ───────────────────────────────────────────────────
+
+describe('handleMoveUnit', () => {
+  let state: GameState;
+  let dice: FixedDiceProvider;
+
+  beforeEach(() => {
+    state = createGameState();
+    dice = new FixedDiceProvider([]);
+  });
+
+  it('should move all alive models atomically and mark unit as moved', () => {
+    const result = handleMoveUnit(
+      state,
+      'u1',
+      [
+        { modelId: 'u1-m0', position: { x: 13, y: 24 } },
+        { modelId: 'u1-m1', position: { x: 15, y: 24 } },
+        { modelId: 'u1-m2', position: { x: 17, y: 24 } },
+      ],
+      dice,
+    );
+
+    expect(result.accepted).toBe(true);
+    expect(result.state.armies[0].units[0].models[0].position).toEqual({ x: 13, y: 24 });
+    expect(result.state.armies[0].units[0].models[1].position).toEqual({ x: 15, y: 24 });
+    expect(result.state.armies[0].units[0].models[2].position).toEqual({ x: 17, y: 24 });
+    expect(result.state.armies[0].units[0].movementState).toBe(UnitMovementState.Moved);
+    expect(result.events.filter(e => e.type === 'modelMoved')).toHaveLength(3);
+  });
+
+  it('should allow Rush distance via moveUnit and mark unit as rushed', () => {
+    const result = handleMoveUnit(
+      state,
+      'u1',
+      [
+        { modelId: 'u1-m0', position: { x: 20, y: 24 } },
+        { modelId: 'u1-m1', position: { x: 22, y: 24 } },
+        { modelId: 'u1-m2', position: { x: 24, y: 24 } },
+      ],
+      dice,
+      { isRush: true },
+    );
+
+    expect(result.accepted).toBe(true);
+    expect(result.state.armies[0].units[0].movementState).toBe(UnitMovementState.Rushed);
+    expect(result.events.some(e => e.type === 'unitRushed')).toBe(true);
+  });
+
+  it('should reject moveUnit rush when unit has already moved', () => {
+    state = createGameState({
+      armies: [
+        createArmy(0, [createUnit('u1', [
+          createModel('u1-m0', 10, 24),
+          createModel('u1-m1', 12, 24),
+          createModel('u1-m2', 14, 24),
+        ], { movementState: UnitMovementState.Moved })]),
+        createArmy(1, [createUnit('u3', [
+          createModel('u3-m0', 50, 40),
+          createModel('u3-m1', 52, 40),
+        ])]),
+      ],
+    });
+
+    const result = handleMoveUnit(
+      state,
+      'u1',
+      [
+        { modelId: 'u1-m0', position: { x: 13, y: 24 } },
+        { modelId: 'u1-m1', position: { x: 15, y: 24 } },
+        { modelId: 'u1-m2', position: { x: 17, y: 24 } },
+      ],
+      dice,
+      { isRush: true },
+    );
+
+    expect(result.accepted).toBe(false);
+    expect(result.errors.some(e => e.code === 'UNIT_CANNOT_RUSH')).toBe(true);
+  });
+
+  it('should not apply Suppressed when coherent formation is preserved', () => {
+    const result = handleMoveUnit(
+      state,
+      'u1',
+      [
+        { modelId: 'u1-m0', position: { x: 13, y: 24 } },
+        { modelId: 'u1-m1', position: { x: 15, y: 24 } },
+        { modelId: 'u1-m2', position: { x: 17, y: 24 } },
+      ],
+      dice,
+    );
+
+    expect(result.accepted).toBe(true);
+    expect(result.state.armies[0].units[0].statuses).not.toContain(TacticalStatus.Suppressed);
+    expect(result.events.some(e => e.type === 'statusApplied')).toBe(false);
+  });
+
+  it('should reject when model positions do not cover all alive models', () => {
+    const result = handleMoveUnit(
+      state,
+      'u1',
+      [
+        { modelId: 'u1-m0', position: { x: 13, y: 24 } },
+        { modelId: 'u1-m1', position: { x: 15, y: 24 } },
+      ],
+      dice,
+    );
+
+    expect(result.accepted).toBe(false);
+    expect(result.errors.some(e => e.code === 'MODEL_POSITION_COUNT_MISMATCH')).toBe(true);
   });
 });
 

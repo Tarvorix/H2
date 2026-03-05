@@ -1,6 +1,39 @@
 # HHv2 TODO
 
-Last Updated: 2026-03-04
+Last Updated: 2026-03-05
+
+## Hotfix Plan (Rush Uses Atomic Unit Movement Rules - 2026-03-05)
+- [x] Confirm rules text for Rush + coherency in `HH_Rules_Battle.md` and align engine behavior.
+- [x] Ensure `moveUnit` forwards `isRush` to engine movement handling.
+- [x] Apply Rush validation/range/state/event handling inside atomic `handleMoveUnit`.
+- [x] Add regression tests for Rush via `moveUnit` and run targeted verification.
+
+## Hotfix Verification (Rush Uses Atomic Unit Movement Rules - 2026-03-05)
+- `pnpm test -- packages/engine/src/movement/move-handler.test.ts packages/engine/src/command-processor.test.ts`: PASS (2 files, 129 tests)
+- `pnpm --filter @hh/engine typecheck`: PASS
+
+## Hotfix Plan (Atomic Unit Movement + AI Ownership Fixes - 2026-03-05)
+- [x] Add an atomic `moveUnit` command path so full-unit movement resolves in one engine command.
+- [x] Switch UI movement confirm and AI movement generation to use unit-level movement translation.
+- [x] Fix AI reaction ownership so AI cannot consume human reaction windows.
+- [x] Add/adjust targeted tests for engine movement routing, AI movement/reaction behavior, and run verification.
+
+## Hotfix Verification (Atomic Unit Movement + AI Ownership Fixes - 2026-03-05)
+- `pnpm test -- packages/engine/src/movement/move-handler.test.ts packages/engine/src/command-processor.test.ts`: PASS (2 files, 126 tests)
+- `pnpm test -- packages/ai/src/phases/movement-ai.test.ts packages/ai/src/ai-controller.test.ts packages/ai/src/strategy/basic-strategy.test.ts packages/ai/src/strategy/tactical-strategy.test.ts`: PASS (4 files, 70 tests)
+- `pnpm --filter @hh/types build`: PASS
+- `pnpm --filter @hh/engine typecheck`: PASS
+- `pnpm --filter @hh/ai typecheck`: PASS
+- `pnpm --filter @hh/ui typecheck`: PASS
+
+## Hotfix Plan (Reaction Prompt Hidden After Return Fire Trigger - 2026-03-05)
+- [x] Preserve UI reaction flow state when reaction commands resolve into another pending reaction.
+- [x] Add reducer regression coverage for chained reaction windows after reaction command handling.
+- [x] Run targeted `@hh/ui` verification and record results.
+
+## Hotfix Verification (Reaction Prompt Hidden After Return Fire Trigger - 2026-03-05)
+- `pnpm test -- packages/ui/src/game/reducer.test.ts`: PASS (1 file, 2 tests)
+- `pnpm --filter @hh/ui typecheck`: PASS
 
 ## Hotfix Plan (Popup Readability Timing - 2026-03-04)
 - [x] Increase visible lifetime for in-game notifications so messages are readable before auto-dismiss.

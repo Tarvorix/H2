@@ -35,7 +35,7 @@ import {
 } from './legion/advanced-reaction-registry';
 
 // Movement handlers
-import { handleMoveModel, handleRushUnit } from './movement/move-handler';
+import { handleMoveModel, handleMoveUnit, handleRushUnit } from './movement/move-handler';
 import { handleReservesTest, handleReservesEntry } from './movement/reserves-handler';
 import { handleEmbark, handleDisembark } from './movement/embark-disembark-handler';
 import { checkRepositionTrigger, handleRepositionReaction } from './movement/reposition-handler';
@@ -121,6 +121,9 @@ export function processCommand(
   switch (command.type) {
     case 'moveModel':
       return processMoveModel(state, command, dice);
+
+    case 'moveUnit':
+      return processMoveUnit(state, command, dice);
 
     case 'rushUnit':
       return processRushUnit(state, command, dice);
@@ -227,6 +230,30 @@ function processMoveModel(
 
   // After a successful move, check for Reposition reaction trigger
   return checkAndOfferReposition(result, command.modelId);
+}
+
+/**
+ * Process a moveUnit command.
+ * Validates we're in the correct phase, delegates to move-handler,
+ * then checks for a single Reposition reaction trigger after the full unit move.
+ */
+function processMoveUnit(
+  state: GameState,
+  command: { type: 'moveUnit'; unitId: string; modelPositions: { modelId: string; position: Position }[]; isRush?: boolean },
+  dice: DiceProvider,
+): CommandResult {
+  if (state.currentPhase !== Phase.Movement || state.currentSubPhase !== SubPhase.Move) {
+    return reject(state, 'WRONG_PHASE', `moveUnit requires Movement/Move phase (currently ${state.currentPhase}/${state.currentSubPhase})`);
+  }
+
+  const result = handleMoveUnit(state, command.unitId, command.modelPositions, dice, {
+    isRush: command.isRush === true,
+  });
+  if (!result.accepted) {
+    return result;
+  }
+
+  return checkAndOfferRepositionForUnit(result, command.unitId);
 }
 
 /**
@@ -1195,6 +1222,67 @@ function checkAndOfferReposition(
   return result;
 }
 
+function checkAndOfferRepositionForUnit(
+  result: CommandResult,
+  unitId: string,
+): CommandResult {
+  // Check for advanced movement reactions first (legion-specific take priority)
+  const advancedTrigger = checkMovementAdvancedReactionTriggers(result.state, unitId);
+  if (advancedTrigger) {
+    const newState = setAwaitingReaction(result.state, true, {
+      reactionType: advancedTrigger.reactionId,
+      eligibleUnitIds: advancedTrigger.eligibleUnitIds,
+      triggerDescription: `Unit "${unitId}" completed a move, triggering advanced reaction "${advancedTrigger.reactionId}"`,
+      triggerSourceUnitId: unitId,
+      isAdvancedReaction: true,
+    });
+
+    return {
+      ...result,
+      state: newState,
+      events: [
+        ...result.events,
+        {
+          type: 'advancedReactionDeclared' as const,
+          reactionId: advancedTrigger.reactionId,
+          reactionName: advancedTrigger.reactionId,
+          reactingUnitId: '',
+          triggerSourceUnitId: unitId,
+          playerIndex: -1,
+        },
+      ],
+    };
+  }
+
+  // Fall back to core Reposition reaction
+  const triggerResult = checkRepositionTrigger(result.state, unitId);
+
+  if (triggerResult.triggered) {
+    const newState = setAwaitingReaction(result.state, true, {
+      reactionType: CoreReaction.Reposition,
+      isAdvancedReaction: false,
+      eligibleUnitIds: triggerResult.eligibleUnitIds,
+      triggerDescription: `Unit "${unitId}" completed a move within 12" of reactive units`,
+      triggerSourceUnitId: unitId,
+    });
+
+    return {
+      ...result,
+      state: newState,
+      events: [
+        ...result.events,
+        {
+          type: 'repositionTriggered' as const,
+          triggerUnitId: unitId,
+          eligibleUnitIds: triggerResult.eligibleUnitIds,
+        },
+      ],
+    };
+  }
+
+  return result;
+}
+
 /**
  * Find the unit that contains a model by ID.
  */
@@ -1620,7 +1708,7 @@ export function getValidCommands(state: GameState): string[] {
           validCommands.push('reservesTest', 'deployUnit');
           break;
         case SubPhase.Move:
-          validCommands.push('moveModel', 'rushUnit', 'embark', 'disembark');
+          validCommands.push('moveModel', 'moveUnit', 'rushUnit', 'embark', 'disembark');
           break;
         case SubPhase.Rout:
           // Rout is auto-processed, just endSubPhase

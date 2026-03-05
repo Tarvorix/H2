@@ -285,6 +285,23 @@ describe('processCommand', () => {
       expect(result.errors[0].code).toBe('WRONG_PHASE');
     });
 
+    it('should reject moveUnit outside Movement/Move phase', () => {
+      const state = createGameState({
+        currentPhase: Phase.Shooting,
+        currentSubPhase: SubPhase.Attack,
+      });
+
+      const dice = new FixedDiceProvider([]);
+      const result = processCommand(state, {
+        type: 'moveUnit',
+        unitId: 'u1',
+        modelPositions: [],
+      }, dice);
+
+      expect(result.accepted).toBe(false);
+      expect(result.errors[0].code).toBe('WRONG_PHASE');
+    });
+
     it('should reject rushUnit outside Movement/Move phase', () => {
       const state = createGameState({
         currentPhase: Phase.Movement,
@@ -449,6 +466,97 @@ describe('processCommand', () => {
 
       expect(result.accepted).toBe(true);
       expect(result.state.awaitingReaction).toBe(false);
+    });
+  });
+
+  describe('moveUnit integration', () => {
+    it('should successfully move all models in a unit atomically', () => {
+      const unit = createUnit('u1', [
+        createModel('m1', 10, 10),
+        createModel('m2', 12, 10),
+      ]);
+
+      const state = createGameState({
+        currentPhase: Phase.Movement,
+        currentSubPhase: SubPhase.Move,
+        armies: [createArmy(0, [unit]), createArmy(1, [])],
+      });
+
+      const dice = new FixedDiceProvider([]);
+      const result = processCommand(state, {
+        type: 'moveUnit',
+        unitId: 'u1',
+        modelPositions: [
+          { modelId: 'm1', position: { x: 14, y: 10 } },
+          { modelId: 'm2', position: { x: 16, y: 10 } },
+        ],
+      }, dice);
+
+      expect(result.accepted).toBe(true);
+      expect(result.state.armies[0].units[0].models[0].position).toEqual({ x: 14, y: 10 });
+      expect(result.state.armies[0].units[0].models[1].position).toEqual({ x: 16, y: 10 });
+      expect(result.events.filter(e => e.type === 'modelMoved')).toHaveLength(2);
+    });
+
+    it('should process moveUnit with isRush using rush distance and rushed state', () => {
+      const unit = createUnit('u1', [
+        createModel('m1', 10, 10),
+        createModel('m2', 12, 10),
+      ]);
+
+      const state = createGameState({
+        currentPhase: Phase.Movement,
+        currentSubPhase: SubPhase.Move,
+        armies: [createArmy(0, [unit]), createArmy(1, [])],
+      });
+
+      const dice = new FixedDiceProvider([]);
+      const result = processCommand(state, {
+        type: 'moveUnit',
+        unitId: 'u1',
+        isRush: true,
+        modelPositions: [
+          { modelId: 'm1', position: { x: 20, y: 10 } },
+          { modelId: 'm2', position: { x: 22, y: 10 } },
+        ],
+      }, dice);
+
+      expect(result.accepted).toBe(true);
+      expect(result.state.armies[0].units[0].movementState).toBe(UnitMovementState.Rushed);
+      expect(result.events.some(e => e.type === 'unitRushed')).toBe(true);
+    });
+
+    it('should trigger reposition reaction once after full unit move', () => {
+      const activeUnit = createUnit('active-u1', [
+        createModel('a-m0', 30, 24),
+        createModel('a-m1', 32, 24),
+      ]);
+      const reactiveUnit = createUnit('reactive-u1', [createModel('r-m0', 36, 24)]);
+
+      const state = createGameState({
+        currentPhase: Phase.Movement,
+        currentSubPhase: SubPhase.Move,
+        activePlayerIndex: 0,
+        armies: [
+          createArmy(0, [activeUnit]),
+          createArmy(1, [reactiveUnit]),
+        ],
+      });
+
+      const dice = new FixedDiceProvider([]);
+      const result = processCommand(state, {
+        type: 'moveUnit',
+        unitId: 'active-u1',
+        modelPositions: [
+          { modelId: 'a-m0', position: { x: 32, y: 24 } },
+          { modelId: 'a-m1', position: { x: 34, y: 24 } },
+        ],
+      }, dice);
+
+      expect(result.accepted).toBe(true);
+      expect(result.state.awaitingReaction).toBe(true);
+      expect(result.state.pendingReaction?.reactionType).toBe(CoreReaction.Reposition);
+      expect(result.events.filter(e => e.type === 'repositionTriggered')).toHaveLength(1);
     });
   });
 
@@ -1607,6 +1715,7 @@ describe('getValidCommands', () => {
     });
     const commands = getValidCommands(state);
     expect(commands).toContain('moveModel');
+    expect(commands).toContain('moveUnit');
     expect(commands).toContain('rushUnit');
     expect(commands).toContain('embark');
     expect(commands).toContain('disembark');

@@ -13,6 +13,7 @@ export {
 
 export {
   handleMoveModel,
+  handleMoveUnit,
   handleRushUnit,
   handleDangerousTerrainTest,
   DEFAULT_MOVEMENT,
