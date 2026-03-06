@@ -45,6 +45,7 @@ import {
   createInitialGameUIState,
   createDefaultDeploymentState,
 } from './types';
+import { rollDeploymentFirstPlayerIndex } from './deployment-order';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -676,7 +677,7 @@ export function gameReducer(
       return {
         ...state,
         uiPhase: GameUIPhase.Deployment,
-        deployment: createDefaultDeploymentState(),
+        deployment: createDefaultDeploymentState(rollDeploymentFirstPlayerIndex()),
       };
 
     // ── Terrain Setup ─────────────────────────────────────────────────────
@@ -710,7 +711,7 @@ export function gameReducer(
             totalToPlace: fixedObjectives.length,
           },
           uiPhase: GameUIPhase.Deployment,
-          deployment: createDefaultDeploymentState(),
+          deployment: createDefaultDeploymentState(rollDeploymentFirstPlayerIndex()),
         };
       }
 
@@ -744,7 +745,7 @@ export function gameReducer(
       return {
         ...state,
         uiPhase: GameUIPhase.Deployment,
-        deployment: createDefaultDeploymentState(),
+        deployment: createDefaultDeploymentState(rollDeploymentFirstPlayerIndex()),
       };
     }
 
@@ -837,45 +838,67 @@ export function gameReducer(
 
     case 'CONFIRM_DEPLOYMENT': {
       const dep = state.deployment;
-      if (dep.deployingPlayerIndex === 0 && !dep.player1Confirmed) {
+      const deployingPlayerIndex = dep.deployingPlayerIndex as 0 | 1;
+      const nextDeployingPlayerIndex = deployingPlayerIndex === 0 ? 1 : 0;
+      const currentConfirmed = deployingPlayerIndex === 0 ? dep.player1Confirmed : dep.player2Confirmed;
+      const otherConfirmed = deployingPlayerIndex === 0 ? dep.player2Confirmed : dep.player1Confirmed;
+
+      if (currentConfirmed) return state;
+
+      const nextDeploymentState = {
+        ...dep,
+        player1Confirmed: deployingPlayerIndex === 0 ? true : dep.player1Confirmed,
+        player2Confirmed: deployingPlayerIndex === 1 ? true : dep.player2Confirmed,
+        selectedRosterUnitId: null,
+        pendingModelPositions: [],
+      };
+
+      if (!otherConfirmed) {
         return {
           ...state,
           deployment: {
-            ...dep,
-            player1Confirmed: true,
-            deployingPlayerIndex: 1,
-            selectedRosterUnitId: null,
-            pendingModelPositions: [],
+            ...nextDeploymentState,
+            deployingPlayerIndex: nextDeployingPlayerIndex,
           },
         };
       }
-      if (dep.deployingPlayerIndex === 1 && !dep.player2Confirmed) {
-        // Both confirmed — transition to Playing (only if gameState is initialized)
-        if (!state.gameState) {
-          return {
-            ...state,
-            notifications: [
-              ...state.notifications,
-              {
-                message: 'Cannot start game: game state not initialized. Please re-deploy.',
-                type: 'error' as const,
-                timestamp: Date.now(),
-                duration: 5000,
-              },
-            ],
-          };
-        }
+
+      // Both confirmed — transition to Playing (only if gameState is initialized)
+      if (!state.gameState) {
         return {
           ...state,
-          deployment: { ...dep, player2Confirmed: true },
-          uiPhase: GameUIPhase.Playing,
+          notifications: [
+            ...state.notifications,
+            {
+              message: 'Cannot start game: game state not initialized. Please re-deploy.',
+              type: 'error' as const,
+              timestamp: Date.now(),
+              duration: 5000,
+            },
+          ],
         };
       }
-      return state;
+
+      return {
+        ...state,
+        deployment: nextDeploymentState,
+        uiPhase: GameUIPhase.Playing,
+      };
     }
 
     // ── Game State Initialization ────────────────────────────────────────
     case 'INIT_GAME_STATE':
+      if (state.uiPhase === GameUIPhase.Deployment && !state.gameState) {
+        const firstPlayerIndex = state.deployment.deployingPlayerIndex as 0 | 1;
+        return {
+          ...state,
+          gameState: {
+            ...action.gameState,
+            firstPlayerIndex,
+            activePlayerIndex: firstPlayerIndex,
+          },
+        };
+      }
       return {
         ...state,
         gameState: action.gameState,
@@ -1303,16 +1326,18 @@ export function gameReducer(
         state,
         buildChargeCommand(assaultStep.chargingUnitId, assaultStep.targetUnitId),
       );
+
+      if (newState.lastCommandResult && !newState.lastCommandResult.accepted) {
+        return newState;
+      }
+
+      if (newState.flowState.type === 'reaction') {
+        return newState;
+      }
+
       return {
         ...newState,
-        flowState: {
-          type: 'assault',
-          step: {
-            step: 'resolving',
-            chargingUnitId: assaultStep.chargingUnitId,
-            targetUnitId: assaultStep.targetUnitId,
-          },
-        },
+        flowState: { type: 'idle' },
       };
     }
 

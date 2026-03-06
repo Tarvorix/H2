@@ -8,6 +8,7 @@
 
 import type { GameState, GameCommand, Position } from '@hh/types';
 import { Phase, SubPhase } from '@hh/types';
+import type { DeploymentFormationPreset } from '@hh/geometry';
 
 // ─── Strategy Tier ───────────────────────────────────────────────────────────
 
@@ -31,11 +32,15 @@ export interface AIPlayerConfig {
   playerIndex: number;
   /** Strategy tier to use */
   strategyTier: AIStrategyTier;
+  /** Preferred deployment formation when placing units before the game */
+  deploymentFormation: AIDeploymentFormation;
   /** Delay between commands in ms (for UI pacing, 0 = instant) */
   commandDelayMs: number;
   /** Whether the AI is enabled */
   enabled: boolean;
 }
+
+export type AIDeploymentFormation = 'auto' | DeploymentFormationPreset;
 
 // ─── Turn Context ────────────────────────────────────────────────────────────
 
@@ -85,6 +90,7 @@ export interface AIStrategy {
     playerIndex: number,
     deployedUnitIds: string[],
     deploymentZoneDepth: number,
+    deploymentFormation: AIDeploymentFormation,
   ): DeploymentCommand | null;
 }
 

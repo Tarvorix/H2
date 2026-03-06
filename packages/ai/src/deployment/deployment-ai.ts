@@ -7,7 +7,8 @@
 
 import type { GameState, UnitState } from '@hh/types';
 import { getAliveModels } from '@hh/engine';
-import type { DeploymentCommand, StrategyMode } from '../types';
+import { buildUnitDeploymentFormation } from '@hh/geometry';
+import type { DeploymentCommand, StrategyMode, AIDeploymentFormation } from '../types';
 import { generateLineFormation } from '../helpers/movement-destination';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -37,6 +38,7 @@ export function generateDeploymentPlacement(
   deployedUnitIds: string[],
   deploymentZoneDepth: number,
   strategy: StrategyMode,
+  deploymentFormation: AIDeploymentFormation = 'auto',
 ): DeploymentCommand | null {
   const army = state.armies[playerIndex];
   const deployedSet = new Set(deployedUnitIds);
@@ -61,10 +63,30 @@ export function generateDeploymentPlacement(
   );
 
   if (strategy === 'basic') {
-    return deployBasic(undeployedUnits[0], zoneMinY, zoneMaxY, bfWidth, bfHeight, deployedUnitIds.length);
+    return deployBasic(
+      undeployedUnits[0],
+      zoneMinY,
+      zoneMaxY,
+      bfWidth,
+      bfHeight,
+      deploymentZoneDepth,
+      deployedUnitIds.length,
+      playerIndex,
+      deploymentFormation,
+    );
   }
 
-  return deployTactical(undeployedUnits, zoneMinY, zoneMaxY, bfWidth, bfHeight, deployedUnitIds.length);
+  return deployTactical(
+    undeployedUnits,
+    zoneMinY,
+    zoneMaxY,
+    bfWidth,
+    bfHeight,
+    deploymentZoneDepth,
+    deployedUnitIds.length,
+    playerIndex,
+    deploymentFormation,
+  );
 }
 
 // ─── Deployment Zone ─────────────────────────────────────────────────────────
@@ -96,27 +118,29 @@ function deployBasic(
   zoneMaxY: number,
   bfWidth: number,
   bfHeight: number,
+  deploymentZoneDepth: number,
   deployedCount: number,
+  playerIndex: number,
+  deploymentFormation: AIDeploymentFormation,
 ): DeploymentCommand {
   const aliveModels = getAliveModels(unit);
+  const preferredY = 0.5;
 
   // Offset each unit horizontally to avoid stacking
   const xOffset = (deployedCount * UNIT_HORIZONTAL_OFFSET) % (bfWidth - 10);
 
-  const positions = generateLineFormation(
+  const offsetPositions = buildFormationPositions(
     aliveModels.length,
     zoneMinY,
     zoneMaxY,
     bfWidth,
     bfHeight,
-    0.5, // Middle of zone
+    deploymentZoneDepth,
+    preferredY,
+    xOffset,
+    playerIndex,
+    deploymentFormation,
   );
-
-  // Apply horizontal offset
-  const offsetPositions = positions.map((p) => ({
-    x: Math.max(0.5, Math.min(bfWidth - 0.5, p.x + xOffset - bfWidth / 4)),
-    y: p.y,
-  }));
 
   return {
     unitId: unit.id,
@@ -141,7 +165,10 @@ function deployTactical(
   zoneMaxY: number,
   bfWidth: number,
   bfHeight: number,
+  deploymentZoneDepth: number,
   deployedCount: number,
+  playerIndex: number,
+  deploymentFormation: AIDeploymentFormation,
 ): DeploymentCommand {
   const unit = undeployedUnits[0];
   const aliveModels = getAliveModels(unit);
@@ -157,21 +184,20 @@ function deployTactical(
   // Assault units (< 1 weapon per model): deploy toward the front
   const preferredY = avgWeaponsPerModel >= 1 ? 0.8 : 0.2;
 
-  const positions = generateLineFormation(
+  // Offset horizontally based on deployment order
+  const xOffset = (deployedCount * UNIT_HORIZONTAL_OFFSET) % (bfWidth - 10);
+  const offsetPositions = buildFormationPositions(
     aliveModels.length,
     zoneMinY,
     zoneMaxY,
     bfWidth,
     bfHeight,
+    deploymentZoneDepth,
     preferredY,
+    xOffset,
+    playerIndex,
+    deploymentFormation,
   );
-
-  // Offset horizontally based on deployment order
-  const xOffset = (deployedCount * UNIT_HORIZONTAL_OFFSET) % (bfWidth - 10);
-  const offsetPositions = positions.map((p) => ({
-    x: Math.max(0.5, Math.min(bfWidth - 0.5, p.x + xOffset - bfWidth / 4)),
-    y: p.y,
-  }));
 
   return {
     unitId: unit.id,
@@ -180,4 +206,49 @@ function deployTactical(
       position: offsetPositions[i] ?? offsetPositions[0],
     })),
   };
+}
+
+function buildFormationPositions(
+  modelCount: number,
+  zoneMinY: number,
+  zoneMaxY: number,
+  battlefieldWidth: number,
+  battlefieldHeight: number,
+  deploymentZoneDepth: number,
+  preferredY: number,
+  xOffset: number,
+  playerIndex: number,
+  deploymentFormation: AIDeploymentFormation,
+) {
+  if (deploymentFormation === 'auto') {
+    const positions = generateLineFormation(
+      modelCount,
+      zoneMinY,
+      zoneMaxY,
+      battlefieldWidth,
+      battlefieldHeight,
+      preferredY,
+    );
+
+    return positions.map((p) => ({
+      x: Math.max(0.5, Math.min(battlefieldWidth - 0.5, p.x + xOffset - battlefieldWidth / 4)),
+      y: p.y,
+    }));
+  }
+
+  const zoneDepth = zoneMaxY - zoneMinY;
+  const anchor = {
+    x: battlefieldWidth / 4 + xOffset,
+    y: zoneMinY + zoneDepth * Math.max(0, Math.min(1, preferredY)),
+  };
+
+  return buildUnitDeploymentFormation(
+    modelCount,
+    anchor,
+    playerIndex,
+    battlefieldWidth,
+    battlefieldHeight,
+    deploymentZoneDepth,
+    deploymentFormation,
+  );
 }

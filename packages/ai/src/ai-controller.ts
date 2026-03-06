@@ -135,5 +135,6 @@ export function generateDeploymentCommand(
     config.playerIndex,
     deployedUnitIds,
     deploymentZoneDepth,
+    config.deploymentFormation,
   );
 }

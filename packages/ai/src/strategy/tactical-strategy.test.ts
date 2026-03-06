@@ -465,7 +465,7 @@ describe('TacticalStrategy.generateDeploymentCommand', () => {
       ],
     });
 
-    const deploymentCmd = strategy.generateDeploymentCommand(state, 0, [], 12);
+    const deploymentCmd = strategy.generateDeploymentCommand(state, 0, [], 12, 'auto');
 
     expect(deploymentCmd).not.toBeNull();
     expect(deploymentCmd!.unitId).toBe('unit-1');
@@ -487,7 +487,7 @@ describe('TacticalStrategy.generateDeploymentCommand', () => {
       ],
     });
 
-    const deploymentCmd = strategy.generateDeploymentCommand(state, 0, ['unit-1'], 12);
+    const deploymentCmd = strategy.generateDeploymentCommand(state, 0, ['unit-1'], 12, 'auto');
 
     expect(deploymentCmd).toBeNull();
   });
@@ -513,7 +513,7 @@ describe('TacticalStrategy.generateDeploymentCommand', () => {
     });
 
     // Player 0 deploys at y=1 to y=12
-    const deploymentCmd = strategy.generateDeploymentCommand(state, 0, [], 12);
+    const deploymentCmd = strategy.generateDeploymentCommand(state, 0, [], 12, 'auto');
 
     expect(deploymentCmd).not.toBeNull();
     // Ranged units with avg >= 1 weapon per model get preferredY=0.8 (toward back)
@@ -545,7 +545,7 @@ describe('TacticalStrategy.generateDeploymentCommand', () => {
     });
 
     // Player 0 deploys at y=1 to y=12
-    const deploymentCmd = strategy.generateDeploymentCommand(state, 0, [], 12);
+    const deploymentCmd = strategy.generateDeploymentCommand(state, 0, [], 12, 'auto');
 
     expect(deploymentCmd).not.toBeNull();
     // Melee units with avg < 1 weapon per model get preferredY=0.2 (toward front)
@@ -571,7 +571,7 @@ describe('TacticalStrategy.generateDeploymentCommand', () => {
       ],
     });
 
-    const deploymentCmd = strategy.generateDeploymentCommand(state, 0, [], 12);
+    const deploymentCmd = strategy.generateDeploymentCommand(state, 0, [], 12, 'auto');
 
     expect(deploymentCmd).toBeNull();
   });
@@ -596,7 +596,7 @@ describe('TacticalStrategy.generateDeploymentCommand', () => {
       ],
     });
 
-    const deploymentCmd = strategy.generateDeploymentCommand(state, 0, [], 12);
+    const deploymentCmd = strategy.generateDeploymentCommand(state, 0, [], 12, 'auto');
 
     expect(deploymentCmd).not.toBeNull();
     expect(deploymentCmd!.modelPositions).toHaveLength(4);
@@ -621,7 +621,7 @@ describe('TacticalStrategy.generateDeploymentCommand', () => {
       ],
     });
 
-    const deploymentCmd = strategy.generateDeploymentCommand(state, 0, [], 12);
+    const deploymentCmd = strategy.generateDeploymentCommand(state, 0, [], 12, 'auto');
 
     expect(deploymentCmd).not.toBeNull();
     for (const mp of deploymentCmd!.modelPositions) {

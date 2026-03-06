@@ -651,9 +651,9 @@ export interface AvailableAction {
 /**
  * Default deployment state.
  */
-export function createDefaultDeploymentState(): DeploymentState {
+export function createDefaultDeploymentState(deployingPlayerIndex: 0 | 1 = 0): DeploymentState {
   return {
-    deployingPlayerIndex: 0,
+    deployingPlayerIndex,
     deploymentZoneDepth: 12,
     deployedUnitIds: [],
     selectedRosterUnitId: null,

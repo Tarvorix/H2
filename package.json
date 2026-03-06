@@ -11,6 +11,8 @@
     "content:validate": "node tools/content-validate.mjs",
     "headless:build": "pnpm --filter @hh/headless build",
     "headless:run": "node --loader ./tools/esm-js-extension-loader.mjs packages/headless/dist/cli.js",
+    "mcp:build": "pnpm --filter @hh/mcp-server build",
+    "mcp:serve": "node --loader ./tools/esm-js-extension-loader.mjs packages/mcp-server/dist/server.js",
     "lint": "eslint 'packages/*/src/**/*.{ts,tsx}'",
     "lint:fix": "eslint 'packages/*/src/**/*.{ts,tsx}' --fix",
     "format": "prettier --write 'packages/*/src/**/*.{ts,tsx,json}'",
@@ -20,6 +22,7 @@
     "typecheck": "pnpm -r typecheck"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.19",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
     "eslint": "^9.0.0",

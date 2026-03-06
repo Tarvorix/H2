@@ -95,6 +95,22 @@ function createGameState(overrides: Partial<GameState> = {}): GameState {
   } as GameState;
 }
 
+function countFormationRows(
+  modelPositions: { position: { x: number; y: number } }[],
+): number[] {
+  const rowCounts = new Map<number, number>();
+  for (const modelPosition of modelPositions) {
+    rowCounts.set(
+      modelPosition.position.y,
+      (rowCounts.get(modelPosition.position.y) ?? 0) + 1,
+    );
+  }
+
+  return [...rowCounts.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map((entry) => entry[1]);
+}
+
 // ─── Basic Deployment Tests ──────────────────────────────────────────────────
 
 describe('generateDeploymentPlacement — basic', () => {
@@ -341,5 +357,47 @@ describe('generateDeploymentPlacement — tactical', () => {
 
     expect(result).not.toBeNull();
     expect(result!.unitId).toBe('undeployed-1');
+  });
+
+  it('supports explicit line formation preference for AI deployment', () => {
+    const models = Array.from({ length: 10 }, (_, i) =>
+      createModel({ id: `model-${i}`, equippedWargear: ['boltgun'] }),
+    );
+    const unit = createUnit({ id: 'unit-1', models });
+    const state = createGameState();
+    state.armies[0] = createArmy({ playerIndex: 0, units: [unit] });
+
+    const result = generateDeploymentPlacement(state, 0, [], 12, 'tactical', 'line');
+
+    expect(result).not.toBeNull();
+    expect(countFormationRows(result!.modelPositions)).toEqual([10]);
+  });
+
+  it('supports explicit double-rank formation preference for AI deployment', () => {
+    const models = Array.from({ length: 10 }, (_, i) =>
+      createModel({ id: `model-${i}`, equippedWargear: ['boltgun'] }),
+    );
+    const unit = createUnit({ id: 'unit-1', models });
+    const state = createGameState();
+    state.armies[0] = createArmy({ playerIndex: 0, units: [unit] });
+
+    const result = generateDeploymentPlacement(state, 0, [], 12, 'tactical', 'double-rank');
+
+    expect(result).not.toBeNull();
+    expect(countFormationRows(result!.modelPositions)).toEqual([5, 5]);
+  });
+
+  it('supports explicit block formation preference for AI deployment', () => {
+    const models = Array.from({ length: 10 }, (_, i) =>
+      createModel({ id: `model-${i}`, equippedWargear: ['boltgun'] }),
+    );
+    const unit = createUnit({ id: 'unit-1', models });
+    const state = createGameState();
+    state.armies[0] = createArmy({ playerIndex: 0, units: [unit] });
+
+    const result = generateDeploymentPlacement(state, 0, [], 12, 'tactical', 'block');
+
+    expect(result).not.toBeNull();
+    expect(countFormationRows(result!.modelPositions)).toEqual([4, 4, 2]);
   });
 });

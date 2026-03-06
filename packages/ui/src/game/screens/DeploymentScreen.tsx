@@ -2,7 +2,7 @@
  * DeploymentScreen
  *
  * Allows players to deploy units into their deployment zones before the game starts.
- * Player 1 deploys all units first, then Player 2.
+ * The player who loses the deployment roll-off deploys all units first, then the opponent.
  * Deployment zones are 12" deep from each player's table edge.
  */
 
@@ -12,6 +12,11 @@ import type { GameState, ArmyState, UnitState, ModelState, Position, TerrainPiec
 import type { GameUIState, GameUIAction, ArmyConfig, MissionSelectUIState } from '../types';
 import { getProfileById, findMission, findDeploymentMapByType } from '@hh/data';
 import { getModelWounds, initializeMissionState } from '@hh/engine';
+import {
+  buildUnitDeploymentFormation,
+  DEPLOYMENT_FORMATION_LABELS,
+  type DeploymentFormationPreset,
+} from './deployment-formations';
 
 interface DeploymentScreenProps {
   state: GameUIState;
@@ -20,69 +25,6 @@ interface DeploymentScreenProps {
 }
 
 type DeploymentPlacementMode = 'unit' | 'model';
-
-function clamp(value: number, min: number, max: number): number {
-  if (value < min) return min;
-  if (value > max) return max;
-  return value;
-}
-
-function buildUnitDeploymentFormation(
-  modelCount: number,
-  anchor: Position,
-  deployingPlayerIndex: number,
-  battlefieldWidth: number,
-  battlefieldHeight: number,
-  zoneDepth: number,
-): Position[] {
-  if (modelCount <= 0) return [];
-
-  const cols = Math.ceil(Math.sqrt(modelCount));
-  const rows = Math.ceil(modelCount / cols);
-  const baseSpacing = 1.25;
-
-  const xSpacing = cols > 1
-    ? Math.min(baseSpacing, (battlefieldWidth - 1) / (cols - 1))
-    : baseSpacing;
-  const ySpacing = rows > 1
-    ? Math.min(baseSpacing, (zoneDepth - 0.5) / (rows - 1))
-    : baseSpacing;
-
-  const halfWidth = ((cols - 1) * xSpacing) / 2;
-  const rowDepth = (rows - 1) * ySpacing;
-
-  const minAnchorX = halfWidth;
-  const maxAnchorX = battlefieldWidth - halfWidth;
-  const clampedAnchorX = clamp(anchor.x, minAnchorX, maxAnchorX);
-
-  const minAnchorY = deployingPlayerIndex === 0
-    ? 0
-    : battlefieldHeight - zoneDepth + rowDepth;
-  const maxAnchorY = deployingPlayerIndex === 0
-    ? zoneDepth - rowDepth
-    : battlefieldHeight;
-  const clampedAnchorY = clamp(
-    anchor.y,
-    Math.min(minAnchorY, maxAnchorY),
-    Math.max(minAnchorY, maxAnchorY),
-  );
-
-  const positions: Position[] = [];
-  for (let i = 0; i < modelCount; i++) {
-    const row = Math.floor(i / cols);
-    const col = i % cols;
-    const x = clampedAnchorX + (col - (cols - 1) / 2) * xSpacing;
-    const y = deployingPlayerIndex === 0
-      ? clampedAnchorY + row * ySpacing
-      : clampedAnchorY - row * ySpacing;
-    positions.push({
-      x: Math.round(x * 10) / 10,
-      y: Math.round(y * 10) / 10,
-    });
-  }
-
-  return positions;
-}
 
 /**
  * Create the initial GameState from army configs, terrain, and battlefield dimensions.
@@ -96,6 +38,7 @@ function createInitialGameState(
   battlefieldHeight: number,
   missionSelect: MissionSelectUIState,
   placedObjectives: ObjectiveMarker[],
+  firstPlayerIndex: 0 | 1,
 ): GameState {
   const armies: [ArmyState, ArmyState] = [
     createArmyState(armyConfigs[0], 0),
@@ -125,8 +68,8 @@ function createInitialGameState(
     armies,
     currentBattleTurn: 1,
     maxBattleTurns: 4,
-    activePlayerIndex: 0,
-    firstPlayerIndex: 0,
+    activePlayerIndex: firstPlayerIndex,
+    firstPlayerIndex,
     currentPhase: Phase.Start,
     currentSubPhase: SubPhase.StartEffects,
     awaitingReaction: false,
@@ -263,6 +206,7 @@ function createArmyState(config: ArmyConfig, playerIndex: number): ArmyState {
 
 export function DeploymentScreen({ state, dispatch, onReturnToMenu }: DeploymentScreenProps) {
   const [placementMode, setPlacementMode] = useState<DeploymentPlacementMode>('unit');
+  const [formationPreset, setFormationPreset] = useState<DeploymentFormationPreset>('block');
   const deployment = state.deployment;
   const deployingPlayerIndex = deployment.deployingPlayerIndex;
   const deployingConfig = state.armyConfigs[deployingPlayerIndex];
@@ -278,8 +222,9 @@ export function DeploymentScreen({ state, dispatch, onReturnToMenu }: Deployment
       state.battlefieldHeight,
       state.missionSelect,
       state.objectivePlacement.placedObjectives,
+      state.deployment.deployingPlayerIndex as 0 | 1,
     );
-  }, [state.gameState, state.armyConfigs, state.terrain, state.battlefieldWidth, state.battlefieldHeight, state.missionSelect, state.objectivePlacement.placedObjectives]);
+  }, [state.gameState, state.armyConfigs, state.terrain, state.battlefieldWidth, state.battlefieldHeight, state.missionSelect, state.objectivePlacement.placedObjectives, state.deployment.deployingPlayerIndex]);
 
   // Persist the locally-created gameState into the global reducer state
   useEffect(() => {
@@ -400,6 +345,7 @@ export function DeploymentScreen({ state, dispatch, onReturnToMenu }: Deployment
           state.battlefieldWidth,
           state.battlefieldHeight,
           zoneDepth,
+          formationPreset,
         );
         // Re-selecting the same unit clears pending model positions for re-placement.
         dispatch({ type: 'SELECT_ROSTER_UNIT', unitId: placingUnit.id });
@@ -418,6 +364,7 @@ export function DeploymentScreen({ state, dispatch, onReturnToMenu }: Deployment
     [
       placingUnit,
       placementMode,
+      formationPreset,
       deployingPlayerIndex,
       dispatch,
       handlePlaceModel,
@@ -428,9 +375,27 @@ export function DeploymentScreen({ state, dispatch, onReturnToMenu }: Deployment
   );
 
   const allPlaced = unitsToPlace.length === 0 && !placingUnit;
+  const firstDeployingPlayerIndex = gameState?.firstPlayerIndex ?? (state.deployment.deployingPlayerIndex as 0 | 1);
+  const firstDeployingConfig = state.armyConfigs[firstDeployingPlayerIndex];
+  const firstDeployingLabel = firstDeployingConfig
+    ? `${firstDeployingConfig.playerName} (${firstDeployingConfig.faction})`
+    : `Player ${firstDeployingPlayerIndex + 1}`;
   const playerLabel = deployingConfig
     ? `${deployingConfig.playerName} (${deployingConfig.faction})`
     : `Player ${deployingPlayerIndex + 1}`;
+  const confirmedDeploymentCount = Number(deployment.player1Confirmed) + Number(deployment.player2Confirmed);
+  const nextDeployingPlayerIndex = deployingPlayerIndex === 0 ? 1 : 0;
+  const nextDeployingConfig = state.armyConfigs[nextDeployingPlayerIndex];
+  const nextDeployingLabel = nextDeployingConfig
+    ? nextDeployingConfig.playerName
+    : `Player ${nextDeployingPlayerIndex + 1}`;
+  const confirmedPlayerIndex = deployment.player1Confirmed !== deployment.player2Confirmed
+    ? (deployment.player1Confirmed ? 0 : 1)
+    : null;
+  const confirmedPlayerConfig = confirmedPlayerIndex !== null ? state.armyConfigs[confirmedPlayerIndex] : null;
+  const confirmedPlayerLabel = confirmedPlayerConfig
+    ? confirmedPlayerConfig.playerName
+    : (confirmedPlayerIndex !== null ? `Player ${confirmedPlayerIndex + 1}` : null);
 
   return (
     <div className="setup-screen">
@@ -438,6 +403,9 @@ export function DeploymentScreen({ state, dispatch, onReturnToMenu }: Deployment
         <h1 className="setup-title">Unit Deployment</h1>
         <p className="setup-subtitle">
           {playerLabel} — Place your units in the deployment zone
+        </p>
+        <p className="setup-subtitle" style={{ fontSize: 13, color: '#94a3b8' }}>
+          Deployment roll-off: {firstDeployingLabel} deploys first and takes turn 1.
         </p>
         <button className="toolbar-btn" onClick={onReturnToMenu}>
           Back to Menu
@@ -491,6 +459,26 @@ export function DeploymentScreen({ state, dispatch, onReturnToMenu }: Deployment
                   Place Models One-by-One
                 </button>
               </div>
+              {placementMode === 'unit' && (
+                <div style={{ marginBottom: 8 }}>
+                  <div className="panel-row" style={{ marginBottom: 6 }}>
+                    <span className="panel-row-label">Formation</span>
+                    <span className="panel-row-value">{DEPLOYMENT_FORMATION_LABELS[formationPreset]}</span>
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {(Object.keys(DEPLOYMENT_FORMATION_LABELS) as DeploymentFormationPreset[]).map((preset) => (
+                      <button
+                        key={preset}
+                        className="toolbar-btn"
+                        onClick={() => setFormationPreset(preset)}
+                        style={formationPreset === preset ? { outline: '1px solid #22c55e' } : undefined}
+                      >
+                        {DEPLOYMENT_FORMATION_LABELS[preset]}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div className="panel-row">
                 <span className="panel-row-label">Models placed</span>
                 <span className="panel-row-value">
@@ -509,7 +497,7 @@ export function DeploymentScreen({ state, dispatch, onReturnToMenu }: Deployment
                 <div className="panel-row">
                   <span className="panel-row-label" style={{ color: '#fbbf24' }}>
                     {placementMode === 'unit'
-                      ? 'Click battlefield to place full unit formation'
+                      ? `Click battlefield to place full unit formation (${DEPLOYMENT_FORMATION_LABELS[formationPreset]})`
                       : 'Click battlefield to place next model'}
                   </span>
                 </div>
@@ -710,9 +698,9 @@ export function DeploymentScreen({ state, dispatch, onReturnToMenu }: Deployment
       </div>
 
       <div className="setup-footer">
-        {deployment.player1Confirmed && deployingPlayerIndex === 1 && (
+        {confirmedPlayerLabel && confirmedDeploymentCount === 1 && (
           <div style={{ color: '#22c55e', fontSize: 12, marginBottom: 8 }}>
-            Player 1 deployment confirmed
+            {confirmedPlayerLabel} deployment confirmed
           </div>
         )}
         <button
@@ -721,8 +709,8 @@ export function DeploymentScreen({ state, dispatch, onReturnToMenu }: Deployment
           onClick={handleConfirmDeployment}
         >
           {allPlaced
-            ? deployment.deployingPlayerIndex === 0
-              ? 'Confirm Deployment → Player 2 Deploys'
+            ? confirmedDeploymentCount === 0
+              ? `Confirm Deployment → ${nextDeployingLabel} Deploys`
               : 'Confirm Deployment → Begin Battle!'
             : `Deploy all units (${unitsToPlace.length + (placingUnit ? 1 : 0)} remaining)`
           }

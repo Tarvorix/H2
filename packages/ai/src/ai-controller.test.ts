@@ -107,6 +107,7 @@ function createConfig(overrides: Partial<AIPlayerConfig> = {}): AIPlayerConfig {
   return {
     playerIndex: 0,
     strategyTier: AIStrategyTier.Basic,
+    deploymentFormation: 'auto',
     commandDelayMs: 0,
     enabled: true,
     ...overrides,

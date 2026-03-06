@@ -27,6 +27,7 @@
     { "path": "./packages/army-builder" },
     { "path": "./packages/ai" },
     { "path": "./packages/headless" },
+    { "path": "./packages/mcp-server" },
     { "path": "./packages/ui" }
   ]
 }

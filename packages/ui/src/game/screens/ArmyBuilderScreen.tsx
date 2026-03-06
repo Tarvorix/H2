@@ -35,6 +35,7 @@ import {
   getPlayableFactions,
 } from '@hh/data';
 import { AIStrategyTier } from '@hh/ai';
+import type { AIDeploymentFormation } from '@hh/ai';
 import type { GameUIState, GameUIAction } from '../types';
 import { FactionSelector } from './army-builder/FactionSelector';
 import { DoctrineSelector } from './army-builder/DoctrineSelector';
@@ -43,6 +44,7 @@ import { UnitBrowser } from './army-builder/UnitBrowser';
 import { UnitConfigPanel } from './army-builder/UnitConfigPanel';
 import type { UnitConfigResult } from './army-builder/UnitConfigPanel';
 import { ArmySummaryPanel } from './army-builder/ArmySummaryPanel';
+import { AI_DEPLOYMENT_FORMATION_LABELS } from './deployment-formations';
 
 interface ArmyBuilderScreenProps {
   state: GameUIState;
@@ -129,6 +131,7 @@ export function ArmyBuilderScreen({ state, dispatch, onReturnToMenu }: ArmyBuild
   const [selectedProfile, setSelectedProfile] = useState<UnitProfile | null>(null);
   const [aiEnabled, setAiEnabled] = useState(false);
   const [aiTier, setAiTier] = useState<AIStrategyTier>(AIStrategyTier.Tactical);
+  const [aiDeploymentFormation, setAiDeploymentFormation] = useState<AIDeploymentFormation>('auto');
   const [selectedDetachmentTemplateId, setSelectedDetachmentTemplateId] = useState<string>('');
 
   const detachmentAddOptions = useMemo<DetachmentAddOption[]>(() => {
@@ -622,6 +625,7 @@ export function ArmyBuilderScreen({ state, dispatch, onReturnToMenu }: ArmyBuild
         config: {
           playerIndex: 1,
           strategyTier: aiTier,
+          deploymentFormation: aiDeploymentFormation,
           commandDelayMs: 600,
           enabled: true,
         },
@@ -630,7 +634,7 @@ export function ArmyBuilderScreen({ state, dispatch, onReturnToMenu }: ArmyBuild
       dispatch({ type: 'SET_AI_CONFIG', config: null });
     }
     dispatch({ type: 'CONFIRM_ARMY_BUILDER' });
-  }, [dispatch, aiEnabled, aiTier, state.armyBuilder.armyLists]);
+  }, [dispatch, aiEnabled, aiTier, aiDeploymentFormation, state.armyBuilder.armyLists]);
 
   // Get the filter role from the active slot (template slot ID maps to a role)
   const filterRole: BattlefieldRole | null = (() => {
@@ -674,14 +678,27 @@ export function ArmyBuilderScreen({ state, dispatch, onReturnToMenu }: ArmyBuild
             <span>AI Opponent</span>
           </label>
           {aiEnabled && (
-            <select
-              className="ai-tier-select"
-              value={aiTier}
-              onChange={(e) => setAiTier(e.target.value as AIStrategyTier)}
-            >
-              <option value={AIStrategyTier.Basic}>Basic</option>
-              <option value={AIStrategyTier.Tactical}>Tactical</option>
-            </select>
+            <>
+              <select
+                className="ai-tier-select"
+                value={aiTier}
+                onChange={(e) => setAiTier(e.target.value as AIStrategyTier)}
+              >
+                <option value={AIStrategyTier.Basic}>Basic</option>
+                <option value={AIStrategyTier.Tactical}>Tactical</option>
+              </select>
+              <select
+                className="ai-tier-select"
+                value={aiDeploymentFormation}
+                onChange={(e) => setAiDeploymentFormation(e.target.value as AIDeploymentFormation)}
+              >
+                {(Object.keys(AI_DEPLOYMENT_FORMATION_LABELS) as AIDeploymentFormation[]).map((formation) => (
+                  <option key={formation} value={formation}>
+                    {`Deploy: ${AI_DEPLOYMENT_FORMATION_LABELS[formation]}`}
+                  </option>
+                ))}
+              </select>
+            </>
           )}
         </div>
         <button className="toolbar-btn" onClick={onReturnToMenu}>

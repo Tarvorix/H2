@@ -1,7 +1,6 @@
 import type { GameCommand, GameState } from '@hh/types';
 import {
   RandomDiceProvider,
-  getValidCommands,
   processCommand,
   hashGameState,
 } from '@hh/engine';
@@ -13,6 +12,7 @@ import {
   type AIPlayerConfig,
 } from '@hh/ai';
 import type { DiceProvider } from '@hh/engine';
+import { buildFallbackCommand } from './fallback-command';
 export type {
   HeadlessArmySetup,
   HeadlessGameSetupOptions,
@@ -39,6 +39,22 @@ export {
   loadReplayArtifact,
   verifyReplayArtifact,
 } from './replay';
+export {
+  buildFallbackCommand,
+} from './fallback-command';
+export type {
+  HeadlessLegalActionsSnapshot,
+  HeadlessMatchCommandRecord,
+  HeadlessMatchPlayerConfig,
+  HeadlessMatchSessionCreateOptions,
+  HeadlessNudgeSnapshot,
+  HeadlessPlayerMode,
+} from './session';
+export {
+  HeadlessMatchSession,
+  createHeadlessMatchSession,
+  verifyReplayArtifactDeterminism,
+} from './session';
 
 export interface HeadlessAIPlayerConfig {
   enabled: boolean;
@@ -149,6 +165,7 @@ function toAIPlayerConfig(config: HeadlessAIPlayerConfig): AIPlayerConfig {
     enabled: config.enabled,
     playerIndex: config.playerIndex,
     strategyTier: config.strategyTier,
+    deploymentFormation: 'auto',
     commandDelayMs: 0,
   };
 }
@@ -162,30 +179,6 @@ function getDecisionPlayerIndex(state: GameState): number {
     return getReactivePlayerIndex(state);
   }
   return state.activePlayerIndex;
-}
-
-export function buildFallbackCommand(state: GameState): GameCommand | null {
-  if (state.awaitingReaction) {
-    const pending = state.pendingReaction;
-    const fallbackUnitId = pending?.eligibleUnitIds.find((unitId) => unitId.length > 0);
-
-    if (pending && fallbackUnitId) {
-      return {
-        type: 'selectReaction',
-        unitId: fallbackUnitId,
-        reactionType: String(pending.reactionType),
-      };
-    }
-
-    return { type: 'declineReaction' };
-  }
-
-  const valid = new Set(getValidCommands(state));
-
-  if (valid.has('endSubPhase')) return { type: 'endSubPhase' };
-  if (valid.has('endPhase')) return { type: 'endPhase' };
-
-  return null;
 }
 
 /**

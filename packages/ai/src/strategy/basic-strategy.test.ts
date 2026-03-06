@@ -395,7 +395,7 @@ describe('BasicStrategy.generateDeploymentCommand', () => {
       ],
     });
 
-    const deploymentCmd = strategy.generateDeploymentCommand(state, 0, [], 12);
+    const deploymentCmd = strategy.generateDeploymentCommand(state, 0, [], 12, 'auto');
 
     expect(deploymentCmd).not.toBeNull();
     expect(deploymentCmd!.unitId).toBe('unit-1');
@@ -420,7 +420,7 @@ describe('BasicStrategy.generateDeploymentCommand', () => {
     });
 
     // unit-1 is already in the deployed list
-    const deploymentCmd = strategy.generateDeploymentCommand(state, 0, ['unit-1'], 12);
+    const deploymentCmd = strategy.generateDeploymentCommand(state, 0, ['unit-1'], 12, 'auto');
 
     expect(deploymentCmd).toBeNull();
   });
@@ -440,7 +440,7 @@ describe('BasicStrategy.generateDeploymentCommand', () => {
       ],
     });
 
-    const deploymentCmd = strategy.generateDeploymentCommand(state, 0, [], 12);
+    const deploymentCmd = strategy.generateDeploymentCommand(state, 0, [], 12, 'auto');
 
     expect(deploymentCmd).toBeNull();
   });
@@ -464,7 +464,7 @@ describe('BasicStrategy.generateDeploymentCommand', () => {
       ],
     });
 
-    const deploymentCmd = strategy.generateDeploymentCommand(state, 0, [], 12);
+    const deploymentCmd = strategy.generateDeploymentCommand(state, 0, [], 12, 'auto');
 
     expect(deploymentCmd).not.toBeNull();
     for (const mp of deploymentCmd!.modelPositions) {
@@ -493,7 +493,7 @@ describe('BasicStrategy.generateDeploymentCommand', () => {
       ],
     });
 
-    const deploymentCmd = strategy.generateDeploymentCommand(state, 0, [], 12);
+    const deploymentCmd = strategy.generateDeploymentCommand(state, 0, [], 12, 'auto');
 
     expect(deploymentCmd).not.toBeNull();
     // Only 1 alive model

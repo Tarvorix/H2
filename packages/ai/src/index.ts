@@ -9,6 +9,7 @@
 export {
   AIStrategyTier,
   type AIPlayerConfig,
+  type AIDeploymentFormation,
   type AITurnContext,
   type AIStrategy,
   type DeploymentCommand,

@@ -171,3 +171,7 @@ export {
   createCoherencyTestScenario,
   createBlastTestScenario,
 } from './scenario';
+
+// ─── Deployment Formations ───────────────────────────────────────────────────
+export type { DeploymentFormationPreset } from './deployment-formations';
+export { buildUnitDeploymentFormation } from './deployment-formations';

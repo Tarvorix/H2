@@ -10,7 +10,7 @@
 
 import type { GameState, GameCommand } from '@hh/types';
 import { Phase } from '@hh/types';
-import type { AIStrategy, AITurnContext, DeploymentCommand } from '../types';
+import type { AIStrategy, AITurnContext, DeploymentCommand, AIDeploymentFormation } from '../types';
 import { generatePhaseControlCommand } from '../phases/phase-control-ai';
 import { generateMovementCommand } from '../phases/movement-ai';
 import { generateShootingCommand } from '../phases/shooting-ai';
@@ -61,6 +61,7 @@ export class BasicStrategy implements AIStrategy {
     playerIndex: number,
     deployedUnitIds: string[],
     deploymentZoneDepth: number,
+    deploymentFormation: AIDeploymentFormation,
   ): DeploymentCommand | null {
     return generateDeploymentPlacement(
       state,
@@ -68,6 +69,7 @@ export class BasicStrategy implements AIStrategy {
       deployedUnitIds,
       deploymentZoneDepth,
       'basic',
+      deploymentFormation,
     );
   }
 

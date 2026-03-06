@@ -1,6 +1,252 @@
 # HHv2 TODO
 
-Last Updated: 2026-03-05
+Last Updated: 2026-03-06
+
+## Hotfix Plan (HH MCP Server Vertical Slice - 2026-03-06)
+- [x] Add an `@hh/mcp-server` workspace package and root scripts for serving the HH MCP server.
+- [x] Extract a reusable headless match session host with match creation, action submission, legal-action queries, replay export, and nudge snapshots.
+- [x] Expose the session host through MCP tools/resources plus observer transport/config defaults aligned with `hh.tarvorix.com`.
+- [x] Add targeted tests and run focused verification for the MCP vertical slice.
+
+## Hotfix Verification (HH MCP Server Vertical Slice - 2026-03-06)
+- `pnpm install --ignore-scripts`: PASS
+- `pnpm --filter @hh/headless typecheck`: PASS
+- `pnpm --filter @hh/headless build`: PASS
+- `pnpm --filter @hh/mcp-server typecheck`: PASS
+- `pnpm --filter @hh/mcp-server build`: PASS
+- `pnpm test -- packages/headless/src/session.test.ts packages/mcp-server/src/match-manager.test.ts`: PASS (2 files, 4 tests)
+- `pnpm exec tsc -b packages/headless packages/mcp-server --force`: PASS
+- `HH_MCP_PORT=8791 node --loader ./tools/esm-js-extension-loader.mjs packages/mcp-server/dist/server.js`: PASS (boot smoke check; verified `/mcp`, `/observe`, and default public host log for `https://hh.tarvorix.com/mcp`)
+
+## Support Plan (MCP Capability Audit - 2026-03-06)
+- [x] Check which MCP resources/templates and MCP-backed tools are available in this session.
+- [x] Inspect the repo for any game-specific MCP server or full-play integration path.
+- [x] Summarize whether full game play via MCP is possible right now.
+
+## Support Plan (Observed LLM Match Feasibility - 2026-03-06)
+- [x] Inspect the repo for replay, spectator, or observer paths that could show a model-vs-model game.
+- [x] Map the practical implementation options for a watched Codex-vs-Claude match onto the current headless/UI architecture.
+- [x] Summarize the most feasible observer setup.
+
+## Implementation Plan (MCP-Only Match Orchestration + Observation - 2026-03-06)
+- [ ] Phase 0: Define the MCP-only architecture and lock the protocol boundaries.
+  - Add a new `packages/mcp-server` workspace package.
+  - Keep the engine/headless layer as the single rules referee and source of truth.
+  - Define session roles: `human`, `agent`, `ai`, `observer`.
+  - Define match modes: `player-vs-agent`, `agent-vs-ai`, `agent-vs-agent`.
+  - Define a nudge-only coordinator model: the coordinator never invents moves, it only signals whose turn it is and exposes the current legal decision window.
+  - Adopt the proven Strife MCP transport shape as the default baseline:
+    - Streamable HTTP MCP endpoint at `/mcp`
+    - observer websocket endpoint at `/observe`
+    - shared process hosting both endpoints
+    - stable `agentId` on every agent-scoped call to survive session churn and reconnects
+  - Treat stable `agentId` as non-negotiable for HHv2 as well, following the Strife pattern in `/Users/kylebullock/The_Strife/AI_Playtest_Instructions.md`.
+- [ ] Phase 1: Extract a reusable session host from the existing headless flow.
+  - Refactor `packages/headless` so match state is managed through a durable session object instead of only one-shot CLI execution.
+  - Add a headless session store with `matchId`, current `GameState`, command history, dice sequence, event log, replay metadata, and participant bindings.
+  - Normalize one decision loop for active turns and reaction windows so both human and agent clients see the same legal-action surface.
+  - Preserve deterministic replay and final-state hashing compatibility with the existing replay artifact format.
+  - Add reconnect-safe participant binding modeled on Strife’s `sessionId -> agentId -> faction/side` handling so a new MCP session can reclaim the same side without losing ownership.
+- [ ] Phase 2: Define the MCP tool contract for match control.
+  - Session tools:
+    - `create_match`
+    - `list_matches`
+    - `get_match`
+    - `join_match`
+    - `leave_match`
+    - `archive_match`
+  - State/inspection tools:
+    - `get_public_state`
+    - `get_private_state_for_role`
+    - `get_legal_actions`
+    - `get_event_log`
+    - `get_replay_summary`
+    - `export_replay_artifact`
+  - Play tools:
+    - `submit_action`
+    - `decline_reaction`
+    - `advance_ai_decision`
+    - `acknowledge_nudge`
+  - Observer tools:
+    - `observe_match`
+    - `get_observer_snapshot`
+    - `get_turn_timeline`
+  - Enforce that all writes go through validated engine commands only.
+  - Include explicit `agentId` on all side-scoped write/query tools, not just implicit MCP session identity.
+- [ ] Phase 3: Build the match role and permission model.
+  - `human`: can inspect their legal actions and submit actions only for their side.
+  - `agent`: same as human, but intended for Codex/Claude MCP clients.
+  - `ai`: not a client writer; represented by local AI config inside the match session and advanced through `advance_ai_decision`.
+  - `observer`: read-only access to full public board state, event log, replay, and timeline.
+  - Add strict checks so one participant cannot act for another role or read hidden/private state that should be gated.
+- [ ] Phase 4: Implement the nudge coordinator.
+  - Add a coordinator service inside `packages/mcp-server` that watches the current decision owner.
+  - Coordinator outputs should be stateful nudges, not autonomous commands:
+    - `player 0 decision required`
+    - `player 1 reaction available`
+    - `observer update available`
+  - Add decision-window snapshots containing:
+    - acting role
+    - active phase/sub-phase
+    - current prompt/reaction context
+    - legal actions count
+    - whether the window is blocking progression
+  - Ensure nudges are idempotent so reconnecting clients can safely resume.
+  - Reuse the Strife lesson that state should be push-notified but pull-verified:
+    - coordinator sends the nudge
+    - client then calls `get_match` / `get_legal_actions` / decision snapshot tools to act from fresh state
+- [ ] Phase 5: Implement `player-vs-agent` via MCP.
+  - Human joins one side through the UI-backed client or MCP-capable client.
+  - Agent joins the opposing side through MCP.
+  - Human uses `get_legal_actions` + `submit_action` or existing UI that talks to the same session host.
+  - Agent receives nudges and acts only when the coordinator marks its decision window active.
+  - Support reactions, deployment, mission setup, and all normal phase transitions through the same contract.
+- [ ] Phase 6: Implement `agent-vs-ai` via MCP.
+  - One side is an MCP-connected agent.
+  - One side is local HHv2 AI configured in the match session.
+  - Coordinator nudges the agent when it must act and exposes `advance_ai_decision` when the local AI owns the current decision.
+  - Add a configurable AI pacing mode so observer sessions can watch step-by-step instead of instant execution.
+- [ ] Phase 7: Implement `agent-vs-agent` via MCP.
+  - Both sides are external MCP clients.
+  - Match session binds each side to a participant identity and role.
+  - Coordinator alternates nudges based on active player or reaction owner.
+  - Add stale-turn protection:
+    - current decision token/version
+    - duplicate-action rejection
+    - timeout state that marks a side as waiting but does not auto-play their move
+  - Make reconnection safe so either client can resume from `get_match` + `get_legal_actions`.
+- [ ] Phase 8: Build observer mode for live playtesting.
+  - Add read-only observer join flow with no ability to mutate the match.
+  - Expose a concise observer snapshot:
+    - battlefield state
+    - active player
+    - current decision owner
+    - phase/sub-phase
+    - latest events
+    - VP/objective state
+  - Expose full replay/event history so bugs can be audited after any suspicious interaction.
+  - Support watching `player-vs-agent`, `agent-vs-ai`, and `agent-vs-agent` matches identically.
+  - Add an observer activity feed similar to Strife’s:
+    - which agent is currently nudged
+    - recent tool calls
+    - validation errors
+    - elapsed decision time / timeout countdown
+- [ ] Phase 9: Connect the existing UI as an observer/player client.
+  - Add a transport layer in `packages/ui` that can talk to the MCP-backed match session instead of only local reducer state.
+  - Add session screens:
+    - lobby/join
+    - live observer board
+    - decision-owner indicator
+    - nudge inbox
+    - replay export
+  - Preserve current local play flow; MCP-backed play should be an additional mode, not a replacement.
+  - Add a dedicated observer route/store pattern, borrowing the separation Strife used for `/observe` and its read-only observer client state.
+- [ ] Phase 10: Replay, bug-capture, and playtest telemetry.
+  - Record every accepted/rejected command, acting participant, decision token, event bundle, and state hash.
+  - Auto-attach replay artifacts to completed or aborted matches.
+  - Add a bug-report export containing:
+    - match metadata
+    - full replay artifact
+    - last legal-action snapshot
+    - last nudge snapshot
+    - final error messages if any
+  - Make observer mode able to open any saved replay artifact for post-game debugging.
+- [ ] Phase 10.5: Tarvorix / Cloudflare deployment plan.
+  - Reuse the existing Cloudflare named tunnel pattern already used in The Strife.
+  - Keep the same endpoint shape:
+    - MCP over HTTPS on `/mcp`
+    - observer over WSS on `/observe`
+  - Preferred deployment target: a separate HHv2 subdomain under `tarvorix.com` to avoid collision with the existing Strife host.
+    - recommended: `hhv2-mcp.tarvorix.com`
+    - acceptable alternate: `hh.tarvorix.com`
+  - Fallback if you want the exact existing host temporarily: repoint `mcp.tarvorix.com` to HHv2 during dedicated HHv2 sessions, but do not plan on running Strife and HHv2 there at the same time.
+  - Mirror Strife-style env/config:
+    - `HHV2_MCP_HOST`
+    - `HHV2_MCP_PORT`
+    - `HHV2_MCP_PATH`
+    - `HHV2_OBSERVE_PATH`
+    - `HHV2_MCP_AUTH_MODE`
+    - `HHV2_MCP_BEARER_TOKEN`
+    - optional host-validation toggle for tunnel compatibility
+  - Add deployment docs and a local `.mcp.json` example pointing at the chosen `tarvorix.com` host for Codex/Claude clients.
+- [ ] Phase 11: Robustness and safety rails.
+  - Add optimistic concurrency/version checks so stale clients cannot overwrite a newer state.
+  - Ensure the server always rejects illegal or out-of-turn actions with clear errors.
+  - Add recovery paths for interrupted sessions:
+    - reconnect participant
+    - resume observer
+    - rebuild decision window from stored state
+  - Keep deterministic dice and replay verification in CI for every new MCP session mutation path.
+- [ ] Phase 12: Test matrix and exit criteria.
+  - Unit tests:
+    - session store
+    - role permissions
+    - nudge coordinator
+    - tool handlers
+  - Integration tests:
+    - `player-vs-agent` full mission
+    - `agent-vs-ai` full mission
+    - `agent-vs-agent` full mission
+    - live observer joins mid-game and tracks updates
+    - reconnect/resume during reaction window
+    - stable `agentId` reclaim across fresh MCP session IDs
+    - multi-agent flow with malformed-command retry and timeout resolution
+  - Replay tests:
+    - exported replay from MCP match reproduces final hash
+    - rejected commands are still auditable in logs
+  - Exit criteria:
+    - a full match can be run in each of the three requested modes entirely through MCP-backed sessions
+    - an observer can watch live without write permissions
+    - any bug encountered during a playtest can be reproduced from the stored replay artifact
+
+## Hotfix Plan (Rules-Accurate First Turn Determination - 2026-03-06)
+- [x] Add a setup-time deployment roll-off so the player who loses deploys first per `HH_Battle_AOD.md` Step 7.
+- [x] Ensure deployment confirmation sequencing works regardless of whether player 0 or player 1 deploys first, and preserve the first deployer for turn 1.
+- [x] Add targeted tests, run verification, and update `todo.md` with results.
+
+## Hotfix Verification (Rules-Accurate First Turn Determination - 2026-03-06)
+- `pnpm test -- packages/ui/src/game/deployment-order.test.ts packages/ui/src/game/reducer.test.ts`: PASS (2 files, 10 tests)
+- `pnpm --filter @hh/ui typecheck`: PASS
+- `pnpm --filter @hh/ui build`: PASS
+
+## Support Plan (First Turn Determination Audit - 2026-03-06)
+- [x] Check the mission setup/deployment rules docs for how first turn should be determined.
+- [x] Inspect current game setup code to see how `firstPlayerIndex` and `activePlayerIndex` are assigned.
+- [x] Summarize whether the current implementation matches the rules and note any gap.
+
+## Hotfix Plan (AI Deployment Formation Options - 2026-03-05)
+- [x] Move deployment formation generation into a shared helper so both player setup and AI deployment use the same preset logic.
+- [x] Add AI deployment formation preference to AI config/setup UI and apply it in AI deployment generation.
+- [x] Add targeted tests, update `todo.md`, and run verification.
+
+## Hotfix Verification (AI Deployment Formation Options - 2026-03-05)
+- `pnpm test -- packages/ai/src/deployment/deployment-ai.test.ts packages/ai/src/strategy/basic-strategy.test.ts packages/ai/src/strategy/tactical-strategy.test.ts packages/ui/src/game/screens/deployment-formations.test.ts`: PASS (4 files, 63 tests)
+- `pnpm --filter @hh/geometry typecheck`: PASS
+- `pnpm --filter @hh/ai build`: PASS
+- `pnpm --filter @hh/ai typecheck`: PASS
+- `pnpm exec tsc -b packages/geometry packages/ai packages/ui --force`: PASS
+- `pnpm --filter @hh/ui typecheck`: PASS
+- `pnpm --filter @hh/ui build`: PASS
+
+## Hotfix Plan (Deployment Formation Presets + Charge Flow Stall - 2026-03-05)
+- [x] Audit the player and AI deployment code paths and introduce selectable deployment formation presets for player setup placement.
+- [x] Trace the assault charge UI/engine handoff and fix the reducer path that could trap charge resolution in a dead-end resolving state.
+- [x] Run targeted verification and record results.
+
+## Hotfix Verification (Deployment Formation Presets + Charge Flow Stall - 2026-03-05)
+- `pnpm test -- packages/ui/src/game/reducer.test.ts packages/ui/src/game/screens/deployment-formations.test.ts`: PASS (2 files, 10 tests)
+- `pnpm --filter @hh/ui typecheck`: PASS
+- `pnpm --filter @hh/ui build`: PASS
+
+## Support Plan (Deployment Formation Investigation - 2026-03-05)
+- [x] Inspect the player deployment formation builder used by the deployment screen.
+- [x] Inspect the AI deployment placement generator and compare its layout logic.
+- [x] Summarize why the human and AI formations differ and outline the change needed for selectable formations.
+
+## Support Plan (Tactical Action Usage Guidance - 2026-03-05)
+- [x] Inspect the dashboard components and engine phase-status logic behind the tactical action indicator.
+- [x] Cross-check the corresponding Horus Heresy rules for movement, rushing, shooting, charging, and reactions.
+- [x] Write the usage explanation and update `todo.md` to reflect completion.
 
 ## Hotfix Plan (Rush Uses Atomic Unit Movement Rules - 2026-03-05)
 - [x] Confirm rules text for Rush + coherency in `HH_Rules_Battle.md` and align engine behavior.

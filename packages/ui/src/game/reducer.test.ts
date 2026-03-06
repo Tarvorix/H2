@@ -173,6 +173,28 @@ function createReactionUiState(pendingReaction: PendingReaction) {
   };
 }
 
+function createChargeUiState() {
+  const uiState = createInitialGameUIState();
+  const gameState = createBaseGameState({
+    currentPhase: Phase.Assault,
+    currentSubPhase: SubPhase.Charge,
+  });
+
+  return {
+    ...uiState,
+    uiPhase: GameUIPhase.Playing,
+    gameState,
+    flowState: {
+      type: 'assault' as const,
+      step: {
+        step: 'confirmCharge' as const,
+        chargingUnitId: 'attacker-u1',
+        targetUnitId: 'target-u1',
+      },
+    },
+  };
+}
+
 describe('gameReducer reaction flow persistence', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -236,5 +258,144 @@ describe('gameReducer reaction flow persistence', () => {
     if (nextState.flowState.type === 'reaction' && nextState.flowState.step.step === 'prompt') {
       expect(nextState.flowState.step.pendingReaction).toEqual(chainedPending);
     }
+  });
+});
+
+describe('gameReducer charge flow resolution', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('keeps the reaction prompt when confirming a charge opens a reaction window', () => {
+    const pendingReaction = createPendingReaction(CoreReaction.Overwatch);
+    const state = createChargeUiState();
+
+    const result: CommandResult = {
+      state: createBaseGameState({
+        currentPhase: Phase.Assault,
+        currentSubPhase: SubPhase.Charge,
+        awaitingReaction: true,
+        pendingReaction,
+      }),
+      events: [],
+      errors: [],
+      accepted: true,
+    };
+
+    vi.mocked(commandBridge.executeCommand).mockReturnValue(result);
+
+    const nextState = gameReducer(state, { type: 'CONFIRM_CHARGE' });
+
+    expect(nextState.flowState.type).toBe('reaction');
+    expect(nextState.flowState.type === 'reaction' && nextState.flowState.step.step === 'prompt').toBe(true);
+  });
+
+  it('closes the assault flow when the charge resolves immediately', () => {
+    const state = createChargeUiState();
+
+    const result: CommandResult = {
+      state: createBaseGameState({
+        currentPhase: Phase.Assault,
+        currentSubPhase: SubPhase.Charge,
+      }),
+      events: [],
+      errors: [],
+      accepted: true,
+    };
+
+    vi.mocked(commandBridge.executeCommand).mockReturnValue(result);
+
+    const nextState = gameReducer(state, { type: 'CONFIRM_CHARGE' });
+
+    expect(nextState.flowState).toEqual({ type: 'idle' });
+  });
+
+  it('leaves the confirm charge step in place when the engine rejects the charge', () => {
+    const state = createChargeUiState();
+
+    const result: CommandResult = {
+      state: state.gameState!,
+      events: [],
+      errors: [{ code: 'CHARGE_INVALID', message: 'Charge is not valid.' }],
+      accepted: false,
+    };
+
+    vi.mocked(commandBridge.executeCommand).mockReturnValue(result);
+
+    const nextState = gameReducer(state, { type: 'CONFIRM_CHARGE' });
+
+    expect(nextState.flowState).toEqual(state.flowState);
+    expect(nextState.lastErrors).toEqual(result.errors);
+  });
+});
+
+describe('gameReducer deployment order', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('rolls deployment order when setup enters deployment', () => {
+    const randomSpy = vi.spyOn(Math, 'random')
+      .mockReturnValueOnce(0.99)
+      .mockReturnValueOnce(0.0);
+
+    const nextState = gameReducer(createInitialGameUIState(), { type: 'CONFIRM_ALL_OBJECTIVES' });
+
+    expect(nextState.uiPhase).toBe(GameUIPhase.Deployment);
+    expect(nextState.deployment.deployingPlayerIndex).toBe(1);
+
+    randomSpy.mockRestore();
+  });
+
+  it('syncs the initial game state turn order to the deployment roll-off result', () => {
+    const state = {
+      ...createInitialGameUIState(),
+      uiPhase: GameUIPhase.Deployment,
+      deployment: {
+        ...createInitialGameUIState().deployment,
+        deployingPlayerIndex: 1,
+      },
+    };
+
+    const nextState = gameReducer(state, {
+      type: 'INIT_GAME_STATE',
+      gameState: createBaseGameState({
+        currentPhase: Phase.Start,
+        currentSubPhase: SubPhase.StartEffects,
+        activePlayerIndex: 0,
+        firstPlayerIndex: 0,
+      }),
+    });
+
+    expect(nextState.gameState?.firstPlayerIndex).toBe(1);
+    expect(nextState.gameState?.activePlayerIndex).toBe(1);
+  });
+
+  it('hands deployment to the other player and starts battle after both confirm when player 2 deploys first', () => {
+    const state = {
+      ...createInitialGameUIState(),
+      uiPhase: GameUIPhase.Deployment,
+      gameState: createBaseGameState({
+        currentPhase: Phase.Start,
+        currentSubPhase: SubPhase.StartEffects,
+      }),
+      deployment: {
+        ...createInitialGameUIState().deployment,
+        deployingPlayerIndex: 1,
+      },
+    };
+
+    const afterFirstConfirmation = gameReducer(state, { type: 'CONFIRM_DEPLOYMENT' });
+
+    expect(afterFirstConfirmation.uiPhase).toBe(GameUIPhase.Deployment);
+    expect(afterFirstConfirmation.deployment.player2Confirmed).toBe(true);
+    expect(afterFirstConfirmation.deployment.player1Confirmed).toBe(false);
+    expect(afterFirstConfirmation.deployment.deployingPlayerIndex).toBe(0);
+
+    const afterSecondConfirmation = gameReducer(afterFirstConfirmation, { type: 'CONFIRM_DEPLOYMENT' });
+
+    expect(afterSecondConfirmation.uiPhase).toBe(GameUIPhase.Playing);
+    expect(afterSecondConfirmation.deployment.player1Confirmed).toBe(true);
+    expect(afterSecondConfirmation.deployment.player2Confirmed).toBe(true);
   });
 });

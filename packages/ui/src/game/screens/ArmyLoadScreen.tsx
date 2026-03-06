@@ -9,7 +9,9 @@
 import { useCallback, useState } from 'react';
 import { LegionFaction, Allegiance } from '@hh/types';
 import { AIStrategyTier } from '@hh/ai';
+import type { AIDeploymentFormation } from '@hh/ai';
 import type { GameUIState, GameUIAction, PresetArmy } from '../types';
+import { AI_DEPLOYMENT_FORMATION_LABELS } from './deployment-formations';
 
 interface ArmyLoadScreenProps {
   state: GameUIState;
@@ -125,6 +127,7 @@ function getPresetsForPlayer(playerIndex: number): PresetArmy[] {
 export function ArmyLoadScreen({ state, dispatch, onReturnToMenu }: ArmyLoadScreenProps) {
   const [aiEnabled, setAiEnabled] = useState(false);
   const [aiTier, setAiTier] = useState<AIStrategyTier>(AIStrategyTier.Tactical);
+  const [aiDeploymentFormation, setAiDeploymentFormation] = useState<AIDeploymentFormation>('auto');
 
   const handleSelectPreset = useCallback(
     (playerIndex: number, preset: PresetArmy) => {
@@ -147,6 +150,7 @@ export function ArmyLoadScreen({ state, dispatch, onReturnToMenu }: ArmyLoadScre
         config: {
           playerIndex: 1,
           strategyTier: aiTier,
+          deploymentFormation: aiDeploymentFormation,
           commandDelayMs: 600,
           enabled: true,
         },
@@ -155,7 +159,7 @@ export function ArmyLoadScreen({ state, dispatch, onReturnToMenu }: ArmyLoadScre
       dispatch({ type: 'SET_AI_CONFIG', config: null });
     }
     dispatch({ type: 'CONFIRM_ARMIES' });
-  }, [dispatch, aiEnabled, aiTier]);
+  }, [dispatch, aiEnabled, aiTier, aiDeploymentFormation]);
 
   const handlePlayerNameChange = useCallback(
     (playerIndex: number, name: string) => {
@@ -236,14 +240,27 @@ export function ArmyLoadScreen({ state, dispatch, onReturnToMenu }: ArmyLoadScre
               <span>AI Opponent</span>
             </label>
             {aiEnabled && (
-              <select
-                className="ai-tier-select"
-                value={aiTier}
-                onChange={(e) => setAiTier(e.target.value as AIStrategyTier)}
-              >
-                <option value={AIStrategyTier.Basic}>Basic</option>
-                <option value={AIStrategyTier.Tactical}>Tactical</option>
-              </select>
+              <>
+                <select
+                  className="ai-tier-select"
+                  value={aiTier}
+                  onChange={(e) => setAiTier(e.target.value as AIStrategyTier)}
+                >
+                  <option value={AIStrategyTier.Basic}>Basic</option>
+                  <option value={AIStrategyTier.Tactical}>Tactical</option>
+                </select>
+                <select
+                  className="ai-tier-select"
+                  value={aiDeploymentFormation}
+                  onChange={(e) => setAiDeploymentFormation(e.target.value as AIDeploymentFormation)}
+                >
+                  {(Object.keys(AI_DEPLOYMENT_FORMATION_LABELS) as AIDeploymentFormation[]).map((formation) => (
+                    <option key={formation} value={formation}>
+                      {`Deploy: ${AI_DEPLOYMENT_FORMATION_LABELS[formation]}`}
+                    </option>
+                  ))}
+                </select>
+              </>
             )}
           </div>
           {state.armyConfigs[1] && (
