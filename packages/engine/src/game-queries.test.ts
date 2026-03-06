@@ -30,6 +30,8 @@ import {
   getUnitsWithStatus,
   getUnitsInReserves,
   getDeployedUnits,
+  getClosestModelDistance,
+  getModelShape,
   getEnemyModelShapes,
   getUnitModelShapes,
   getRoutedUnits,
@@ -365,6 +367,37 @@ describe('getUnitModelShapes', () => {
     });
     const shapes = getUnitModelShapes(unit);
     expect(shapes).toHaveLength(2);
+  });
+
+  it('should return a rectangular hull for Rhino-profile vehicle models', () => {
+    const rhino = createModel('rhino-0', 24, 24, false);
+    rhino.unitProfileId = 'rhino';
+    rhino.profileModelName = 'Rhino';
+    rhino.rotationRadians = Math.PI / 2;
+
+    const shape = getModelShape(rhino);
+
+    expect(shape.kind).toBe('rect');
+    if (shape.kind === 'rect') {
+      expect(shape.width).toBeCloseTo(4.5);
+      expect(shape.height).toBeCloseTo(2.75);
+      expect(shape.rotation).toBeCloseTo(Math.PI / 2);
+    }
+  });
+});
+
+describe('getClosestModelDistance', () => {
+  it('should measure edge-to-edge distance using real base sizes', () => {
+    const state = createGameState({
+      armies: [
+        createArmy(0, [createUnit('u1', { models: [createModel('u1-m0', 0, 0)] })]),
+        createArmy(1, [createUnit('u2', { models: [createModel('u2-m0', 10, 0)] })]),
+      ],
+    });
+
+    const distance = getClosestModelDistance(state, 'u1', 'u2');
+
+    expect(distance).toBeCloseTo(8.74, 2);
   });
 });
 

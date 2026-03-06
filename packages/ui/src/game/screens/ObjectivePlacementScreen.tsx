@@ -6,7 +6,12 @@
  */
 
 import { useCallback } from 'react';
+import { findMission } from '@hh/data';
 import type { GameUIState, GameUIAction } from '../types';
+import {
+  getObjectivePlacementInstructions,
+  validateObjectivePlacement,
+} from '../objective-placement';
 
 interface ObjectivePlacementScreenProps {
   state: GameUIState;
@@ -16,10 +21,28 @@ interface ObjectivePlacementScreenProps {
 
 export function ObjectivePlacementScreen({ state, dispatch, onReturnToMenu }: ObjectivePlacementScreenProps) {
   const { objectivePlacement } = state;
-  const { placingPlayerIndex, placedObjectives, totalToPlace, pendingPosition } = objectivePlacement;
+  const {
+    firstPlacingPlayerIndex,
+    placingPlayerIndex,
+    placedObjectives,
+    totalToPlace,
+    pendingPosition,
+  } = objectivePlacement;
+  const mission = state.missionSelect.selectedMissionId
+    ? findMission(state.missionSelect.selectedMissionId)
+    : null;
 
   const objectivesRemaining = totalToPlace - placedObjectives.length;
-  const canConfirmPlacement = pendingPosition !== null;
+  const pendingValidation = mission && pendingPosition
+    ? validateObjectivePlacement(
+        mission,
+        state.battlefieldWidth,
+        state.battlefieldHeight,
+        placedObjectives,
+        pendingPosition,
+      )
+    : null;
+  const canConfirmPlacement = pendingPosition !== null && (pendingValidation?.valid ?? true);
   const allPlaced = placedObjectives.length >= totalToPlace;
 
   const handleBattlefieldClick = useCallback(
@@ -63,6 +86,11 @@ export function ObjectivePlacementScreen({ state, dispatch, onReturnToMenu }: Ob
           Player {placingPlayerIndex + 1}: Place objectives on the battlefield
           ({objectivesRemaining} remaining)
         </p>
+        {mission && (
+          <p className="setup-subtitle" style={{ fontSize: 13, color: '#94a3b8' }}>
+            Objective roll-off: Player {firstPlacingPlayerIndex + 1} places first. {getObjectivePlacementInstructions(mission)}
+          </p>
+        )}
         <button className="toolbar-btn" onClick={onReturnToMenu}>
           Back to Menu
         </button>
@@ -113,6 +141,11 @@ export function ObjectivePlacementScreen({ state, dispatch, onReturnToMenu }: Ob
           </div>
 
           <div className="objective-placement-info">
+            {pendingValidation && !pendingValidation.valid && (
+              <div className="panel-row" style={{ color: '#fca5a5', marginBottom: 8 }}>
+                {pendingValidation.error}
+              </div>
+            )}
             <div className="objective-placement-placed">
               <h3>Placed Objectives</h3>
               {placedObjectives.length === 0 ? (

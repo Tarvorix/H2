@@ -173,5 +173,5 @@ export {
 } from './scenario';
 
 // ─── Deployment Formations ───────────────────────────────────────────────────
-export type { DeploymentFormationPreset } from './deployment-formations';
-export { buildUnitDeploymentFormation } from './deployment-formations';
+export type { DeploymentFormationPreset, DeploymentFormationAxes } from './deployment-formations';
+export { buildUnitDeploymentFormation, buildUnitDeploymentFormationWithAxes } from './deployment-formations';

@@ -39,6 +39,8 @@ const DEPLOYMENT_MAPS: DeploymentMapDefinition[] = [
 function getMissionDescription(mission: MissionDefinition): string {
   const objCount = mission.objectivePlacement.kind === 'fixed'
     ? mission.objectivePlacement.objectives.length
+    : mission.objectivePlacement.kind === 'center-fixed-alternating'
+      ? mission.objectivePlacement.fixedObjectives.length + mission.objectivePlacement.count
     : mission.objectivePlacement.kind === 'alternating'
       ? mission.objectivePlacement.count
       : mission.objectivePlacement.pairsCount * 2;

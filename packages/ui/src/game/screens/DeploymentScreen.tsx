@@ -13,10 +13,14 @@ import type { GameUIState, GameUIAction, ArmyConfig, MissionSelectUIState } from
 import { getProfileById, findMission, findDeploymentMapByType } from '@hh/data';
 import { getModelWounds, initializeMissionState } from '@hh/engine';
 import {
-  buildUnitDeploymentFormation,
   DEPLOYMENT_FORMATION_LABELS,
   type DeploymentFormationPreset,
 } from './deployment-formations';
+import {
+  buildDeploymentFormationForZone,
+  getDeploymentZoneForPlayer,
+  isPointInDeploymentZone,
+} from '../deployment-rules';
 
 interface DeploymentScreenProps {
   state: GameUIState;
@@ -251,10 +255,8 @@ export function DeploymentScreen({ state, dispatch, onReturnToMenu }: Deployment
     ? placingUnit.models.length - deployment.pendingModelPositions.length
     : 0;
 
-  // Deployment zone boundaries (in inches from top/bottom)
-  const zoneDepth = deployment.deploymentZoneDepth;
-  const player1ZoneMaxY = zoneDepth;
-  const player2ZoneMinY = state.battlefieldHeight - zoneDepth;
+  const deploymentZone = getDeploymentZoneForPlayer(gameState, deployingPlayerIndex);
+  const deploymentMap = gameState?.missionState?.deploymentMap ?? state.missionSelect.selectedDeploymentMap;
 
   const handleSelectUnit = useCallback(
     (unitId: string) => {
@@ -270,23 +272,11 @@ export function DeploymentScreen({ state, dispatch, onReturnToMenu }: Deployment
       if (nextModelIndex >= placingUnit.models.length) return;
       const model = placingUnit.models[nextModelIndex];
 
-      // Validate position is within deployment zone
-      if (deployingPlayerIndex === 0 && position.y > player1ZoneMaxY) {
+      if (!deploymentZone || !isPointInDeploymentZone(position, deploymentZone)) {
         dispatch({
           type: 'ADD_NOTIFICATION',
           notification: {
-            message: 'Model must be placed within your deployment zone (first 12" from your edge)',
-            type: 'warning',
-            duration: 3000,
-          },
-        });
-        return;
-      }
-      if (deployingPlayerIndex === 1 && position.y < player2ZoneMinY) {
-        dispatch({
-          type: 'ADD_NOTIFICATION',
-          notification: {
-            message: 'Model must be placed within your deployment zone (last 12" from your edge)',
+            message: 'Model must be placed inside your mission deployment zone.',
             type: 'warning',
             duration: 3000,
           },
@@ -300,7 +290,7 @@ export function DeploymentScreen({ state, dispatch, onReturnToMenu }: Deployment
         position,
       });
     },
-    [dispatch, placingUnit, deployment.pendingModelPositions.length, deployingPlayerIndex, player1ZoneMaxY, player2ZoneMinY],
+    [dispatch, deployment.pendingModelPositions.length, deploymentZone, placingUnit],
   );
 
   const handleConfirmPlacement = useCallback(() => {
@@ -338,15 +328,40 @@ export function DeploymentScreen({ state, dispatch, onReturnToMenu }: Deployment
       const clickedPosition = { x: Math.round(worldX * 10) / 10, y: Math.round(worldY * 10) / 10 };
 
       if (placementMode === 'unit') {
-        const formation = buildUnitDeploymentFormation(
+        if (!deploymentZone || !deploymentMap) {
+          dispatch({
+            type: 'ADD_NOTIFICATION',
+            notification: {
+              message: 'Deployment zone is not initialized for this mission.',
+              type: 'error',
+              duration: 3000,
+            },
+          });
+          return;
+        }
+
+        const formation = buildDeploymentFormationForZone(
           placingUnit.models.length,
           clickedPosition,
+          deploymentMap,
           deployingPlayerIndex,
           state.battlefieldWidth,
           state.battlefieldHeight,
-          zoneDepth,
+          deploymentZone,
           formationPreset,
         );
+        const allInZone = formation.every((position) => isPointInDeploymentZone(position, deploymentZone));
+        if (!allInZone) {
+          dispatch({
+            type: 'ADD_NOTIFICATION',
+            notification: {
+              message: 'That formation does not fit inside the current deployment zone. Try clicking deeper into the zone or place models one-by-one.',
+              type: 'warning',
+              duration: 4000,
+            },
+          });
+          return;
+        }
         // Re-selecting the same unit clears pending model positions for re-placement.
         dispatch({ type: 'SELECT_ROSTER_UNIT', unitId: placingUnit.id });
         for (let i = 0; i < placingUnit.models.length; i++) {
@@ -365,12 +380,13 @@ export function DeploymentScreen({ state, dispatch, onReturnToMenu }: Deployment
       placingUnit,
       placementMode,
       formationPreset,
+      deploymentZone,
+      deploymentMap,
       deployingPlayerIndex,
       dispatch,
       handlePlaceModel,
       state.battlefieldWidth,
       state.battlefieldHeight,
-      zoneDepth,
     ],
   );
 
@@ -549,59 +565,59 @@ export function DeploymentScreen({ state, dispatch, onReturnToMenu }: Deployment
             }}
             onClick={handleBattlefieldClick}
           >
-            {/* Player 1 Deployment Zone */}
-            <div
-              className="deployment-zone deployment-zone-p1"
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                height: `${(zoneDepth / state.battlefieldHeight) * 100}%`,
-                background: deployingPlayerIndex === 0
-                  ? 'rgba(59, 130, 246, 0.15)'
-                  : 'rgba(59, 130, 246, 0.05)',
-                borderBottom: '2px dashed rgba(59, 130, 246, 0.4)',
-              }}
-            >
-              <div style={{
-                position: 'absolute',
-                bottom: 4,
-                left: 8,
-                fontSize: 10,
-                color: '#60a5fa',
-                opacity: 0.7,
-              }}>
-                Player 1 Deployment Zone ({zoneDepth}")
-              </div>
-            </div>
+            {gameState?.missionState?.deploymentZones && (
+              <svg
+                viewBox={`0 0 ${state.battlefieldWidth} ${state.battlefieldHeight}`}
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  width: '100%',
+                  height: '100%',
+                  pointerEvents: 'none',
+                }}
+                preserveAspectRatio="none"
+              >
+                {gameState.missionState.deploymentZones.map((zone) => {
+                  const points = zone.vertices.map((vertex) => `${vertex.x},${vertex.y}`).join(' ');
+                  const isActiveZone = zone.playerIndex === deployingPlayerIndex;
+                  const fill = zone.playerIndex === 0
+                    ? (isActiveZone ? 'rgba(59, 130, 246, 0.16)' : 'rgba(59, 130, 246, 0.06)')
+                    : (isActiveZone ? 'rgba(239, 68, 68, 0.16)' : 'rgba(239, 68, 68, 0.06)');
+                  const stroke = zone.playerIndex === 0
+                    ? 'rgba(96, 165, 250, 0.55)'
+                    : 'rgba(248, 113, 113, 0.55)';
+                  const centroid = zone.vertices.reduce(
+                    (acc, vertex) => ({ x: acc.x + vertex.x, y: acc.y + vertex.y }),
+                    { x: 0, y: 0 },
+                  );
+                  const labelX = centroid.x / zone.vertices.length;
+                  const labelY = centroid.y / zone.vertices.length;
 
-            {/* Player 2 Deployment Zone */}
-            <div
-              className="deployment-zone deployment-zone-p2"
-              style={{
-                position: 'absolute',
-                bottom: 0,
-                left: 0,
-                width: '100%',
-                height: `${(zoneDepth / state.battlefieldHeight) * 100}%`,
-                background: deployingPlayerIndex === 1
-                  ? 'rgba(239, 68, 68, 0.15)'
-                  : 'rgba(239, 68, 68, 0.05)',
-                borderTop: '2px dashed rgba(239, 68, 68, 0.4)',
-              }}
-            >
-              <div style={{
-                position: 'absolute',
-                top: 4,
-                left: 8,
-                fontSize: 10,
-                color: '#f87171',
-                opacity: 0.7,
-              }}>
-                Player 2 Deployment Zone ({zoneDepth}")
-              </div>
-            </div>
+                  return (
+                    <g key={`deployment-zone-${zone.playerIndex}`}>
+                      <polygon
+                        points={points}
+                        fill={fill}
+                        stroke={stroke}
+                        strokeDasharray="1.25 0.75"
+                        strokeWidth={0.2}
+                      />
+                      <text
+                        x={labelX}
+                        y={labelY}
+                        fill={zone.playerIndex === 0 ? '#60a5fa' : '#f87171'}
+                        fontSize="1.3"
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                        opacity={0.9}
+                      >
+                        {`Player ${zone.playerIndex + 1} Zone`}
+                      </text>
+                    </g>
+                  );
+                })}
+              </svg>
+            )}
 
             {/* Terrain pieces */}
             {state.terrain.map(t => {

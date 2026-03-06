@@ -8,9 +8,12 @@
 import type { Position, TerrainPiece, ModelState } from '@hh/types';
 import { TerrainType } from '@hh/types';
 import {
+  closestPointOnRect,
+  getRectCorners,
   vec2Distance,
-  createCircleBase,
-  distanceShapes,
+  vec2Dot,
+  vec2Rotate,
+  vec2Sub,
   isInExclusionZone,
   isInImpassableTerrain,
   checkCoherency,
@@ -18,8 +21,9 @@ import {
   STANDARD_COHERENCY_RANGE,
   EPSILON,
 } from '@hh/geometry';
-import type { ModelShape, CoherencyResult } from '@hh/geometry';
+import type { CircleBase, ModelShape, CoherencyResult, RectHull } from '@hh/geometry';
 import type { ValidationError } from '../types';
+import { getModelShapeAtPosition } from '../model-shapes';
 
 // ─── Terrain Penalty ─────────────────────────────────────────────────────────
 
@@ -142,6 +146,80 @@ export function pathEntersExclusionZone(
   return isInExclusionZone(endPosition, enemyShapes);
 }
 
+function shapesOverlap(a: ModelShape, b: ModelShape): boolean {
+  if (a.kind === 'circle' && b.kind === 'circle') {
+    return vec2Distance(a.center, b.center) < a.radius + b.radius - EPSILON;
+  }
+
+  if (a.kind === 'circle' && b.kind === 'rect') {
+    return circleOverlapsRect(a, b);
+  }
+
+  if (a.kind === 'rect' && b.kind === 'circle') {
+    return circleOverlapsRect(b, a);
+  }
+
+  if (a.kind === 'rect' && b.kind === 'rect') {
+    return rectsOverlap(a, b);
+  }
+
+  return false;
+}
+
+function circleOverlapsRect(circle: CircleBase, rect: RectHull): boolean {
+  const toLocal = vec2Sub(circle.center, rect.center);
+  const localPoint = vec2Rotate(toLocal, -rect.rotation);
+  const halfWidth = rect.width / 2;
+  const halfHeight = rect.height / 2;
+
+  const insideRectInterior = (
+    Math.abs(localPoint.x) < halfWidth - EPSILON &&
+    Math.abs(localPoint.y) < halfHeight - EPSILON
+  );
+  if (insideRectInterior) return true;
+
+  const closest = closestPointOnRect(rect, circle.center);
+  return vec2Distance(circle.center, closest) < circle.radius - EPSILON;
+}
+
+function rectsOverlap(a: RectHull, b: RectHull): boolean {
+  const axes = [...getRectAxes(a), ...getRectAxes(b)];
+
+  for (const axis of axes) {
+    const aProjection = projectRectOntoAxis(a, axis);
+    const bProjection = projectRectOntoAxis(b, axis);
+    const overlap = Math.min(aProjection.max, bProjection.max)
+      - Math.max(aProjection.min, bProjection.min);
+
+    if (overlap <= EPSILON) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function getRectAxes(rect: RectHull): Position[] {
+  return [
+    { x: Math.cos(rect.rotation), y: Math.sin(rect.rotation) },
+    { x: -Math.sin(rect.rotation), y: Math.cos(rect.rotation) },
+  ];
+}
+
+function projectRectOntoAxis(rect: RectHull, axis: Position): { min: number; max: number } {
+  const corners = getRectCorners(rect);
+  let min = Infinity;
+  let max = -Infinity;
+
+  for (const corner of corners) {
+    const projection = vec2Dot(corner, axis);
+    if (projection < min) min = projection;
+    if (projection > max) max = projection;
+  }
+
+  return { min, max };
+}
+
 // ─── Model Move Validation ──────────────────────────────────────────────────
 
 /**
@@ -221,12 +299,10 @@ export function validateModelMove(
     });
   }
 
-  // 6. Check base overlap with other models (simplified)
-  // Using a 32mm base approximation for now
-  const modelShape = createCircleBase(targetPosition, 32);
+  // 6. Check base/hull overlap with other models
+  const modelShape = getModelShapeAtPosition(model, targetPosition);
   for (const friendly of friendlyShapes) {
-    const dist = distanceShapes(modelShape, friendly);
-    if (dist < -EPSILON) {
+    if (shapesOverlap(modelShape, friendly)) {
       errors.push({
         code: 'BASE_OVERLAP',
         message: 'Model base overlaps with another model',

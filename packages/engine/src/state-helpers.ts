@@ -110,7 +110,19 @@ export function updateModelInUnit(
  * Move a model to a new position.
  */
 export function moveModel(model: ModelState, newPosition: Position): ModelState {
-  return { ...model, position: newPosition };
+  const dx = newPosition.x - model.position.x;
+  const dy = newPosition.y - model.position.y;
+  const distanceSq = dx * dx + dy * dy;
+
+  if (distanceSq <= 0.000001) {
+    return { ...model, position: newPosition };
+  }
+
+  return {
+    ...model,
+    position: newPosition,
+    rotationRadians: Math.atan2(dy, dx),
+  };
 }
 
 // ─── Phase/SubPhase Helpers ──────────────────────────────────────────────────

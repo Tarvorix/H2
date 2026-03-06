@@ -31,7 +31,6 @@ import {
 import {
   vec2Distance,
   hasLOS,
-  createCircleBase,
   checkCoherency,
   STANDARD_COHERENCY_RANGE,
 } from '@hh/geometry';
@@ -55,6 +54,7 @@ import {
   getEnemyModelShapes,
 } from '../game-queries';
 import { getModelInitiative } from '../profile-lookup';
+import { getModelShapeAtPosition } from '../model-shapes';
 
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -322,8 +322,11 @@ export function handleRepositionReaction(
       }
     }
 
-    const shapes = Array.from(finalPositions.values()).map(pos =>
-      createCircleBase(pos, 32),
+    const shapes = aliveModels.map((model) =>
+      getModelShapeAtPosition(
+        model,
+        finalPositions.get(model.id) ?? model.position,
+      ),
     );
     const coherencyResult = checkCoherency(shapes, STANDARD_COHERENCY_RANGE);
     if (!coherencyResult.isCoherent) {

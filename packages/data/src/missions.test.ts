@@ -171,21 +171,23 @@ describe('Core Missions', () => {
   });
 
   describe('Heart of Battle', () => {
-    it('uses fixed objective placement', () => {
-      expect(HEART_OF_BATTLE.objectivePlacement.kind).toBe('fixed');
+    it('uses a fixed centre objective plus alternating flank placement', () => {
+      expect(HEART_OF_BATTLE.objectivePlacement.kind).toBe('center-fixed-alternating');
     });
 
-    it('has 3 objectives: 1x3VP center + 2x1VP flanks', () => {
+    it('has a fixed 3VP centre and two player-placed 1VP flank objectives', () => {
       const placement = HEART_OF_BATTLE.objectivePlacement;
-      if (placement.kind !== 'fixed') throw new Error('Expected fixed');
-      expect(placement.objectives).toHaveLength(3);
+      if (placement.kind !== 'center-fixed-alternating') throw new Error('Expected center-fixed-alternating');
+      expect(placement.fixedObjectives).toHaveLength(1);
+      expect(placement.count).toBe(2);
+      expect(placement.vpValue).toBe(1);
+      expect(placement.edgeBuffer).toBe(6);
+      expect(placement.minimumSpacing).toBe(6);
+      expect(placement.minimumDistanceFromFixedObjectives).toBe(12);
 
-      const center = placement.objectives.find((o) => o.vpValue === 3);
+      const center = placement.fixedObjectives.find((o) => o.vpValue === 3);
       expect(center).toBeDefined();
       expect(center!.position).toEqual({ x: 36, y: 24 }); // center of 72x48
-
-      const flanks = placement.objectives.filter((o) => o.vpValue === 1);
-      expect(flanks).toHaveLength(2);
     });
 
     it('has correct secondary VP values (all 3)', () => {
@@ -249,16 +251,17 @@ describe('Core Missions', () => {
   });
 
   describe('Take and Hold', () => {
-    it('uses symmetric objective placement', () => {
-      expect(TAKE_AND_HOLD.objectivePlacement.kind).toBe('symmetric');
+    it('uses alternating objective placement', () => {
+      expect(TAKE_AND_HOLD.objectivePlacement.kind).toBe('alternating');
     });
 
-    it('has 1 pair of objectives worth 3VP each, 18" apart', () => {
+    it('has 2 objectives worth 3VP each, 18" apart and 12" from edges', () => {
       const placement = TAKE_AND_HOLD.objectivePlacement;
-      if (placement.kind !== 'symmetric') throw new Error('Expected symmetric');
-      expect(placement.pairsCount).toBe(1);
+      if (placement.kind !== 'alternating') throw new Error('Expected alternating');
+      expect(placement.count).toBe(2);
       expect(placement.vpValue).toBe(3);
-      expect(placement.separationDistance).toBe(18);
+      expect(placement.minimumSpacing).toBe(18);
+      expect(placement.edgeBuffer).toBe(12);
     });
 
     it('has Window of Opportunity special rule', () => {

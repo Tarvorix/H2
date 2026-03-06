@@ -120,6 +120,8 @@ export interface MissionSelectUIState {
  * State for alternating/symmetric objective placement.
  */
 export interface ObjectivePlacementUIState {
+  /** Player who won the objective placement roll-off and places first */
+  firstPlacingPlayerIndex: 0 | 1;
   /** Player currently placing an objective */
   placingPlayerIndex: number;
   /** Objectives placed so far */
@@ -438,7 +440,15 @@ export interface GhostTrailEntry {
   modelId: string;
   fromPosition: Position;
   toPosition: Position;
-  baseRadiusInches: number;
+  shape: {
+    kind: 'circle';
+    radiusInches: number;
+  } | {
+    kind: 'rect';
+    lengthInches: number;
+    widthInches: number;
+    rotationRadians: number;
+  };
 }
 
 // ─── Game UI Actions ─────────────────────────────────────────────────────────
@@ -733,6 +743,7 @@ export function createDefaultMissionSelectState(): MissionSelectUIState {
  */
 export function createDefaultObjectivePlacementState(): ObjectivePlacementUIState {
   return {
+    firstPlacingPlayerIndex: 0,
     placingPlayerIndex: 0,
     placedObjectives: [],
     totalToPlace: 0,

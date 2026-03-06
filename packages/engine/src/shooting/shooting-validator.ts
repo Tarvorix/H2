@@ -8,12 +8,12 @@
  * Step 2: Check Target — LOS check, range check, vehicle facing determination
  */
 
-import type { GameState, ModelState, Position, TerrainPiece } from '@hh/types';
+import type { GameState, ModelState, TerrainPiece } from '@hh/types';
 import { VehicleFacing, UnitMovementState } from '@hh/types';
 import type { ValidationError } from '../types';
 import { findUnit, findUnitPlayerIndex, getAliveModels, getModelShape } from '../game-queries';
 // From geometry package:
-import { hasLOS, distanceShapes, createCircleBase } from '@hh/geometry';
+import { hasLOS, distanceShapes } from '@hh/geometry';
 import type { ModelShape, RectHull } from '@hh/geometry';
 import { determineVehicleFacing } from '@hh/geometry';
 
@@ -325,7 +325,7 @@ export function filterModelsWithLOS(
  * @returns True if at least one target model is within weapon range
  */
 export function checkWeaponRange(
-  attackerModelPosition: Position,
+  attackerModel: ModelState,
   targetModels: ModelState[],
   weaponRange: number,
   virtualRangeIncrease: number = 0,  // Legion tactica virtual range increase (e.g., Alpha Legion +2" treated as farther)
@@ -334,9 +334,7 @@ export function checkWeaponRange(
   const effectiveWeaponRange = weaponRange - virtualRangeIncrease;
   if (effectiveWeaponRange <= 0) return false;
 
-  // Create a shape for the attacker model at its position
-  // Using 32mm base as default (same as getModelShape)
-  const attackerShape = createCircleBase(attackerModelPosition, 32);
+  const attackerShape = getModelShape(attackerModel);
 
   for (const targetModel of targetModels) {
     const targetShape = getModelShape(targetModel);

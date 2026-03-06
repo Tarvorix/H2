@@ -1,6 +1,10 @@
 import type { Position } from '@hh/types';
 
 export type DeploymentFormationPreset = 'line' | 'double-rank' | 'block' | 'column';
+export interface DeploymentFormationAxes {
+  lateral: Position;
+  depth: Position;
+}
 
 const BASE_SPACING = 1.25;
 
@@ -55,6 +59,34 @@ function getFormationRowCounts(
       return rowCounts;
     }
   }
+}
+
+export function buildUnitDeploymentFormationWithAxes(
+  modelCount: number,
+  anchor: Position,
+  preset: DeploymentFormationPreset,
+  axes: DeploymentFormationAxes,
+): Position[] {
+  const rowCounts = getFormationRowCounts(modelCount, preset);
+  if (rowCounts.length === 0) return [];
+
+  const positions: Position[] = [];
+  for (let rowIndex = 0; rowIndex < rowCounts.length; rowIndex++) {
+    const modelsInRow = rowCounts[rowIndex];
+    for (let colIndex = 0; colIndex < modelsInRow; colIndex++) {
+      const lateralOffset = (colIndex - (modelsInRow - 1) / 2) * BASE_SPACING;
+      const depthOffset = rowIndex * BASE_SPACING;
+      const x = anchor.x + axes.lateral.x * lateralOffset + axes.depth.x * depthOffset;
+      const y = anchor.y + axes.lateral.y * lateralOffset + axes.depth.y * depthOffset;
+
+      positions.push({
+        x: Math.round(x * 10) / 10,
+        y: Math.round(y * 10) / 10,
+      });
+    }
+  }
+
+  return positions;
 }
 
 export function buildUnitDeploymentFormation(

@@ -81,7 +81,7 @@ function getShootingTargetInfo(
         return getRangedWeaponIdsForModel(attackerModel).some((weaponId) => {
           const weapon = lookupWeapon(weaponId);
           if (!weapon || !isRangedWeapon(weapon) || weapon.range <= 0) return false;
-          return checkWeaponRange(attackerModel.position, targetAliveModels, weapon.range);
+          return checkWeaponRange(attackerModel, targetAliveModels, weapon.range);
         });
       });
 

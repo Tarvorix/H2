@@ -6,6 +6,8 @@
  */
 
 import type { GameState, TerrainPiece } from '@hh/types';
+import { getModelShape } from '@hh/engine';
+import { pointInShape } from '@hh/geometry';
 import type { VisualizerModel } from '../../state/types';
 import type { CameraState } from '../../state/types';
 import type { GameUIState, GhostTrailEntry } from '../types';
@@ -155,13 +157,7 @@ export function hitTestGameModels(
         const model = unit.models[mi];
         if (model.isDestroyed) continue;
 
-        const dx = worldX - model.position.x;
-        const dy = worldY - model.position.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        const baseRadius = 0.5; // Default infantry base radius
-
-        if (dist <= baseRadius * 1.2) {
-          // Small hit margin
+        if (pointInShape({ x: worldX, y: worldY }, getModelShape(model))) {
           return model.id;
         }
       }

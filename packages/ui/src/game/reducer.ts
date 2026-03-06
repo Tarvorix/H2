@@ -46,6 +46,16 @@ import {
   createDefaultDeploymentState,
 } from './types';
 import { rollDeploymentFirstPlayerIndex } from './deployment-order';
+import {
+  createObjectiveMarkerFromPlacement,
+  createObjectivePlacementState,
+  getFixedObjectiveCount,
+  getNextObjectivePlacingPlayerIndex,
+  getTotalObjectiveCount,
+  rollObjectivePlacementFirstPlayerIndex,
+  validateObjectivePlacement,
+} from './objective-placement';
+import { validateSetupDeploymentPlacement } from './deployment-rules';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -65,6 +75,39 @@ function clampZoom(zoom: number): number {
 }
 
 const MOVE_DISTANCE_EPSILON = 0.005;
+
+function getDeploymentFacingRotation(
+  gameState: GameState,
+  playerIndex: number,
+): number {
+  const zone = gameState.missionState?.deploymentZones.find(
+    (candidate) => candidate.playerIndex === playerIndex,
+  );
+  if (!zone || zone.vertices.length === 0) {
+    return playerIndex === 0 ? 0 : Math.PI;
+  }
+
+  const centroid = zone.vertices.reduce(
+    (acc, vertex) => ({
+      x: acc.x + vertex.x,
+      y: acc.y + vertex.y,
+    }),
+    { x: 0, y: 0 },
+  );
+  const zoneCenter = {
+    x: centroid.x / zone.vertices.length,
+    y: centroid.y / zone.vertices.length,
+  };
+  const battlefieldCenter = {
+    x: gameState.battlefield.width / 2,
+    y: gameState.battlefield.height / 2,
+  };
+
+  return Math.atan2(
+    battlefieldCenter.y - zoneCenter.y,
+    battlefieldCenter.x - zoneCenter.x,
+  );
+}
 
 function findUnitById(
   gameState: GameState,
@@ -107,7 +150,7 @@ function canAnyWeaponReachTarget(
     getRangedWeaponIdsForModel(attackerModel).some((weaponId) => {
       const weapon = lookupWeapon(weaponId);
       if (!weapon || !isRangedWeapon(weapon) || weapon.range <= 0) return false;
-      return checkWeaponRange(attackerModel.position, aliveTargets, weapon.range);
+      return checkWeaponRange(attackerModel, aliveTargets, weapon.range);
     }),
   );
 }
@@ -139,6 +182,7 @@ function applySetupDeploymentPlacement(
   const unit = army.units[unitIndex];
   const aliveModels = unit.models.filter(model => !model.isDestroyed);
   const positionByModelId = new Map<string, Position>();
+  const deploymentFacingRotation = getDeploymentFacingRotation(gameState, army.playerIndex);
 
   for (const placement of modelPositions) {
     if (positionByModelId.has(placement.modelId)) {
@@ -168,8 +212,27 @@ function applySetupDeploymentPlacement(
 
   const updatedModels = unit.models.map((model) => {
     const placement = positionByModelId.get(model.id);
-    return placement ? { ...model, position: placement } : model;
+    return placement
+      ? {
+          ...model,
+          position: placement,
+          rotationRadians: deploymentFacingRotation,
+        }
+      : model;
   });
+
+  const placementValidation = validateSetupDeploymentPlacement(
+    gameState,
+    army.playerIndex,
+    unit,
+    modelPositions,
+  );
+  if (!placementValidation.valid) {
+    return {
+      gameState: null,
+      error: placementValidation.error ?? 'Deployment failed: invalid placement.',
+    };
+  }
 
   const updatedUnit = {
     ...unit,
@@ -304,7 +367,7 @@ function applyEngineCommand(
   const newLogEntries = eventsToLogEntries(result.events, result.state);
 
   // Extract ghost trails from movement events
-  const newGhostTrails = extractGhostTrails(result.events);
+  const newGhostTrails = extractGhostTrails(result.events, result.state);
 
   // Extract dice roll for animation
   const diceRoll = extractLatestDiceRoll(result.events);
@@ -635,18 +698,46 @@ export function gameReducer(
     case 'CONFIRM_OBJECTIVE_PLACEMENT': {
       const op = state.objectivePlacement;
       if (!op.pendingPosition) return state;
+      if (!state.missionSelect.selectedMissionId) return state;
 
-      const newObjective = {
-        id: `obj-placed-${op.placedObjectives.length}`,
-        position: op.pendingPosition,
-        vpValue: 2,
-        currentVpValue: 2,
-        isRemoved: false,
-        label: `Objective ${op.placedObjectives.length + 1}`,
-      };
+      const mission = findMission(state.missionSelect.selectedMissionId);
+      if (!mission) return state;
+
+      const validation = validateObjectivePlacement(
+        mission,
+        state.battlefieldWidth,
+        state.battlefieldHeight,
+        op.placedObjectives,
+        op.pendingPosition,
+      );
+
+      if (!validation.valid) {
+        return {
+          ...state,
+          notifications: [
+            ...state.notifications,
+            {
+              message: validation.error ?? 'Objective placement is not legal for this mission.',
+              type: 'warning' as const,
+              timestamp: Date.now(),
+              duration: 4000,
+            },
+          ],
+        };
+      }
+
+      const newObjective = createObjectiveMarkerFromPlacement(
+        mission,
+        op.placedObjectives,
+        op.pendingPosition,
+      );
 
       const newPlaced = [...op.placedObjectives, newObjective];
-      const nextPlayer = op.placingPlayerIndex === 0 ? 1 : 0;
+      const nextPlayer = getNextObjectivePlacingPlayerIndex(
+        mission,
+        op.firstPlacingPlayerIndex,
+        newPlaced.length,
+      );
 
       return {
         ...state,
@@ -661,19 +752,38 @@ export function gameReducer(
 
     case 'UNDO_OBJECTIVE_PLACEMENT': {
       const op = state.objectivePlacement;
-      if (op.placedObjectives.length === 0) return state;
+      if (!state.missionSelect.selectedMissionId) return state;
+
+      const mission = findMission(state.missionSelect.selectedMissionId);
+      if (!mission) return state;
+
+      const fixedObjectiveCount = getFixedObjectiveCount(mission);
+      if (op.placedObjectives.length <= fixedObjectiveCount) return state;
+
+      const placedObjectives = op.placedObjectives.slice(0, -1);
 
       return {
         ...state,
         objectivePlacement: {
           ...op,
-          placedObjectives: op.placedObjectives.slice(0, -1),
+          placedObjectives,
+          placingPlayerIndex: getNextObjectivePlacingPlayerIndex(
+            mission,
+            op.firstPlacingPlayerIndex,
+            placedObjectives.length,
+          ),
           pendingPosition: null,
         },
       };
     }
 
     case 'CONFIRM_ALL_OBJECTIVES':
+      if (state.missionSelect.selectedMissionId) {
+        const mission = findMission(state.missionSelect.selectedMissionId);
+        if (mission && state.objectivePlacement.placedObjectives.length < getTotalObjectiveCount(mission)) {
+          return state;
+        }
+      }
       return {
         ...state,
         uiPhase: GameUIPhase.Deployment,
@@ -695,18 +805,17 @@ export function gameReducer(
 
       if (mission && mission.objectivePlacement.kind === 'fixed') {
         // Fixed objectives: place them automatically, skip to Deployment
-        const fixedObjectives = mission.objectivePlacement.objectives.map((obj, i) => ({
-          id: `obj-fixed-${i}`,
-          position: obj.position,
-          vpValue: obj.vpValue,
-          currentVpValue: obj.vpValue,
-          isRemoved: false,
-          label: obj.label,
-        }));
+        const fixedObjectives = createObjectivePlacementState(
+          mission,
+          state.battlefieldWidth,
+          state.battlefieldHeight,
+          0,
+        ).placedObjectives;
         return {
           ...state,
           objectivePlacement: {
             ...state.objectivePlacement,
+            firstPlacingPlayerIndex: 0,
             placedObjectives: fixedObjectives,
             totalToPlace: fixedObjectives.length,
           },
@@ -715,24 +824,31 @@ export function gameReducer(
         };
       }
 
-      if (mission && mission.objectivePlacement.kind === 'alternating') {
+      if (
+        mission &&
+        (mission.objectivePlacement.kind === 'alternating' ||
+          mission.objectivePlacement.kind === 'center-fixed-alternating')
+      ) {
+        const firstPlacingPlayerIndex = rollObjectivePlacementFirstPlayerIndex();
         return {
           ...state,
-          objectivePlacement: {
-            placingPlayerIndex: 0,
-            placedObjectives: [],
-            totalToPlace: mission.objectivePlacement.count,
-            pendingPosition: null,
-          },
+          objectivePlacement: createObjectivePlacementState(
+            mission,
+            state.battlefieldWidth,
+            state.battlefieldHeight,
+            firstPlacingPlayerIndex,
+          ),
           uiPhase: GameUIPhase.ObjectivePlacement,
         };
       }
 
       if (mission && mission.objectivePlacement.kind === 'symmetric') {
+        const firstPlacingPlayerIndex = rollObjectivePlacementFirstPlayerIndex();
         return {
           ...state,
           objectivePlacement: {
-            placingPlayerIndex: 0,
+            firstPlacingPlayerIndex,
+            placingPlayerIndex: firstPlacingPlayerIndex,
             placedObjectives: [],
             totalToPlace: mission.objectivePlacement.pairsCount * 2,
             pendingPosition: null,

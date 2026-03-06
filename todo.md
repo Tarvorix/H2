@@ -2,6 +2,28 @@
 
 Last Updated: 2026-03-06
 
+## Hotfix Plan (Rules-Accurate Deployment, Objective Placement, and Base Geometry - 2026-03-06)
+- [x] Make deployment validation and deployment-zone rendering use the selected mission deployment map instead of a hardcoded 12" top/bottom band.
+- [x] Make objective placement rules-accurate: correct roll-off ownership, mission-specific VP values, and placement restrictions for Heart of Battle, Crucible of War, and Take and Hold.
+- [x] Finish package/typecheck verification for the deployment and objective rules pass so the new mission/setup helpers are clean across package boundaries.
+- [x] Propagate datasheet base sizes and vehicle hull/use-model geometry through engine and UI paths, then add targeted verification.
+
+## Hotfix Verification (Rules-Accurate Deployment, Objective Placement, and Base Geometry - 2026-03-06)
+- `pnpm --filter @hh/types build`: PASS
+- `pnpm --filter @hh/geometry build`: PASS
+- `pnpm --filter @hh/data build`: PASS
+- `pnpm --filter @hh/data typecheck`: PASS
+- `pnpm --filter @hh/ui typecheck`: PASS
+- `pnpm test -- packages/data/src/missions.test.ts packages/ui/src/game/reducer.test.ts packages/ui/src/game/deployment-rules.test.ts`: PASS (3 files, 60 tests)
+- `pnpm --filter @hh/engine build`: PASS
+- `pnpm exec tsc --project packages/ui/tsconfig.json --noEmit --pretty false`: PASS
+- `pnpm test -- packages/engine/src/game-queries.test.ts packages/engine/src/movement/movement-validator.test.ts packages/engine/src/shooting/shooting-validator.test.ts packages/data/src/missions.test.ts packages/ui/src/game/reducer.test.ts packages/ui/src/game/deployment-rules.test.ts`: PASS (6 files, 192 tests)
+
+## Support Plan (Battlefield, Deployment, Objectives, and Base Size Audit - 2026-03-06)
+- [x] Verify the standard battlefield size against the rules/docs and confirm the deployment-zone geometry matches each mission map.
+- [x] Verify mission objective placement logic/data against the rules/docs on the standard battlefield.
+- [x] Audit model/base size data usage to determine whether deployed model footprints match expected base sizes.
+
 ## Hotfix Plan (HH MCP Server Vertical Slice - 2026-03-06)
 - [x] Add an `@hh/mcp-server` workspace package and root scripts for serving the HH MCP server.
 - [x] Extract a reusable headless match session host with match creation, action submission, legal-action queries, replay export, and nudge snapshots.

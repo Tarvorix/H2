@@ -6,13 +6,11 @@
  * coloring, wound display, and selection highlighting.
  */
 
-import type { GameState, ModelState, UnitState, Position } from '@hh/types';
+import type { GameState, UnitState, Position } from '@hh/types';
 import { TacticalStatus } from '@hh/types';
+import { getModelShape, getModelWounds } from '@hh/engine';
 import type { VisualizerModel } from '../../state/types';
-import { createCircleBaseInches } from '@hh/geometry';
-
-// Default base sizes (inches) for different model types
-const DEFAULT_INFANTRY_BASE_RADIUS = 0.5; // ~25mm base = ~1" diameter
+import type { ModelShape } from '@hh/geometry';
 
 /**
  * Convert all alive models from a GameState into VisualizerModel[] for canvas rendering.
@@ -29,8 +27,7 @@ export function gameStateToVisualizerModels(gameState: GameState): VisualizerMod
       for (const model of unit.models) {
         if (model.isDestroyed) continue;
 
-        const baseRadius = getModelBaseRadius(unit, model);
-        const shape = createCircleBaseInches(model.position, baseRadius);
+        const shape = getModelShape(model);
 
         models.push({
           id: model.id,
@@ -46,16 +43,6 @@ export function gameStateToVisualizerModels(gameState: GameState): VisualizerMod
 }
 
 /**
- * Get the base radius for a model based on its unit profile.
- * Currently uses defaults; can be extended to read from datasheet profiles.
- */
-function getModelBaseRadius(_unit: UnitState, _model: ModelState): number {
-  // Default to infantry base size
-  // Future: look up from unit profile / model definition data
-  return DEFAULT_INFANTRY_BASE_RADIUS;
-}
-
-/**
  * Information about a model's visual state for enhanced rendering.
  */
 export interface GameModelVisualInfo {
@@ -63,6 +50,7 @@ export interface GameModelVisualInfo {
   unitId: string;
   playerIndex: number;
   position: Position;
+  shape: ModelShape;
   baseRadius: number;
   isSelected: boolean;
   isHovered: boolean;
@@ -95,18 +83,24 @@ export function buildGameModelVisualInfos(
       for (const model of unit.models) {
         if (model.isDestroyed) continue;
 
+        const shape = getModelShape(model);
+        const baseRadius = shape.kind === 'circle'
+          ? shape.radius
+          : Math.max(shape.width, shape.height) / 2;
+
         infos.push({
           modelId: model.id,
           unitId: unit.id,
           playerIndex: army.playerIndex,
           position: model.position,
-          baseRadius: getModelBaseRadius(unit, model),
+          shape,
+          baseRadius,
           isSelected: isUnitSelected,
           isHovered: isUnitHovered || model.id === hoveredModelId,
           isActive: isUnitActive(gameState, army.playerIndex, unit),
           statuses: unit.statuses,
           currentWounds: model.currentWounds,
-          maxWounds: 1, // Default; future: read from profile
+          maxWounds: getModelWounds(model.unitProfileId, model.profileModelName),
           isLockedInCombat: unit.isLockedInCombat,
         });
       }

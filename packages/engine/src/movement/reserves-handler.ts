@@ -24,7 +24,6 @@ import {
 } from '@hh/types';
 import {
   checkCoherency,
-  createCircleBase,
   isInExclusionZone,
   isInImpassableTerrain,
   STANDARD_COHERENCY_RANGE,
@@ -44,6 +43,7 @@ import {
   getAliveModels,
   getEnemyModelShapes,
 } from '../game-queries';
+import { getModelShapeAtPosition } from '../model-shapes';
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -390,7 +390,11 @@ export function handleReservesEntry(
   if (modelPositions.length > 1) {
     const modelShapes = modelPositions
       .filter(mp => aliveModelIds.has(mp.modelId))
-      .map(mp => createCircleBase(mp.position, 32));
+      .map((mp) => {
+        const model = unit.models.find((candidate) => candidate.id === mp.modelId);
+        return model ? getModelShapeAtPosition(model, mp.position) : null;
+      })
+      .filter((shape): shape is ReturnType<typeof getModelShapeAtPosition> => shape !== null);
     const coherencyResult = checkCoherency(modelShapes, STANDARD_COHERENCY_RANGE);
     if (!coherencyResult.isCoherent) {
       errors.push({

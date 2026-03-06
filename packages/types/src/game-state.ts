@@ -89,6 +89,8 @@ export interface ModelState {
   unitProfileId: string;
   /** Current position on the battlefield */
   position: Position;
+  /** Facing/orientation in radians for models measured by hull footprint */
+  rotationRadians?: number;
   /** Current wounds remaining (or Hull Points for vehicles) */
   currentWounds: number;
   /** Whether this model has been removed as a casualty */

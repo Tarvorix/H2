@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   Allegiance,
   CoreReaction,
+  DeploymentMap,
   LegionFaction,
   Phase,
   SubPhase,
@@ -397,5 +398,131 @@ describe('gameReducer deployment order', () => {
     expect(afterSecondConfirmation.uiPhase).toBe(GameUIPhase.Playing);
     expect(afterSecondConfirmation.deployment.player1Confirmed).toBe(true);
     expect(afterSecondConfirmation.deployment.player2Confirmed).toBe(true);
+  });
+});
+
+describe('gameReducer objective placement rules', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('starts Heart of Battle with only the centre objective fixed and a placement roll-off', () => {
+    const randomSpy = vi.spyOn(Math, 'random')
+      .mockReturnValueOnce(0.99)
+      .mockReturnValueOnce(0.0);
+
+    const state = {
+      ...createInitialGameUIState(),
+      missionSelect: {
+        selectedMissionId: 'heart-of-battle',
+        selectedDeploymentMap: DeploymentMap.SearchAndDestroy,
+        confirmed: true,
+      },
+    };
+
+    const nextState = gameReducer(state, { type: 'CONFIRM_TERRAIN' });
+
+    expect(nextState.uiPhase).toBe(GameUIPhase.ObjectivePlacement);
+    expect(nextState.objectivePlacement.firstPlacingPlayerIndex).toBe(0);
+    expect(nextState.objectivePlacement.placingPlayerIndex).toBe(0);
+    expect(nextState.objectivePlacement.placedObjectives).toHaveLength(1);
+    expect(nextState.objectivePlacement.placedObjectives[0].vpValue).toBe(3);
+    expect(nextState.objectivePlacement.placedObjectives[0].position).toEqual({ x: 36, y: 24 });
+    expect(nextState.objectivePlacement.totalToPlace).toBe(3);
+
+    randomSpy.mockRestore();
+  });
+
+  it('rejects Heart of Battle flank placements that are too close to the centre objective', () => {
+    const state = {
+      ...createInitialGameUIState(),
+      missionSelect: {
+        selectedMissionId: 'heart-of-battle',
+        selectedDeploymentMap: DeploymentMap.SearchAndDestroy,
+        confirmed: true,
+      },
+      uiPhase: GameUIPhase.ObjectivePlacement,
+      objectivePlacement: {
+        ...createInitialGameUIState().objectivePlacement,
+        firstPlacingPlayerIndex: 0 as const,
+        placingPlayerIndex: 0,
+        placedObjectives: [
+          {
+            id: 'obj-fixed-0',
+            position: { x: 36, y: 24 },
+            vpValue: 3,
+            currentVpValue: 3,
+            isRemoved: false,
+            label: 'Primary Alpha (Centre)',
+          },
+        ],
+        totalToPlace: 3,
+        pendingPosition: { x: 30, y: 24 },
+      },
+    };
+
+    const nextState = gameReducer(state, { type: 'CONFIRM_OBJECTIVE_PLACEMENT' });
+
+    expect(nextState.objectivePlacement.placedObjectives).toHaveLength(1);
+    expect(nextState.notifications.at(-1)?.message).toContain('central objective');
+  });
+
+  it('does not undo the fixed Heart of Battle centre objective', () => {
+    const state = {
+      ...createInitialGameUIState(),
+      missionSelect: {
+        selectedMissionId: 'heart-of-battle',
+        selectedDeploymentMap: DeploymentMap.SearchAndDestroy,
+        confirmed: true,
+      },
+      uiPhase: GameUIPhase.ObjectivePlacement,
+      objectivePlacement: {
+        ...createInitialGameUIState().objectivePlacement,
+        firstPlacingPlayerIndex: 0 as const,
+        placingPlayerIndex: 1,
+        placedObjectives: [
+          {
+            id: 'obj-fixed-0',
+            position: { x: 36, y: 24 },
+            vpValue: 3,
+            currentVpValue: 3,
+            isRemoved: false,
+            label: 'Primary Alpha (Centre)',
+          },
+        ],
+        totalToPlace: 3,
+        pendingPosition: null,
+      },
+    };
+
+    const nextState = gameReducer(state, { type: 'UNDO_OBJECTIVE_PLACEMENT' });
+
+    expect(nextState.objectivePlacement.placedObjectives).toHaveLength(1);
+  });
+
+  it('uses 3VP markers for Take and Hold objective placement', () => {
+    const state = {
+      ...createInitialGameUIState(),
+      missionSelect: {
+        selectedMissionId: 'take-and-hold',
+        selectedDeploymentMap: DeploymentMap.DawnOfWar,
+        confirmed: true,
+      },
+      uiPhase: GameUIPhase.ObjectivePlacement,
+      objectivePlacement: {
+        ...createInitialGameUIState().objectivePlacement,
+        firstPlacingPlayerIndex: 0 as const,
+        placingPlayerIndex: 0,
+        placedObjectives: [],
+        totalToPlace: 2,
+        pendingPosition: { x: 12, y: 24 },
+      },
+    };
+
+    const nextState = gameReducer(state, { type: 'CONFIRM_OBJECTIVE_PLACEMENT' });
+
+    expect(nextState.objectivePlacement.placedObjectives).toHaveLength(1);
+    expect(nextState.objectivePlacement.placedObjectives[0].vpValue).toBe(3);
+    expect(nextState.objectivePlacement.placedObjectives[0].currentVpValue).toBe(3);
   });
 });

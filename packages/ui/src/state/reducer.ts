@@ -22,7 +22,12 @@ import {
   vec2Distance,
 } from '@hh/geometry';
 import type { ModelShape, RectHull, Scenario } from '@hh/geometry';
-import { processCommand, RandomDiceProvider } from '@hh/engine';
+import {
+  findModel,
+  getModelShape,
+  processCommand,
+  RandomDiceProvider,
+} from '@hh/engine';
 import type {
   DebugVisualizerState,
   DebugVisualizerAction,
@@ -79,6 +84,22 @@ function recomputeCoherency(models: VisualizerModel[]): ReturnType<typeof checkC
 
 function blastRadiusFromSize(size: 3 | 5 | 7): number {
   return blastSizeToRadius(size);
+}
+
+function toGhostTrailShape(shape: ModelShape): GhostTrail['shape'] {
+  if (shape.kind === 'circle') {
+    return {
+      kind: 'circle',
+      radiusInches: shape.radius,
+    };
+  }
+
+  return {
+    kind: 'rect',
+    lengthInches: shape.width,
+    widthInches: shape.height,
+    rotationRadians: shape.rotation,
+  };
 }
 
 function clampZoom(zoom: number): number {
@@ -728,22 +749,15 @@ export function debugVisualizerReducer(
       const newTrails: GhostTrail[] = [];
       for (const event of result.events) {
         if (event.type === 'modelMoved') {
-          // Find the model in the new state to get its base radius
-          let baseRadiusInches = 0.63; // default 32mm base
-          for (const army of result.state.armies) {
-            for (const unit of army.units) {
-              const model = unit.models.find(m => m.id === event.modelId);
-              if (model) {
-                baseRadiusInches = 0.63; // standard base radius
-                break;
-              }
-            }
-          }
+          const movedModel = findModel(result.state, event.modelId)?.model;
+          const shape: GhostTrail['shape'] = movedModel
+            ? toGhostTrailShape(getModelShape(movedModel))
+            : { kind: 'circle', radiusInches: 0.63 };
           newTrails.push({
             modelId: event.modelId,
             fromPosition: event.fromPosition,
             toPosition: event.toPosition,
-            baseRadiusInches,
+            shape,
           });
         }
       }

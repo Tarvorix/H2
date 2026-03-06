@@ -27,11 +27,18 @@ import {
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
-function createModel(id: string, x = 0, y = 0, destroyed = false): ModelState {
+function createModel(
+  id: string,
+  x = 0,
+  y = 0,
+  destroyed = false,
+  unitProfileId = 'tactical',
+  profileModelName = 'Legionary',
+): ModelState {
   return {
     id,
-    profileModelName: 'Legionary',
-    unitProfileId: 'tactical',
+    profileModelName,
+    unitProfileId,
     position: { x, y },
     currentWounds: destroyed ? 0 : 1,
     isDestroyed: destroyed,
@@ -526,21 +533,21 @@ describe('checkWeaponRange', () => {
     // Attacker at x=10, target at x=22 → ~12" center-to-center
     // With 32mm bases, edge-to-edge ≈ 12 - 2*0.6299 ≈ 10.74"
     // 24" range weapon → in range
-    const attackerPos = { x: 10, y: 24 };
+    const attackerModel = createModel('atk-0', 10, 24);
     const targetModels = [createModel('tgt-0', 22, 24)];
 
-    const result = checkWeaponRange(attackerPos, targetModels, 24);
+    const result = checkWeaponRange(attackerModel, targetModels, 24);
 
     expect(result).toBe(true);
   });
 
   it('should return true at exactly weapon range boundary', () => {
     // Target at exactly 12" center-to-center, using 24" range weapon
-    const attackerPos = { x: 0, y: 0 };
+    const attackerModel = createModel('atk-0', 0, 0);
     const targetModels = [createModel('tgt-0', 12, 0)];
 
     // Edge-to-edge ≈ 12 - 2*0.6299 ≈ 10.74", weapon range 24" → in range
-    const result = checkWeaponRange(attackerPos, targetModels, 24);
+    const result = checkWeaponRange(attackerModel, targetModels, 24);
 
     expect(result).toBe(true);
   });
@@ -549,41 +556,41 @@ describe('checkWeaponRange', () => {
     // Attacker at x=0, target at x=36 → ~36" center-to-center
     // With 32mm bases, edge-to-edge ≈ 36 - 2*0.6299 ≈ 34.74"
     // 24" range weapon → out of range
-    const attackerPos = { x: 0, y: 0 };
+    const attackerModel = createModel('atk-0', 0, 0);
     const targetModels = [createModel('tgt-0', 36, 0)];
 
-    const result = checkWeaponRange(attackerPos, targetModels, 24);
+    const result = checkWeaponRange(attackerModel, targetModels, 24);
 
     expect(result).toBe(false);
   });
 
   it('should return true if any target model is in range even if others are not', () => {
-    const attackerPos = { x: 0, y: 0 };
+    const attackerModel = createModel('atk-0', 0, 0);
     const targetModels = [
       createModel('tgt-far', 50, 0),   // 50" center-to-center, way out of range
       createModel('tgt-close', 10, 0),  // 10" center-to-center, edge ≈ 8.74", in range
     ];
 
-    const result = checkWeaponRange(attackerPos, targetModels, 24);
+    const result = checkWeaponRange(attackerModel, targetModels, 24);
 
     expect(result).toBe(true);
   });
 
   it('should return false when all target models are out of range', () => {
-    const attackerPos = { x: 0, y: 0 };
+    const attackerModel = createModel('atk-0', 0, 0);
     const targetModels = [
       createModel('tgt-0', 50, 0),
       createModel('tgt-1', 55, 0),
     ];
 
-    const result = checkWeaponRange(attackerPos, targetModels, 24);
+    const result = checkWeaponRange(attackerModel, targetModels, 24);
 
     expect(result).toBe(false);
   });
 
   it('should return false for empty target models', () => {
-    const attackerPos = { x: 0, y: 0 };
-    const result = checkWeaponRange(attackerPos, [], 24);
+    const attackerModel = createModel('atk-0', 0, 0);
+    const result = checkWeaponRange(attackerModel, [], 24);
 
     expect(result).toBe(false);
   });
@@ -592,10 +599,10 @@ describe('checkWeaponRange', () => {
     // Explicit test case from requirements: target at 12" with 24" range → in range
     // Place attacker at origin, target 12" away (center-to-center)
     // Edge-to-edge ≈ 12 - 2*(32/25.4/2) ≈ 12 - 1.26 ≈ 10.74" → well within 24"
-    const attackerPos = { x: 0, y: 24 };
+    const attackerModel = createModel('atk-0', 0, 24);
     const targetModels = [createModel('tgt-0', 12, 24)];
 
-    const result = checkWeaponRange(attackerPos, targetModels, 24);
+    const result = checkWeaponRange(attackerModel, targetModels, 24);
 
     expect(result).toBe(true);
   });
@@ -603,12 +610,28 @@ describe('checkWeaponRange', () => {
   it('target at 30" with 24" range weapon should be out of range', () => {
     // Explicit test case from requirements: target at 30" with 24" range → out of range
     // Edge-to-edge ≈ 30 - 1.26 ≈ 28.74" → exceeds 24"
-    const attackerPos = { x: 0, y: 24 };
+    const attackerModel = createModel('atk-0', 0, 24);
     const targetModels = [createModel('tgt-0', 30, 24)];
 
-    const result = checkWeaponRange(attackerPos, targetModels, 24);
+    const result = checkWeaponRange(attackerModel, targetModels, 24);
 
     expect(result).toBe(false);
+  });
+
+  it('should use the attacker model base size instead of a fixed 32mm default', () => {
+    const attackerModel = createModel(
+      'atk-contemptor',
+      0,
+      0,
+      false,
+      'contemptor-dreadnought',
+      'Contemptor Dreadnought',
+    );
+    const targetModels = [createModel('tgt-0', 25.5, 0)];
+
+    const result = checkWeaponRange(attackerModel, targetModels, 24);
+
+    expect(result).toBe(true);
   });
 });
 
@@ -792,7 +815,7 @@ describe('shooting validation integration', () => {
     // Check range with bolter (24")
     // Distance from (10,24) to (30,24) = 20" center-to-center
     // Edge-to-edge ≈ 20 - 1.26 ≈ 18.74" → within 24" range
-    const inRange = checkWeaponRange({ x: 10, y: 24 }, targetModels, 24);
+    const inRange = checkWeaponRange(createModel('atk-range', 10, 24), targetModels, 24);
     expect(inRange).toBe(true);
   });
 });

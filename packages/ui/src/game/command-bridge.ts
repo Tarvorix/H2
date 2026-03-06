@@ -14,7 +14,7 @@
 import type { GameState, GameCommand, Position } from '@hh/types';
 import { CoreReaction } from '@hh/types';
 import type { GameEvent, CommandResult } from '@hh/engine';
-import { processCommand, RandomDiceProvider } from '@hh/engine';
+import { findModel, getModelShape, processCommand, RandomDiceProvider } from '@hh/engine';
 import type {
   CombatLogEntry,
   CombatLogCategory,
@@ -980,8 +980,29 @@ function eventToLogEntry(
 /**
  * Extract ghost trail entries from movement events.
  */
-export function extractGhostTrails(events: GameEvent[]): GhostTrailEntry[] {
+export function extractGhostTrails(
+  events: GameEvent[],
+  gameState: GameState,
+): GhostTrailEntry[] {
   const trails: GhostTrailEntry[] = [];
+
+  const getGhostTrailShape = (modelId: string): GhostTrailEntry['shape'] => {
+    const modelInfo = findModel(gameState, modelId);
+    const shape = modelInfo ? getModelShape(modelInfo.model) : null;
+    if (!shape || shape.kind === 'circle') {
+      return {
+        kind: 'circle',
+        radiusInches: shape?.kind === 'circle' ? shape.radius : 0.63,
+      };
+    }
+
+    return {
+      kind: 'rect',
+      lengthInches: shape.width,
+      widthInches: shape.height,
+      rotationRadians: shape.rotation,
+    };
+  };
 
   for (const event of events) {
     if (event.type === 'modelMoved') {
@@ -989,7 +1010,7 @@ export function extractGhostTrails(events: GameEvent[]): GhostTrailEntry[] {
         modelId: event.modelId,
         fromPosition: event.fromPosition,
         toPosition: event.toPosition,
-        baseRadiusInches: 0.63, // default 32mm base radius in inches
+        shape: getGhostTrailShape(event.modelId),
       });
     }
     if (event.type === 'chargeMove' || event.type === 'setupMove') {
@@ -997,7 +1018,7 @@ export function extractGhostTrails(events: GameEvent[]): GhostTrailEntry[] {
         modelId: event.modelId,
         fromPosition: event.from,
         toPosition: event.to,
-        baseRadiusInches: 0.63,
+        shape: getGhostTrailShape(event.modelId),
       });
     }
     if (event.type === 'pileInMove') {
@@ -1005,7 +1026,7 @@ export function extractGhostTrails(events: GameEvent[]): GhostTrailEntry[] {
         modelId: event.modelId,
         fromPosition: event.from,
         toPosition: event.to,
-        baseRadiusInches: 0.63,
+        shape: getGhostTrailShape(event.modelId),
       });
     }
   }

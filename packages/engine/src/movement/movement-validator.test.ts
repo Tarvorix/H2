@@ -6,6 +6,7 @@ import { describe, it, expect } from 'vitest';
 import { TerrainType } from '@hh/types';
 import type { TerrainPiece, ModelState } from '@hh/types';
 import {
+  BASE_32MM_DIAMETER,
   createCircleBase,
   createRectTerrain,
 } from '@hh/geometry';
@@ -23,11 +24,17 @@ import {
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
-function createModel(id: string, x: number, y: number): ModelState {
+function createModel(
+  id: string,
+  x: number,
+  y: number,
+  unitProfileId = 'tactical',
+  profileModelName = 'Legionary',
+): ModelState {
   return {
     id,
-    profileModelName: 'Legionary',
-    unitProfileId: 'tactical',
+    profileModelName,
+    unitProfileId,
     position: { x, y },
     currentWounds: 1,
     isDestroyed: false,
@@ -238,6 +245,33 @@ describe('validateModelMove', () => {
       model, { x: -1, y: 5 }, 10, [], [], [], bfWidth, bfHeight,
     );
     expect(errors.some(e => e.code === 'OUT_OF_BOUNDS')).toBe(true);
+  });
+
+  it('should use the moving model base size instead of a fixed 32mm default for overlap checks', () => {
+    const model = createModel(
+      'contemptor-0',
+      10,
+      10,
+      'contemptor-dreadnought',
+      'Contemptor Dreadnought',
+    );
+    // Center spacing 1.5" overlaps a 60mm base against 32mm, but not 32mm vs 32mm.
+    const friendlyShapes = [makeCircle(13.5, 10, 32)];
+    const errors = validateModelMove(
+      model, { x: 12, y: 10 }, 7, [], [], friendlyShapes, bfWidth, bfHeight,
+    );
+
+    expect(errors.some((error) => error.code === 'BASE_OVERLAP')).toBe(true);
+  });
+
+  it('should allow friendly bases to touch without counting as overlap', () => {
+    const model = createModel('m1', 10, 10);
+    const friendlyShapes = [makeCircle(12 + BASE_32MM_DIAMETER, 10, 32)];
+    const errors = validateModelMove(
+      model, { x: 12, y: 10 }, 7, [], [], friendlyShapes, bfWidth, bfHeight,
+    );
+
+    expect(errors.some((error) => error.code === 'BASE_OVERLAP')).toBe(false);
   });
 
   it('should account for difficult terrain penalty in range check', () => {

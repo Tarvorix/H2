@@ -40,19 +40,32 @@ export function initializeMissionState(
 ): MissionState {
   const zones = deploymentMapDef.getZones(battlefieldWidth, battlefieldHeight);
 
+  const createFixedObjective = (
+    obj: { position: { x: number; y: number }; vpValue: number; label: string },
+    index: number,
+  ): ObjectiveMarker => {
+    const resolvedPosition = mission.id === 'heart-of-battle' && obj.label.includes('Centre')
+      ? { x: battlefieldWidth / 2, y: battlefieldHeight / 2 }
+      : obj.position;
+
+    return {
+      id: `obj-${index}`,
+      position: resolvedPosition,
+      vpValue: obj.vpValue,
+      currentVpValue: obj.vpValue,
+      isRemoved: false,
+      label: obj.label,
+    };
+  };
+
   // Generate objectives from fixed placement if none provided
   let missionObjectives: ObjectiveMarker[];
   if (objectives) {
     missionObjectives = objectives;
   } else if (mission.objectivePlacement.kind === 'fixed') {
-    missionObjectives = mission.objectivePlacement.objectives.map((obj, i) => ({
-      id: `obj-${i}`,
-      position: obj.position,
-      vpValue: obj.vpValue,
-      currentVpValue: obj.vpValue,
-      isRemoved: false,
-      label: obj.label,
-    }));
+    missionObjectives = mission.objectivePlacement.objectives.map(createFixedObjective);
+  } else if (mission.objectivePlacement.kind === 'center-fixed-alternating') {
+    missionObjectives = mission.objectivePlacement.fixedObjectives.map(createFixedObjective);
   } else {
     // Alternating/symmetric missions need player placement — start with empty
     missionObjectives = [];

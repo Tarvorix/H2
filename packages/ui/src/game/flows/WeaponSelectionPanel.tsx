@@ -134,7 +134,7 @@ export function WeaponSelectionPanel({
                 const displayName = weapon ? weapon.name : weaponId;
                 const stats = weapon ? formatWeaponStats(weapon) : '';
                 const canShootWithWeapon = weapon && isRangedWeapon(weapon)
-                  ? weapon.range > 0 && checkWeaponRange(model.position, targetAliveModels, weapon.range)
+                  ? weapon.range > 0 && checkWeaponRange(model, targetAliveModels, weapon.range)
                   : false;
                 const isMeleeOnly = !!weapon && isMeleeWeapon(weapon);
                 const isDisabled = weapon ? !canShootWithWeapon : false;
@@ -172,7 +172,7 @@ export function WeaponSelectionPanel({
               const bolterName = bolter ? bolter.name : 'Bolter';
               const bolterStats = bolter ? formatWeaponStats(bolter) : '24" S4 AP5 Rapid Fire';
               const bolterInRange = bolter && isRangedWeapon(bolter)
-                ? bolter.range > 0 && checkWeaponRange(model.position, targetAliveModels, bolter.range)
+                ? bolter.range > 0 && checkWeaponRange(model, targetAliveModels, bolter.range)
                 : false;
               return (
                 <div className="weapon-option">

@@ -33,8 +33,16 @@ export interface GhostTrail {
   fromPosition: Position;
   /** The current position (where the model is now) */
   toPosition: Position;
-  /** Base radius in inches (for rendering the ghost circle) */
-  baseRadiusInches: number;
+  /** Model footprint used for rendering the previous-position ghost */
+  shape: {
+    kind: 'circle';
+    radiusInches: number;
+  } | {
+    kind: 'rect';
+    lengthInches: number;
+    widthInches: number;
+    rotationRadians: number;
+  };
 }
 
 // ─── Renderer ────────────────────────────────────────────────────────────────
@@ -56,7 +64,7 @@ export function renderGhostTrails(
   if (ghostTrails.length === 0) return;
 
   for (const trail of ghostTrails) {
-    const { fromPosition, toPosition, baseRadiusInches } = trail;
+    const { fromPosition, toPosition, shape } = trail;
 
     // ── Draw dashed path line ────────────────────────────────────────────
     ctx.beginPath();
@@ -68,15 +76,33 @@ export function renderGhostTrails(
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // ── Draw ghost circle at previous position ──────────────────────────
-    ctx.beginPath();
-    ctx.arc(fromPosition.x, fromPosition.y, baseRadiusInches, 0, TWO_PI);
+    // ── Draw ghost footprint at previous position ───────────────────────
     ctx.fillStyle = GHOST_FILL;
-    ctx.fill();
     ctx.strokeStyle = GHOST_STROKE;
     ctx.lineWidth = 1 / zoom;
     ctx.setLineDash([2 / zoom, 2 / zoom]);
-    ctx.stroke();
+
+    if (shape.kind === 'circle') {
+      ctx.beginPath();
+      ctx.arc(fromPosition.x, fromPosition.y, shape.radiusInches, 0, TWO_PI);
+      ctx.fill();
+      ctx.stroke();
+    } else {
+      ctx.save();
+      ctx.translate(fromPosition.x, fromPosition.y);
+      ctx.rotate(shape.rotationRadians);
+      ctx.beginPath();
+      ctx.rect(
+        -shape.lengthInches / 2,
+        -shape.widthInches / 2,
+        shape.lengthInches,
+        shape.widthInches,
+      );
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    }
+
     ctx.setLineDash([]);
   }
 }

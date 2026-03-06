@@ -247,6 +247,35 @@ function defaultObjectivesForMission(
   battlefieldWidth: number,
   battlefieldHeight: number,
 ): ObjectiveMarker[] | undefined {
+  if (missionId === 'heart-of-battle') {
+    return [
+      {
+        id: 'obj-0',
+        position: { x: battlefieldWidth / 2, y: battlefieldHeight / 2 },
+        vpValue: 3,
+        currentVpValue: 3,
+        isRemoved: false,
+        label: 'Primary Alpha (Centre)',
+      },
+      {
+        id: 'obj-1',
+        position: { x: battlefieldWidth * 0.25, y: battlefieldHeight * 0.25 },
+        vpValue: 1,
+        currentVpValue: 1,
+        isRemoved: false,
+        label: 'Flank Objective 1',
+      },
+      {
+        id: 'obj-2',
+        position: { x: battlefieldWidth * 0.75, y: battlefieldHeight * 0.75 },
+        vpValue: 1,
+        currentVpValue: 1,
+        isRemoved: false,
+        label: 'Flank Objective 2',
+      },
+    ];
+  }
+
   if (missionId === 'crucible-of-war') {
     return [
       { id: 'obj-0', position: { x: 18, y: 16 }, vpValue: 2, currentVpValue: 2, isRemoved: false, label: 'Objective A' },

@@ -18,14 +18,14 @@ import {
   LegionFaction,
 } from '@hh/types';
 import type { ModelShape } from '@hh/geometry';
-import { createCircleBase } from '@hh/geometry';
+import { distanceShapes } from '@hh/geometry';
 import {
   unitProfileHasSpecialRule,
   isVehicleUnitState,
-  getModelStateBaseSizeMM,
   getModelToughness,
   getModelWS,
 } from './profile-lookup';
+import { getModelShape as getRuntimeModelShape } from './model-shapes';
 
 // ─── Army Queries ────────────────────────────────────────────────────────────
 
@@ -229,8 +229,7 @@ export function getDeployedUnits(army: ArmyState): UnitState[] {
  * Looks up actual base size from the unit profile data.
  */
 export function getModelShape(model: ModelState): ModelShape {
-  const baseSizeMM = getModelStateBaseSizeMM(model);
-  return createCircleBase(model.position, baseSizeMM);
+  return getRuntimeModelShape(model);
 }
 
 /**
@@ -630,7 +629,7 @@ export function getClosestModelDistance(
   let minDist = Infinity;
   for (const modelA of aliveA) {
     for (const modelB of aliveB) {
-      const dist = getDistanceBetween(modelA.position, modelB.position);
+      const dist = distanceShapes(getModelShape(modelA), getModelShape(modelB));
       if (dist < minDist) minDist = dist;
     }
   }

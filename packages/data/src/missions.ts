@@ -158,7 +158,7 @@ export function findDeploymentMapByType(type: DeploymentMap): DeploymentMapDefin
  *
  * Objectives:
  * - 1 central marker worth 3 VP (placed at exact center of battlefield)
- * - 2 side markers worth 1 VP each (placed at least 12" from center, 6" from edges)
+ * - 2 side markers worth 1 VP each (players place them after a roll-off)
  *
  * Secondary VP values: Slay the Warlord 3, Giant Killer 3, Last Man Standing 3, First Strike 3
  * Special Rules: Reserves, Counter Offensive, Seize the Initiative
@@ -174,12 +174,15 @@ export const HEART_OF_BATTLE: MissionDefinition = {
     'the centre and 6" from any battlefield edge.',
   deploymentMap: DeploymentMap.SearchAndDestroy,
   objectivePlacement: {
-    kind: 'fixed',
-    objectives: [
+    kind: 'center-fixed-alternating',
+    fixedObjectives: [
       { position: { x: 36, y: 24 }, vpValue: 3, label: 'Primary Alpha (Centre)' },
-      { position: { x: 18, y: 12 }, vpValue: 1, label: 'Flank West' },
-      { position: { x: 54, y: 36 }, vpValue: 1, label: 'Flank East' },
     ],
+    count: 2,
+    vpValue: 1,
+    edgeBuffer: 6,
+    minimumSpacing: 6,
+    minimumDistanceFromFixedObjectives: 12,
   },
   specialRules: [
     MissionSpecialRule.Reserves,
@@ -236,7 +239,7 @@ export const CRUCIBLE_OF_WAR: MissionDefinition = {
  * Mission 3: Take and Hold — "Vital Ground"
  *
  * Objectives:
- * - 2 markers worth 3 VP each (symmetric placement, 12" from edges, 18" from each other)
+ * - 2 markers worth 3 VP each (alternating placement, 12" from edges, 18" from each other)
  *
  * Secondary VP values: Slay the Warlord 2, Giant Killer 4, Last Man Standing 4, First Strike 2
  * Special Rules: Reserves, Seize the Initiative, Counter Offensive, Window of Opportunity
@@ -252,10 +255,11 @@ export const TAKE_AND_HOLD: MissionDefinition = {
     'they are scored.',
   deploymentMap: DeploymentMap.DawnOfWar,
   objectivePlacement: {
-    kind: 'symmetric',
-    pairsCount: 1,
+    kind: 'alternating',
+    count: 2,
     vpValue: 3,
-    separationDistance: 18,
+    minimumSpacing: 18,
+    edgeBuffer: 12,
   },
   specialRules: [
     MissionSpecialRule.Reserves,

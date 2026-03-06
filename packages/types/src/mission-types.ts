@@ -86,6 +86,22 @@ export type ObjectivePlacementRule =
       objectives: { position: Position; vpValue: number; label: string }[];
     }
   | {
+      /** Fixed central objective plus alternating player placement for the remaining markers */
+      kind: 'center-fixed-alternating';
+      /** Pre-defined fixed objectives that are placed before player placement */
+      fixedObjectives: { position: Position; vpValue: number; label: string }[];
+      /** Number of additional objectives players must place */
+      count: number;
+      /** VP value for each player-placed objective */
+      vpValue: number;
+      /** Minimum distance from battlefield edges (inches) */
+      edgeBuffer: number;
+      /** Minimum distance between player-placed objectives (inches) */
+      minimumSpacing: number;
+      /** Minimum distance from each fixed objective (inches) */
+      minimumDistanceFromFixedObjectives: number;
+    }
+  | {
       /** Players alternate placing objectives */
       kind: 'alternating';
       /** Number of objectives to place */
