@@ -12,6 +12,8 @@ import type {
   Position,
   TerrainPiece,
   PendingReaction,
+  BlastPlacement,
+  TemplatePlacement,
   ArmyList,
   ArmyValidationResult,
   ObjectiveMarker,
@@ -221,6 +223,16 @@ export type ShootingFlowStep =
   | { step: 'selectAttacker' }
   | { step: 'selectTarget'; attackerUnitId: string }
   | { step: 'selectWeapons'; attackerUnitId: string; targetUnitId: string; weaponSelections: WeaponSelection[] }
+  | {
+      step: 'placeSpecial';
+      attackerUnitId: string;
+      targetUnitId: string;
+      weaponSelections: WeaponSelection[];
+      requirements: SpecialShotRequirement[];
+      currentIndex: number;
+      blastPlacements: BlastPlacement[];
+      templatePlacements: TemplatePlacement[];
+    }
   | { step: 'confirmAttack'; attackerUnitId: string; targetUnitId: string; weaponSelections: WeaponSelection[] }
   | { step: 'resolving'; attackerUnitId: string; targetUnitId: string }
   | { step: 'showResults'; attackerUnitId: string; targetUnitId: string; events: GameEvent[] }
@@ -232,6 +244,21 @@ export interface WeaponSelection {
   weaponName: string;
   profileName?: string;
 }
+
+export type SpecialShotRequirement =
+  | {
+      kind: 'blast';
+      label: string;
+      weaponName: string;
+      sizeInches: number;
+      sourceModelIds: string[];
+    }
+  | {
+      kind: 'template';
+      label: string;
+      weaponName: string;
+      sourceModelId: string;
+    };
 
 // ── Assault Flow ────────────────────────────────────────────────────────────
 
@@ -519,6 +546,7 @@ export type GameUIAction =
   | { type: 'SET_WEAPON_SELECTION'; selection: WeaponSelection }
   | { type: 'CLEAR_WEAPON_SELECTION'; modelId: string }
   | { type: 'CONFIRM_SHOOTING' }
+  | { type: 'PLACE_SPECIAL_SHOT'; position: Position }
   | { type: 'CANCEL_SHOOTING' }
   | { type: 'RESOLVE_SHOOTING_CASUALTIES' }
   // ── Assault Flow ──────────────────────────────────────────────────────────

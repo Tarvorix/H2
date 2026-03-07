@@ -11,11 +11,12 @@ import { LegionFaction, Phase, SubPhase } from '@hh/types';
 import type { GameState, ArmyState, UnitState, ModelState, Position, TerrainPiece, MissionState, ObjectiveMarker } from '@hh/types';
 import type { GameUIState, GameUIAction, ArmyConfig, MissionSelectUIState } from '../types';
 import { getProfileById, findMission, findDeploymentMapByType } from '@hh/data';
-import { getModelWounds, initializeMissionState } from '@hh/engine';
+import { getModelStateBaseSizeMM, getModelWounds, initializeMissionState } from '@hh/engine';
 import {
   DEPLOYMENT_FORMATION_LABELS,
   type DeploymentFormationPreset,
 } from './deployment-formations';
+import { getDeploymentFormationSpacing } from '@hh/geometry';
 import {
   buildDeploymentFormationForZone,
   getDeploymentZoneForPlayer,
@@ -211,6 +212,7 @@ function createArmyState(config: ArmyConfig, playerIndex: number): ArmyState {
 export function DeploymentScreen({ state, dispatch, onReturnToMenu }: DeploymentScreenProps) {
   const [placementMode, setPlacementMode] = useState<DeploymentPlacementMode>('unit');
   const [formationPreset, setFormationPreset] = useState<DeploymentFormationPreset>('block');
+  const [formationRotationQuarterTurns, setFormationRotationQuarterTurns] = useState(0);
   const deployment = state.deployment;
   const deployingPlayerIndex = deployment.deployingPlayerIndex;
   const deployingConfig = state.armyConfigs[deployingPlayerIndex];
@@ -257,6 +259,14 @@ export function DeploymentScreen({ state, dispatch, onReturnToMenu }: Deployment
 
   const deploymentZone = getDeploymentZoneForPlayer(gameState, deployingPlayerIndex);
   const deploymentMap = gameState?.missionState?.deploymentMap ?? state.missionSelect.selectedDeploymentMap;
+  const formationSpacingInches = useMemo(() => {
+    if (!placingUnit) return undefined;
+    return getDeploymentFormationSpacing(
+      placingUnit.models
+        .filter((model) => !model.isDestroyed)
+        .map((model) => getModelStateBaseSizeMM(model)),
+    );
+  }, [placingUnit]);
 
   const handleSelectUnit = useCallback(
     (unitId: string) => {
@@ -349,6 +359,10 @@ export function DeploymentScreen({ state, dispatch, onReturnToMenu }: Deployment
           state.battlefieldHeight,
           deploymentZone,
           formationPreset,
+          {
+            spacingInches: formationSpacingInches,
+            rotationQuarterTurns: formationRotationQuarterTurns,
+          },
         );
         const allInZone = formation.every((position) => isPointInDeploymentZone(position, deploymentZone));
         if (!allInZone) {
@@ -380,6 +394,8 @@ export function DeploymentScreen({ state, dispatch, onReturnToMenu }: Deployment
       placingUnit,
       placementMode,
       formationPreset,
+      formationRotationQuarterTurns,
+      formationSpacingInches,
       deploymentZone,
       deploymentMap,
       deployingPlayerIndex,
@@ -481,6 +497,10 @@ export function DeploymentScreen({ state, dispatch, onReturnToMenu }: Deployment
                     <span className="panel-row-label">Formation</span>
                     <span className="panel-row-value">{DEPLOYMENT_FORMATION_LABELS[formationPreset]}</span>
                   </div>
+                  <div className="panel-row" style={{ marginBottom: 6 }}>
+                    <span className="panel-row-label">Rotation</span>
+                    <span className="panel-row-value">{formationRotationQuarterTurns * 90}°</span>
+                  </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                     {(Object.keys(DEPLOYMENT_FORMATION_LABELS) as DeploymentFormationPreset[]).map((preset) => (
                       <button
@@ -492,6 +512,12 @@ export function DeploymentScreen({ state, dispatch, onReturnToMenu }: Deployment
                         {DEPLOYMENT_FORMATION_LABELS[preset]}
                       </button>
                     ))}
+                    <button
+                      className="toolbar-btn"
+                      onClick={() => setFormationRotationQuarterTurns((current) => (current + 1) % 4)}
+                    >
+                      Rotate 90°
+                    </button>
                   </div>
                 </div>
               )}
@@ -513,7 +539,7 @@ export function DeploymentScreen({ state, dispatch, onReturnToMenu }: Deployment
                 <div className="panel-row">
                   <span className="panel-row-label" style={{ color: '#fbbf24' }}>
                     {placementMode === 'unit'
-                      ? `Click battlefield to place full unit formation (${DEPLOYMENT_FORMATION_LABELS[formationPreset]})`
+                      ? `Click battlefield to place full unit formation (${DEPLOYMENT_FORMATION_LABELS[formationPreset]}, ${formationRotationQuarterTurns * 90}°)`
                       : 'Click battlefield to place next model'}
                   </span>
                 </div>

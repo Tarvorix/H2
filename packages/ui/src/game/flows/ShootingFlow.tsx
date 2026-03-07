@@ -13,7 +13,7 @@ import type { GameUIState, GameUIAction } from '../types';
 import { WeaponSelectionPanel } from './WeaponSelectionPanel';
 import { FireGroupDisplay } from './FireGroupDisplay';
 import { findWeapon, findLegionWeapon, isRangedWeapon } from '@hh/data';
-import { checkWeaponRange, getClosestModelDistance, hasLOSToUnit } from '@hh/engine';
+import { checkWeaponRange, getClosestModelDistance, hasLOSToUnit, TEMPLATE_EFFECTIVE_RANGE_INCHES } from '@hh/engine';
 import type { GameState, UnitState } from '@hh/types';
 
 interface ShootingFlowProps {
@@ -51,6 +51,11 @@ function getRangedWeaponIdsForModel(model: UnitState['models'][number]): string[
   return ['bolter'];
 }
 
+function getEffectiveWeaponRange(weapon: ReturnType<typeof lookupWeapon>): number {
+  if (!weapon || !isRangedWeapon(weapon)) return 0;
+  return weapon.hasTemplate ? TEMPLATE_EFFECTIVE_RANGE_INCHES : weapon.range;
+}
+
 function getShootingTargetInfo(
   gs: GameState,
   attackerUnitId: string,
@@ -63,7 +68,7 @@ function getShootingTargetInfo(
     const ranges = getRangedWeaponIdsForModel(model)
       .map((weaponId) => lookupWeapon(weaponId))
       .filter((weapon): weapon is ReturnType<typeof lookupWeapon> & { range: number } => !!weapon && isRangedWeapon(weapon))
-      .map((weapon) => weapon.range)
+      .map((weapon) => getEffectiveWeaponRange(weapon))
       .filter(range => range > 0);
 
     const modelMaxRange = ranges.length > 0 ? Math.max(...ranges) : 0;
@@ -80,8 +85,10 @@ function getShootingTargetInfo(
       const hasAnyWeaponInRange = aliveAttackers.some((attackerModel) => {
         return getRangedWeaponIdsForModel(attackerModel).some((weaponId) => {
           const weapon = lookupWeapon(weaponId);
-          if (!weapon || !isRangedWeapon(weapon) || weapon.range <= 0) return false;
-          return checkWeaponRange(attackerModel, targetAliveModels, weapon.range);
+          if (!weapon || !isRangedWeapon(weapon)) return false;
+          const effectiveRange = getEffectiveWeaponRange(weapon);
+          if (effectiveRange <= 0) return false;
+          return checkWeaponRange(attackerModel, targetAliveModels, effectiveRange);
         });
       });
 
@@ -204,6 +211,26 @@ export function ShootingFlow({ state, dispatch }: ShootingFlowProps) {
             <div className="panel-row" style={{ marginTop: 8 }}>
               <span className="panel-row-label">Weapons assigned</span>
               <span className="panel-row-value">{step.weaponSelections.length}</span>
+            </div>
+          </>
+        )}
+
+        {step.step === 'placeSpecial' && (
+          <>
+            <div className="flow-panel-step">
+              Attacker: {findUnitName(step.attackerUnitId)} → Target: {findUnitName(step.targetUnitId)}
+            </div>
+            <div className="flow-panel-step" style={{ color: '#fbbf24' }}>
+              {step.requirements[step.currentIndex]?.label}
+            </div>
+            <div className="flow-panel-step">
+              Click the battlefield to place this marker or template.
+            </div>
+            <div className="panel-row" style={{ marginTop: 8 }}>
+              <span className="panel-row-label">Placement</span>
+              <span className="panel-row-value">
+                {step.currentIndex + 1} / {step.requirements.length}
+              </span>
             </div>
           </>
         )}

@@ -77,7 +77,6 @@ function getTacticalActionsForCurrentSubPhase(state: GameState): string[] {
         return filterValidCommands(valid, [
           'resolveShootingCasualties',
           'selectTargetModel',
-          'placeBlastMarker',
         ]);
       }
       if (!aliveUnits.some(canUnitShoot)) return [];

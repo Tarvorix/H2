@@ -174,4 +174,8 @@ export {
 
 // ─── Deployment Formations ───────────────────────────────────────────────────
 export type { DeploymentFormationPreset, DeploymentFormationAxes } from './deployment-formations';
-export { buildUnitDeploymentFormation, buildUnitDeploymentFormationWithAxes } from './deployment-formations';
+export {
+  buildUnitDeploymentFormation,
+  buildUnitDeploymentFormationWithAxes,
+  getDeploymentFormationSpacing,
+} from './deployment-formations';

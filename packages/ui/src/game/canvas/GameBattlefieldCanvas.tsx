@@ -16,11 +16,13 @@ import type { GameUIState, GameUIAction } from '../types';
 import { BattlefieldCanvas } from '../../canvas/BattlefieldCanvas';
 import type { RendererAssetMode } from '../../canvas/assets';
 import { defaultAssetManifestLoader } from '../../canvas/assets';
+import { blastOverlap, blastSizeToRadius, templateOverlap } from '@hh/geometry';
 import {
   extractGameCanvasData,
   hitTestGameModels,
   findUnitIdForModel,
 } from './gameCanvasAdapter';
+import { buildTemplatePreview } from '../special-shots';
 
 interface GameBattlefieldCanvasProps {
   state: GameUIState;
@@ -34,6 +36,57 @@ interface GameBattlefieldCanvasProps {
  */
 function buildVisualizerState(state: GameUIState): DebugVisualizerState {
   const canvasData = extractGameCanvasData(state);
+  const overlayVisibility = { ...state.overlayVisibility };
+  let blastState: DebugVisualizerState['blast'] = {
+    center: null,
+    radius: 0,
+    hitIndices: [],
+    blastSize: 3,
+  };
+  let templateState: DebugVisualizerState['template'] = {
+    origin: null,
+    direction: 0,
+    template: null,
+    hitIndices: [],
+  };
+
+  if (
+    state.gameState &&
+    state.mouseWorldPos &&
+    state.flowState.type === 'shooting' &&
+    state.flowState.step.step === 'placeSpecial'
+  ) {
+    const requirement = state.flowState.step.requirements[state.flowState.step.currentIndex];
+    if (requirement?.kind === 'blast') {
+      const radius = blastSizeToRadius(requirement.sizeInches);
+      blastState = {
+        center: state.mouseWorldPos,
+        radius,
+        hitIndices: blastOverlap(
+          state.mouseWorldPos,
+          radius,
+          canvasData.models.map((model) => model.shape),
+        ),
+        blastSize: requirement.sizeInches as 3 | 5 | 7,
+      };
+      overlayVisibility.blast = true;
+    } else if (requirement?.kind === 'template') {
+      const preview = buildTemplatePreview(state.gameState, requirement.sourceModelId, state.mouseWorldPos);
+      if (preview) {
+        const sourceModelIndex = canvasData.models.findIndex((model) => model.id === requirement.sourceModelId);
+        templateState = {
+          origin: preview.origin,
+          direction: preview.directionRadians,
+          template: preview.template,
+          hitIndices: templateOverlap(
+            preview.template,
+            canvasData.models.map((model) => model.shape),
+          ).filter((index) => index !== sourceModelIndex),
+        };
+        overlayVisibility.template = true;
+      }
+    }
+  }
 
   return {
     battlefieldWidth: canvasData.battlefieldWidth,
@@ -46,8 +99,8 @@ function buildVisualizerState(state: GameUIState): DebugVisualizerState {
     hoveredModelId: canvasData.hoveredModelId,
     mouseWorldPos: state.mouseWorldPos,
     los: { modelAId: null, modelBId: null, result: null },
-    blast: { center: null, radius: 0, hitIndices: [], blastSize: 3 },
-    template: { origin: null, direction: 0, template: null, hitIndices: [] },
+    blast: blastState,
+    template: templateState,
     movement: { selectedModelId: null, maxMove: 0, envelope: null },
     terrainEditor: {
       placingType: 'lightArea' as never,
@@ -57,16 +110,7 @@ function buildVisualizerState(state: GameUIState): DebugVisualizerState {
       dragStart: null,
       dragCurrent: null,
     },
-    overlayVisibility: {
-      grid: true,
-      coherency: false,
-      los: false,
-      distance: false,
-      movement: false,
-      blast: false,
-      template: false,
-      vehicleFacing: false,
-    },
+    overlayVisibility,
     coherencyResult: null,
     distanceReadout: null,
     isDragging: false,
@@ -159,6 +203,21 @@ export function GameBattlefieldCanvas({
             const clampedY = Math.max(0, Math.min(currentState.battlefieldHeight, worldY));
             dispatch({
               type: 'SET_MOVE_DESTINATION',
+              position: { x: clampedX, y: clampedY },
+            });
+            break;
+          }
+
+          if (
+            currentState.flowState.type === 'shooting' &&
+            currentState.flowState.step.step === 'placeSpecial'
+          ) {
+            const worldX = (action.screenX - currentState.camera.offsetX) / currentState.camera.zoom;
+            const worldY = (action.screenY - currentState.camera.offsetY) / currentState.camera.zoom;
+            const clampedX = Math.max(0, Math.min(currentState.battlefieldWidth, worldX));
+            const clampedY = Math.max(0, Math.min(currentState.battlefieldHeight, worldY));
+            dispatch({
+              type: 'PLACE_SPECIAL_SHOT',
               position: { x: clampedX, y: clampedY },
             });
             break;

@@ -262,6 +262,136 @@ describe('gameReducer reaction flow persistence', () => {
   });
 });
 
+describe('gameReducer shooting special-shot flow', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('moves blast weapons into the placement step before resolving the attack', () => {
+    const uiState = createInitialGameUIState();
+    const gameState = createBaseGameState({
+      armies: [
+        {
+          ...createBaseGameState().armies[0],
+          units: [
+            {
+              ...createBaseGameState().armies[0].units[0],
+              models: [
+                {
+                  ...createBaseGameState().armies[0].units[0].models[0],
+                  equippedWargear: ['plasma-cannon'],
+                },
+              ],
+            },
+          ],
+        },
+        createBaseGameState().armies[1],
+      ],
+    });
+
+    const state = {
+      ...uiState,
+      uiPhase: GameUIPhase.Playing,
+      gameState,
+      flowState: {
+        type: 'shooting' as const,
+        step: {
+          step: 'selectWeapons' as const,
+          attackerUnitId: 'attacker-u1',
+          targetUnitId: 'target-u1',
+          weaponSelections: [{
+            modelId: 'attacker-u1-m1',
+            weaponId: 'plasma-cannon',
+            weaponName: 'Plasma cannon',
+          }],
+        },
+      },
+    };
+
+    const nextState = gameReducer(state, { type: 'CONFIRM_SHOOTING' });
+
+    expect(nextState.flowState.type).toBe('shooting');
+    expect(nextState.flowState.type === 'shooting' && nextState.flowState.step.step === 'placeSpecial').toBe(true);
+    if (nextState.flowState.type === 'shooting' && nextState.flowState.step.step === 'placeSpecial') {
+      expect(nextState.flowState.step.requirements).toHaveLength(1);
+      expect(nextState.flowState.step.requirements[0].kind).toBe('blast');
+    }
+  });
+
+  it('submits the prepared blast placement on the last placement click', () => {
+    const uiState = createInitialGameUIState();
+    const resultGameState = createBaseGameState({
+      shootingAttackState: {
+        attackerUnitId: 'attacker-u1',
+        targetUnitId: 'target-u1',
+        attackerPlayerIndex: 0,
+        targetFacing: null,
+        weaponAssignments: [{ modelId: 'attacker-u1-m1', weaponId: 'plasma-cannon' }],
+        fireGroups: [],
+        currentFireGroupIndex: 0,
+        currentStep: 'COMPLETE',
+        accumulatedGlancingHits: [],
+        accumulatedCasualties: [],
+        unitSizesAtStart: { 'attacker-u1': 1, 'target-u1': 1 },
+        pendingMoraleChecks: [],
+        returnFireResolved: true,
+        isReturnFire: false,
+        modelsWithLOS: ['attacker-u1-m1'],
+      },
+    });
+
+    vi.mocked(commandBridge.executeCommand).mockReturnValue({
+      state: resultGameState,
+      events: [],
+      errors: [],
+      accepted: true,
+    });
+
+    const state = {
+      ...uiState,
+      uiPhase: GameUIPhase.Playing,
+      gameState: createBaseGameState(),
+      flowState: {
+        type: 'shooting' as const,
+        step: {
+          step: 'placeSpecial' as const,
+          attackerUnitId: 'attacker-u1',
+          targetUnitId: 'target-u1',
+          weaponSelections: [{
+            modelId: 'attacker-u1-m1',
+            weaponId: 'plasma-cannon',
+            weaponName: 'Plasma cannon',
+          }],
+          requirements: [{
+            kind: 'blast' as const,
+            label: 'Plasma cannon: place 3" blast marker',
+            weaponName: 'Plasma cannon',
+            sizeInches: 3,
+            sourceModelIds: ['attacker-u1-m1'],
+          }],
+          currentIndex: 0,
+          blastPlacements: [],
+          templatePlacements: [],
+        },
+      },
+    };
+
+    const nextState = gameReducer(state, {
+      type: 'PLACE_SPECIAL_SHOT',
+      position: { x: 20, y: 20 },
+    });
+
+    expect(vi.mocked(commandBridge.executeCommand)).toHaveBeenCalledTimes(1);
+    const submittedCommand = vi.mocked(commandBridge.executeCommand).mock.calls[0]?.[1];
+    expect(submittedCommand).toMatchObject({
+      type: 'declareShooting',
+      blastPlacements: [{ sourceModelIds: ['attacker-u1-m1'], position: { x: 20, y: 20 } }],
+    });
+    expect(nextState.flowState.type).toBe('shooting');
+    expect(nextState.flowState.type === 'shooting' && nextState.flowState.step.step === 'showResults').toBe(true);
+  });
+});
+
 describe('gameReducer charge flow resolution', () => {
   beforeEach(() => {
     vi.clearAllMocks();

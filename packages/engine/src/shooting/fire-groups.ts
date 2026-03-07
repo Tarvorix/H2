@@ -125,8 +125,9 @@ function makeGroupKey(
   profileName: string,
   bs: number,
   isSnapShot: boolean,
+  sourceModelId?: string,
 ): string {
-  return `${weaponName}|${profileName}|${bs}|${isSnapShot}`;
+  return `${weaponName}|${profileName}|${bs}|${isSnapShot}|${sourceModelId ?? ''}`;
 }
 
 // ─── Fire Group Formation ───────────────────────────────────────────────────
@@ -208,7 +209,13 @@ export function formFireGroups(
     const profileName = assignment.profileName ?? '';
 
     // Generate the grouping key
-    const groupKey = makeGroupKey(weaponProfile.name, profileName, bs, isSnapShot);
+    const groupKey = makeGroupKey(
+      weaponProfile.name,
+      profileName,
+      bs,
+      isSnapShot,
+      weaponProfile.hasTemplate ? assignment.modelId : undefined,
+    );
 
     // Create the attack entry
     const attack: FireGroupAttack = {
@@ -252,6 +259,7 @@ export function formFireGroups(
       weaponName: group.weaponName,
       profileName: group.profileName || undefined,
       ballisticSkill: group.bs,
+      targetUnitId: undefined,
       isSnapShot: group.isSnapShot,
       attacks: group.attacks,
       totalFirepower,
@@ -264,6 +272,7 @@ export function formFireGroups(
       penetratingHits: [],
       glancingHits: [],
       resolved: false,
+      hitPoolResolved: false,
       isPrecisionGroup: false,
       isDeflagrateGroup: false,
     };
@@ -315,6 +324,7 @@ export function splitPrecisionHits(
   const normalGroup: FireGroup = {
     ...parentGroup,
     hits: normalHits,
+    hitPoolResolved: true,
     // Recalculate total firepower is not needed — firepower reflects dice rolled, not hits
     // The firepower stays the same as it represents the original pool
   };
@@ -332,6 +342,7 @@ export function splitPrecisionHits(
     penetratingHits: [],
     glancingHits: [],
     resolved: false,
+    hitPoolResolved: true,
     isPrecisionGroup: true,
     isDeflagrateGroup: false,
   };

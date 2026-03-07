@@ -28,6 +28,9 @@ export { validateWeaponAssignments, determineSnapShots, resolveWeaponAssignment 
 // Fire Groups
 export { formFireGroups, splitPrecisionHits } from './fire-groups';
 
+// Blast / Template placement helpers
+export { TEMPLATE_EFFECTIVE_RANGE_INCHES, getBlastSizeInches } from './special-shot-resolution';
+
 // Hit Resolution
 export { resolveFireGroupHits, processGetsHot, getSpecialRuleValue } from './hit-resolution';
 export type { FireGroupHitResolutionResult, GetsHotResolutionResult } from './hit-resolution';

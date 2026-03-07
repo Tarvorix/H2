@@ -11,7 +11,7 @@
  * 3. Extracting dice roll displays from events for the dice overlay
  */
 
-import type { GameState, GameCommand, Position } from '@hh/types';
+import type { BlastPlacement, GameState, GameCommand, Position, TemplatePlacement } from '@hh/types';
 import { CoreReaction } from '@hh/types';
 import type { GameEvent, CommandResult } from '@hh/engine';
 import { findModel, getModelShape, processCommand, RandomDiceProvider } from '@hh/engine';
@@ -88,7 +88,8 @@ export function buildShootingCommand(
   attackingUnitId: string,
   targetUnitId: string,
   weaponSelections: WeaponSelection[],
-  blastMarkerPosition?: Position,
+  blastPlacements: BlastPlacement[] = [],
+  templatePlacements: TemplatePlacement[] = [],
 ): GameCommand {
   return {
     type: 'declareShooting',
@@ -99,7 +100,8 @@ export function buildShootingCommand(
       weaponId: ws.weaponId,
       profileName: ws.profileName,
     })),
-    blastMarkerPosition,
+    blastPlacements,
+    templatePlacements,
   };
 }
 

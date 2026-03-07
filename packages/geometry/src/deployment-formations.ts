@@ -1,4 +1,5 @@
 import type { Position } from '@hh/types';
+import { MM_TO_INCHES } from './constants';
 
 export type DeploymentFormationPreset = 'line' | 'double-rank' | 'block' | 'column';
 export interface DeploymentFormationAxes {
@@ -6,7 +7,8 @@ export interface DeploymentFormationAxes {
   depth: Position;
 }
 
-const BASE_SPACING = 1.25;
+const DEFAULT_BASE_SPACING = 1.25;
+const FORMATION_SPACING_BUFFER = 0.05;
 
 function clamp(value: number, min: number, max: number): number {
   if (value < min) return min;
@@ -66,6 +68,7 @@ export function buildUnitDeploymentFormationWithAxes(
   anchor: Position,
   preset: DeploymentFormationPreset,
   axes: DeploymentFormationAxes,
+  spacingInches: number = DEFAULT_BASE_SPACING,
 ): Position[] {
   const rowCounts = getFormationRowCounts(modelCount, preset);
   if (rowCounts.length === 0) return [];
@@ -74,8 +77,8 @@ export function buildUnitDeploymentFormationWithAxes(
   for (let rowIndex = 0; rowIndex < rowCounts.length; rowIndex++) {
     const modelsInRow = rowCounts[rowIndex];
     for (let colIndex = 0; colIndex < modelsInRow; colIndex++) {
-      const lateralOffset = (colIndex - (modelsInRow - 1) / 2) * BASE_SPACING;
-      const depthOffset = rowIndex * BASE_SPACING;
+      const lateralOffset = (colIndex - (modelsInRow - 1) / 2) * spacingInches;
+      const depthOffset = rowIndex * spacingInches;
       const x = anchor.x + axes.lateral.x * lateralOffset + axes.depth.x * depthOffset;
       const y = anchor.y + axes.lateral.y * lateralOffset + axes.depth.y * depthOffset;
 
@@ -97,6 +100,7 @@ export function buildUnitDeploymentFormation(
   battlefieldHeight: number,
   zoneDepth: number,
   preset: DeploymentFormationPreset,
+  spacingInches: number = DEFAULT_BASE_SPACING,
 ): Position[] {
   const rowCounts = getFormationRowCounts(modelCount, preset);
   if (rowCounts.length === 0) return [];
@@ -105,11 +109,11 @@ export function buildUnitDeploymentFormation(
   const rowCount = rowCounts.length;
 
   const xSpacing = widestRow > 1
-    ? Math.min(BASE_SPACING, (battlefieldWidth - 1) / (widestRow - 1))
-    : BASE_SPACING;
+    ? Math.min(spacingInches, (battlefieldWidth - 1) / (widestRow - 1))
+    : spacingInches;
   const ySpacing = rowCount > 1
-    ? Math.min(BASE_SPACING, (zoneDepth - 0.5) / (rowCount - 1))
-    : BASE_SPACING;
+    ? Math.min(spacingInches, (zoneDepth - 0.5) / (rowCount - 1))
+    : spacingInches;
 
   const halfWidth = ((widestRow - 1) * xSpacing) / 2;
   const rowDepth = (rowCount - 1) * ySpacing;
@@ -147,4 +151,13 @@ export function buildUnitDeploymentFormation(
   }
 
   return positions;
+}
+
+export function getDeploymentFormationSpacing(baseSizeMMs: number[]): number {
+  const maxBaseSizeMM = baseSizeMMs.length > 0 ? Math.max(...baseSizeMMs) : 0;
+  const minSpacing = maxBaseSizeMM > 0
+    ? maxBaseSizeMM * MM_TO_INCHES + FORMATION_SPACING_BUFFER
+    : DEFAULT_BASE_SPACING;
+
+  return Math.max(DEFAULT_BASE_SPACING, minSpacing);
 }

@@ -178,6 +178,7 @@ export function generateLineFormation(
   battlefieldWidth: number,
   battlefieldHeight: number,
   preferredY: number = 0.5,
+  spacingInches: number = COHERENCY_SPACING,
 ): Position[] {
   if (modelCount === 0) return [];
 
@@ -186,13 +187,13 @@ export function generateLineFormation(
   const y = zoneMinY + zoneDepth * Math.max(0, Math.min(1, preferredY));
 
   // Spread models across the width with coherency spacing
-  const totalWidth = (modelCount - 1) * COHERENCY_SPACING;
+  const totalWidth = (modelCount - 1) * spacingInches;
   const startX = Math.max(EDGE_MARGIN, (battlefieldWidth - totalWidth) / 2);
 
   const positions: Position[] = [];
   for (let i = 0; i < modelCount; i++) {
     const pos: Position = {
-      x: startX + i * COHERENCY_SPACING,
+      x: startX + i * spacingInches,
       y,
     };
     positions.push(clampToBattlefield(pos, battlefieldWidth, battlefieldHeight));

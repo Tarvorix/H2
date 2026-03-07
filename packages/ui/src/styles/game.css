@@ -2329,6 +2329,35 @@
   .army-builder-content {
     grid-template-columns: 220px 1fr 240px;
   }
+
+  .setup-screen {
+    min-height: 100vh;
+    height: auto;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+  }
+
+  .setup-content {
+    flex: 0 0 auto;
+    overflow: visible;
+  }
+
+  .setup-footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 20;
+    background: rgba(22, 33, 62, 0.96);
+    backdrop-filter: blur(10px);
+  }
+
+  .army-summary-panel {
+    position: sticky;
+    bottom: 0;
+    z-index: 25;
+    background: rgba(17, 24, 39, 0.96);
+    backdrop-filter: blur(10px);
+    padding-bottom: calc(8px + var(--safe-bottom));
+  }
 }
 
 @media (max-width: 900px) {
@@ -2383,14 +2412,17 @@
 
   .army-builder-content {
     grid-template-columns: 1fr;
-    grid-template-rows: minmax(180px, 0.9fr) minmax(220px, 1fr) minmax(220px, 1fr);
-    gap: 1px;
+    grid-template-rows: auto auto auto;
+    gap: 12px;
+    background: transparent;
+    overflow: visible;
   }
 
   .detachment-panel,
   .unit-browser,
   .unit-config-panel {
     min-height: 0;
+    overflow: visible;
   }
 
   .army-summary-panel {
@@ -2401,6 +2433,37 @@
   .army-summary-actions {
     margin-left: 0;
     flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .army-summary-actions > * {
+    flex: 1 1 calc(50% - 6px);
+    min-width: 0;
+  }
+
+  .unit-config-panel {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .unit-config-actions {
+    position: sticky;
+    bottom: calc(-12px - var(--safe-bottom));
+    margin-top: 16px;
+    padding-top: 12px;
+    padding-bottom: calc(12px + var(--safe-bottom));
+    background: linear-gradient(180deg, rgba(13, 17, 23, 0) 0%, rgba(13, 17, 23, 0.96) 18%);
+    flex-wrap: wrap;
+  }
+
+  .unit-config-actions > * {
+    flex: 1 1 100%;
+  }
+
+  .setup-footer .setup-confirm-btn,
+  .unit-config-actions .setup-confirm-btn,
+  .army-summary-actions .setup-confirm-btn {
+    width: 100%;
   }
 
   .mission-select-grid {

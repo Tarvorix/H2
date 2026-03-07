@@ -476,6 +476,11 @@ export interface ShootingAttackState {
   /** IDs of models with LOS to target (filtered in Step 2) */
   modelsWithLOS: string[];
 
+  /** Pre-selected blast placements carried through paused shooting declarations. */
+  blastPlacements?: BlastPlacement[];
+  /** Pre-selected template placements carried through paused shooting declarations. */
+  templatePlacements?: TemplatePlacement[];
+
   /** Blast marker position (for Blast weapons) */
   blastMarkerPosition?: Position;
   /** Whether blast scattered */
@@ -511,11 +516,26 @@ export interface ShootingWeaponAssignment {
   profileName?: string;
 }
 
+export interface BlastPlacement {
+  /** Model IDs contributing to the blast fire group that uses this marker. */
+  sourceModelIds: string[];
+  /** Center position of the blast marker. */
+  position: Position;
+}
+
+export interface TemplatePlacement {
+  /** Model ID making the template attack. */
+  sourceModelId: string;
+  /** Direction the template points in radians. */
+  directionRadians: number;
+}
+
 /**
  * A fire group in a shooting attack.
  */
 export interface ShootingFireGroup {
   index: number;
+  targetUnitId?: string;
   weaponName: string;
   profileName?: string;
   ballisticSkill: number;
@@ -700,8 +720,10 @@ export interface DeclareShootingCommand {
   targetUnitId: string;
   /** Weapon selections per model — which weapon each model will fire */
   weaponSelections: { modelId: string; weaponId: string; profileName?: string }[];
-  /** Optional blast marker position (for Blast weapons) */
-  blastMarkerPosition?: Position;
+  /** Blast marker placements keyed by the contributing fire-group source models. */
+  blastPlacements?: BlastPlacement[];
+  /** Template placements keyed by the source model making each template attack. */
+  templatePlacements?: TemplatePlacement[];
 }
 
 export interface ResolveShootingCasualtiesCommand {

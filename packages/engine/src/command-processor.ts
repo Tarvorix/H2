@@ -900,6 +900,8 @@ function resumePendingActionAfterAdvancedReaction(
         weaponId: assignment.weaponId,
         profileName: assignment.profileName,
       })),
+      blastPlacements: pendingAttack.blastPlacements,
+      templatePlacements: pendingAttack.templatePlacements,
     };
 
     const resumed = handleShootingAttack(
@@ -1720,7 +1722,7 @@ export function getValidCommands(state: GameState): string[] {
       switch (state.currentSubPhase) {
         case SubPhase.Attack:
           if (state.shootingAttackState) {
-            validCommands.push('resolveShootingCasualties', 'selectTargetModel', 'placeBlastMarker');
+            validCommands.push('resolveShootingCasualties', 'selectTargetModel');
           } else {
             validCommands.push('declareShooting');
           }

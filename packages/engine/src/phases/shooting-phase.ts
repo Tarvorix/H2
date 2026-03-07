@@ -11,13 +11,17 @@ import type {
   ShootingFireGroup,
   ShootingMoraleCheck,
   ShootingGlancingHit,
+  ModelState,
+  SpecialRuleRef,
 } from '@hh/types';
 import { Phase, SubPhase, CoreReaction, VehicleFacing } from '@hh/types';
 import type { CommandResult, DiceProvider, GameEvent, ShootingAttackDeclaredEvent, FireGroupResolvedEvent, DamageAppliedEvent } from '../types';
+import { determineVehicleFacing } from '@hh/geometry';
 import {
   findUnit,
   findUnitPlayerIndex,
   getAliveModels,
+  getModelShape,
   getUnitMajorityToughness,
   isVehicleUnit,
 } from '../game-queries';
@@ -35,6 +39,7 @@ import {
   validateShootingTarget,
   validateAttackerEligibility,
   filterModelsWithLOS,
+  determineTargetFacing,
 } from '../shooting/shooting-validator';
 import { validateWeaponAssignments } from '../shooting/weapon-declaration';
 import { formFireGroups, splitPrecisionHits } from '../shooting/fire-groups';
@@ -49,10 +54,11 @@ import { removeCasualties } from '../shooting/casualty-removal';
 import { resolveVehicleDamageTable } from '../shooting/vehicle-damage';
 import { resolveShootingMorale as resolveMorale } from '../shooting/morale-handler';
 import { checkReturnFireTrigger } from '../shooting/return-fire-handler';
-import type { FireGroup, WeaponAssignment, PendingMoraleCheck, WoundResult, GlancingHit } from '../shooting/shooting-types';
+import type { FireGroup, WeaponAssignment, PendingMoraleCheck, WoundResult, GlancingHit, HitResult } from '../shooting/shooting-types';
 import { ModelType } from '@hh/types';
 import { getSpecialRuleValue } from '../shooting/hit-resolution';
 import { checkShootingAdvancedReactionTriggers } from '../legion/advanced-reaction-registry';
+import { getBlastSizeInches, resolveSpecialShotFireGroup } from '../shooting/special-shot-resolution';
 import {
   lookupUnitProfile,
   lookupModelDefinition,
@@ -118,6 +124,7 @@ function euclideanDistance(a: { x: number; y: number }, b: { x: number; y: numbe
 function toExternalFireGroup(fg: FireGroup): ShootingFireGroup {
   return {
     index: fg.index,
+    targetUnitId: fg.targetUnitId,
     weaponName: fg.weaponName,
     profileName: fg.profileName,
     ballisticSkill: fg.ballisticSkill,
@@ -233,11 +240,259 @@ function buildTargetModelInfos(targetUnit: { models: Array<{ id: string; isDestr
   });
 }
 
+function chooseBestTargetNumber(values: Array<number | null | undefined>): number | null {
+  const validValues = values.filter((value): value is number =>
+    typeof value === 'number' && Number.isFinite(value) && value > 0,
+  );
+  if (validValues.length === 0) {
+    return null;
+  }
+  return Math.min(...validValues);
+}
+
+function getRuleThreshold(ruleRefs: SpecialRuleRef[] | undefined, ruleName: string): number | null {
+  if (!ruleRefs || ruleRefs.length === 0) {
+    return null;
+  }
+  return getSpecialRuleValue(ruleRefs, ruleName);
+}
+
+function getModifierThreshold(model: ModelState, characteristic: string): number | null {
+  const matching = model.modifiers.filter(
+    (modifier) => modifier.characteristic.toLowerCase() === characteristic.toLowerCase(),
+  );
+  if (matching.length === 0) {
+    return null;
+  }
+
+  const setValues = matching
+    .filter((modifier) => modifier.operation === 'set')
+    .map((modifier) => modifier.value);
+  if (setValues.length > 0) {
+    return chooseBestTargetNumber(setValues);
+  }
+
+  return chooseBestTargetNumber(matching.map((modifier) => modifier.value));
+}
+
+function getEffectiveInvulnerableSave(model: ModelState): number | null {
+  return chooseBestTargetNumber([
+    getModelInvulnSave(model.unitProfileId, model.profileModelName),
+    getModifierThreshold(model, 'InvulnSave'),
+  ]);
+}
+
+interface DamageMitigationOption {
+  label: string;
+  targetNumber: number;
+}
+
+function getBestDamageMitigationOption(
+  model: ModelState,
+  options: ShootingAttackExecutionOptions,
+): DamageMitigationOption | null {
+  const profile = lookupUnitProfile(model.unitProfileId);
+  const modelDef = lookupModelDefinition(model.unitProfileId, model.profileModelName);
+  const candidates: DamageMitigationOption[] = [];
+
+  if (options.blockShroudedDamageMitigation !== true) {
+    const shroudedThreshold = chooseBestTargetNumber([
+      getRuleThreshold(profile?.specialRules, 'Shrouded'),
+      getRuleThreshold(modelDef?.specialRules, 'Shrouded'),
+      getModifierThreshold(model, 'Shrouded'),
+    ]);
+    if (shroudedThreshold !== null) {
+      candidates.push({ label: 'Shrouded', targetNumber: shroudedThreshold });
+    }
+  }
+
+  const fnpThreshold = chooseBestTargetNumber([
+    getRuleThreshold(profile?.specialRules, 'Feel No Pain'),
+    getRuleThreshold(modelDef?.specialRules, 'Feel No Pain'),
+    getModifierThreshold(model, 'FNP'),
+  ]);
+  if (fnpThreshold !== null) {
+    candidates.push({ label: 'Feel No Pain', targetNumber: fnpThreshold });
+  }
+
+  if (candidates.length === 0) {
+    return null;
+  }
+
+  candidates.sort((left, right) => left.targetNumber - right.targetNumber);
+  return candidates[0];
+}
+
+function selectNextWoundTarget(
+  state: GameState,
+  targetUnitId: string,
+  fireGroup: FireGroup,
+): string | null {
+  const targetUnit = findUnit(state, targetUnitId);
+  if (!targetUnit) {
+    return null;
+  }
+
+  if (fireGroup.isPrecisionGroup) {
+    return getAliveModels(targetUnit)[0]?.id ?? null;
+  }
+
+  return autoSelectTargetModel(buildTargetModelInfos(targetUnit), 'wound');
+}
+
+interface NonVehicleWoundResolutionResult {
+  state: GameState;
+  events: GameEvent[];
+  casualties: string[];
+}
+
+function resolveNonVehicleWoundsSequentially(
+  state: GameState,
+  targetUnitId: string,
+  fireGroup: FireGroup,
+  wounds: WoundResult[],
+  dice: DiceProvider,
+  options: ShootingAttackExecutionOptions,
+): NonVehicleWoundResolutionResult {
+  let currentState = state;
+  let currentTargetModelId: string | null = null;
+  const events: GameEvent[] = [];
+  const casualties: string[] = [];
+
+  for (const wound of wounds) {
+    const currentTargetUnit = findUnit(currentState, targetUnitId);
+    if (!currentTargetUnit) {
+      break;
+    }
+
+    const existingTarget = currentTargetModelId
+      ? currentTargetUnit.models.find(
+        (model) => model.id === currentTargetModelId && !model.isDestroyed,
+      ) ?? null
+      : null;
+
+    if (!existingTarget) {
+      currentTargetModelId = selectNextWoundTarget(currentState, targetUnitId, fireGroup);
+      if (!currentTargetModelId) {
+        break;
+      }
+    }
+
+    const targetModel = findUnit(currentState, targetUnitId)?.models.find(
+      (model) => model.id === currentTargetModelId,
+    );
+    if (!targetModel || targetModel.isDestroyed) {
+      currentTargetModelId = null;
+      continue;
+    }
+
+    const targetModelId = currentTargetModelId;
+    if (!targetModelId) {
+      continue;
+    }
+
+    wound.assignedToModelId = targetModelId;
+
+    const armourSave = getModelSave(targetModel.unitProfileId, targetModel.profileModelName);
+    const invulnSave = getEffectiveInvulnerableSave(targetModel);
+    const coverSave: number | null = null;
+
+    const saveResult = resolveSaves(armourSave, invulnSave, coverSave, [wound], dice);
+    events.push(...saveResult.events);
+
+    let unresolvedWounds = saveResult.unsavedWounds;
+    if (unresolvedWounds.length > 0) {
+      const mitigation = getBestDamageMitigationOption(targetModel, options);
+      if (mitigation) {
+        const mitigationResult = handleDamageMitigation(
+          unresolvedWounds,
+          mitigation.label,
+          mitigation.targetNumber,
+          dice,
+        );
+        events.push(...mitigationResult.events);
+        unresolvedWounds = mitigationResult.remainingWounds;
+      }
+    }
+
+    if (unresolvedWounds.length === 0) {
+      continue;
+    }
+
+    const damageResult = resolveDamage(
+      unresolvedWounds,
+      targetModelId,
+      targetModel.currentWounds,
+    );
+
+    currentState = updateUnitInGameState(currentState, targetUnitId, (unit) =>
+      updateModelInUnit(unit, targetModelId, (model) => ({
+        ...model,
+        currentWounds: damageResult.finalWounds,
+        isDestroyed: damageResult.destroyed,
+      })),
+    );
+
+    const damageEvent: DamageAppliedEvent = {
+      type: 'damageApplied',
+      modelId: targetModelId,
+      unitId: targetUnitId,
+      woundsLost: damageResult.totalDamageApplied,
+      remainingWounds: damageResult.finalWounds,
+      destroyed: damageResult.destroyed,
+      damageSource: `Shooting from ${fireGroup.weaponName}`,
+    };
+    events.push(damageEvent);
+
+    if (damageResult.destroyed) {
+      casualties.push(targetModelId);
+      currentTargetModelId = null;
+    }
+  }
+
+  return {
+    state: currentState,
+    events,
+    casualties,
+  };
+}
+
+function determineFacingForVehicleHit(
+  state: GameState,
+  fireGroup: FireGroup,
+  hit: HitResult,
+  targetModel: import('@hh/types').ModelState,
+  defaultFacing: VehicleFacing,
+): VehicleFacing {
+  const targetShape = getModelShape(targetModel);
+  if (targetShape.kind !== 'rect') {
+    return defaultFacing;
+  }
+
+  const isSpecialMarkerHit =
+    fireGroup.weaponProfile.hasTemplate ||
+    getBlastSizeInches(fireGroup.specialRules) !== null;
+  if (!isSpecialMarkerHit) {
+    return defaultFacing;
+  }
+
+  const attackerModel = state.armies
+    .flatMap((army) => army.units)
+    .flatMap((unit) => unit.models)
+    .find((model) => model.id === hit.sourceModelId);
+  if (!attackerModel) {
+    return defaultFacing;
+  }
+
+  return determineVehicleFacing(targetShape, attackerModel.position);
+}
+
 function buildPendingAdvancedReactionAttackState(
   attackerUnitId: string,
   targetUnitId: string,
   attackerPlayerIndex: number,
   weaponAssignments: WeaponAssignment[],
+  command: DeclareShootingCommand,
 ): ExternalShootingAttackState {
   return {
     attackerUnitId,
@@ -259,6 +514,8 @@ function buildPendingAdvancedReactionAttackState(
     returnFireResolved: true,
     isReturnFire: false,
     modelsWithLOS: [],
+    blastPlacements: command.blastPlacements,
+    templatePlacements: command.templatePlacements,
   };
 }
 
@@ -268,6 +525,7 @@ function maybeOfferShootingAdvancedReaction(
   targetUnitId: string,
   attackerPlayerIndex: number,
   weaponAssignments: WeaponAssignment[],
+  command: DeclareShootingCommand,
   step: number,
 ): CommandResult | null {
   const trigger = checkShootingAdvancedReactionTriggers(
@@ -287,6 +545,7 @@ function maybeOfferShootingAdvancedReaction(
     targetUnitId,
     attackerPlayerIndex,
     weaponAssignments,
+    command,
   );
 
   const reactionState = setAwaitingReaction(
@@ -432,6 +691,7 @@ export function handleShootingAttack(
       targetUnitId,
       attackerPlayerIndex,
       weaponAssignments,
+      command,
       3,
     );
     if (advancedStep3) {
@@ -460,6 +720,7 @@ export function handleShootingAttack(
       targetUnitId,
       attackerPlayerIndex,
       weaponAssignments,
+      command,
       4,
     );
     if (advancedStep4) {
@@ -472,6 +733,7 @@ export function handleShootingAttack(
       targetUnitId,
       attackerPlayerIndex,
       weaponAssignments,
+      command,
       5,
     );
     if (advancedStep5) {
@@ -484,9 +746,15 @@ export function handleShootingAttack(
   unitSizesAtStart[targetUnitId] = getAliveModels(targetUnit).length;
   unitSizesAtStart[attackerUnitId] = getAliveModels(attackerUnit).length;
 
-  // Determine if target is a vehicle for wound resolution path
   const targetIsVehicle = isVehicleUnit(targetUnit);
-  const majorityToughness = targetIsVehicle ? 0 : getUnitMajorityToughness(targetUnit);
+  const initialTargetFacing = targetIsVehicle && getAliveModels(targetUnit).length > 0
+    ? (() => {
+        const targetShape = getModelShape(getAliveModels(targetUnit)[0]);
+        if (targetShape.kind !== 'rect') return VehicleFacing.Front;
+        const attackersWithLos = attackerAliveModels.filter((model) => modelsWithLOS.includes(model.id));
+        return determineTargetFacing(attackersWithLos, targetShape);
+      })()
+    : null;
 
   // Emit the shooting attack declared event
   const declaredEvent: ShootingAttackDeclaredEvent = {
@@ -503,7 +771,10 @@ export function handleShootingAttack(
   const accumulatedGlancingHits: GlancingHit[] = [];
 
   // Track all fire groups (may expand with precision splits)
-  let allFireGroups: FireGroup[] = [...fireGroups];
+  let allFireGroups: FireGroup[] = fireGroups.map((group) => ({
+    ...group,
+    targetUnitId,
+  }));
 
   // State reference for applying damage (may be mutated as wounds are applied)
   let currentState = state;
@@ -519,36 +790,95 @@ export function handleShootingAttack(
   // ---- Steps 5-9: Resolve each fire group ----
   for (let fgIdx = 0; fgIdx < allFireGroups.length; fgIdx++) {
     let fireGroup = allFireGroups[fgIdx];
+    const groupTargetUnitId = fireGroup.targetUnitId ?? targetUnitId;
+    const currentTargetUnitAtStart = findUnit(currentState, groupTargetUnitId);
+    if (!currentTargetUnitAtStart) {
+      fireGroup = { ...fireGroup, resolved: true };
+      allFireGroups[fgIdx] = fireGroup;
+      continue;
+    }
+
+    const groupTargetIsVehicle = isVehicleUnit(currentTargetUnitAtStart);
+    const groupMajorityToughness = groupTargetIsVehicle ? 0 : getUnitMajorityToughness(currentTargetUnitAtStart);
 
     // ---- Steps 5-6: Resolve hit tests ----
-    const hitResult = resolveFireGroupHits(fireGroup, dice);
-    allEvents.push(...hitResult.events);
+    let resolvedHitPool = fireGroup.hits;
+    if (!fireGroup.hitPoolResolved) {
+      let hitTestResults: HitResult[] = [];
+      let hitTestEvents: GameEvent[] = [];
 
-    // Update fire group with hit results
-    fireGroup = { ...fireGroup, hits: hitResult.hits };
+      if (!fireGroup.weaponProfile.hasTemplate) {
+        const hitResult = resolveFireGroupHits(fireGroup, dice);
+        hitTestResults = hitResult.hits;
+        hitTestEvents = hitResult.events;
+        allEvents.push(...hitResult.events);
 
-    // Process Gets Hot (if weapon has it)
-    const getsHotResult = processGetsHot(fireGroup, hitResult.hits, dice);
-    if (getsHotResult.getsHotEvents.length > 0) {
-      // Fill in unit ID on Gets Hot events
-      const getsHotEventsWithUnit = getsHotResult.getsHotEvents.map(evt => ({
-        ...evt,
-        unitId: attackerUnitId,
-      }));
-      allEvents.push(...getsHotEventsWithUnit);
+        const getsHotResult = processGetsHot(fireGroup, hitResult.hits, dice);
+        if (getsHotResult.getsHotEvents.length > 0) {
+          const getsHotEventsWithUnit = getsHotResult.getsHotEvents.map(evt => ({
+            ...evt,
+            unitId: attackerUnitId,
+          }));
+          allEvents.push(...getsHotEventsWithUnit);
 
-      // Apply Gets Hot wounds to attacker models
-      for (const mw of getsHotResult.modelWounds) {
-        currentState = updateUnitInGameState(currentState, attackerUnitId, (unit) =>
-          updateModelInUnit(unit, mw.modelId, (model) =>
-            applyWoundsToModel(model, mw.wounds),
+          for (const mw of getsHotResult.modelWounds) {
+            currentState = updateUnitInGameState(currentState, attackerUnitId, (unit) =>
+              updateModelInUnit(unit, mw.modelId, (model) =>
+                applyWoundsToModel(model, mw.wounds),
+              ),
+            );
+          }
+        }
+      }
+
+      const specialShotResult = resolveSpecialShotFireGroup(
+        currentState,
+        command,
+        groupTargetUnitId,
+        fireGroup,
+        hitTestResults,
+        hitTestEvents,
+        dice,
+      );
+      if (specialShotResult) {
+        if (specialShotResult.errors.length > 0) {
+          return rejectShooting(currentState, specialShotResult.errors[0].code, specialShotResult.errors[0].message);
+        }
+
+        fireGroup = specialShotResult.fireGroup;
+        resolvedHitPool = fireGroup.hits;
+        allEvents.push(
+          ...specialShotResult.events.filter((event) =>
+            event.type === 'blastMarkerPlaced' ||
+            event.type === 'templatePlaced' ||
+            event.type === 'scatterRoll',
           ),
         );
+
+        for (const affectedUnitId of specialShotResult.affectedUnitIds) {
+          if (!(affectedUnitId in unitSizesAtStart)) {
+            const affectedUnit = findUnit(currentState, affectedUnitId);
+            if (affectedUnit) {
+              unitSizesAtStart[affectedUnitId] = getAliveModels(affectedUnit).length;
+            }
+          }
+        }
+
+        for (const extraGroup of specialShotResult.additionalFireGroups) {
+          extraGroup.index = allFireGroups.length;
+          allFireGroups.push(extraGroup);
+        }
+      } else {
+        fireGroup = {
+          ...fireGroup,
+          hits: hitTestResults,
+          hitPoolResolved: true,
+        };
+        resolvedHitPool = hitTestResults;
       }
     }
 
-    // Filter to only successful hits for wound resolution
-    const successfulHits = hitResult.hits.filter(h => h.isHit);
+    const successfulHits = resolvedHitPool.filter(h => h.isHit);
 
     if (successfulHits.length === 0) {
       // No hits -- mark fire group as resolved
@@ -570,7 +900,9 @@ export function handleShootingAttack(
     }
 
     // Split precision hits into a separate fire group if needed
-    const { normalGroup, precisionGroup } = splitPrecisionHits(fireGroup, hitResult.hits);
+    const { normalGroup, precisionGroup } = fireGroup.isPrecisionGroup
+      ? { normalGroup: fireGroup, precisionGroup: null }
+      : splitPrecisionHits(fireGroup, resolvedHitPool);
 
     // Replace the current fire group with the normal group
     allFireGroups[fgIdx] = normalGroup;
@@ -609,34 +941,53 @@ export function handleShootingAttack(
     let penetratingCount = 0;
     let glancingCount = 0;
 
-    if (targetIsVehicle) {
+    if (groupTargetIsVehicle) {
       // Vehicle target: resolve armour penetration using profile data
-      const targetModel = targetAliveModels.length > 0 ? targetAliveModels[0] : null;
+      const vehicleAliveModels = getAliveModels(currentTargetUnitAtStart);
+      const targetModel = vehicleAliveModels.length > 0 ? vehicleAliveModels[0] : null;
       const vehicleArmour = targetModel ? getVehicleArmour(targetModel.unitProfileId, targetModel.profileModelName) : undefined;
-      // Default to front AV; facing determination would require spatial analysis
-      const armourValue = vehicleArmour?.front ?? 12;
-      const facing = VehicleFacing.Front;
+      const defaultFacing = initialTargetFacing ?? VehicleFacing.Front;
 
-      const apResult = resolveArmourPenetration(groupSuccessfulHits, armourValue, facing, dice);
-      allEvents.push(...apResult.events);
+      if (targetModel) {
+        const hitsByFacing = new Map<VehicleFacing, HitResult[]>();
+        for (const hit of groupSuccessfulHits) {
+          const facing = determineFacingForVehicleHit(
+            currentState,
+            groupToResolve,
+            hit,
+            targetModel,
+            defaultFacing,
+          );
+          const existing = hitsByFacing.get(facing) ?? [];
+          existing.push(hit);
+          hitsByFacing.set(facing, existing);
+        }
 
-      // Store penetrating and glancing hits on the fire group
-      groupToResolve.penetratingHits = apResult.penetratingHits;
-      penetratingCount = apResult.penetratingHits.length;
+        for (const [facing, facingHits] of hitsByFacing) {
+          const armourValue = facing === VehicleFacing.Front
+            ? (vehicleArmour?.front ?? 12)
+            : facing === VehicleFacing.Rear
+              ? (vehicleArmour?.rear ?? vehicleArmour?.side ?? 12)
+              : (vehicleArmour?.side ?? 12);
+          const apResult = resolveArmourPenetration(facingHits, armourValue, facing, dice);
+          allEvents.push(...apResult.events);
 
-      // Fill in vehicle model/unit IDs on glancing hits
-      const targetModelId = targetAliveModels.length > 0 ? targetAliveModels[0].id : '';
-      const filledGlancingHits = apResult.glancingHits.map(gh => ({
-        ...gh,
-        vehicleModelId: targetModelId,
-        vehicleUnitId: targetUnitId,
-      }));
-      groupToResolve.glancingHits = filledGlancingHits;
-      glancingCount = filledGlancingHits.length;
-      accumulatedGlancingHits.push(...filledGlancingHits);
+          groupToResolve.penetratingHits.push(...apResult.penetratingHits);
+          penetratingCount += apResult.penetratingHits.length;
+
+          const filledGlancingHits = apResult.glancingHits.map(gh => ({
+            ...gh,
+            vehicleModelId: targetModel.id,
+            vehicleUnitId: groupTargetUnitId,
+          }));
+          groupToResolve.glancingHits.push(...filledGlancingHits);
+          glancingCount += filledGlancingHits.length;
+          accumulatedGlancingHits.push(...filledGlancingHits);
+        }
+      }
     } else {
       // Non-vehicle target: resolve wound tests
-      const woundResult = resolveWoundTests(groupSuccessfulHits, majorityToughness, dice);
+      const woundResult = resolveWoundTests(groupSuccessfulHits, groupMajorityToughness, dice);
       allEvents.push(...woundResult.events);
 
       // Store wound results on the fire group
@@ -646,7 +997,7 @@ export function handleShootingAttack(
 
     // ---- Step 8: Auto-select target models ----
     // Re-read the target unit from current state (it may have been modified)
-    const currentTargetUnit = findUnit(currentState, targetUnitId);
+    const currentTargetUnit = findUnit(currentState, groupTargetUnitId);
     if (!currentTargetUnit) {
       // Target unit no longer exists (destroyed by Gets Hot or other causes)
       groupToResolve.resolved = true;
@@ -654,7 +1005,7 @@ export function handleShootingAttack(
       continue;
     }
 
-    if (targetIsVehicle) {
+    if (groupTargetIsVehicle) {
       // For vehicles, assign penetrating hits to the first alive vehicle model
       const vehicleAlive = getAliveModels(currentTargetUnit);
       if (vehicleAlive.length > 0) {
@@ -663,27 +1014,12 @@ export function handleShootingAttack(
         }
       }
     } else {
-      // For non-vehicles, use target model selection for each wound
-      const targetModelInfos = buildTargetModelInfos(currentTargetUnit);
-      for (const wound of woundsToProcess) {
-        if (wound.isPrecision && groupToResolve.isPrecisionGroup) {
-          // Precision wounds: attacker chooses target (select first alive for auto-selection)
-          const aliveTargets = getAliveModels(currentTargetUnit);
-          if (aliveTargets.length > 0) {
-            wound.assignedToModelId = aliveTargets[0].id;
-          }
-        } else {
-          // Normal wounds: defender selects (use auto-selection algorithm)
-          const selectedModelId = autoSelectTargetModel(targetModelInfos, 'wound');
-          if (selectedModelId) {
-            wound.assignedToModelId = selectedModelId;
-          }
-        }
-      }
+      // For non-vehicles, target selection is driven during sequential Step 9
+      // resolution so the current target model persists until destroyed.
     }
 
     // ---- Step 9: Resolve saves and apply damage ----
-    if (targetIsVehicle) {
+    if (groupTargetIsVehicle) {
       // For vehicle targets, penetrating hits cause direct damage (no saving throws for penetrating)
       for (const pen of groupToResolve.penetratingHits) {
         if (pen.assignedToModelId) {
@@ -697,7 +1033,7 @@ export function handleShootingAttack(
             );
 
             // Apply damage to the model in the game state
-            currentState = updateUnitInGameState(currentState, targetUnitId, (unit) =>
+            currentState = updateUnitInGameState(currentState, groupTargetUnitId, (unit) =>
               updateModelInUnit(unit, pen.assignedToModelId!, (model) => ({
                 ...model,
                 currentWounds: damageResult.finalWounds,
@@ -709,7 +1045,7 @@ export function handleShootingAttack(
             const damageEvent: DamageAppliedEvent = {
               type: 'damageApplied',
               modelId: pen.assignedToModelId,
-              unitId: targetUnitId,
+              unitId: groupTargetUnitId,
               woundsLost: damageResult.totalDamageApplied,
               remainingWounds: damageResult.finalWounds,
               destroyed: damageResult.destroyed,
@@ -725,90 +1061,17 @@ export function handleShootingAttack(
         }
       }
     } else {
-      // For non-vehicle targets, resolve saving throws
-      // Group wounds by target model
-      const woundsByModel = new Map<string, WoundResult[]>();
-      for (const wound of woundsToProcess) {
-        const modelId = wound.assignedToModelId;
-        if (modelId) {
-          const existing = woundsByModel.get(modelId) ?? [];
-          existing.push(wound);
-          woundsByModel.set(modelId, existing);
-        }
-      }
-
-      // Resolve saves and damage per model
-      for (const [modelId, modelWounds] of woundsByModel) {
-        // Check for Shrouded damage mitigation on the target unit
-        const shroudedValue =
-          options.blockShroudedDamageMitigation === true
-            ? null
-            : getSpecialRuleValue(
-              groupToResolve.weaponProfile.specialRules,
-              'Shrouded',
-            );
-
-        let woundsForSaves = modelWounds;
-
-        // Handle damage mitigation (Shrouded) if applicable
-        if (shroudedValue !== null) {
-          const mitigationResult = handleDamageMitigation(
-            modelWounds,
-            'Shrouded',
-            shroudedValue,
-            dice,
-          );
-          allEvents.push(...mitigationResult.events);
-          woundsForSaves = mitigationResult.remainingWounds;
-        }
-
-        // Resolve saves using profile data
-        const targetModel = findUnit(currentState, targetUnitId)?.models.find(m => m.id === modelId);
-        const armourSave = targetModel ? (getModelSave(targetModel.unitProfileId, targetModel.profileModelName) ?? 7) : 3;
-        const invulnSave: number | null = targetModel ? getModelInvulnSave(targetModel.unitProfileId, targetModel.profileModelName) : null;
-        const coverSave: number | null = null; // Cover save determined by terrain, not profile
-
-        const saveResult = resolveSaves(armourSave, invulnSave, coverSave, woundsForSaves, dice);
-        allEvents.push(...saveResult.events);
-
-        // Apply damage from unsaved wounds
-        if (saveResult.unsavedWounds.length > 0) {
-          const targetModel = findUnit(currentState, targetUnitId)?.models.find(m => m.id === modelId);
-          if (targetModel && !targetModel.isDestroyed) {
-            const damageResult = resolveDamage(
-              saveResult.unsavedWounds,
-              modelId,
-              targetModel.currentWounds,
-            );
-
-            // Apply damage to the model
-            currentState = updateUnitInGameState(currentState, targetUnitId, (unit) =>
-              updateModelInUnit(unit, modelId, (model) => ({
-                ...model,
-                currentWounds: damageResult.finalWounds,
-                isDestroyed: damageResult.destroyed,
-              })),
-            );
-
-            // Emit damage applied event
-            const damageEvent: DamageAppliedEvent = {
-              type: 'damageApplied',
-              modelId,
-              unitId: targetUnitId,
-              woundsLost: damageResult.totalDamageApplied,
-              remainingWounds: damageResult.finalWounds,
-              destroyed: damageResult.destroyed,
-              damageSource: `Shooting from ${groupToResolve.weaponName}`,
-            };
-            allEvents.push(damageEvent);
-
-            // Track casualties
-            if (damageResult.destroyed) {
-              accumulatedCasualties.push(modelId);
-            }
-          }
-        }
-      }
+      const woundResolution = resolveNonVehicleWoundsSequentially(
+        currentState,
+        groupTargetUnitId,
+        groupToResolve,
+        woundsToProcess,
+        dice,
+        options,
+      );
+      currentState = woundResolution.state;
+      allEvents.push(...woundResolution.events);
+      accumulatedCasualties.push(...woundResolution.casualties);
     }
 
     // Mark fire group as resolved
@@ -913,7 +1176,7 @@ export function handleShootingAttack(
       const pinningValue = getSpecialRuleValue(fg.specialRules, 'Pinning');
       if (pinningValue !== null) {
         allPendingMoraleChecks.push({
-          unitId: targetUnitId,
+          unitId: fg.targetUnitId ?? targetUnitId,
           checkType: 'pinning',
           modifier: pinningValue,
           source: `Pinning (${pinningValue}) from ${fg.weaponName}`,
@@ -924,7 +1187,7 @@ export function handleShootingAttack(
       const suppressiveValue = getSpecialRuleValue(fg.specialRules, 'Suppressive');
       if (suppressiveValue !== null) {
         allPendingMoraleChecks.push({
-          unitId: targetUnitId,
+          unitId: fg.targetUnitId ?? targetUnitId,
           checkType: 'suppressive',
           modifier: suppressiveValue,
           source: `Suppressive (${suppressiveValue}) from ${fg.weaponName}`,
@@ -935,7 +1198,7 @@ export function handleShootingAttack(
       const stunValue = getSpecialRuleValue(fg.specialRules, 'Stun');
       if (stunValue !== null) {
         allPendingMoraleChecks.push({
-          unitId: targetUnitId,
+          unitId: fg.targetUnitId ?? targetUnitId,
           checkType: 'stun',
           modifier: stunValue,
           source: `Stun (${stunValue}) from ${fg.weaponName}`,
@@ -946,7 +1209,7 @@ export function handleShootingAttack(
       const panicValue = getSpecialRuleValue(fg.specialRules, 'Panic');
       if (panicValue !== null) {
         allPendingMoraleChecks.push({
-          unitId: targetUnitId,
+          unitId: fg.targetUnitId ?? targetUnitId,
           checkType: 'panicRule',
           modifier: panicValue,
           source: `Panic (${panicValue}) from ${fg.weaponName}`,
@@ -961,7 +1224,7 @@ export function handleShootingAttack(
     attackerUnitId,
     targetUnitId,
     attackerPlayerIndex,
-    targetFacing: targetIsVehicle ? VehicleFacing.Front : null,
+    targetFacing: initialTargetFacing,
     weaponAssignments: weaponAssignments.map(wa => ({
       modelId: wa.modelId,
       weaponId: wa.weaponId,
@@ -977,6 +1240,8 @@ export function handleShootingAttack(
     returnFireResolved,
     isReturnFire: false,
     modelsWithLOS,
+    blastPlacements: command.blastPlacements,
+    templatePlacements: command.templatePlacements,
   };
 
   if (options.persistShootingAttackState !== false) {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildUnitDeploymentFormation,
+  getDeploymentFormationSpacing,
   type DeploymentFormationPreset,
 } from './deployment-formations';
 
@@ -63,5 +64,10 @@ describe('buildUnitDeploymentFormation', () => {
       expect(position.y).toBeGreaterThanOrEqual(0);
       expect(position.y).toBeLessThanOrEqual(12);
     }
+  });
+
+  it('uses size-aware spacing for larger bases', () => {
+    expect(getDeploymentFormationSpacing([32])).toBeGreaterThan(1.25);
+    expect(getDeploymentFormationSpacing([40])).toBeGreaterThan(1.5);
   });
 });

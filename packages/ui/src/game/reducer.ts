@@ -13,7 +13,7 @@
 import type { Position, ArmyList, GameState } from '@hh/types';
 import type { CommandResult } from '@hh/engine';
 import { getModelInitiative, getModelMovement, canUnitShoot } from '@hh/engine';
-import { checkWeaponRange, getClosestModelDistance, hasLOSToUnit } from '@hh/engine';
+import { checkWeaponRange, getClosestModelDistance, hasLOSToUnit, TEMPLATE_EFFECTIVE_RANGE_INCHES } from '@hh/engine';
 import { findMission, getProfileById, findWeapon, findLegionWeapon, isRangedWeapon } from '@hh/data';
 import type { ArmyConfig, UnitSelection } from './types';
 import {
@@ -56,6 +56,7 @@ import {
   validateObjectivePlacement,
 } from './objective-placement';
 import { validateSetupDeploymentPlacement } from './deployment-rules';
+import { buildSpecialShotRequirements } from './special-shots';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -125,6 +126,11 @@ function lookupWeapon(weaponId: string) {
   return findWeapon(weaponId) ?? findLegionWeapon(weaponId);
 }
 
+function getEffectiveWeaponRange(weapon: ReturnType<typeof lookupWeapon>): number {
+  if (!weapon || !isRangedWeapon(weapon)) return 0;
+  return weapon.hasTemplate ? TEMPLATE_EFFECTIVE_RANGE_INCHES : weapon.range;
+}
+
 function getRangedWeaponIdsForModel(model: GameState['armies'][number]['units'][number]['models'][number]): string[] {
   if (model.equippedWargear.length > 0) {
     return model.equippedWargear;
@@ -149,10 +155,61 @@ function canAnyWeaponReachTarget(
   return aliveAttackers.some((attackerModel) =>
     getRangedWeaponIdsForModel(attackerModel).some((weaponId) => {
       const weapon = lookupWeapon(weaponId);
-      if (!weapon || !isRangedWeapon(weapon) || weapon.range <= 0) return false;
-      return checkWeaponRange(attackerModel, aliveTargets, weapon.range);
+      if (!weapon || !isRangedWeapon(weapon)) return false;
+      const effectiveRange = getEffectiveWeaponRange(weapon);
+      if (effectiveRange <= 0) return false;
+      return checkWeaponRange(attackerModel, aliveTargets, effectiveRange);
     }),
   );
+}
+
+function resolvePreparedShootingAttack(
+  state: GameUIState,
+  attackerUnitId: string,
+  targetUnitId: string,
+  weaponSelections: import('./types').WeaponSelection[],
+  blastPlacements: import('@hh/types').BlastPlacement[] = [],
+  templatePlacements: import('@hh/types').TemplatePlacement[] = [],
+): GameUIState {
+  const newState = applyEngineCommand(
+    state,
+    buildShootingCommand(
+      attackerUnitId,
+      targetUnitId,
+      weaponSelections,
+      blastPlacements,
+      templatePlacements,
+    ),
+  );
+
+  if (newState.lastErrors.length > 0) {
+    return newState;
+  }
+
+  if (newState.flowState.type === 'reaction') {
+    return newState;
+  }
+
+  if (newState.gameState?.shootingAttackState) {
+    return {
+      ...newState,
+      flowState: {
+        type: 'shooting',
+        step: {
+          step: 'showResults',
+          attackerUnitId,
+          targetUnitId,
+          events: newState.lastCommandResult?.events ?? [],
+        },
+      },
+    };
+  }
+
+  return {
+    ...newState,
+    flowState: { type: 'idle' },
+    overlayVisibility: { ...newState.overlayVisibility, los: false },
+  };
 }
 
 function applySetupDeploymentPlacement(
@@ -1321,44 +1378,143 @@ export function gameReducer(
       const shootStep = state.flowState.step;
       if (shootStep.step !== 'selectWeapons') return state;
       if (shootStep.weaponSelections.length === 0) return state;
+      if (!state.gameState) return state;
 
-      const newState = applyEngineCommand(
-        state,
-        buildShootingCommand(
-          shootStep.attackerUnitId,
-          shootStep.targetUnitId,
-          shootStep.weaponSelections,
-        ),
+      const requirements = buildSpecialShotRequirements(
+        state.gameState,
+        shootStep.attackerUnitId,
+        shootStep.targetUnitId,
+        shootStep.weaponSelections,
       );
 
-      // If the attack triggered a reaction window, applyEngineCommand already
-      // switched flowState to reaction prompt. Do not overwrite it.
-      if (newState.flowState.type === 'reaction') {
-        return newState;
-      }
-
-      // If a shooting attack state exists, show compact results/morale step.
-      // This avoids trapping the UI in a long "resolving" view.
-      if (newState.gameState?.shootingAttackState) {
+      if (requirements.length > 0) {
         return {
-          ...newState,
+          ...state,
           flowState: {
             type: 'shooting',
             step: {
-              step: 'showResults',
+              step: 'placeSpecial',
               attackerUnitId: shootStep.attackerUnitId,
               targetUnitId: shootStep.targetUnitId,
-              events: newState.lastCommandResult?.events ?? [],
+              weaponSelections: shootStep.weaponSelections,
+              requirements,
+              currentIndex: 0,
+              blastPlacements: [],
+              templatePlacements: [],
             },
           },
         };
       }
 
-      // Fallback: if no attack state was produced, close the flow.
+      return resolvePreparedShootingAttack(
+        state,
+        shootStep.attackerUnitId,
+        shootStep.targetUnitId,
+        shootStep.weaponSelections,
+      );
+    }
+
+    case 'PLACE_SPECIAL_SHOT': {
+      if (state.flowState.type !== 'shooting') return state;
+      const shootStep = state.flowState.step;
+      if (shootStep.step !== 'placeSpecial') return state;
+      if (!state.gameState) return state;
+
+      const requirement = shootStep.requirements[shootStep.currentIndex];
+      if (!requirement) return state;
+
+      if (requirement.kind === 'blast') {
+        const nextBlastPlacements = [
+          ...shootStep.blastPlacements,
+          {
+            sourceModelIds: requirement.sourceModelIds,
+            position: action.position,
+          },
+        ];
+
+        if (shootStep.currentIndex === shootStep.requirements.length - 1) {
+          return resolvePreparedShootingAttack(
+            {
+              ...state,
+              flowState: {
+                type: 'shooting',
+                step: {
+                  ...shootStep,
+                  blastPlacements: nextBlastPlacements,
+                },
+              },
+            },
+            shootStep.attackerUnitId,
+            shootStep.targetUnitId,
+            shootStep.weaponSelections,
+            nextBlastPlacements,
+            shootStep.templatePlacements,
+          );
+        }
+
+        return {
+          ...state,
+          flowState: {
+            type: 'shooting',
+            step: {
+              ...shootStep,
+              currentIndex: shootStep.currentIndex + 1,
+              blastPlacements: nextBlastPlacements,
+            },
+          },
+        };
+      }
+
+      const sourceModel = state.gameState.armies
+        .flatMap((army) => army.units)
+        .flatMap((unit) => unit.models)
+        .find((model) => model.id === requirement.sourceModelId);
+      if (!sourceModel) {
+        return state;
+      }
+
+      const directionRadians = Math.atan2(
+        action.position.y - sourceModel.position.y,
+        action.position.x - sourceModel.position.x,
+      );
+      const nextTemplatePlacements = [
+        ...shootStep.templatePlacements,
+        {
+          sourceModelId: requirement.sourceModelId,
+          directionRadians,
+        },
+      ];
+
+      if (shootStep.currentIndex === shootStep.requirements.length - 1) {
+        return resolvePreparedShootingAttack(
+          {
+            ...state,
+            flowState: {
+              type: 'shooting',
+              step: {
+                ...shootStep,
+                templatePlacements: nextTemplatePlacements,
+              },
+            },
+          },
+          shootStep.attackerUnitId,
+          shootStep.targetUnitId,
+          shootStep.weaponSelections,
+          shootStep.blastPlacements,
+          nextTemplatePlacements,
+        );
+      }
+
       return {
-        ...newState,
-        flowState: { type: 'idle' },
-        overlayVisibility: { ...newState.overlayVisibility, los: false },
+        ...state,
+        flowState: {
+          type: 'shooting',
+          step: {
+            ...shootStep,
+            currentIndex: shootStep.currentIndex + 1,
+            templatePlacements: nextTemplatePlacements,
+          },
+        },
       };
     }
 

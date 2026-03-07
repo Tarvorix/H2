@@ -218,4 +218,10 @@ describe('generateLineFormation', () => {
     // Back should be near y=12
     expect(resultBack[0].y).toBeCloseTo(12, 1);
   });
+
+  it('uses custom spacing when provided', () => {
+    const result = generateLineFormation(4, 1, 12, 72, 48, 0.5, 2.5);
+    expect(result[1].x - result[0].x).toBeCloseTo(2.5, 1);
+    expect(result[2].x - result[1].x).toBeCloseTo(2.5, 1);
+  });
 });

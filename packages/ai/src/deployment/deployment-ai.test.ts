@@ -6,8 +6,10 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { Phase, SubPhase, UnitMovementState } from '@hh/types';
+import { DeploymentMap, Phase, SubPhase, UnitMovementState } from '@hh/types';
 import type { GameState, UnitState, ModelState, ArmyState } from '@hh/types';
+import { pointInPolygon } from '@hh/geometry';
+import { SEARCH_AND_DESTROY } from '@hh/data';
 import { generateDeploymentPlacement } from './deployment-ai';
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
@@ -111,6 +113,47 @@ function countFormationRows(
     .map((entry) => entry[1]);
 }
 
+function isPointOnSegment(
+  point: { x: number; y: number },
+  start: { x: number; y: number },
+  end: { x: number; y: number },
+): boolean {
+  const cross = (point.y - start.y) * (end.x - start.x) - (point.x - start.x) * (end.y - start.y);
+  if (Math.abs(cross) > 0.05) {
+    return false;
+  }
+
+  const dot = (point.x - start.x) * (end.x - start.x) + (point.y - start.y) * (end.y - start.y);
+  if (dot < -0.05) {
+    return false;
+  }
+
+  const lengthSq = (end.x - start.x) ** 2 + (end.y - start.y) ** 2;
+  return dot - lengthSq <= 0.05;
+}
+
+function isPointOnPolygonBoundary(
+  point: { x: number; y: number },
+  vertices: { x: number; y: number }[],
+): boolean {
+  for (let index = 0; index < vertices.length; index++) {
+    const start = vertices[index];
+    const end = vertices[(index + 1) % vertices.length];
+    if (isPointOnSegment(point, start, end)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function isPointInDeploymentZone(
+  point: { x: number; y: number },
+  vertices: { x: number; y: number }[],
+): boolean {
+  return pointInPolygon(point, vertices) || isPointOnPolygonBoundary(point, vertices);
+}
+
 // ─── Basic Deployment Tests ──────────────────────────────────────────────────
 
 describe('generateDeploymentPlacement — basic', () => {
@@ -208,6 +251,24 @@ describe('generateDeploymentPlacement — basic', () => {
       expect(mp.position.y).toBeLessThanOrEqual(47.5);
     }
   });
+
+  it('uses non-overlapping spacing for auto line formations', () => {
+    const models = Array.from({ length: 3 }, (_, i) =>
+      createModel({ id: `model-${i}` }),
+    );
+    const unit = createUnit({ id: 'unit-1', models });
+    const state = createGameState();
+    state.armies[0] = createArmy({ playerIndex: 0, units: [unit] });
+
+    const result = generateDeploymentPlacement(state, 0, [], 12, 'basic', 'auto');
+
+    expect(result).not.toBeNull();
+    const sorted = [...result!.modelPositions]
+      .map((entry) => entry.position)
+      .sort((left, right) => left.x - right.x);
+    expect(sorted[1].x - sorted[0].x).toBeGreaterThan(1.25);
+    expect(sorted[2].x - sorted[1].x).toBeGreaterThan(1.25);
+  });
 });
 
 // ─── Deployment Zone Bounds Tests ────────────────────────────────────────────
@@ -267,6 +328,40 @@ describe('generateDeploymentPlacement — deployment zones', () => {
     // For player 0 with preferredY=0.5: y = 1 + (12-1)*0.5 = 6.5
     const y = result!.modelPositions[0].position.y;
     expect(y).toBeCloseTo(6.5, 0);
+  });
+
+  it('uses mission deployment polygons when they are available', () => {
+    const models = Array.from({ length: 10 }, (_, index) =>
+      createModel({ id: `model-${index}` }),
+    );
+    const unit = createUnit({ id: 'unit-1', models });
+    const [zone0, zone1] = SEARCH_AND_DESTROY.getZones(72, 48);
+    const state = createGameState({
+      missionState: {
+        missionId: 'test-search-and-destroy',
+        deploymentMap: DeploymentMap.SearchAndDestroy,
+        deploymentZones: [zone0, zone1],
+        objectives: [],
+        secondaryObjectives: [],
+        activeSpecialRules: [],
+        firstStrikeTracking: {
+          player0FirstTurnCompleted: false,
+          player1FirstTurnCompleted: false,
+          player0Achieved: false,
+          player1Achieved: false,
+        },
+        scoringHistory: [],
+        vpAtTurnStart: [],
+      },
+    });
+    state.armies[0] = createArmy({ playerIndex: 0, units: [unit] });
+
+    const result = generateDeploymentPlacement(state, 0, [], 12, 'basic', 'auto');
+
+    expect(result).not.toBeNull();
+    expect(result!.modelPositions).toHaveLength(10);
+    expect(result!.modelPositions.every((modelPosition) =>
+      isPointInDeploymentZone(modelPosition.position, zone0.vertices))).toBe(true);
   });
 });
 

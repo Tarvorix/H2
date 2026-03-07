@@ -111,6 +111,8 @@ export type {
   ShootingAttackState,
   ShootingStepType,
   ShootingWeaponAssignment,
+  BlastPlacement,
+  TemplatePlacement,
   ShootingFireGroup,
   ShootingHitResult,
   ShootingWoundResult,

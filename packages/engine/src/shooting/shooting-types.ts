@@ -86,6 +86,8 @@ export interface ResolvedWeaponProfile {
 export interface FireGroup {
   /** Index of this fire group in the attack's fire group list */
   index: number;
+  /** Unit currently being resolved by this fire group. Defaults to the declared target unit. */
+  targetUnitId?: string;
   /** Weapon name that defines this group */
   weaponName: string;
   /** Weapon profile name (for multi-profile weapons) */
@@ -116,6 +118,8 @@ export interface FireGroup {
   glancingHits: GlancingHit[];
   /** Whether this fire group has been fully resolved */
   resolved: boolean;
+  /** Whether hit resolution has already been converted into final hit entries for this group. */
+  hitPoolResolved: boolean;
   /** Whether this is a precision hits fire group (split from parent) */
   isPrecisionGroup: boolean;
   /** Whether this is a deflagrate additional hits group */

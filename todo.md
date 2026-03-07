@@ -1,6 +1,62 @@
 # HHv2 TODO
 
-Last Updated: 2026-03-06
+Last Updated: 2026-03-07
+
+## Hotfix Plan (Deployment Whole-Unit Click Regression - 2026-03-07)
+- [x] Audit the deployment whole-unit click path to identify why in-zone clicks are no longer creating pending placements.
+- [x] Fix the whole-unit placement search so valid formations resolve to a legal in-zone anchor instead of silently failing.
+- [x] Add focused regression coverage and run targeted verification.
+
+## Hotfix Verification (Deployment Whole-Unit Click Regression - 2026-03-07)
+- `pnpm test -- packages/ui/src/game/deployment-rules.test.ts`: PASS (1 file, 4 tests)
+- `pnpm --filter @hh/ui typecheck`: PASS
+- `pnpm --filter @hh/ui build`: PASS
+
+## Hotfix Plan (Deployment Rotation + Start-of-Move Overlap Regression - 2026-03-07)
+- [x] Add fixed-formation rotation support to the deployment screen and deployment formation builder.
+- [x] Fix whole-unit deployment spacing so deployed formations do not start with overlapping bases.
+- [x] Apply the same non-overlapping spacing rules to AI deployment formations.
+- [x] Add focused regression coverage and run targeted verification.
+
+## Hotfix Verification (Deployment Rotation + Start-of-Move Overlap Regression - 2026-03-07)
+- `pnpm --filter @hh/geometry build`: PASS
+- `pnpm --filter @hh/ai build`: PASS
+- `pnpm --filter @hh/ui typecheck`: PASS
+- `pnpm test -- packages/ui/src/game/deployment-rules.test.ts packages/ui/src/game/screens/deployment-formations.test.ts packages/ai/src/helpers/movement-destination.test.ts packages/ai/src/deployment/deployment-ai.test.ts packages/engine/src/movement/move-handler.test.ts`: PASS (5 files, 99 tests)
+- `pnpm --filter @hh/ui build`: PASS
+
+## Hotfix Plan (Wound Allocation Rules Audit - 2026-03-07)
+- [x] Audit the current non-vehicle wound allocation and save/damage flow against the rules sequence.
+- [x] Replace pre-batched wound assignment with rules-accurate one-at-a-time allocation and casualty rollover.
+- [x] Add focused regression tests and run targeted verification.
+
+## Hotfix Verification (Wound Allocation Rules Audit - 2026-03-07)
+- `pnpm --filter @hh/engine build`: PASS
+- `pnpm test -- packages/engine/src/command-processor.test.ts packages/engine/src/shooting/target-model-selection.test.ts packages/engine/src/shooting/save-resolution.test.ts`: PASS (3 files, 112 tests)
+- `pnpm test -- packages/engine/src/shooting/shooting-integration.test.ts packages/engine/src/shooting/damage-resolution.test.ts`: PASS (2 files, 52 tests)
+
+## Hotfix Plan (Blast + Template Rules Audit - 2026-03-07)
+- [x] Audit Blast and Template implementation against the rules docs and identify engine/UI gaps.
+- [x] Implement rules-correct Blast marker and Template placement/resolution in the active shooting flow.
+- [x] Add focused tests for blast/template legality, hit generation, and shooting-flow integration.
+- [x] Run targeted verification and record the results.
+
+## Hotfix Verification (Blast + Template Rules Audit - 2026-03-07)
+- `pnpm --filter @hh/types build`: PASS
+- `pnpm --filter @hh/engine build`: PASS
+- `pnpm --filter @hh/ui typecheck`: PASS
+- `pnpm --filter @hh/ui build`: PASS
+- `pnpm test -- packages/engine/src/shooting/fire-groups.test.ts packages/engine/src/shooting/hit-resolution.test.ts packages/engine/src/command-processor.test.ts packages/ui/src/game/reducer.test.ts`: PASS (4 files, 175 tests)
+
+## Hotfix Plan (Deployment Handoff + Mobile Setup Layout - 2026-03-06)
+- [x] Make AI deployment use the active mission deployment zones so AI placement stays legal across Dawn of War, Hammer and Anvil, and Search and Destroy.
+- [x] Fix setup-screen mobile/iPad overflow so long menus and action buttons remain reachable on small viewports.
+- [x] Run targeted verification for deployment flow and mobile/setup typecheck coverage.
+
+## Hotfix Verification (Deployment Handoff + Mobile Setup Layout - 2026-03-06)
+- `pnpm --filter @hh/ai build`: PASS
+- `pnpm --filter @hh/ui typecheck`: PASS
+- `pnpm test -- packages/ai/src/deployment/deployment-ai.test.ts packages/ui/src/game/deployment-rules.test.ts packages/ui/src/game/reducer.test.ts`: PASS (3 files, 33 tests)
 
 ## Hotfix Plan (Rules-Accurate Deployment, Objective Placement, and Base Geometry - 2026-03-06)
 - [x] Make deployment validation and deployment-zone rendering use the selected mission deployment map instead of a hardcoded 12" top/bottom band.

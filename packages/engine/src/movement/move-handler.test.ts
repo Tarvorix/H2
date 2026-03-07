@@ -23,7 +23,11 @@ import type {
   ModelState,
   TerrainPiece,
 } from '@hh/types';
-import { createRectTerrain } from '@hh/geometry';
+import {
+  buildUnitDeploymentFormationWithAxes,
+  createRectTerrain,
+  getDeploymentFormationSpacing,
+} from '@hh/geometry';
 import { FixedDiceProvider } from '../dice';
 import {
   handleMoveModel,
@@ -201,7 +205,7 @@ describe('handleMoveModel', () => {
   });
 
   it('should emit a modelMoved event with correct data', () => {
-    const result = handleMoveModel(state, 'u1-m0', { x: 15, y: 24 }, dice);
+    const result = handleMoveModel(state, 'u1-m0', { x: 16, y: 24 }, dice);
 
     expect(result.accepted).toBe(true);
     const movedEvent = result.events.find(e => e.type === 'modelMoved');
@@ -211,13 +215,13 @@ describe('handleMoveModel', () => {
       modelId: 'u1-m0',
       unitId: 'u1',
       fromPosition: { x: 10, y: 24 },
-      toPosition: { x: 15, y: 24 },
-      distanceMoved: 5,
+      toPosition: { x: 16, y: 24 },
+      distanceMoved: 6,
     });
   });
 
   it('should set unit movement state to Moved on first model move', () => {
-    const result = handleMoveModel(state, 'u1-m0', { x: 15, y: 24 }, dice);
+    const result = handleMoveModel(state, 'u1-m0', { x: 16, y: 24 }, dice);
 
     expect(result.accepted).toBe(true);
     const unit = result.state.armies[0].units[0];
@@ -299,7 +303,7 @@ describe('handleMoveModel', () => {
     expect(resultFail.errors.some(e => e.code === 'EXCEEDS_MOVEMENT')).toBe(true);
 
     // Moving 4" into difficult terrain should succeed (effective M = 5)
-    const resultOk = handleMoveModel(state, 'u1-m0', { x: 14, y: 24 }, dice);
+    const resultOk = handleMoveModel(state, 'u1-m0', { x: 14, y: 26 }, dice);
     expect(resultOk.accepted).toBe(true);
     expect(resultOk.errors).toHaveLength(0);
   });
@@ -314,7 +318,7 @@ describe('handleMoveModel', () => {
     dice = new FixedDiceProvider([4]);
 
     // Move 3" into dangerous terrain (effective M = 7 - 2 = 5, so 3" is ok)
-    const result = handleMoveModel(state, 'u1-m0', { x: 13, y: 24 }, dice);
+    const result = handleMoveModel(state, 'u1-m0', { x: 13, y: 26 }, dice);
 
     expect(result.accepted).toBe(true);
     const dangerousEvent = result.events.find(e => e.type === 'dangerousTerrainTest');
@@ -340,7 +344,7 @@ describe('handleMoveModel', () => {
     // Roll a 1 -- fails the dangerous terrain test
     dice = new FixedDiceProvider([1]);
 
-    const result = handleMoveModel(state, 'u1-m0', { x: 13, y: 24 }, dice);
+    const result = handleMoveModel(state, 'u1-m0', { x: 13, y: 26 }, dice);
 
     expect(result.accepted).toBe(true);
     const dangerousEvent = result.events.find(e => e.type === 'dangerousTerrainTest');
@@ -433,17 +437,17 @@ describe('handleMoveModel', () => {
 
   it('should allow multiple models in the same unit to move sequentially', () => {
     // Move first model
-    const result1 = handleMoveModel(state, 'u1-m0', { x: 15, y: 24 }, dice);
+    const result1 = handleMoveModel(state, 'u1-m0', { x: 16, y: 24 }, dice);
     expect(result1.accepted).toBe(true);
     expect(result1.state.armies[0].units[0].movementState).toBe(UnitMovementState.Moved);
 
     // Move second model using updated state
-    const result2 = handleMoveModel(result1.state, 'u1-m1', { x: 17, y: 24 }, dice);
+    const result2 = handleMoveModel(result1.state, 'u1-m1', { x: 18, y: 24 }, dice);
     expect(result2.accepted).toBe(true);
 
     // Both models should have new positions
-    expect(result2.state.armies[0].units[0].models[0].position).toEqual({ x: 15, y: 24 });
-    expect(result2.state.armies[0].units[0].models[1].position).toEqual({ x: 17, y: 24 });
+    expect(result2.state.armies[0].units[0].models[0].position).toEqual({ x: 16, y: 24 });
+    expect(result2.state.armies[0].units[0].models[1].position).toEqual({ x: 18, y: 24 });
 
     // Unit should still be in Moved state
     expect(result2.state.armies[0].units[0].movementState).toBe(UnitMovementState.Moved);
@@ -655,6 +659,47 @@ describe('handleMoveUnit', () => {
 
     expect(result.accepted).toBe(false);
     expect(result.errors.some(e => e.code === 'MODEL_POSITION_COUNT_MISMATCH')).toBe(true);
+  });
+
+  it('should allow a translated whole-unit deployment formation without base overlap errors', () => {
+    const spacing = getDeploymentFormationSpacing([32, 32, 32]);
+    const startingPositions = buildUnitDeploymentFormationWithAxes(
+      3,
+      { x: 10, y: 24 },
+      'line',
+      { lateral: { x: 1, y: 0 }, depth: { x: 0, y: 1 } },
+      spacing,
+    );
+
+    state = createGameState({
+      armies: [
+        createArmy(0, [createUnit('u1', [
+          createModel('u1-m0', startingPositions[0].x, startingPositions[0].y),
+          createModel('u1-m1', startingPositions[1].x, startingPositions[1].y),
+          createModel('u1-m2', startingPositions[2].x, startingPositions[2].y),
+        ])]),
+        createArmy(1, [createUnit('u3', [
+          createModel('u3-m0', 50, 40),
+          createModel('u3-m1', 52, 40),
+        ])]),
+      ],
+    });
+
+    const result = handleMoveUnit(
+      state,
+      'u1',
+      startingPositions.map((position, index) => ({
+        modelId: `u1-m${index}`,
+        position: {
+          x: position.x + 1,
+          y: position.y,
+        },
+      })),
+      dice,
+    );
+
+    expect(result.accepted).toBe(true);
+    expect(result.errors.some((error) => error.code === 'BASE_OVERLAP')).toBe(false);
   });
 });
 

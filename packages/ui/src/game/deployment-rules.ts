@@ -95,6 +95,78 @@ function getDeploymentAxes(
   }
 }
 
+function rotateFormationAxes(
+  axes: { lateral: Position; depth: Position },
+  quarterTurns: number,
+): { lateral: Position; depth: Position } {
+  const normalizedQuarterTurns = ((quarterTurns % 4) + 4) % 4;
+
+  switch (normalizedQuarterTurns) {
+    case 1:
+      return {
+        lateral: axes.depth,
+        depth: { x: -axes.lateral.x, y: -axes.lateral.y },
+      };
+    case 2:
+      return {
+        lateral: { x: -axes.lateral.x, y: -axes.lateral.y },
+        depth: { x: -axes.depth.x, y: -axes.depth.y },
+      };
+    case 3:
+      return {
+        lateral: { x: -axes.depth.x, y: -axes.depth.y },
+        depth: axes.lateral,
+      };
+    case 0:
+    default:
+      return axes;
+  }
+}
+
+function projectPointOntoAxis(point: Position, axis: Position): number {
+  return point.x * axis.x + point.y * axis.y;
+}
+
+function getProjectionRange(
+  zone: DeploymentZone,
+  axis: Position,
+): { min: number; max: number } {
+  const projections = zone.vertices.map((vertex) => projectPointOntoAxis(vertex, axis));
+  return {
+    min: Math.min(...projections),
+    max: Math.max(...projections),
+  };
+}
+
+function buildAnchorFromAxisCoordinates(
+  axes: { lateral: Position; depth: Position },
+  lateralCoordinate: number,
+  depthCoordinate: number,
+): Position {
+  return {
+    x: axes.lateral.x * lateralCoordinate + axes.depth.x * depthCoordinate,
+    y: axes.lateral.y * lateralCoordinate + axes.depth.y * depthCoordinate,
+  };
+}
+
+function buildSortedCoordinateSearchValues(
+  min: number,
+  max: number,
+  preferred: number,
+  step: number,
+): number[] {
+  const coordinates: number[] = [];
+  for (let value = min; value <= max + POSITION_EPSILON; value += step) {
+    coordinates.push(Math.round(value * 10) / 10);
+  }
+
+  return coordinates.sort((left, right) => {
+    const leftDistance = Math.abs(left - preferred);
+    const rightDistance = Math.abs(right - preferred);
+    return leftDistance - rightDistance;
+  });
+}
+
 function isPositionInsideBattlefield(
   position: Position,
   battlefieldWidth: number,
@@ -129,8 +201,10 @@ export function buildDeploymentFormationForZone(
   battlefieldHeight: number,
   zone: DeploymentZone,
   preset: DeploymentFormationPreset,
+  options: { spacingInches?: number; rotationQuarterTurns?: number } = {},
 ): Position[] {
-  const axes = getDeploymentAxes(deploymentMap, playerIndex);
+  const zoneAxes = getDeploymentAxes(deploymentMap, playerIndex);
+  const formationAxes = rotateFormationAxes(zoneAxes, options.rotationQuarterTurns ?? 0);
   const lateralOffsets: number[] = [0];
   for (let offset = FORMATION_SHIFT_STEP; offset <= FORMATION_MAX_SHIFT; offset += FORMATION_SHIFT_STEP) {
     lateralOffsets.push(offset, -offset);
@@ -139,17 +213,66 @@ export function buildDeploymentFormationForZone(
   for (let depthOffset = 0; depthOffset <= FORMATION_MAX_SHIFT; depthOffset += FORMATION_SHIFT_STEP) {
     for (const lateralOffset of lateralOffsets) {
       const shiftedAnchor = {
-        x: anchor.x + axes.depth.x * depthOffset + axes.lateral.x * lateralOffset,
-        y: anchor.y + axes.depth.y * depthOffset + axes.lateral.y * lateralOffset,
+        x: anchor.x + zoneAxes.depth.x * depthOffset + zoneAxes.lateral.x * lateralOffset,
+        y: anchor.y + zoneAxes.depth.y * depthOffset + zoneAxes.lateral.y * lateralOffset,
       };
-      const positions = buildUnitDeploymentFormationWithAxes(modelCount, shiftedAnchor, preset, axes);
+      const positions = buildUnitDeploymentFormationWithAxes(
+        modelCount,
+        shiftedAnchor,
+        preset,
+        formationAxes,
+        options.spacingInches,
+      );
       if (areFormationPositionsInsideZone(positions, zone, battlefieldWidth, battlefieldHeight)) {
         return positions;
       }
     }
   }
 
-  return buildUnitDeploymentFormationWithAxes(modelCount, anchor, preset, axes);
+  const lateralRange = getProjectionRange(zone, zoneAxes.lateral);
+  const depthRange = getProjectionRange(zone, zoneAxes.depth);
+  const preferredLateral = projectPointOntoAxis(anchor, zoneAxes.lateral);
+  const preferredDepth = projectPointOntoAxis(anchor, zoneAxes.depth);
+  const lateralCoordinates = buildSortedCoordinateSearchValues(
+    lateralRange.min,
+    lateralRange.max,
+    preferredLateral,
+    FORMATION_SHIFT_STEP,
+  );
+  const depthCoordinates = buildSortedCoordinateSearchValues(
+    depthRange.min,
+    depthRange.max,
+    preferredDepth,
+    FORMATION_SHIFT_STEP,
+  );
+
+  for (const depthCoordinate of depthCoordinates) {
+    for (const lateralCoordinate of lateralCoordinates) {
+      const candidateAnchor = buildAnchorFromAxisCoordinates(
+        zoneAxes,
+        lateralCoordinate,
+        depthCoordinate,
+      );
+      const positions = buildUnitDeploymentFormationWithAxes(
+        modelCount,
+        candidateAnchor,
+        preset,
+        formationAxes,
+        options.spacingInches,
+      );
+      if (areFormationPositionsInsideZone(positions, zone, battlefieldWidth, battlefieldHeight)) {
+        return positions;
+      }
+    }
+  }
+
+  return buildUnitDeploymentFormationWithAxes(
+    modelCount,
+    anchor,
+    preset,
+    formationAxes,
+    options.spacingInches,
+  );
 }
 
 export function validateSetupDeploymentPlacement(

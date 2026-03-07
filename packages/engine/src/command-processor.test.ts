@@ -749,6 +749,195 @@ describe('processCommand', () => {
     });
   });
 
+  describe('blast and template shooting resolution', () => {
+    it('resolves blast hits from the placed marker onto covered models', () => {
+      const attackerModel = { ...createModel('a-m0', 24, 24), equippedWargear: ['plasma-cannon'] };
+      const attackerUnit = createUnit('a-u1', [attackerModel]);
+      const targetUnit = createUnit('t-u1', [
+        createModel('t-m0', 30, 24),
+        createModel('t-m1', 31.2, 24),
+      ]);
+      const state = createGameState({
+        currentPhase: Phase.Shooting,
+        currentSubPhase: SubPhase.Attack,
+        armies: [
+          createArmy(0, [attackerUnit]),
+          createArmy(1, [targetUnit], { reactionAllotmentRemaining: 0 }),
+        ],
+      });
+
+      const result = processCommand(state, {
+        type: 'declareShooting',
+        attackingUnitId: 'a-u1',
+        targetUnitId: 't-u1',
+        weaponSelections: [{ modelId: 'a-m0', weaponId: 'plasma-cannon' }],
+        blastPlacements: [{ sourceModelIds: ['a-m0'], position: { x: 30.4, y: 24 } }],
+      }, new FixedDiceProvider([4, 2, 2]));
+
+      expect(result.accepted).toBe(true);
+      expect(result.events.some((event) => event.type === 'blastMarkerPlaced')).toBe(true);
+      const resolvedEvent = result.events.find((event) => event.type === 'fireGroupResolved') as { totalHits: number } | undefined;
+      expect(resolvedEvent?.totalHits).toBe(2);
+    });
+
+    it('rejects a template placement that touches a friendly model', () => {
+      const attackerUnit = createUnit('a-u1', [
+        { ...createModel('a-m0', 24, 24), equippedWargear: ['flamer'] },
+        createModel('a-m1', 27, 24),
+      ]);
+      const targetUnit = createUnit('t-u1', [createModel('t-m0', 31, 24)]);
+      const state = createGameState({
+        currentPhase: Phase.Shooting,
+        currentSubPhase: SubPhase.Attack,
+        armies: [
+          createArmy(0, [attackerUnit]),
+          createArmy(1, [targetUnit], { reactionAllotmentRemaining: 0 }),
+        ],
+      });
+
+      const result = processCommand(state, {
+        type: 'declareShooting',
+        attackingUnitId: 'a-u1',
+        targetUnitId: 't-u1',
+        weaponSelections: [{ modelId: 'a-m0', weaponId: 'flamer' }],
+        templatePlacements: [{ sourceModelId: 'a-m0', directionRadians: 0 }],
+      }, new FixedDiceProvider([]));
+
+      expect(result.accepted).toBe(false);
+      expect(result.errors[0].code).toBe('INVALID_TEMPLATE_PLACEMENT');
+    });
+
+    it('resolves template attacks without hit-test rolls', () => {
+      const attackerUnit = createUnit('a-u1', [
+        { ...createModel('a-m0', 24, 24), equippedWargear: ['flamer'] },
+      ]);
+      const targetUnit = createUnit('t-u1', [
+        createModel('t-m0', 29, 24),
+        createModel('t-m1', 31, 24),
+      ]);
+      const state = createGameState({
+        currentPhase: Phase.Shooting,
+        currentSubPhase: SubPhase.Attack,
+        armies: [
+          createArmy(0, [attackerUnit]),
+          createArmy(1, [targetUnit], { reactionAllotmentRemaining: 0 }),
+        ],
+      });
+
+      const result = processCommand(state, {
+        type: 'declareShooting',
+        attackingUnitId: 'a-u1',
+        targetUnitId: 't-u1',
+        weaponSelections: [{ modelId: 'a-m0', weaponId: 'flamer' }],
+        templatePlacements: [{ sourceModelId: 'a-m0', directionRadians: 0 }],
+      }, new FixedDiceProvider([3, 4]));
+
+      expect(result.accepted).toBe(true);
+      expect(result.events.some((event) => event.type === 'templatePlaced')).toBe(true);
+      expect(result.events.some((event) => event.type === 'hitTestRoll')).toBe(false);
+      const resolvedEvent = result.events.find((event) => event.type === 'fireGroupResolved') as { totalHits: number } | undefined;
+      expect(resolvedEvent?.totalHits).toBe(2);
+    });
+
+    it('allocates remaining wounds to new models after the current target is destroyed', () => {
+      const attackerUnit = createUnit('a-u1', [
+        { ...createModel('a-m0', 24, 24), equippedWargear: ['heavy-bolter'] },
+      ]);
+      const targetUnit = createUnit('t-u1', [
+        {
+          ...createModel('t-m0', 30, 24),
+          unitProfileId: 'veteran-tactical-squad',
+          profileModelName: 'Veteran Sergeant',
+          currentWounds: 1,
+        },
+        {
+          ...createModel('t-m1', 31, 24),
+          unitProfileId: 'veteran-tactical-squad',
+          profileModelName: 'Veteran',
+          currentWounds: 2,
+        },
+        {
+          ...createModel('t-m2', 32, 24),
+          unitProfileId: 'veteran-tactical-squad',
+          profileModelName: 'Veteran',
+          currentWounds: 2,
+        },
+      ], {
+        profileId: 'veteran-tactical-squad',
+      });
+      const state = createGameState({
+        currentPhase: Phase.Shooting,
+        currentSubPhase: SubPhase.Attack,
+        armies: [
+          createArmy(0, [attackerUnit]),
+          createArmy(1, [targetUnit], { reactionAllotmentRemaining: 0 }),
+        ],
+      });
+
+      const result = processCommand(state, {
+        type: 'declareShooting',
+        attackingUnitId: 'a-u1',
+        targetUnitId: 't-u1',
+        weaponSelections: [{ modelId: 'a-m0', weaponId: 'heavy-bolter' }],
+      }, new FixedDiceProvider([6, 6, 6, 6, 6, 6, 1, 1, 1]));
+
+      expect(result.accepted).toBe(true);
+      const updatedModels = result.state.armies[1].units[0].models;
+      expect(updatedModels.find((model) => model.id === 't-m0')?.isDestroyed).toBe(true);
+      expect(updatedModels.find((model) => model.id === 't-m1')?.isDestroyed).toBe(true);
+      expect(updatedModels.find((model) => model.id === 't-m2')?.isDestroyed).toBe(false);
+      expect(updatedModels.find((model) => model.id === 't-m2')?.currentWounds).toBe(2);
+    });
+
+    it('resolves damage mitigation after a failed save on the allocated model', () => {
+      const attackerUnit = createUnit('a-u1', [
+        { ...createModel('a-m0', 24, 24), equippedWargear: ['bolter'] },
+      ]);
+      const targetUnit = createUnit('t-u1', [
+        {
+          ...createModel('t-m0', 30, 24),
+          unitProfileId: 'veteran-tactical-squad',
+          profileModelName: 'Veteran',
+          currentWounds: 2,
+          modifiers: [
+            {
+              characteristic: 'FNP',
+              operation: 'set',
+              value: 5,
+              source: 'Test FNP',
+              expiresAt: { type: 'endOfPhase', phase: Phase.Shooting },
+            },
+          ],
+        },
+      ], {
+        profileId: 'veteran-tactical-squad',
+      });
+      const state = createGameState({
+        currentPhase: Phase.Shooting,
+        currentSubPhase: SubPhase.Attack,
+        armies: [
+          createArmy(0, [attackerUnit]),
+          createArmy(1, [targetUnit], { reactionAllotmentRemaining: 0 }),
+        ],
+      });
+
+      const result = processCommand(state, {
+        type: 'declareShooting',
+        attackingUnitId: 'a-u1',
+        targetUnitId: 't-u1',
+        weaponSelections: [{ modelId: 'a-m0', weaponId: 'bolter' }],
+      }, new FixedDiceProvider([6, 1, 6, 1, 5]));
+
+      expect(result.accepted).toBe(true);
+      const saveIndex = result.events.findIndex((event) => event.type === 'savingThrowRoll');
+      const mitigationIndex = result.events.findIndex((event) => event.type === 'damageMitigationRoll');
+      expect(saveIndex).toBeGreaterThanOrEqual(0);
+      expect(mitigationIndex).toBeGreaterThan(saveIndex);
+      expect(result.events.some((event) => event.type === 'damageApplied')).toBe(false);
+      expect(result.state.armies[1].units[0].models[0].currentWounds).toBe(2);
+    });
+  });
+
   describe('selectReaction / declineReaction outside awaiting state', () => {
     it('should reject selectReaction when not awaiting reaction', () => {
       const state = createGameState({ awaitingReaction: false });

@@ -1,5 +1,6 @@
 export {
   buildUnitDeploymentFormation,
+  getDeploymentFormationSpacing,
   type DeploymentFormationPreset,
 } from '@hh/geometry';
 

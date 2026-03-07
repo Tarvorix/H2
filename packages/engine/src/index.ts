@@ -318,6 +318,8 @@ export {
   // Fire Groups
   formFireGroups,
   splitPrecisionHits,
+  TEMPLATE_EFFECTIVE_RANGE_INCHES,
+  getBlastSizeInches,
   // Hit Resolution
   resolveFireGroupHits,
   processGetsHot,
