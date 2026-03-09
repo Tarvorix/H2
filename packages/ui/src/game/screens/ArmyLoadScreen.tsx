@@ -8,7 +8,7 @@
 
 import { useCallback, useState } from 'react';
 import { LegionFaction, Allegiance } from '@hh/types';
-import { AIStrategyTier } from '@hh/ai';
+import { AIStrategyTier, DEFAULT_GAMEPLAY_NNUE_MODEL_ID } from '@hh/ai';
 import type { AIDeploymentFormation } from '@hh/ai';
 import type { GameUIState, GameUIAction, PresetArmy } from '../types';
 import { AI_DEPLOYMENT_FORMATION_LABELS } from './deployment-formations';
@@ -18,6 +18,13 @@ interface ArmyLoadScreenProps {
   dispatch: React.Dispatch<GameUIAction>;
   onReturnToMenu: () => void;
 }
+
+type EngineBudgetPreset = 'normal' | 'turbo';
+
+const ENGINE_BUDGETS: Record<EngineBudgetPreset, number> = {
+  normal: 500,
+  turbo: 1000,
+};
 
 /**
  * Preset armies for quick game start.
@@ -128,6 +135,7 @@ export function ArmyLoadScreen({ state, dispatch, onReturnToMenu }: ArmyLoadScre
   const [aiEnabled, setAiEnabled] = useState(false);
   const [aiTier, setAiTier] = useState<AIStrategyTier>(AIStrategyTier.Tactical);
   const [aiDeploymentFormation, setAiDeploymentFormation] = useState<AIDeploymentFormation>('auto');
+  const [aiEngineBudgetPreset, setAiEngineBudgetPreset] = useState<EngineBudgetPreset>('normal');
 
   const handleSelectPreset = useCallback(
     (playerIndex: number, preset: PresetArmy) => {
@@ -152,6 +160,16 @@ export function ArmyLoadScreen({ state, dispatch, onReturnToMenu }: ArmyLoadScre
           strategyTier: aiTier,
           deploymentFormation: aiDeploymentFormation,
           commandDelayMs: 600,
+          ...(aiTier === AIStrategyTier.Engine
+            ? {
+              timeBudgetMs: ENGINE_BUDGETS[aiEngineBudgetPreset],
+              nnueModelId: DEFAULT_GAMEPLAY_NNUE_MODEL_ID,
+              baseSeed: 1337,
+              rolloutCount: 1,
+              maxDepthSoft: 4,
+              diagnosticsEnabled: true,
+            }
+            : {}),
           enabled: true,
         },
       });
@@ -159,7 +177,7 @@ export function ArmyLoadScreen({ state, dispatch, onReturnToMenu }: ArmyLoadScre
       dispatch({ type: 'SET_AI_CONFIG', config: null });
     }
     dispatch({ type: 'CONFIRM_ARMIES' });
-  }, [dispatch, aiEnabled, aiTier, aiDeploymentFormation]);
+  }, [dispatch, aiEnabled, aiTier, aiDeploymentFormation, aiEngineBudgetPreset]);
 
   const handlePlayerNameChange = useCallback(
     (playerIndex: number, name: string) => {
@@ -241,17 +259,28 @@ export function ArmyLoadScreen({ state, dispatch, onReturnToMenu }: ArmyLoadScre
             </label>
             {aiEnabled && (
               <>
+              <select
+                className="ai-tier-select"
+                value={aiTier}
+                onChange={(e) => setAiTier(e.target.value as AIStrategyTier)}
+              >
+                <option value={AIStrategyTier.Basic}>Basic</option>
+                <option value={AIStrategyTier.Tactical}>Tactical</option>
+                <option value={AIStrategyTier.Engine}>Engine</option>
+              </select>
+              {aiTier === AIStrategyTier.Engine && (
                 <select
                   className="ai-tier-select"
-                  value={aiTier}
-                  onChange={(e) => setAiTier(e.target.value as AIStrategyTier)}
+                  value={aiEngineBudgetPreset}
+                  onChange={(e) => setAiEngineBudgetPreset(e.target.value as EngineBudgetPreset)}
                 >
-                  <option value={AIStrategyTier.Basic}>Basic</option>
-                  <option value={AIStrategyTier.Tactical}>Tactical</option>
+                  <option value="normal">Engine: Normal (500ms)</option>
+                  <option value="turbo">Engine: Turbo (1000ms)</option>
                 </select>
-                <select
-                  className="ai-tier-select"
-                  value={aiDeploymentFormation}
+              )}
+              <select
+                className="ai-tier-select"
+                value={aiDeploymentFormation}
                   onChange={(e) => setAiDeploymentFormation(e.target.value as AIDeploymentFormation)}
                 >
                   {(Object.keys(AI_DEPLOYMENT_FORMATION_LABELS) as AIDeploymentFormation[]).map((formation) => (

@@ -39,9 +39,9 @@ function makeValidArmyList(faction: LegionFaction, name: string): ArmyList {
   const units: ArmyListUnit[] = [
     makeUnit({
       id: `${name}-hc`,
-      profileId: 'armillus-dynat',
+      profileId: 'praetor',
       battlefieldRole: BattlefieldRole.HighCommand,
-      totalPoints: 185,
+      totalPoints: 120,
     }),
     makeUnit({
       id: `${name}-cmd`,
@@ -102,6 +102,17 @@ describe('headless roster validation', () => {
     expect(result.errors.some((err) => err.includes('not currently playable'))).toBe(true);
     expect(result.errors.some((err) => err.includes('unknown or out-of-scope profile ID'))).toBe(true);
   });
+
+  it('rejects duplicate unit IDs across the provided army lists', () => {
+    const army0 = makeValidArmyList(LegionFaction.WorldEaters, 'Player 1');
+    const army1 = makeValidArmyList(LegionFaction.AlphaLegion, 'Player 2');
+    army1.detachments[0].units[0].id = army0.detachments[0].units[0].id;
+
+    const result = validateHeadlessArmyLists([army0, army1]);
+
+    expect(result.isValid).toBe(false);
+    expect(result.errors.some((err) => err.includes('Duplicate unit ID'))).toBe(true);
+  });
 });
 
 describe('createHeadlessGameStateFromArmyLists', () => {
@@ -137,5 +148,18 @@ describe('createHeadlessGameStateFromArmyLists', () => {
         armyLists: [army0, army1],
       }),
     ).toThrow('Cannot create headless game state from invalid army list(s)');
+  });
+
+  it('throws when ArmyList payload reuses a unit ID across both sides', () => {
+    const army0 = makeValidArmyList(LegionFaction.WorldEaters, 'Player 1');
+    const army1 = makeValidArmyList(LegionFaction.DarkAngels, 'Player 2');
+    army1.detachments[0].units[0].id = army0.detachments[0].units[0].id;
+
+    expect(() =>
+      createHeadlessGameStateFromArmyLists({
+        missionId: 'heart-of-battle',
+        armyLists: [army0, army1],
+      }),
+    ).toThrow('Duplicate unit ID');
   });
 });

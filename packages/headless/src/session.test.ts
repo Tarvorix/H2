@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Allegiance, LegionFaction } from '@hh/types';
 import { FixedDiceProvider } from '@hh/engine';
+import { AIStrategyTier, DEFAULT_GAMEPLAY_NNUE_MODEL_ID } from '@hh/ai';
 import {
   createHeadlessMatchSession,
   verifyReplayArtifactDeterminism,
@@ -76,5 +77,49 @@ describe('HeadlessMatchSession', () => {
     expect(record.accepted).toBe(true);
     expect(record.actingPlayerIndex).toBe(0);
     expect(session.getHistory()).toHaveLength(1);
+  });
+
+  it('records engine diagnostics on engine-owned decision windows', () => {
+    const session = createHeadlessMatchSession({
+      setupOptions: {
+        missionId: 'heart-of-battle',
+        armies: [
+          {
+            playerName: 'Player 1',
+            faction: LegionFaction.WorldEaters,
+            allegiance: Allegiance.Traitor,
+            units: [{ profileId: 'techmarine', modelCount: 1, isWarlord: true }],
+          },
+          {
+            playerName: 'Player 2',
+            faction: LegionFaction.AlphaLegion,
+            allegiance: Allegiance.Traitor,
+            units: [{ profileId: 'techmarine', modelCount: 1, isWarlord: true }],
+          },
+        ],
+      },
+      playerConfigs: [
+        {
+          mode: 'ai',
+          strategyTier: AIStrategyTier.Engine,
+          timeBudgetMs: 50,
+          nnueModelId: DEFAULT_GAMEPLAY_NNUE_MODEL_ID,
+          diagnosticsEnabled: true,
+        },
+        {
+          mode: 'ai',
+          strategyTier: AIStrategyTier.Tactical,
+        },
+      ],
+      diceProvider: new FixedDiceProvider(Array.from({ length: 64 }, () => 3)),
+    });
+
+    session.advanceAiDecision(0);
+    const record = session.advanceAiDecision(0);
+
+    expect(record.command.type).toBe('endSubPhase');
+    expect(record.aiDiagnostics?.tier).toBe(AIStrategyTier.Engine);
+    expect(session.getAIDiagnostics()[0]?.modelId).toBe(DEFAULT_GAMEPLAY_NNUE_MODEL_ID);
+    expect(session.getNudgeSnapshot().aiDiagnostics).toEqual(session.getAIDiagnostics()[0]);
   });
 });

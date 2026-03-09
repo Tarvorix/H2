@@ -264,7 +264,6 @@ export {
   handleDisembark,
   handleEmergencyDisembark,
   ACCESS_POINT_RANGE,
-  DEFAULT_TRANSPORT_CAPACITY,
   EMBARK_DEFAULT_COOL,
   // Reposition handler
   checkRepositionTrigger,

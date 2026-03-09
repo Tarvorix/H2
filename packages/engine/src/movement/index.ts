@@ -40,7 +40,6 @@ export {
   handleDisembark,
   handleEmergencyDisembark,
   ACCESS_POINT_RANGE,
-  DEFAULT_TRANSPORT_CAPACITY,
   DEFAULT_COOL as EMBARK_DEFAULT_COOL,
 } from './embark-disembark-handler';
 

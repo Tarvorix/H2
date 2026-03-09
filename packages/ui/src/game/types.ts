@@ -31,7 +31,7 @@ import {
 import type { ArmyDoctrine, ArmyFaction, LegionFaction } from '@hh/types';
 import type { GameEvent, CommandResult, ValidationError } from '@hh/engine';
 import type { CameraState, OverlayVisibility } from '../state/types';
-import type { AIPlayerConfig } from '@hh/ai';
+import type { AIPlayerConfig, AIDiagnostics } from '@hh/ai';
 
 // ─── Game UI Phase (Pre-Game Flow) ───────────────────────────────────────────
 
@@ -461,6 +461,10 @@ export interface GameUIState {
   aiConfig: AIPlayerConfig | null;
   /** Whether the AI is currently processing a turn */
   aiThinking: boolean;
+  /** Latest AI diagnostics snapshot, if enabled. */
+  aiDiagnostics: AIDiagnostics | null;
+  /** Latest AI error surfaced by the selected AI tier. */
+  aiError: string | null;
 }
 
 export interface GhostTrailEntry {
@@ -583,6 +587,8 @@ export type GameUIAction =
   | { type: 'SET_AI_CONFIG'; config: AIPlayerConfig | null }
   | { type: 'AI_TURN_START' }
   | { type: 'AI_TURN_END' }
+  | { type: 'SET_AI_DIAGNOSTICS'; diagnostics: AIDiagnostics | null }
+  | { type: 'SET_AI_ERROR'; error: string | null }
   // ── Game Reset ────────────────────────────────────────────────────────────
   | { type: 'NEW_GAME' }
   | { type: 'RETURN_TO_MENU' };
@@ -812,5 +818,7 @@ export function createInitialGameUIState(): GameUIState {
     lastErrors: [],
     aiConfig: null,
     aiThinking: false,
+    aiDiagnostics: null,
+    aiError: null,
   };
 }

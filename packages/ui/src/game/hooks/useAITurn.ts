@@ -15,13 +15,17 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { getValidCommands } from '@hh/engine';
 import {
+  AIStrategyTier,
   shouldAIAct,
   generateNextCommand,
   createTurnContext,
+  getTurnContextDiagnostics,
+  getTurnContextError,
 } from '@hh/ai';
 import type { AITurnContext } from '@hh/ai';
 import type { GameUIState, GameUIAction } from '../types';
 import { GameUIPhase } from '../types';
+import type { EngineAIWorkerRequest, EngineAIWorkerResponse } from './engine-ai-worker.types';
 
 function buildFallbackCommand(
   gameState: NonNullable<GameUIState['gameState']>,
@@ -78,11 +82,139 @@ export function useAITurn(
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isProcessingRef = useRef(false);
   const latestStateKeyRef = useRef('');
+  const latestStateRef = useRef(state);
+  const workerRef = useRef<Worker | null>(null);
+  const workerRequestIdRef = useRef(0);
+  const workerUnavailableRef = useRef(false);
   const aiStateKey = state.gameState ? buildAiStateKey(state.gameState) : '';
 
   useEffect(() => {
     latestStateKeyRef.current = aiStateKey;
   }, [aiStateKey]);
+
+  useEffect(() => {
+    latestStateRef.current = state;
+  }, [state]);
+
+  const setDiagnostics = useCallback((diagnostics: import('@hh/ai').AIDiagnostics | null) => {
+    dispatch({ type: 'SET_AI_DIAGNOSTICS', diagnostics });
+  }, [dispatch]);
+
+  const setAIError = useCallback((error: string | null) => {
+    dispatch({ type: 'SET_AI_ERROR', error });
+    if (error) {
+      dispatch({
+        type: 'ADD_NOTIFICATION',
+        notification: {
+          message: `AI error: ${error}`,
+          type: 'error',
+          duration: 10_000,
+        },
+      });
+    }
+  }, [dispatch]);
+
+  const ensureWorker = useCallback((): Worker | null => {
+    if (workerUnavailableRef.current) return null;
+    if (workerRef.current) return workerRef.current;
+    if (typeof Worker === 'undefined') {
+      workerUnavailableRef.current = true;
+      return null;
+    }
+
+    try {
+      workerRef.current = new Worker(
+        new URL('./engine-ai.worker.ts', import.meta.url),
+        { type: 'module' },
+      );
+      return workerRef.current;
+    } catch {
+      workerUnavailableRef.current = true;
+      return null;
+    }
+  }, []);
+
+  const dispatchResolvedCommand = useCallback((command: import('@hh/types').GameCommand | null, scheduledStateKey: string) => {
+    if (command === null) {
+      isProcessingRef.current = false;
+      dispatch({ type: 'AI_TURN_END' });
+      return;
+    }
+
+    const latestState = latestStateRef.current;
+    const config = latestState.aiConfig;
+    if (!config) {
+      isProcessingRef.current = false;
+      dispatch({ type: 'AI_TURN_END' });
+      return;
+    }
+
+    const delay = config.commandDelayMs;
+    if (delay > 0) {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+      timerRef.current = setTimeout(() => {
+        timerRef.current = null;
+        if (latestStateKeyRef.current !== scheduledStateKey) {
+          isProcessingRef.current = false;
+          return;
+        }
+        dispatch({ type: 'DISPATCH_ENGINE_COMMAND', command });
+        isProcessingRef.current = false;
+      }, delay);
+      return;
+    }
+
+    if (latestStateKeyRef.current !== scheduledStateKey) {
+      isProcessingRef.current = false;
+      return;
+    }
+
+    dispatch({ type: 'DISPATCH_ENGINE_COMMAND', command });
+    isProcessingRef.current = false;
+  }, [dispatch]);
+
+  const handleWorkerResponse = useCallback((response: EngineAIWorkerResponse) => {
+    if (response.requestId !== workerRequestIdRef.current) {
+      return;
+    }
+
+    contextRef.current = response.context;
+    setDiagnostics(response.diagnostics);
+
+    if (response.error) {
+      setAIError(response.error);
+      isProcessingRef.current = false;
+      dispatch({ type: 'AI_TURN_END' });
+      return;
+    }
+
+    setAIError(null);
+    if (latestStateKeyRef.current !== response.stateKey) {
+      isProcessingRef.current = false;
+      return;
+    }
+
+    const latestState = latestStateRef.current;
+    const command = response.command ?? (
+      latestState.gameState ? buildFallbackCommand(latestState.gameState) : null
+    );
+    dispatchResolvedCommand(command, response.stateKey);
+  }, [dispatch, dispatchResolvedCommand, setAIError, setDiagnostics]);
+
+  useEffect(() => {
+    const worker = ensureWorker();
+    if (!worker) return;
+
+    const onMessage = (event: MessageEvent<EngineAIWorkerResponse>) => {
+      handleWorkerResponse(event.data);
+    };
+    worker.addEventListener('message', onMessage);
+    return () => {
+      worker.removeEventListener('message', onMessage);
+    };
+  }, [ensureWorker, handleWorkerResponse]);
 
   const processAITurn = useCallback(() => {
     if (!state.aiConfig || !state.gameState) return;
@@ -103,40 +235,39 @@ export function useAITurn(
     }
 
     isProcessingRef.current = true;
+    const scheduledStateKey = buildAiStateKey(state.gameState);
 
-    const command = generateNextCommand(state.gameState, config, contextRef.current) ??
-      buildFallbackCommand(state.gameState);
+    if (config.strategyTier === AIStrategyTier.Engine) {
+      const worker = ensureWorker();
+      if (worker) {
+        const request: EngineAIWorkerRequest = {
+          requestId: ++workerRequestIdRef.current,
+          stateKey: scheduledStateKey,
+          state: state.gameState,
+          config,
+          context: contextRef.current,
+        };
+        worker.postMessage(request);
+        return;
+      }
+    }
 
-    if (command === null) {
+    let command: import('@hh/types').GameCommand | null = null;
+    try {
+      command = generateNextCommand(state.gameState, config, contextRef.current);
+      setDiagnostics(getTurnContextDiagnostics(contextRef.current));
+      setAIError(getTurnContextError(contextRef.current));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setDiagnostics(getTurnContextDiagnostics(contextRef.current));
+      setAIError(message);
       isProcessingRef.current = false;
       dispatch({ type: 'AI_TURN_END' });
       return;
     }
 
-    // Dispatch with delay for visual pacing
-    const delay = config.commandDelayMs;
-    const scheduledStateKey = buildAiStateKey(state.gameState);
-    if (delay > 0) {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-      }
-      timerRef.current = setTimeout(() => {
-        timerRef.current = null;
-        if (latestStateKeyRef.current !== scheduledStateKey) {
-          isProcessingRef.current = false;
-          return;
-        }
-        dispatch({ type: 'DISPATCH_ENGINE_COMMAND', command });
-        isProcessingRef.current = false;
-      }, delay);
-    } else {
-      if (latestStateKeyRef.current !== scheduledStateKey) {
-        isProcessingRef.current = false;
-        return;
-      }
-      dispatch({ type: 'DISPATCH_ENGINE_COMMAND', command });
-      isProcessingRef.current = false;
-    }
+    const resolvedCommand = command ?? buildFallbackCommand(state.gameState);
+    dispatchResolvedCommand(resolvedCommand, scheduledStateKey);
   }, [
     state.aiConfig,
     state.gameState,
@@ -144,6 +275,10 @@ export function useAITurn(
     state.aiThinking,
     state.lastCommandResult,
     dispatch,
+    dispatchResolvedCommand,
+    ensureWorker,
+    setAIError,
+    setDiagnostics,
   ]);
 
   // Run the AI turn loop whenever gameState changes
@@ -165,6 +300,8 @@ export function useAITurn(
       if (timerRef.current) {
         clearTimeout(timerRef.current);
       }
+      workerRef.current?.terminate();
+      workerRef.current = null;
     };
   }, []);
 }

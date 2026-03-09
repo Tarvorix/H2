@@ -1,0 +1,93 @@
+import { describe, expect, it } from 'vitest';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { HHMatchManager } from './match-manager';
+import { registerTools } from './register-tools';
+
+describe('registerTools', () => {
+  it('exposes an MCP tool catalog that a client can enumerate', async () => {
+    const server = new McpServer({
+      name: 'hh-mcp-test',
+      version: '0.1.0',
+    }, {
+      capabilities: {
+        logging: {},
+      },
+    });
+    registerTools(server, new HHMatchManager());
+
+    const client = new Client({
+      name: 'hh-mcp-test-client',
+      version: '0.1.0',
+    });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+
+    await Promise.all([
+      server.connect(serverTransport),
+      client.connect(clientTransport),
+    ]);
+
+    const result = await client.listTools();
+
+    expect(result.tools.map((tool) => tool.name)).toEqual([
+      'create_match',
+      'list_matches',
+      'get_match',
+      'bind_agent_to_player',
+      'get_legal_actions',
+      'submit_action',
+      'advance_ai_decision',
+      'get_event_log',
+      'get_observer_snapshot',
+      'export_replay_artifact',
+      'archive_match',
+    ]);
+
+    const createMatch = result.tools.find((tool) => tool.name === 'create_match');
+    expect(createMatch).toBeDefined();
+
+    const inputSchema = createMatch!.inputSchema as {
+      properties: {
+        setupOptions: {
+          properties: {
+            armies: {
+              items: [
+                {
+                  properties: {
+                    faction: {
+                      enum: string[];
+                    };
+                    doctrine: {
+                      oneOf: Array<{
+                        properties: Record<string, unknown>;
+                      }>;
+                    };
+                  };
+                },
+              ];
+            };
+          };
+        };
+      };
+    };
+
+    const setupArmySchema = inputSchema.properties.setupOptions.properties.armies.items[0];
+    const topLevelFactions = new Set(setupArmySchema.properties.faction.enum);
+    expect(topLevelFactions).toEqual(new Set([
+      'Dark Angels',
+      'World Eaters',
+      'Alpha Legion',
+      'Blackshields',
+      'Shattered Legions',
+    ]));
+
+    // Shattered Legions and Blackshields still need access to the full legion set internally.
+    const doctrineSchema = setupArmySchema.properties.doctrine.oneOf;
+    expect(JSON.stringify(doctrineSchema)).toContain('selectedLegions');
+    expect(JSON.stringify(doctrineSchema)).toContain('selectedLegionForArmoury');
+    expect(JSON.stringify(doctrineSchema)).toContain('Sons of Horus');
+
+    await clientTransport.close();
+  });
+});

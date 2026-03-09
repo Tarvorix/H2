@@ -1,8 +1,8 @@
 /**
  * @hh/ai — AI Opponent Package
  *
- * Provides Basic (random) and Tactical (heuristic) AI strategies
- * that generate GameCommand objects for the engine.
+ * Provides Basic (random), Tactical (heuristic), and Engine (search + NNUE)
+ * AI strategies that generate GameCommand objects for the engine.
  */
 
 // Types
@@ -13,6 +13,16 @@ export {
   type AITurnContext,
   type AIStrategy,
   type DeploymentCommand,
+  type QueuedCommandStep,
+  type MacroAction,
+  type AIDiagnostics,
+  type SearchConfig,
+  type SearchResult,
+  type QuantizedLayer,
+  type NNUEModelManifest,
+  type NNUEModel,
+  type SerializedNNUEModel,
+  type Evaluator,
   type TargetScore,
   type MovementScore,
   type StrategyMode,
@@ -25,11 +35,15 @@ export {
   shouldAIAct,
   generateNextCommand,
   generateDeploymentCommand,
+  getTurnContextDiagnostics,
+  getTurnContextError,
+  getTurnContextQueuedPlan,
 } from './ai-controller';
 
 // Strategies
 export { BasicStrategy } from './strategy/basic-strategy';
 export { TacticalStrategy } from './strategy/tactical-strategy';
+export { EngineStrategy } from './strategy/engine-strategy';
 
 // Phase Handlers
 export { generatePhaseControlCommand, isAutoAdvanceSubPhase } from './phases/phase-control-ai';
@@ -49,6 +63,34 @@ export {
   findBestMovePosition,
   generateCandidatePositions,
 } from './evaluation/position-evaluation';
+
+// Engine Search + NNUE
+export {
+  GAMEPLAY_FEATURE_DIMENSION,
+  GAMEPLAY_FEATURE_VERSION,
+  extractGameplayFeatures,
+} from './engine/feature-extractor';
+export {
+  ROSTER_FEATURE_DIMENSION,
+  ROSTER_FEATURE_VERSION,
+  extractRosterFeatures,
+} from './engine/roster-feature-extractor';
+export {
+  DEFAULT_GAMEPLAY_NNUE_MODEL_ID,
+  DEFAULT_ROSTER_NNUE_MODEL_ID,
+  getNNUEModel,
+  listNNUEModels,
+  registerNNUEModel,
+  resolveNNUEModel,
+  validateNNUEModel,
+} from './engine/model-registry';
+export {
+  NNUEEvaluator,
+  RosterNNUEEvaluator,
+  evaluateRosterArmyList,
+} from './engine/evaluator';
+export { searchBestAction } from './engine/search';
+export { serializeNNUEModel, deserializeNNUEModel } from './engine/serialization';
 
 // Helpers
 export {

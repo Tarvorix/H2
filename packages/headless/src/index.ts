@@ -6,9 +6,13 @@ import {
 } from '@hh/engine';
 import {
   AIStrategyTier,
+  DEFAULT_GAMEPLAY_NNUE_MODEL_ID,
   createTurnContext,
   generateNextCommand,
+  getTurnContextDiagnostics,
+  getTurnContextError,
   shouldAIAct,
+  type AIDiagnostics,
   type AIPlayerConfig,
 } from '@hh/ai';
 import type { DiceProvider } from '@hh/engine';
@@ -27,6 +31,29 @@ export {
   createHeadlessGameStateFromArmyLists,
   validateHeadlessArmyLists,
 } from './roster';
+export type {
+  CuratedArmyListDefinition,
+  CuratedArmyListSource,
+} from './curated-army-lists';
+export {
+  CURATED_2000_POINT_ARMY_LISTS,
+  getCurated2000PointArmyList,
+  getCurated2000PointArmyLists,
+} from './curated-army-lists';
+export type {
+  HeadlessGeneratedArmyList,
+  HeadlessGeneratedArmyListGameSetupOptions,
+  HeadlessGeneratedArmyListGameSetupResult,
+  HeadlessRosterCandidateSummary,
+  HeadlessRosterDiagnostics,
+  HeadlessRosterGenerationConfig,
+  HeadlessRosterStrategyTier,
+} from './roster-ai';
+export {
+  createHeadlessGameStateFromGeneratedArmyLists,
+  generateHeadlessArmyList,
+  generateHeadlessArmyLists,
+} from './roster-ai';
 export type {
   HeadlessReplayArtifact,
   HeadlessReplayVerificationResult,
@@ -60,6 +87,12 @@ export interface HeadlessAIPlayerConfig {
   enabled: boolean;
   playerIndex: number;
   strategyTier: AIStrategyTier;
+  timeBudgetMs?: number;
+  nnueModelId?: string;
+  baseSeed?: number;
+  rolloutCount?: number;
+  maxDepthSoft?: number;
+  diagnosticsEnabled?: boolean;
 }
 
 export interface HeadlessRunOptions {
@@ -90,6 +123,7 @@ export interface HeadlessCommandRecord {
   battleTurn: number;
   phase: string;
   subPhase: string;
+  aiDiagnostics: AIDiagnostics | null;
 }
 
 export interface HeadlessRunResult {
@@ -103,7 +137,9 @@ export interface HeadlessRunResult {
     | 'max-commands'
     | 'no-ai-controller'
     | 'no-command-generated'
-    | 'command-rejected';
+    | 'command-rejected'
+    | 'ai-error';
+  errorMessage: string | null;
 }
 
 class RecordingDiceProvider implements DiceProvider {
@@ -161,12 +197,19 @@ function defaultAIPlayers(): HeadlessAIPlayerConfig[] {
 }
 
 function toAIPlayerConfig(config: HeadlessAIPlayerConfig): AIPlayerConfig {
+  const isEngine = config.strategyTier === AIStrategyTier.Engine;
   return {
     enabled: config.enabled,
     playerIndex: config.playerIndex,
     strategyTier: config.strategyTier,
     deploymentFormation: 'auto',
     commandDelayMs: 0,
+    timeBudgetMs: config.timeBudgetMs,
+    nnueModelId: isEngine ? (config.nnueModelId ?? DEFAULT_GAMEPLAY_NNUE_MODEL_ID) : undefined,
+    baseSeed: config.baseSeed,
+    rolloutCount: config.rolloutCount,
+    maxDepthSoft: config.maxDepthSoft,
+    diagnosticsEnabled: config.diagnosticsEnabled,
   };
 }
 
@@ -215,6 +258,7 @@ export function runHeadlessMatch(
         executedCommands: history.length,
         diceSequence: dice.getSequence(),
         terminatedReason: 'game-over',
+        errorMessage: null,
       };
     }
 
@@ -230,14 +274,32 @@ export function runHeadlessMatch(
         executedCommands: history.length,
         diceSequence: dice.getSequence(),
         terminatedReason: 'no-ai-controller',
+        errorMessage: null,
       };
     }
 
     const shouldPreferFallback =
       history.length > 0 && history[history.length - 1]?.accepted === false;
-    const command = shouldPreferFallback
-      ? buildFallbackCommand(state) ?? generateNextCommand(state, aiConfig, aiContext)
-      : generateNextCommand(state, aiConfig, aiContext) ?? buildFallbackCommand(state);
+    let command: GameCommand | null;
+    let aiDiagnostics: AIDiagnostics | null = null;
+    try {
+      command = shouldPreferFallback
+        ? buildFallbackCommand(state) ?? generateNextCommand(state, aiConfig, aiContext)
+        : generateNextCommand(state, aiConfig, aiContext) ?? buildFallbackCommand(state);
+      aiDiagnostics = getTurnContextDiagnostics(aiContext);
+    } catch (error) {
+      const message = getTurnContextError(aiContext) ?? (error instanceof Error ? error.message : String(error));
+      return {
+        finalState: state,
+        finalStateHash: hashGameState(state),
+        commandHistory: history,
+        executedCommands: history.length,
+        diceSequence: dice.getSequence(),
+        terminatedReason: 'ai-error',
+        errorMessage: message,
+      };
+    }
+
     if (!command) {
       return {
         finalState: state,
@@ -246,6 +308,7 @@ export function runHeadlessMatch(
         executedCommands: history.length,
         diceSequence: dice.getSequence(),
         terminatedReason: 'no-command-generated',
+        errorMessage: null,
       };
     }
 
@@ -261,6 +324,7 @@ export function runHeadlessMatch(
       battleTurn: result.state.currentBattleTurn,
       phase: result.state.currentPhase,
       subPhase: result.state.currentSubPhase,
+      aiDiagnostics,
     });
 
     if (!result.accepted) {
@@ -278,6 +342,7 @@ export function runHeadlessMatch(
           battleTurn: fallbackResult.state.currentBattleTurn,
           phase: fallbackResult.state.currentPhase,
           subPhase: fallbackResult.state.currentSubPhase,
+          aiDiagnostics,
         });
 
         if (fallbackResult.accepted) {
@@ -293,6 +358,7 @@ export function runHeadlessMatch(
         executedCommands: history.length,
         diceSequence: dice.getSequence(),
         terminatedReason: 'command-rejected',
+        errorMessage: null,
       };
     }
 
@@ -306,5 +372,6 @@ export function runHeadlessMatch(
     executedCommands: history.length,
     diceSequence: dice.getSequence(),
     terminatedReason: 'max-commands',
+    errorMessage: null,
   };
 }

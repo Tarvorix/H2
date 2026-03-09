@@ -11,22 +11,43 @@
 
 import type { GameState, GameCommand } from '@hh/types';
 import { Phase, SubPhase } from '@hh/types';
-import type { AIPlayerConfig, AIStrategy, AITurnContext, DeploymentCommand } from './types';
+import type {
+  AIPlayerConfig,
+  AIStrategy,
+  AITurnContext,
+  DeploymentCommand,
+  QueuedCommandStep,
+} from './types';
 import { AIStrategyTier } from './types';
 import { BasicStrategy } from './strategy/basic-strategy';
 import { TacticalStrategy } from './strategy/tactical-strategy';
+import { EngineStrategy } from './strategy/engine-strategy';
+import {
+  clearQueuedPlan,
+  cloneQueuedPlan,
+  getDecisionPlayerIndex,
+  getStateFingerprint,
+} from './state-utils';
 
 // ─── Strategy Factory ────────────────────────────────────────────────────────
 
 /**
  * Create the appropriate strategy instance for the given tier.
  */
-export function createStrategy(tier: AIStrategyTier): AIStrategy {
+export function createStrategy(configOrTier: AIStrategyTier | AIPlayerConfig): AIStrategy {
+  const tier = typeof configOrTier === 'string'
+    ? configOrTier
+    : configOrTier.strategyTier;
   switch (tier) {
     case AIStrategyTier.Basic:
       return new BasicStrategy();
     case AIStrategyTier.Tactical:
       return new TacticalStrategy();
+    case AIStrategyTier.Engine:
+      if (typeof configOrTier === 'string') {
+        throw new Error('Engine strategy creation requires a full AIPlayerConfig.');
+      }
+      return new EngineStrategy(configOrTier);
   }
 }
 
@@ -44,6 +65,15 @@ export function createTurnContext(): AITurnContext {
     currentMovingUnitId: null,
     lastPhase: null,
     lastSubPhase: null,
+    latestStateFingerprint: null,
+    lastDecisionOwner: null,
+    queuedPlan: [],
+    pendingResultFingerprint: null,
+    pendingResultDecisionOwner: null,
+    pendingResultCommandType: null,
+    latestDiagnostics: null,
+    latestError: null,
+    lastEngineScore: null,
   };
 }
 
@@ -60,9 +90,76 @@ function maybeResetContext(
     context.actedUnitIds.clear();
     context.movedModelIds.clear();
     context.currentMovingUnitId = null;
+    clearQueuedPlan(context);
     context.lastPhase = currentPhase;
     context.lastSubPhase = currentSubPhase;
   }
+}
+
+function maybeClearRejectedPlan(
+  context: AITurnContext,
+  currentFingerprint: string,
+  decisionOwner: number,
+): void {
+  if (context.pendingResultFingerprint === null) return;
+
+  const commandWasRejected =
+    context.pendingResultFingerprint === currentFingerprint &&
+    context.pendingResultDecisionOwner === decisionOwner;
+
+  if (commandWasRejected) {
+    clearQueuedPlan(context);
+  } else {
+    context.pendingResultFingerprint = null;
+    context.pendingResultDecisionOwner = null;
+    context.pendingResultCommandType = null;
+  }
+}
+
+function maybeConsumeQueuedPlan(
+  context: AITurnContext,
+  currentFingerprint: string,
+  decisionOwner: number,
+): GameCommand | null {
+  const nextStep = context.queuedPlan[0];
+  if (!nextStep) return null;
+
+  if (
+    nextStep.expectedStateFingerprint !== currentFingerprint ||
+    nextStep.phase !== context.lastPhase ||
+    nextStep.subPhase !== context.lastSubPhase ||
+    nextStep.decisionOwner !== decisionOwner
+  ) {
+    clearQueuedPlan(context);
+    return null;
+  }
+
+  context.queuedPlan = context.queuedPlan.slice(1);
+  return nextStep.command;
+}
+
+function markCommandPendingResult(
+  context: AITurnContext,
+  currentFingerprint: string,
+  decisionOwner: number,
+  command: GameCommand,
+): void {
+  context.pendingResultFingerprint = currentFingerprint;
+  context.pendingResultDecisionOwner = decisionOwner;
+  context.pendingResultCommandType = command.type;
+  context.latestStateFingerprint = currentFingerprint;
+}
+
+export function getTurnContextDiagnostics(context: AITurnContext) {
+  return context.latestDiagnostics;
+}
+
+export function getTurnContextError(context: AITurnContext): string | null {
+  return context.latestError;
+}
+
+export function getTurnContextQueuedPlan(context: AITurnContext): QueuedCommandStep[] {
+  return cloneQueuedPlan(context.queuedPlan);
 }
 
 // ─── Should AI Act ───────────────────────────────────────────────────────────
@@ -110,9 +207,42 @@ export function generateNextCommand(
 
   // Reset context if phase/sub-phase changed
   maybeResetContext(context, state.currentPhase, state.currentSubPhase);
+  context.latestError = null;
 
-  const strategy = createStrategy(config.strategyTier);
-  return strategy.generateNextCommand(state, config.playerIndex, context);
+  const decisionOwner = getDecisionPlayerIndex(state);
+  const currentFingerprint = getStateFingerprint(state);
+  if (context.lastDecisionOwner !== null && context.lastDecisionOwner !== decisionOwner) {
+    clearQueuedPlan(context);
+  }
+  context.lastDecisionOwner = decisionOwner;
+
+  maybeClearRejectedPlan(context, currentFingerprint, decisionOwner);
+
+  const queuedCommand = maybeConsumeQueuedPlan(context, currentFingerprint, decisionOwner);
+  if (queuedCommand) {
+    markCommandPendingResult(context, currentFingerprint, decisionOwner, queuedCommand);
+    return queuedCommand;
+  }
+
+  try {
+    const strategy = createStrategy(config);
+    const command = strategy.generateNextCommand(state, config.playerIndex, context);
+    if (command) {
+      markCommandPendingResult(context, currentFingerprint, decisionOwner, command);
+    }
+    return command;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    context.latestError = message;
+    context.latestDiagnostics = {
+      tier: config.strategyTier,
+      modelId: config.nnueModelId,
+      principalVariation: [],
+      error: message,
+    };
+    clearQueuedPlan(context);
+    throw error;
+  }
 }
 
 // ─── Generate Deployment Command ─────────────────────────────────────────────
@@ -129,7 +259,7 @@ export function generateDeploymentCommand(
 ): DeploymentCommand | null {
   if (!config.enabled) return null;
 
-  const strategy = createStrategy(config.strategyTier);
+  const strategy = createStrategy(config);
   return strategy.generateDeploymentCommand(
     state,
     config.playerIndex,

@@ -1752,13 +1752,24 @@ export function gameReducer(
 
     // ── AI Opponent ────────────────────────────────────────────────────
     case 'SET_AI_CONFIG':
-      return { ...state, aiConfig: action.config };
+      return {
+        ...state,
+        aiConfig: action.config,
+        aiDiagnostics: null,
+        aiError: null,
+      };
 
     case 'AI_TURN_START':
       return { ...state, aiThinking: true };
 
     case 'AI_TURN_END':
       return { ...state, aiThinking: false };
+
+    case 'SET_AI_DIAGNOSTICS':
+      return { ...state, aiDiagnostics: action.diagnostics };
+
+    case 'SET_AI_ERROR':
+      return { ...state, aiError: action.error };
 
     // ── Game Reset ──────────────────────────────────────────────────────
     case 'NEW_GAME':

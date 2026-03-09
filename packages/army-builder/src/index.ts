@@ -45,6 +45,8 @@ export {
   validateWarlordDesignation,
   validatePlayableFactionScope,
   validateUnitProfilesExist,
+  validateProfileTraitRestrictions,
+  validateTransportAssignments,
   validateDoctrineConstraints,
 } from './validation';
 

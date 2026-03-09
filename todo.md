@@ -1,6 +1,379 @@
 # HHv2 TODO
 
-Last Updated: 2026-03-07
+Last Updated: 2026-03-09
+
+## Execution Plan (MCP Host Split Config - 2026-03-09)
+- [x] Add a machine-level Cloudflare tunnel ingress rule so `mcp.tarvorix.com` remains available for Strife while `hh.tarvorix.com` forwards to HHv2.
+- [x] Add a separate Codex MCP server entry for `hh.tarvorix.com` without overwriting the existing Strife MCP entry.
+- [x] Verify the resulting config files still point Strife at `mcp.tarvorix.com` and HHv2 at `hh.tarvorix.com`.
+- Progress:
+  - Updated `/Users/kylebullock/.cloudflared/config.yml` to preserve `mcp.tarvorix.com -> http://127.0.0.1:8787` for Strife and add `hh.tarvorix.com -> http://127.0.0.1:8788` for HHv2.
+  - Updated `/Users/kylebullock/.codex/config.toml` to keep the existing `strife` MCP server entry and add a new `hh` MCP server entry pointing at `https://hh.tarvorix.com/mcp`.
+  - Verified the saved file contents after patching, and created timestamped backup copies of both machine-level config files before editing.
+
+## Execution Plan (HH MCP Tool Schema Fix - 2026-03-09)
+- [x] Replace non-JSON-schema-safe MCP tool input definitions with explicit JSON-safe schemas so Codex can enumerate HHv2 tools.
+- [x] Rebuild `@hh/mcp-server` and rerun focused verification against the live `hh.tarvorix.com` MCP endpoint.
+- [x] Record the specific schema blocker and the verification outcome here.
+- Progress:
+  - Root cause was `packages/mcp-server/src/register-tools.ts`: `submit_action` used `z.custom<GameCommand>()`, which the MCP SDK could not export to JSON Schema during `tools/list`, causing Codex to show no tools.
+  - Replaced the custom/opaque MCP input pieces with explicit JSON-safe Zod schemas:
+    - added an explicit `gameCommandSchema` discriminated union covering the full `GameCommand` surface
+    - added explicit doctrine schemas for `blackshields` and `shatteredLegions`
+    - tightened a few related helper schemas (`TerrainPiece`, `TerrainShape`, player index/faction helpers) so the whole tool catalog stays JSON-schema-safe
+  - Added `packages/mcp-server/src/register-tools.test.ts`, which boots an in-memory MCP server/client pair and asserts that a real client can enumerate the HHv2 tool catalog.
+  - Verification passed:
+    - `pnpm --filter @hh/mcp-server typecheck`
+    - `pnpm --filter @hh/mcp-server build`
+  - `pnpm test -- packages/mcp-server/src/match-manager.test.ts packages/mcp-server/src/register-tools.test.ts`
+  - Raw MCP wire check against `https://hh.tarvorix.com/mcp` now returns the full 11-tool `tools/list` catalog.
+  - Official MCP SDK client check against `https://hh.tarvorix.com/mcp` successfully enumerated all 11 HHv2 tools.
+
+## Execution Plan (HH MCP Playable Faction Scope - 2026-03-09)
+- [x] Narrow HH MCP top-level faction inputs to the curated playable set only.
+- [x] Preserve full 18-legion support for Shattered Legions and Blackshields doctrine/origin fields.
+- [x] Rebuild and verify the live `hh.tarvorix.com` schema still enumerates and now advertises only the playable top-level factions.
+- Progress:
+  - Updated `packages/mcp-server/src/register-tools.ts` so the MCP `create_match` top-level `faction` fields now advertise only the curated playable set: `Dark Angels`, `World Eaters`, `Alpha Legion`, `Blackshields`, and `Shattered Legions`.
+  - Kept the full legion enum for `originLegion`, `selectedLegions`, and `selectedLegionForArmoury`, so Shattered Legions and Blackshields still have access to all required legion lineage/doctrine choices.
+  - Extended `packages/mcp-server/src/register-tools.test.ts` to assert that the emitted MCP schema keeps this split correctly.
+  - Verification passed:
+    - `pnpm --filter @hh/mcp-server typecheck`
+    - `pnpm --filter @hh/mcp-server build`
+    - `pnpm test -- packages/mcp-server/src/match-manager.test.ts packages/mcp-server/src/register-tools.test.ts`
+    - Live MCP SDK check against `https://hh.tarvorix.com/mcp` confirmed the 5-value top-level `faction` enum while the doctrine schema still includes `Sons of Horus`, `selectedLegions`, and `selectedLegionForArmoury`.
+
+## Execution Plan (24-Match Starter Gameplay Training Run - 2026-03-08)
+- [x] Run a 24-match `nnue:selfplay` pass on the curated 2000-point default setups and capture the generated corpus manifest.
+- [x] Train a gameplay candidate from the resulting self-play shard(s) with a conservative starter configuration.
+- [x] Gate the candidate against `Tactical`, capture the benchmark summary, and record the outcome here.
+- Progress:
+  - The first attempted starter batch exposed two issues:
+    - `tools/nnue/self-play.mjs` assumed every instrumented match returned a replay/final-state hash and crashed on the first abnormal termination.
+    - The deeper gameplay bug was in `packages/ai/src/engine/candidate-generator.ts`: search-side movement generation did not call `canUnitMove()`, so the `Engine` could emit illegal `moveUnit` commands for combat-locked units.
+  - Patched `tools/nnue/common.mjs` so aborted instrumented matches still emit replay artifacts and no longer crash the self-play batch.
+  - Patched `packages/ai/src/engine/candidate-generator.ts` to filter movement actions through `canUnitMove()`, and added a regression in `packages/ai/src/engine/search.test.ts` to keep locked-in-combat units from becoming Movement-phase search actions.
+  - Rebuilt `@hh/ai` and `@hh/headless` so the NNUE tooling picked up the fixed search code.
+  - Verified the repaired legality path with:
+    - `pnpm test -- packages/ai/src/engine/search.test.ts` (`1 file / 3 tests`)
+    - `pnpm nnue:selfplay --matches 3 --time-budget-ms 150 --max-commands 1500 --shard-size 1000000 --out-dir tmp/nnue-starter-2000-repro-after-build` (`3/3 game-over`)
+  - Final starter run completed cleanly:
+    - `pnpm nnue:selfplay --matches 24 --time-budget-ms 150 --max-commands 1500 --shard-size 1000000 --out-dir tmp/nnue-starter-2000-final`
+    - Result: `24/24 game-over`, `5,678` samples, `1` shard, manifest at `tmp/nnue-starter-2000-final/manifest.json`
+  - Starter candidate training completed:
+    - `pnpm nnue:train --input tmp/nnue-starter-2000-final/selfplay-shard-001.jsonl --out tmp/nnue-starter-2000-final/candidate.json --epochs 12 --learning-rate 0.01 --l2 0.0005`
+    - Result: model `gameplay-default-v1-candidate-1773023710076`
+  - Starter gate completed:
+    - `pnpm nnue:gate --model tmp/nnue-starter-2000-final/candidate.json --matches 8 --time-budget-ms 150 --threshold -1 --out tmp/nnue-starter-2000-final/gate.json`
+    - Result: `1 win / 6 losses / 1 draw / 0 aborted / 0 timeouts` vs `Tactical` (`winRate: 0.125`)
+
+## Execution Plan (100-Match Gameplay Training Run - 2026-03-08)
+- [x] Run a 100-match `nnue:selfplay` batch on the curated 2000-point default setups and capture the generated corpus manifest.
+- [x] Train a gameplay candidate from the resulting 100-match shard(s) using the same starter hyperparameters for an apples-to-apples comparison.
+- [x] Gate the new candidate against `Tactical` and record the benchmark summary alongside the 24-match starter result.
+- Progress:
+  - `pnpm nnue:selfplay --matches 100 --time-budget-ms 150 --max-commands 1500 --shard-size 1000000 --out-dir tmp/nnue-100-2000-final`
+    - Result: `100/100 game-over`, `23,620` samples, `1` shard, manifest at `tmp/nnue-100-2000-final/manifest.json`
+    - No abnormal terminations were observed in the full 100-game batch after the search legality fix + rebuild.
+  - `pnpm nnue:train --input tmp/nnue-100-2000-final/selfplay-shard-001.jsonl --out tmp/nnue-100-2000-final/candidate.json --epochs 12 --learning-rate 0.01 --l2 0.0005`
+    - Result: model `gameplay-default-v1-candidate-1773029050909`
+  - `pnpm nnue:gate --model tmp/nnue-100-2000-final/candidate.json --matches 8 --time-budget-ms 150 --threshold -1 --out tmp/nnue-100-2000-final/gate.json`
+    - Result: `3 wins / 5 losses / 0 draws / 0 aborted / 0 timeouts` vs `Tactical` (`winRate: 0.375`)
+  - Comparison vs the 24-game starter:
+    - 24-game candidate: `1 win / 6 losses / 1 draw` (`winRate: 0.125`)
+    - 100-game candidate: `3 wins / 5 losses / 0 draws` (`winRate: 0.375`)
+    - So the larger corpus improved the model materially, but it still does not beat `Tactical` at this budget.
+
+## Documentation Plan (Engine Primer - 2026-03-09)
+- [x] Audit the current `Engine` implementation across AI core, UI, headless, MCP, and NNUE tooling so the primer reflects the shipped code rather than older design docs.
+- [x] Write `engine_primer.md` as a code-accurate white paper covering architecture, runtime decision flow, search, evaluator/model format, training pipeline, deployment path, and current limitations.
+- [x] Add a concrete “possible improvements” section at the end and record the finished doc pass here after a final source re-read.
+- Progress:
+  - Audited the live Engine stack across `packages/ai`, `packages/ui`, `packages/headless`, `packages/mcp-server`, and `tools/nnue` so the primer describes the shipped code paths rather than the older mixed-search plan.
+  - Added `engine_primer.md` at the repo root as a current-state primer covering:
+    - strategy tiers and runtime architecture
+    - AI controller and queued-plan flow
+    - macro-action generation and search behavior
+    - deterministic rollouts and evaluator/model format
+    - UI worker, headless, CLI, and MCP integration surfaces
+    - self-play, training, gating, and runtime deployment behavior
+    - strengths, limitations, and concrete improvement ideas
+  - Added the requested section at the end with practical trainer, search, and product/deployment improvements to implement next.
+  - Re-read the finished primer against the source after drafting. No code tests were run because this was a documentation-only change.
+
+## Implementation Plan (25-Feature Gameplay Evaluator + Trainer Validation Pass - 2026-03-09)
+- [x] Expand the gameplay feature extractor from 10 to 25 features and version the gameplay feature schema so new models are validated correctly.
+- [x] Align the built-in default gameplay NNUE model with the expanded feature vector so `Engine` still boots with a valid in-process gameplay model.
+- [x] Upgrade `tools/nnue/train-gameplay-model.mjs` to support a validation split and early stopping while preserving the current artifact format.
+- [x] Run focused verification for the updated evaluator/trainer path and record the outcome here.
+- Progress:
+  - Expanded `packages/ai/src/engine/feature-extractor.ts` from `10` to `25` bounded gameplay features and bumped `GAMEPLAY_FEATURE_VERSION` from `1` to `2`.
+  - The new feature vector now includes objective presence/contest, center presence, threat projection, reserves/status splits, embarked and vehicle state, reaction readiness, warlord survival, near-range threat pressure, decision ownership, and battle-progress context on top of the old material/VP core.
+  - Updated `packages/ai/src/engine/default-model.ts` so the built-in gameplay model now ships with a 25-weight prior and remains valid against the new feature schema.
+  - Hardened `tools/nnue/common.mjs` so gameplay model serialization now uses the exported `GAMEPLAY_FEATURE_VERSION` and rejects mismatched feature-weight counts instead of emitting incompatible artifacts.
+  - Upgraded `tools/nnue/train-gameplay-model.mjs` with deterministic shuffling, configurable validation splitting, validation-based early stopping, richer metrics output, and a clear hard failure when old self-play data uses the wrong gameplay feature dimension.
+  - Added `packages/ai/src/engine/feature-extractor.test.ts` to lock the new 25-feature schema length, bounded output range, and the final decision-owner / battle-progress feature semantics.
+  - Adjusted `tools/nnue/common.mjs` progress finishing so early-stopped trainer runs now report the actual completed epoch count instead of always printing the requested epoch total.
+  - Verification passed:
+    - `pnpm test -- packages/ai/src/engine/feature-extractor.test.ts packages/ai/src/engine/search.test.ts` (`2 files / 5 tests`)
+    - `pnpm --filter @hh/ai build`
+    - `pnpm nnue:selfplay --matches 2 --time-budget-ms 50 --max-commands 250 --shard-size 1000000 --out-dir tmp/nnue-trainer-validation-smoke/selfplay`
+      - Result: `2/2 game-over`, `458` samples, fresh 25-feature shard at `tmp/nnue-trainer-validation-smoke/selfplay/selfplay-shard-001.jsonl`
+    - `pnpm nnue:train --input tmp/nnue-trainer-validation-smoke/selfplay/selfplay-shard-001.jsonl --out tmp/nnue-trainer-validation-smoke/candidate.json --epochs 8 --learning-rate 0.01 --validation-split 0.2 --patience 2 --min-delta 0.0001`
+      - Result: `366` training samples, `92` validation samples, `8` epochs completed, `bestEpoch=8`, `stoppedEarly=false`
+    - `pnpm nnue:train --input tmp/nnue-trainer-validation-smoke/selfplay/selfplay-shard-001.jsonl --out tmp/nnue-trainer-validation-smoke/candidate-early-stop.json --epochs 12 --learning-rate 0.01 --validation-split 0.2 --patience 2 --min-delta 0.05`
+      - Result: forced early-stop smoke path completed at `epochsCompleted=3`, `bestEpoch=1`, `stoppedEarly=true`, and the final progress line now correctly reports `3/12` instead of `12/12`
+
+## Documentation Plan (Engine Primer Refresh After 25-Feature Trainer Pass - 2026-03-09)
+- [x] Re-read `engine_primer.md` for stale evaluator, trainer, deployment, and improvement notes after the 25-feature gameplay evaluator change.
+- [x] Update the primer so it reflects the current 25-feature gameplay schema, feature version bump, validation-split training loop, and current deployment implications.
+- [x] Record the documentation refresh outcome here after a final source-alignment pass.
+- Progress:
+  - Updated `engine_primer.md` so the evaluator section now reflects the current `25`-feature gameplay schema and calls out the `v2` gameplay feature version instead of the older 10-feature description.
+  - Refreshed the training section to describe the current trainer behavior: feature-dimension validation, deterministic shuffling, train/validation split, validation MAE tracking, best-checkpoint retention, early stopping, and richer training metadata in the generated artifacts.
+  - Added the current deployment implication that gameplay schema bumps invalidate older gameplay self-play shards and trained gameplay candidates until new data is generated under the current feature extractor.
+  - Updated the limitations and improvement sections so they no longer recommend work that is already implemented, and instead reflect the current remaining gaps after the 25-feature + trainer-validation pass.
+  - Re-read the patched primer against the current source after editing. No tests were run because this was a documentation-only refresh.
+
+## Implementation Plan (Curated 2000pt Faction Rosters - 2026-03-08)
+- [x] Inventory the currently playable factions and the actual profile/detachment surface the code can validate.
+- [x] Research online faction identity/list-building references, then map those themes onto the current local rules/docs and supported datasheets.
+- [x] Add curated 2000-point army-list definitions for each currently playable faction with doctrine/allegiance/transport assignments encoded explicitly.
+- [x] Add regression coverage that each curated roster lands on exactly 2000 points and validates cleanly under current army-builder rules.
+- [x] Export the curated roster definitions for reuse by headless/training tooling and record the source notes.
+- Progress:
+  - Confirmed the currently playable factions are `Dark Angels`, `World Eaters`, `Alpha Legion`, `Blackshields`, and `Shattered Legions`.
+  - Audited the supported profile pool and detachment templates locally so the curated rosters only use units/slots the current code can represent and validate.
+  - Collected online faction-list references for Dark Angels, World Eaters, Alpha Legion, Blackshields, and Shattered Legions to anchor the roster themes before implementation.
+  - Added `packages/headless/src/curated-army-lists.ts`, exporting five curated 2000-point rosters with explicit detachments, doctrines, origin legions where required, and transport assignments that pass the current legality checks.
+  - Exported the curated roster registry through `@hh/headless` so headless/training flows can reuse it without duplicating army-list fixtures.
+  - Added `packages/headless/src/curated-army-lists.test.ts` to assert that each curated roster is exactly 2000 points, validates cleanly, uses unique unit IDs, and does not leave transport-slot units orphaned.
+  - Verification passed: `pnpm test -- packages/headless/src/curated-army-lists.test.ts packages/headless/src/roster.test.ts packages/headless/src/roster-ai.test.ts` (`3 files / 13 tests`) and `pnpm --filter @hh/headless build`.
+
+## Implementation Plan (NNUE Tooling Uses Curated 2000pt Setups - 2026-03-08)
+- [x] Trace the default gameplay setup path in `nnue:selfplay` and `nnue:gate`.
+- [x] Replace the tiny default mirror setup with curated 2000-point army-list pairings while preserving explicit `--setup` overrides.
+- [x] Add focused verification that self-play and gate now report curated factions/rosters in their output artifacts.
+- [x] Update this log with the new default behavior and verification.
+- Progress:
+  - Confirmed `tools/nnue/self-play.mjs` still defaults to `createDefaultSetupOptions()` and `tools/nnue/common.mjs` still hardcodes the old `techmarine + tactical squad` mirror setup.
+  - Confirmed the curated roster registry is already exported via `@hh/headless` and can be reused by the tooling instead of duplicating army-list fixtures.
+  - Updated `tools/nnue/common.mjs` so the default gameplay setup factory now returns curated 2000-point `armyLists`, and the instrumentation/gate helpers now create initial states through `createHeadlessGameStateFromArmyLists()` whenever an army-list setup is supplied.
+  - Updated `tools/nnue/self-play.mjs` to rotate through curated default matchups by `matchIndex`, while still honoring explicit `--setup` JSON when provided.
+  - Updated `tools/nnue/gate-gameplay-model.mjs` to accept optional `--setup` input and otherwise use the same curated default matchup factory as self-play.
+  - Verification passed:
+    - `pnpm nnue:selfplay --matches 1 --time-budget-ms 10 --max-commands 20 --shard-size 100000 --out-dir tmp/nnue-curated-default-smoke/selfplay`
+    - `pnpm nnue:gate --matches 1 --time-budget-ms 10 --threshold -1 --out tmp/nnue-curated-default-smoke/gate.json`
+    - The default self-play replay artifact now starts with `Dark Angels 2000pt Curated` vs `World Eaters 2000pt Curated` and 15/16 units respectively, confirming the old tiny mirror setup is no longer the default training surface.
+
+## Implementation Plan (Roster Legality + Transport Enforcement - 2026-03-08)
+- [x] Add profile-trait legality helpers so army validation can reject fixed-allegiance and fixed-faction profile mismatches against the army list.
+- [x] Extend army-list unit data with explicit transport assignment metadata and preserve it through serialization/headless conversion.
+- [x] Implement shared transport-legality helpers for capacity, unit type eligibility, Light Transport restrictions, dreadnought-only transports, faction matching, and single-vs-multi-unit carrier limits.
+- [x] Update generated roster construction so transports are only added when they can be assigned legally to real passengers, and log those assignments in roster artifacts.
+- [x] Reuse the shared transport rules in runtime embark validation where practical so roster legality and in-game embark constraints stop drifting apart.
+- [x] Add focused regression coverage and rerun headless/army-builder/transport verification plus a fresh 2000-point roster gate sample.
+- Progress:
+  - Added shared profile legality and transport compatibility helpers in `packages/data/src/profile-legality.ts`, including fixed allegiance checks, bulky/capacity math, Light Transport restrictions, dreadnought-only transport support, and super-heavy multi-unit transport handling.
+  - Extended `ArmyListUnit` with optional `assignedTransportUnitId` metadata and updated army-list serialization validation to preserve it.
+  - `validateArmyListWithDoctrine` now rejects fixed profile allegiance/faction mismatches and validates explicit transport assignments with the shared transport rules.
+  - Generated roster candidates now filter out fixed-allegiance profile mismatches up front, assign passengers to legal transports after candidate construction, and drop unused dedicated transport-slot units that cannot legally carry anything in the roster.
+  - Runtime embark validation in `packages/engine/src/movement/embark-disembark-handler.ts` now uses the same shared compatibility rules instead of the old hardcoded capacity check.
+  - Verification passed: focused legality/transport tests passed (`4 files / 68 tests`), targeted package builds passed for `@hh/data`, `@hh/army-builder`, `@hh/engine`, and `@hh/headless`, and a fresh 2000-point roster gate sample (`tmp/nnue-legality-audit/roster-gate-8-fixed.json`) finished `5 wins / 2 losses / 1 draw / 0 aborted / 0 timeouts` with no validator failures, no fixed-allegiance mismatches, and no unassigned dedicated transports in the logged rosters.
+
+## Review Plan (Generated Roster Legality Audit - 2026-03-08)
+- [x] Inspect the logged generated rosters and compare them against the current army-building rules/docs in the repo.
+- [x] Cross-check detachment slot usage, unlocks, and faction/doctrine assumptions against the rules references and templates.
+- [x] Summarize whether the generated rosters are actually legal versus the docs, not just versus the validator.
+- Findings:
+  - The sampled 2000-point generated rosters are usually slot-legal under the current Crusade detachment templates and unlock math, but they are not fully legal versus the datasheet docs.
+  - In an 8-match / 16-roster audit sample, 6 rosters included fixed-allegiance named characters in armies with the opposite allegiance:
+    - `marduk-sedras` and `corswain` appeared in `Traitor` Dark Angels rosters even though `HH_v2_units.md` marks both as `Allegiance: Loyalist`.
+    - `kh-rn-the-bloody` appeared in `Loyalist` World Eaters rosters even though `HH_v2_units.md` marks it as `Allegiance: Traitor`.
+  - These rosters still pass current validation because generation filters only by faction + battlefield role (`packages/headless/src/roster-ai.ts` + `packages/data/src/profile-registry.ts`) and army validation never checks per-profile allegiance traits (`packages/army-builder/src/validation.ts`).
+  - Transport legality is also not fully enforced at roster-build time: the generator fills Transport / Heavy Transport slots purely by battlefield role and budget, while the army-list types/validator do not encode parent-unit transport assignment or capacity legality. That means transport-bearing rosters should currently be treated as force-org legal, not fully transport-legal versus the docs.
+  - Bottom line: generated rosters are not yet fully rules-doc legal; the most concrete current blocker is missing enforcement of fixed profile allegiance constraints.
+
+## Review Verification (Generated Roster Legality Audit - 2026-03-08)
+- `pnpm nnue:roster:gate --matches 8 --points-limit 2000 --threshold -1 --out tmp/nnue-legality-audit/roster-gate-8.json`: PASS execution (used as the audit sample)
+- `tmp/nnue-legality-audit/roster-gate-8.json`: inspected 16 logged rosters; all current validator results reported `isValid: true`
+- `HH_v2_units.md`: confirmed fixed-allegiance datasheet constraints for `marduk-sedras`, `corswain`, and `kh-rn-the-bloody`
+- `packages/headless/src/roster-ai.ts`, `packages/data/src/profile-registry.ts`, `packages/army-builder/src/validation.ts`, and `packages/types/src/army-building.ts`: inspected to confirm the current generator/validator gap around profile allegiance and transport assignment legality
+
+## Support Run (Starter Gameplay Training 100 Matches - 2026-03-08)
+- [x] Generate a 100-match self-play corpus under a dedicated output directory.
+- [x] Train a candidate gameplay model from the generated shard.
+- [x] Run a short gate against `Tactical` and record the result.
+- Outcome:
+  - The 100-match starter corpus produced 11,900 samples in a single shard at `tmp/nnue-100/selfplay-shard-001.jsonl`.
+  - The trained candidate `gameplay-default-v1-candidate-1773015524371` completed successfully, but the short gate result was `0 wins / 8 losses / 0 draws / 0 aborted / 0 timeouts` at `100ms`.
+  - This starter run is useful as a tooling check and artifact baseline, but it did not improve gameplay strength.
+
+## Verification (Starter Gameplay Training 100 Matches - 2026-03-08)
+- `pnpm nnue:selfplay --matches 100 --time-budget-ms 100 --shard-size 1000000 --out-dir tmp/nnue-100`: PASS (11,900 samples, 1 shard)
+- `pnpm nnue:train --input tmp/nnue-100/selfplay-shard-001.jsonl --out tmp/nnue-100/candidate.json --epochs 10 --learning-rate 0.02`: PASS
+- `pnpm nnue:gate --model tmp/nnue-100/candidate.json --matches 8 --time-budget-ms 100 --threshold -1 --out tmp/nnue-100/gate.json`: PASS execution (0-8 result)
+
+## Hotfix Plan (NNUE Tooling Progress Bars - 2026-03-08)
+- [x] Add shared terminal progress reporting helpers for long-running NNUE scripts.
+- [x] Show live progress for self-play, gameplay gate, roster gate, and gameplay training.
+- [x] Run smoke commands to verify the new progress output and record the result.
+- Progress:
+  - Added a shared progress reporter in `tools/nnue/common.mjs` that writes live bars to stderr while preserving the scripts' final JSON summaries on stdout.
+  - `self-play`, `train-gameplay-model`, `gate-gameplay-model`, and `gate-roster-model` now emit live progress updates with running counts and ETA.
+- Outcome:
+  - All four NNUE scripts now show visible progress while running instead of staying silent until the final JSON summary.
+  - The final machine-readable JSON output is unchanged and still prints after the progress bar completes.
+
+## Hotfix Verification (NNUE Tooling Progress Bars - 2026-03-08)
+- `pnpm nnue:selfplay --matches 2 --time-budget-ms 20 --out-dir tmp/nnue-progress-smoke/selfplay`: PASS
+- `pnpm nnue:train --input tmp/nnue-progress-smoke/selfplay/selfplay-shard-001.jsonl --out tmp/nnue-progress-smoke/candidate.json --epochs 2 --learning-rate 0.02`: PASS
+- `pnpm nnue:gate --matches 2 --time-budget-ms 20 --threshold -1 --out tmp/nnue-progress-smoke/gate.json`: PASS
+- `pnpm nnue:roster:gate --matches 2 --points-limit 2000 --threshold -1 --out tmp/nnue-progress-smoke/roster-gate.json`: PASS
+
+## Hotfix Plan (Roster Usage Logging - 2026-03-08)
+- [x] Inspect the current generated-roster and roster-gate output surfaces.
+- [x] Add explicit roster logging and legality metadata so generated roster choices can be audited.
+- [x] Run focused verification and confirm the output artifact contains the used rosters.
+- Progress:
+  - Added a `validation` summary to `HeadlessGeneratedArmyList` so generated rosters carry their own legality status and error list.
+  - Extended `tools/nnue/gate-roster-model.mjs` so each result entry logs the exact `modelRoster` and `heuristicRoster` army lists plus paired-army legality metadata.
+- Outcome:
+  - Roster gate output artifacts now contain `pairValidation`, `modelRoster`, and `heuristicRoster` sections for every match.
+  - The logged roster payload includes the selected army list, the generator diagnostics/score, and a direct legality summary (`isValid`, `errors`).
+
+## Hotfix Verification (Roster Usage Logging - 2026-03-08)
+- `pnpm --filter @hh/headless build`: PASS
+- `pnpm test -- packages/headless/src/roster-ai.test.ts`: PASS (1 file, 4 tests)
+- `pnpm nnue:roster:gate --matches 1 --points-limit 2000 --threshold -1 --out tmp/nnue-progress-smoke/roster-gate-with-rosters.json`: PASS
+- `tmp/nnue-progress-smoke/roster-gate-with-rosters.json`: verified to contain `pairValidation`, `modelRoster.validation`, `modelRoster.armyList`, `heuristicRoster.validation`, and `heuristicRoster.armyList`
+
+## Support Plan (Engine + Roster Strength Improvements - 2026-03-08)
+- [x] Review the current gameplay `Engine` and roster-model bottlenecks after the generated-roster ID hotfix.
+- [x] Identify the highest-value strength improvements that should come before another promotion attempt.
+- [x] Summarize the recommended next implementation steps in priority order.
+- Findings:
+  - Yes, gameplay NNUE training has already been run, but only on a small corpus built from 16 self-play matches and the default tiny mirror setup in `tools/nnue/common.mjs` (`techmarine` + `tactical-squad` per side).
+  - The current gameplay trainer in `tools/nnue/train-gameplay-model.mjs` is a lightweight weight-fitting pass over the 10 handcrafted gameplay features, not a richer architecture with broader state encoding.
+  - The immediate bottleneck is data quality and diversity more than raw epoch count: more training on the same tiny mirror setup is unlikely to produce a stronger public `Engine`.
+  - The next training pass should focus on larger and more varied self-play corpora, explicit setup rotation, and iterative train -> gate -> self-play-with-new-model promotion cycles.
+
+## Hotfix Plan (Generated Roster Reaction ID Collision - 2026-03-08)
+- [x] Confirm the root cause of the false `Reposition` rejection in generated-roster matches.
+- [x] Make generated roster unit IDs player-scoped so paired generated armies cannot collide on `auto-unit-*`.
+- [x] Add a duplicate-unit-ID guard to the headless army-list/setup path so future collisions fail fast instead of producing invalid reaction ownership.
+- [x] Add focused regression coverage and rerun the relevant roster/reaction verification.
+- Root cause:
+  - Generated rosters currently reuse `auto-unit-*` IDs on both sides, while engine helpers resolve units by the first matching ID across both armies.
+  - This allows a legal player-1 reaction choice to be resolved as player 0's unit during validation, causing false `selectReaction` rejection with `Reposition reaction can only be performed by the reactive player's units`.
+- Progress:
+  - Generated roster unit IDs now flow through a deterministic namespace in `packages/headless/src/roster-ai.ts`, and paired generated matches explicitly use `p0` / `p1` namespaces.
+  - `packages/headless/src/roster.ts` now rejects duplicate unit IDs across paired army lists, and `packages/headless/src/setup.ts` rejects duplicate explicit unit IDs in raw headless setup.
+  - Added regression coverage in `packages/headless/src/roster-ai.test.ts`, `packages/headless/src/roster.test.ts`, and `packages/headless/src/setup.test.ts`.
+  - The first rerun exposed a remaining namespace bug in `tools/nnue/gate-roster-model.mjs` when the model side started as player 1; corrected the script so the candidate and heuristic rosters always receive opposite-side namespaces.
+- Outcome:
+  - The roster gate no longer produces `command-rejected` false draws from duplicate generated unit IDs.
+  - The corrected rerun finished with 4 wins / 4 losses / 0 draws / 0 aborted / 0 timeouts, and every match terminated as `game-over`.
+
+## Hotfix Verification (Generated Roster Reaction ID Collision - 2026-03-08)
+- `pnpm --filter @hh/headless build`: PASS
+- `pnpm test -- packages/headless/src/roster-ai.test.ts packages/headless/src/roster.test.ts packages/headless/src/setup.test.ts packages/headless/src/index.test.ts`: PASS (4 files, 18 tests)
+- `pnpm nnue:roster:gate --matches 8 --points-limit 2000 --threshold -1 --out tmp/nnue-acceptance/roster-baseline-2000-fixed-ids.json`: PASS execution (4 wins, 4 losses, 0 draws, 0 aborted, 0 timeouts; all matches `game-over`)
+
+## Acceptance Plan (Engine + NNUE Promotion - 2026-03-08)
+- [x] Establish the current gameplay `Engine` baseline against `Tactical` at equal budgets using fixed-seed-style evaluation runs.
+- [x] Generate a larger gameplay self-play corpus and train at least one non-smoke gameplay candidate model.
+- [x] Benchmark trained gameplay candidates against `Tactical` and inspect whether the acceptance gate is met or tuning is required.
+- [x] Benchmark roster-model generation against the heuristic roster baseline and inspect whether it improves downstream headless results.
+- [x] Record the acceptance results and any follow-up tuning work.
+
+## Implementation Plan (Engine Search + NNUE AI - 2026-03-08)
+- [x] Extend AI/public config surfaces with `Engine` tier, engine config fields, diagnostics, and queued-command context support.
+- [x] Implement deterministic search + NNUE gameplay runtime in `@hh/ai`, including model registry/validation, feature extraction, candidate generation, and command-plan execution.
+- [x] Wire `Engine` through UI, headless, and MCP while preserving `Basic` and `Tactical` defaults and current deployment AI.
+- [x] Add targeted regression and determinism coverage, then run focused verification for AI/UI/headless/MCP packages.
+- [x] Add headless self-play export plus `tools/nnue/` training/export/gating tooling.
+- [x] Add roster-evaluation/model plumbing and an opt-in auto-roster AI path that remains separate from gameplay `Engine`.
+- In progress:
+  - Acceptance baseline: current `Engine` with `gameplay-default-v1` went 5-7 (41.7%) versus `Tactical` over 12 matches at 500ms, so the first public gate is not met yet and promotion requires training and/or tuning.
+  - Corrected the acceptance tooling to match the runtime `Engine` depth default (4 instead of 3), and fixed gameplay model export so trained candidates carry a real output bias and unique model IDs.
+  - Tightened the gameplay trainer around the existing default feature weights so trained candidates learn deltas from the baseline model instead of collapsing half the feature set from a zero-weight start.
+  - Added a budget-aware runtime search profile so `500ms` defaults to depth 3 while larger budgets can still climb to depth 4, and widened the root/action caps modestly for stronger move coverage.
+  - Removed the last tooling override that was still forcing `maxDepthSoft=4` during gameplay gates, so acceptance runs can now inherit the budget-aware runtime default instead of benchmarking the wrong profile.
+  - Fixed the roster gate faction pool to use the live playable-faction registry instead of a stale hardcoded set that still included validator-rejected legions.
+  - Fixed the gameplay/roster gate classification bug that was counting aborted `winnerPlayerIndex === null` matches as draws; gates now attribute `command-rejected` and similar failures to the side that caused them and report real draws/timeouts separately.
+  - Added the `Engine` tier to `@hh/ai`, including engine config fields, diagnostics payloads, queued-plan bookkeeping, a built-in gameplay NNUE model registry, deterministic dice sampling, candidate generation, and iterative-deepening search scaffolding.
+  - Fixed the first compile pass issues in the new engine candidate generator and continued `@hh/ai` verification.
+  - Cleared the initial unused-variable/typecheck failures in the new search runtime and reran package verification.
+  - Wired the UI setup/config path for `Engine`, including the 500ms/1000ms presets, UI diagnostics/error state, and a dedicated worker-backed `Engine` turn path that leaves `Basic` and `Tactical` on the existing synchronous loop.
+  - Extended headless/session/CLI and MCP match schemas with the new engine fields and started carrying AI diagnostics through command records and observer-facing summaries.
+  - Fixed the first downstream headless shape regressions (`errorMessage` and `aiDiagnostics`) after the surface integration pass.
+  - Added focused deterministic-search coverage in `@hh/ai` and a headless-session regression that exercises engine diagnostics through a live AI-owned decision window.
+  - Verified the first `Engine` slice with `@hh/ai`/`@hh/headless` builds, `@hh/ui` typecheck + production build (including the worker bundle), `@hh/mcp-server` build, and focused Vitest coverage.
+  - Added reusable NNUE serialization helpers so exported gameplay models can be trained, gated, and re-registered by the follow-on tooling.
+  - Generalized the NNUE model registry to validate both `gameplay` and `roster` artifacts, then added built-in roster features/default weights plus a dedicated roster evaluator path.
+  - Added deterministic headless army-list generation with heuristic/model roster selection, generated-army setup helpers, and a generated-army match-session entrypoint for the separate roster AI track.
+  - Extended MCP match creation so observers/agents can opt into generated army-list setup using the new roster configs instead of only explicit unit payloads.
+  - Added focused roster-model and headless-generated-army tests so the new roster path is covered before the full verification pass.
+  - Cleared the first roster-generator typecheck regression (`DetachmentType` unused import) and resumed the downstream verification run.
+  - Tightened the heuristic roster test to a validator-approved playable legion after the first focused test run surfaced the faction-scope guard.
+  - Fixed the `tools/nnue` runtime entrypoints so they import built workspace packages directly and run under the repo’s ESM loader instead of failing to resolve `@hh/*` from the root package.
+  - Added a dedicated `nnue:roster:gate` entrypoint so roster-model candidates can be promoted against the heuristic roster baseline through actual headless matches.
+
+## Acceptance Outcome (Engine + NNUE Promotion - 2026-03-08)
+- Gameplay baseline with the current default model is still below the release gate:
+  - `500ms`, budget-aware profile: 5 wins / 7 losses vs `Tactical` over 12 matches (41.7%).
+  - Forced depth 4 at `500ms` was worse at 3 wins / 9 losses, so the stronger default profile remains depth 3 for that budget.
+- The first trained gameplay candidates were not promotable:
+  - Initial zero-start trainers (`candidate-a/b/c`) each went 0 wins / 8 losses.
+  - Baseline-anchored trainers (`candidate-d/e`) also went 0 wins / 8 losses.
+- The roster-model path is not promotable yet:
+  - After fixing the gate classification bug, `roster-default-v1` is 4 wins / 4 losses / 0 draws against the heuristic roster baseline at 2,000 points.
+- Outcome:
+  - Acceptance work is complete for this pass, but no gameplay or roster model met the promotion gate.
+  - The next required work is deeper engine-strength tuning and a stronger gameplay training objective/dataset before another promotion attempt.
+
+## Verification (Acceptance Pass - 2026-03-08)
+- `pnpm nnue:gate --matches 12 --time-budget-ms 500 --threshold 0.55 --out tmp/nnue-acceptance/gameplay-baseline-500ms.json`: FAIL gate (5-7, 41.7%)
+- `pnpm nnue:selfplay --matches 16 --max-commands 1500 --time-budget-ms 300 --shard-size 512 --out-dir tmp/nnue-acceptance/selfplay-16x300`: PASS (1,904 samples)
+- `pnpm nnue:train --input tmp/nnue-acceptance/selfplay-16x300/selfplay-shard-001.jsonl,tmp/nnue-acceptance/selfplay-16x300/selfplay-shard-002.jsonl,tmp/nnue-acceptance/selfplay-16x300/selfplay-shard-003.jsonl,tmp/nnue-acceptance/selfplay-16x300/selfplay-shard-004.jsonl --out tmp/nnue-acceptance/candidate-d.json --epochs 20 --learning-rate 0.01 --l2 0.001`: PASS
+- `pnpm nnue:train --input tmp/nnue-acceptance/selfplay-16x300/selfplay-shard-001.jsonl,tmp/nnue-acceptance/selfplay-16x300/selfplay-shard-002.jsonl,tmp/nnue-acceptance/selfplay-16x300/selfplay-shard-003.jsonl,tmp/nnue-acceptance/selfplay-16x300/selfplay-shard-004.jsonl --out tmp/nnue-acceptance/candidate-e.json --epochs 40 --learning-rate 0.005 --l2 0.0008`: PASS
+- `pnpm nnue:gate --model tmp/nnue-acceptance/candidate-d.json --matches 8 --time-budget-ms 500 --max-depth-soft 3 --threshold -1 --out tmp/nnue-acceptance/candidate-d-gate-500ms-depth3.json`: PASS execution, 0-8 result
+- `pnpm nnue:gate --model tmp/nnue-acceptance/candidate-e.json --matches 8 --time-budget-ms 500 --max-depth-soft 3 --threshold -1 --out tmp/nnue-acceptance/candidate-e-gate-500ms-depth3.json`: PASS execution, 0-8 result
+- `pnpm nnue:gate --matches 12 --time-budget-ms 500 --threshold 0.55 --out tmp/nnue-acceptance/gameplay-baseline-500ms-final-profile.json`: FAIL gate (5-7, 41.7%)
+- `pnpm nnue:roster:gate --matches 8 --points-limit 2000 --threshold 0.55 --out tmp/nnue-acceptance/roster-baseline-2000.json`: FAIL gate (0 wins, 8 draws)
+- `pnpm test -- packages/ai/src/engine/search.test.ts packages/ai/src/ai-controller.test.ts packages/headless/src/roster-ai.test.ts packages/headless/src/session.test.ts`: PASS (4 files, 29 tests)
+
+## Verification (Engine + Roster Follow-On - 2026-03-08)
+- `pnpm --filter @hh/ai typecheck`: PASS
+- `pnpm --filter @hh/ai build`: PASS
+- `pnpm --filter @hh/headless typecheck`: PASS
+- `pnpm --filter @hh/headless build`: PASS
+- `pnpm --filter @hh/mcp-server typecheck`: PASS
+- `pnpm --filter @hh/mcp-server build`: PASS
+- `pnpm test -- packages/ai/src/engine/roster-model.test.ts packages/ai/src/engine/search.test.ts packages/headless/src/roster-ai.test.ts packages/headless/src/session.test.ts packages/ai/src/ai-controller.test.ts`: PASS (5 files, 32 tests)
+- `pnpm nnue:selfplay --matches 1 --max-commands 300 --time-budget-ms 50 --shard-size 16 --out-dir tmp/nnue-smoke`: PASS
+- `pnpm nnue:train --input tmp/nnue-smoke/selfplay-shard-001.jsonl,tmp/nnue-smoke/selfplay-shard-002.jsonl --out tmp/nnue-smoke/candidate-gameplay-model.json --epochs 2 --learning-rate 0.02`: PASS
+- `pnpm nnue:gate --model tmp/nnue-smoke/candidate-gameplay-model.json --matches 2 --time-budget-ms 50 --threshold -1 --out tmp/nnue-smoke/gate-summary-smoke.json`: PASS
+- `pnpm nnue:roster:gate --matches 2 --points-limit 2000 --threshold -1 --out tmp/nnue-smoke/roster-gate-summary.json`: PASS
+
+## Documentation Update Plan (MixedSearch_NNUE_Plan Refresh - 2026-03-08)
+- [x] Update `MixedSearch_NNUE_Plan.md` integration anchors to reflect the current UI, headless session, and MCP surfaces.
+- [x] Update macro-action and integration sections so they match the current command surface, including blast/template shooting flows.
+- [x] Re-read the revised document against the audited source files and record the result.
+- Refresh outcome:
+  - Added a current-baseline section so the plan now explicitly reflects the shipped `Basic`/`Tactical` AI, main-thread UI loop, headless session host, and MCP layer.
+  - Updated future integration targets to include `HeadlessMatchSession`, MCP `advance_ai_decision`, and the existing AI-selection UI surfaces.
+  - Expanded shooting/macro-action, acceptance, and test sections to cover blast/template placement flows and cross-surface determinism expectations.
+
+## Review Plan (MixedSearch_NNUE_Plan Audit - 2026-03-08)
+- [x] Compare `MixedSearch_NNUE_Plan.md` current-state assumptions against the live AI, UI, headless, MCP, and army-builder code paths.
+- [x] Identify any stale integration anchors, API assumptions, or command-surface gaps introduced by recent code changes.
+- [x] Summarize whether the plan remains accurate and record any follow-up doc edits that should be made later.
+- Review outcome:
+  - The plan is still directionally accurate: the engine/headless stack remains command-driven and replay/hash deterministic.
+  - Follow-up doc update needed: headless integration now also runs through `packages/headless/src/session.ts` and `packages/mcp-server`, not only `packages/headless/src/index.ts` / CLI.
+  - Follow-up doc update needed: shooting macro-actions should explicitly cover blast/template placement flows now present in the UI/engine command surface.
 
 ## Hotfix Plan (Deployment Whole-Unit Click Regression - 2026-03-07)
 - [x] Audit the deployment whole-unit click path to identify why in-zone clicks are no longer creating pending placements.

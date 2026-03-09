@@ -2,15 +2,21 @@ import type { GameCommand, GameState } from '@hh/types';
 import { FixedDiceProvider, RandomDiceProvider, getValidCommands, hashGameState, processCommand } from '@hh/engine';
 import {
   AIStrategyTier,
+  DEFAULT_GAMEPLAY_NNUE_MODEL_ID,
   createTurnContext,
   generateNextCommand,
+  getTurnContextDiagnostics,
+  getTurnContextError,
   shouldAIAct,
+  type AIDiagnostics,
   type AIDeploymentFormation,
   type AIPlayerConfig,
 } from '@hh/ai';
 import type { DiceProvider, GameEvent } from '@hh/engine';
 import type { HeadlessArmyListGameSetupOptions } from './roster';
 import { createHeadlessGameStateFromArmyLists } from './roster';
+import type { HeadlessGeneratedArmyListGameSetupOptions } from './roster-ai';
+import { createHeadlessGameStateFromGeneratedArmyLists } from './roster-ai';
 import type { HeadlessGameSetupOptions } from './setup';
 import { createHeadlessGameState } from './setup';
 import { buildFallbackCommand } from './fallback-command';
@@ -23,6 +29,12 @@ export interface HeadlessMatchPlayerConfig {
   mode: HeadlessPlayerMode;
   strategyTier?: AIStrategyTier;
   deploymentFormation?: AIDeploymentFormation;
+  timeBudgetMs?: number;
+  nnueModelId?: string;
+  baseSeed?: number;
+  rolloutCount?: number;
+  maxDepthSoft?: number;
+  diagnosticsEnabled?: boolean;
 }
 
 export interface HeadlessMatchCommandRecord {
@@ -37,6 +49,7 @@ export interface HeadlessMatchCommandRecord {
   phase: string;
   subPhase: string;
   stateHash: string;
+  aiDiagnostics: AIDiagnostics | null;
 }
 
 export interface HeadlessNudgeSnapshot {
@@ -51,6 +64,7 @@ export interface HeadlessNudgeSnapshot {
   winnerPlayerIndex: number | null;
   blocking: boolean;
   summary: string;
+  aiDiagnostics: AIDiagnostics | null;
 }
 
 export interface HeadlessLegalActionsSnapshot {
@@ -68,6 +82,7 @@ export interface HeadlessMatchSessionCreateOptions {
   initialState?: GameState;
   setupOptions?: HeadlessGameSetupOptions;
   armyListSetupOptions?: HeadlessArmyListGameSetupOptions;
+  generatedArmyListSetupOptions?: HeadlessGeneratedArmyListGameSetupOptions;
   playerConfigs?: [Partial<HeadlessMatchPlayerConfig>, Partial<HeadlessMatchPlayerConfig>];
   diceProvider?: DiceProvider;
 }
@@ -119,8 +134,11 @@ function generateMatchId(): string {
 function resolveInitialState(options: HeadlessMatchSessionCreateOptions): GameState {
   if (options.initialState) return options.initialState;
   if (options.armyListSetupOptions) return createHeadlessGameStateFromArmyLists(options.armyListSetupOptions);
+  if (options.generatedArmyListSetupOptions) {
+    return createHeadlessGameStateFromGeneratedArmyLists(options.generatedArmyListSetupOptions).state;
+  }
   if (options.setupOptions) return createHeadlessGameState(options.setupOptions);
-  throw new Error('HeadlessMatchSession requires initialState, setupOptions, or armyListSetupOptions.');
+  throw new Error('HeadlessMatchSession requires initialState, setupOptions, armyListSetupOptions, or generatedArmyListSetupOptions.');
 }
 
 function defaultPlayerConfig(): HeadlessMatchPlayerConfig {
@@ -132,12 +150,19 @@ function defaultPlayerConfig(): HeadlessMatchPlayerConfig {
 }
 
 function toAIPlayerConfig(playerIndex: 0 | 1, config: HeadlessMatchPlayerConfig): AIPlayerConfig {
+  const isEngine = (config.strategyTier ?? AIStrategyTier.Tactical) === AIStrategyTier.Engine;
   return {
     enabled: config.mode === 'ai',
     playerIndex,
     strategyTier: config.strategyTier ?? AIStrategyTier.Tactical,
     deploymentFormation: config.deploymentFormation ?? 'auto',
     commandDelayMs: 0,
+    timeBudgetMs: config.timeBudgetMs,
+    nnueModelId: isEngine ? (config.nnueModelId ?? DEFAULT_GAMEPLAY_NNUE_MODEL_ID) : undefined,
+    baseSeed: config.baseSeed,
+    rolloutCount: config.rolloutCount,
+    maxDepthSoft: config.maxDepthSoft,
+    diagnosticsEnabled: config.diagnosticsEnabled,
   };
 }
 
@@ -151,6 +176,7 @@ export class HeadlessMatchSession {
   private state: GameState;
   private readonly playerConfigs: [HeadlessMatchPlayerConfig, HeadlessMatchPlayerConfig];
   private readonly aiContexts = new Map<number, ReturnType<typeof createTurnContext>>();
+  private readonly aiDiagnostics = new Map<number, AIDiagnostics | null>();
   private readonly dice: RecordingDiceProvider;
   private readonly history: HeadlessMatchCommandRecord[] = [];
 
@@ -170,6 +196,8 @@ export class HeadlessMatchSession {
     ];
     this.aiContexts.set(0, createTurnContext());
     this.aiContexts.set(1, createTurnContext());
+    this.aiDiagnostics.set(0, null);
+    this.aiDiagnostics.set(1, null);
     this.dice = new RecordingDiceProvider(options.diceProvider ?? new RandomDiceProvider());
   }
 
@@ -193,6 +221,13 @@ export class HeadlessMatchSession {
     return [...this.playerConfigs] as [HeadlessMatchPlayerConfig, HeadlessMatchPlayerConfig];
   }
 
+  getAIDiagnostics(): [AIDiagnostics | null, AIDiagnostics | null] {
+    return [
+      this.aiDiagnostics.get(0) ?? null,
+      this.aiDiagnostics.get(1) ?? null,
+    ];
+  }
+
   getDecisionPlayerIndex(): 0 | 1 {
     return getDecisionPlayerIndex(this.state);
   }
@@ -213,6 +248,7 @@ export class HeadlessMatchSession {
         summary: this.state.winnerPlayerIndex === null
           ? 'Game ended with no winner.'
           : `Game over. Player ${this.state.winnerPlayerIndex + 1} won.`,
+        aiDiagnostics: null,
       };
     }
 
@@ -220,6 +256,9 @@ export class HeadlessMatchSession {
     const validCommandTypes = getValidCommands(this.state);
     const actingMode = this.playerConfigs[actingPlayerIndex].mode;
     const kind = this.state.awaitingReaction ? 'reaction' : 'turn';
+    const aiDiagnostics = actingMode === 'ai'
+      ? (this.aiDiagnostics.get(actingPlayerIndex) ?? null)
+      : null;
 
     return {
       kind,
@@ -235,6 +274,7 @@ export class HeadlessMatchSession {
       summary: this.state.awaitingReaction
         ? `Player ${actingPlayerIndex + 1} has a reaction decision pending.`
         : `Player ${actingPlayerIndex + 1} must act in ${this.state.currentPhase}/${this.state.currentSubPhase}.`,
+      aiDiagnostics,
     };
   }
 
@@ -253,7 +293,11 @@ export class HeadlessMatchSession {
     };
   }
 
-  submitAction(playerIndex: 0 | 1, command: GameCommand): HeadlessMatchCommandRecord {
+  submitAction(
+    playerIndex: 0 | 1,
+    command: GameCommand,
+    aiDiagnostics: AIDiagnostics | null = null,
+  ): HeadlessMatchCommandRecord {
     const actingPlayerIndex = this.getDecisionPlayerIndex();
     if (!this.state.isGameOver && actingPlayerIndex !== playerIndex) {
       throw new Error(
@@ -274,9 +318,13 @@ export class HeadlessMatchSession {
       phase: result.state.currentPhase,
       subPhase: result.state.currentSubPhase,
       stateHash: hashGameState(result.state),
+      aiDiagnostics,
     };
 
     this.history.push(record);
+    if (aiDiagnostics) {
+      this.aiDiagnostics.set(playerIndex, aiDiagnostics);
+    }
     if (result.accepted) {
       this.state = result.state;
     }
@@ -306,19 +354,36 @@ export class HeadlessMatchSession {
 
     const previous = this.history[this.history.length - 1];
     const shouldPreferFallback = previous?.accepted === false && previous.actingPlayerIndex === resolvedPlayerIndex;
-    const command = shouldPreferFallback
-      ? buildFallbackCommand(this.state) ?? generateNextCommand(this.state, aiConfig, aiContext)
-      : generateNextCommand(this.state, aiConfig, aiContext) ?? buildFallbackCommand(this.state);
+    let command: GameCommand | null;
+    try {
+      command = shouldPreferFallback
+        ? buildFallbackCommand(this.state) ?? generateNextCommand(this.state, aiConfig, aiContext)
+        : generateNextCommand(this.state, aiConfig, aiContext) ?? buildFallbackCommand(this.state);
+    } catch (error) {
+      const diagnostics = getTurnContextDiagnostics(aiContext) ?? {
+        tier: aiConfig.strategyTier,
+        modelId: aiConfig.nnueModelId,
+        principalVariation: [],
+        error: getTurnContextError(aiContext) ?? (error instanceof Error ? error.message : String(error)),
+      };
+      this.aiDiagnostics.set(resolvedPlayerIndex, diagnostics);
+      throw error;
+    }
 
     if (!command) {
       throw new Error(`AI could not generate a command for player ${resolvedPlayerIndex + 1}.`);
     }
 
-    const record = this.submitAction(resolvedPlayerIndex, command);
+    const diagnostics = getTurnContextDiagnostics(aiContext);
+    if (diagnostics) {
+      this.aiDiagnostics.set(resolvedPlayerIndex, diagnostics);
+    }
+
+    const record = this.submitAction(resolvedPlayerIndex, command, diagnostics ?? null);
     if (!record.accepted) {
       const fallback = buildFallbackCommand(this.state);
       if (fallback && fallback.type !== command.type) {
-        return this.submitAction(resolvedPlayerIndex, fallback);
+        return this.submitAction(resolvedPlayerIndex, fallback, diagnostics ?? null);
       }
     }
 

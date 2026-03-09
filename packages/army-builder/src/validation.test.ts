@@ -25,6 +25,8 @@ import {
   validateArmyListWithDoctrine,
   validatePlayableFactionScope,
   validateUnitProfilesExist,
+  validateProfileTraitRestrictions,
+  validateTransportAssignments,
   validateDoctrineConstraints,
 } from './validation';
 
@@ -579,6 +581,141 @@ describe('validateUnitProfilesExist', () => {
       ],
     });
     expect(validateUnitProfilesExist(army)).toHaveLength(0);
+  });
+});
+
+describe('validateProfileTraitRestrictions', () => {
+  it('rejects fixed-allegiance named characters in the wrong army allegiance', () => {
+    const army = makeValidArmy({
+      faction: LegionFaction.DarkAngels,
+      allegiance: Allegiance.Traitor,
+      detachments: [
+        makeDetachment({
+          faction: LegionFaction.DarkAngels,
+          units: [
+            makeUnit({
+              id: 'marduk',
+              profileId: 'marduk-sedras',
+              battlefieldRole: BattlefieldRole.HighCommand,
+              modelCount: 1,
+              totalPoints: 225,
+            }),
+            makeUnit({
+              id: 'troops-1',
+              profileId: 'tactical-squad',
+              battlefieldRole: BattlefieldRole.Troops,
+            }),
+            makeUnit({
+              id: 'troops-2',
+              profileId: 'tactical-squad',
+              battlefieldRole: BattlefieldRole.Troops,
+            }),
+          ],
+        }),
+      ],
+    });
+
+    const errors = validateProfileTraitRestrictions(army);
+    expect(errors.some((error) => error.message.includes('different allegiance'))).toBe(true);
+  });
+});
+
+describe('validateTransportAssignments', () => {
+  it('rejects bulky infantry assigned to a light transport', () => {
+    const army = makeValidArmy({
+      faction: LegionFaction.SonsOfHorus,
+      detachments: [
+        makeDetachment({
+          faction: LegionFaction.SonsOfHorus,
+          units: [
+            makeUnit({
+              id: 'assault',
+              profileId: 'assault-squad',
+              battlefieldRole: BattlefieldRole.Troops,
+              totalPoints: 140,
+              assignedTransportUnitId: 'rhino-1',
+            }),
+            makeUnit({
+              id: 'rhino-1',
+              profileId: 'rhino',
+              battlefieldRole: BattlefieldRole.Transport,
+              modelCount: 1,
+              totalPoints: 60,
+            }),
+            makeUnit({
+              id: 'troops-2',
+              profileId: 'tactical-squad',
+              battlefieldRole: BattlefieldRole.Troops,
+            }),
+          ],
+        }),
+      ],
+    });
+
+    const errors = validateTransportAssignments(army);
+    expect(errors.some((error) => error.message.includes('Light Transport'))).toBe(true);
+  });
+
+  it('accepts a legal tactical squad to rhino assignment', () => {
+    const army = makeValidArmy({
+      faction: LegionFaction.SonsOfHorus,
+      detachments: [
+        makeDetachment({
+          faction: LegionFaction.SonsOfHorus,
+          units: [
+            makeUnit({
+              id: 'tactical',
+              profileId: 'tactical-squad',
+              battlefieldRole: BattlefieldRole.Troops,
+              assignedTransportUnitId: 'rhino-1',
+            }),
+            makeUnit({
+              id: 'rhino-1',
+              profileId: 'rhino',
+              battlefieldRole: BattlefieldRole.Transport,
+              modelCount: 1,
+              totalPoints: 60,
+            }),
+            makeUnit({
+              id: 'cmd-1',
+              profileId: 'centurion',
+              battlefieldRole: BattlefieldRole.Command,
+              modelCount: 1,
+              totalPoints: 70,
+            }),
+          ],
+        }),
+      ],
+    });
+
+    expect(validateTransportAssignments(army)).toHaveLength(0);
+  });
+
+  it('rejects infantry assigned to dreadnought-only transports', () => {
+    const army = makeValidArmy({
+      detachments: [
+        makeDetachment({
+          units: [
+            makeUnit({
+              id: 'tactical',
+              profileId: 'tactical-squad',
+              battlefieldRole: BattlefieldRole.Troops,
+              assignedTransportUnitId: 'pod-1',
+            }),
+            makeUnit({
+              id: 'pod-1',
+              profileId: 'dreadnought-drop-pod',
+              battlefieldRole: BattlefieldRole.HeavyTransport,
+              modelCount: 1,
+              totalPoints: 100,
+            }),
+          ],
+        }),
+      ],
+    });
+
+    const errors = validateTransportAssignments(army);
+    expect(errors.some((error) => error.message.includes('Walker/Dreadnought'))).toBe(true);
   });
 });
 

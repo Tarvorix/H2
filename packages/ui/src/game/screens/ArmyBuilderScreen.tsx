@@ -34,7 +34,7 @@ import {
   isPlayableFaction,
   getPlayableFactions,
 } from '@hh/data';
-import { AIStrategyTier } from '@hh/ai';
+import { AIStrategyTier, DEFAULT_GAMEPLAY_NNUE_MODEL_ID } from '@hh/ai';
 import type { AIDeploymentFormation } from '@hh/ai';
 import type { GameUIState, GameUIAction } from '../types';
 import { FactionSelector } from './army-builder/FactionSelector';
@@ -58,6 +58,13 @@ interface DetachmentAddOption {
   disabled: boolean;
   disabledReason?: string;
 }
+
+type EngineBudgetPreset = 'normal' | 'turbo';
+
+const ENGINE_BUDGETS: Record<EngineBudgetPreset, number> = {
+  normal: 500,
+  turbo: 1000,
+};
 
 function generateId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -132,6 +139,7 @@ export function ArmyBuilderScreen({ state, dispatch, onReturnToMenu }: ArmyBuild
   const [aiEnabled, setAiEnabled] = useState(false);
   const [aiTier, setAiTier] = useState<AIStrategyTier>(AIStrategyTier.Tactical);
   const [aiDeploymentFormation, setAiDeploymentFormation] = useState<AIDeploymentFormation>('auto');
+  const [aiEngineBudgetPreset, setAiEngineBudgetPreset] = useState<EngineBudgetPreset>('normal');
   const [selectedDetachmentTemplateId, setSelectedDetachmentTemplateId] = useState<string>('');
 
   const detachmentAddOptions = useMemo<DetachmentAddOption[]>(() => {
@@ -627,6 +635,16 @@ export function ArmyBuilderScreen({ state, dispatch, onReturnToMenu }: ArmyBuild
           strategyTier: aiTier,
           deploymentFormation: aiDeploymentFormation,
           commandDelayMs: 600,
+          ...(aiTier === AIStrategyTier.Engine
+            ? {
+              timeBudgetMs: ENGINE_BUDGETS[aiEngineBudgetPreset],
+              nnueModelId: DEFAULT_GAMEPLAY_NNUE_MODEL_ID,
+              baseSeed: 1337,
+              rolloutCount: 1,
+              maxDepthSoft: 4,
+              diagnosticsEnabled: true,
+            }
+            : {}),
           enabled: true,
         },
       });
@@ -634,7 +652,7 @@ export function ArmyBuilderScreen({ state, dispatch, onReturnToMenu }: ArmyBuild
       dispatch({ type: 'SET_AI_CONFIG', config: null });
     }
     dispatch({ type: 'CONFIRM_ARMY_BUILDER' });
-  }, [dispatch, aiEnabled, aiTier, aiDeploymentFormation, state.armyBuilder.armyLists]);
+  }, [dispatch, aiEnabled, aiTier, aiDeploymentFormation, aiEngineBudgetPreset, state.armyBuilder.armyLists]);
 
   // Get the filter role from the active slot (template slot ID maps to a role)
   const filterRole: BattlefieldRole | null = (() => {
@@ -686,7 +704,18 @@ export function ArmyBuilderScreen({ state, dispatch, onReturnToMenu }: ArmyBuild
               >
                 <option value={AIStrategyTier.Basic}>Basic</option>
                 <option value={AIStrategyTier.Tactical}>Tactical</option>
+                <option value={AIStrategyTier.Engine}>Engine</option>
               </select>
+              {aiTier === AIStrategyTier.Engine && (
+                <select
+                  className="ai-tier-select"
+                  value={aiEngineBudgetPreset}
+                  onChange={(e) => setAiEngineBudgetPreset(e.target.value as EngineBudgetPreset)}
+                >
+                  <option value="normal">Engine: Normal (500ms)</option>
+                  <option value="turbo">Engine: Turbo (1000ms)</option>
+                </select>
+              )}
               <select
                 className="ai-tier-select"
                 value={aiDeploymentFormation}

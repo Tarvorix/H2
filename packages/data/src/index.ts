@@ -182,6 +182,19 @@ export {
 } from './profile-registry';
 
 export {
+  canProfileEmbarkOnTransport,
+  getProfileBulkyValue,
+  getProfileFactionTraits,
+  getProfileFixedAllegiances,
+  getProfileTransportOccupancy,
+  getTransportCapacity,
+  getTransportProfileRules,
+  isProfileCompatibleWithArmyAllegiance,
+  isProfileCompatibleWithArmyFaction,
+  isTransportProfile,
+} from './profile-legality';
+
+export {
   getAllLegions,
   getCuratedLegions,
   getPlayableFactions,

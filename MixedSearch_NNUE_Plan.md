@@ -4,16 +4,25 @@
 - Feasibility is high with current architecture because the engine is already command-driven and replay/hash deterministic at fixed dice sequences.
 - A pure Stockfish clone is not sufficient for this game because of chance (dice), reactions, and continuous movement; the right fit is mixed search.
 - Chosen direction: mixed search core (alpha-beta + stochastic handling) with an NNUE-style incremental evaluator, shared by UI and headless.
-- Key integration anchors: `packages/ai/src/ai-controller.ts`, `packages/ui/src/game/hooks/useAITurn.ts`, `packages/engine/src/command-processor.ts`, `packages/headless/src/index.ts`.
+- Key integration anchors: `packages/ai/src/ai-controller.ts`, `packages/ui/src/game/hooks/useAITurn.ts`, `packages/ui/src/game/screens/ArmyBuilderScreen.tsx`, `packages/ui/src/game/screens/ArmyLoadScreen.tsx`, `packages/engine/src/command-processor.ts`, `packages/headless/src/index.ts`, `packages/headless/src/session.ts`, `packages/mcp-server/src/register-tools.ts`.
+
+### Current Baseline (2026-03-08)
+- Current AI tiers are still `Basic` and `Tactical`; there is no search/NNUE-backed `Engine` tier yet.
+- UI AI execution is still synchronous and main-thread driven via `useAITurn`/`useAIDeployment`, paced by `commandDelayMs`.
+- Headless now has two relevant integration surfaces:
+  - one-shot runner/CLI under `packages/headless/src/index.ts` and `packages/headless/src/cli.ts`
+  - stateful `HeadlessMatchSession` plus MCP tools/resources under `packages/headless/src/session.ts` and `packages/mcp-server`
+- Army builder currently supports manual legal construction, validation, doctrine/rite enforcement, and import/export; auto-roster generation does not exist yet.
 
 ### Public API and Interface Changes
-- Extend `AIStrategyTier` with `Engine`.
+- Extend `AIStrategyTier` with `Engine` while preserving the current `Basic` and `Tactical` tiers.
 - Extend `AIPlayerConfig` with:
   - `timeBudgetMs`
   - `searchMode: "mixed"`
   - `nnueModelId`
   - `rolloutCount`
   - `maxDepthSoft`
+  - keep existing `deploymentFormation`, `commandDelayMs`, and `enabled` fields for backward compatibility
 - Add new AI interfaces:
   - `SearchConfig`
   - `SearchResult` (best command, PV, score, nodes, elapsedMs)
@@ -23,15 +32,17 @@
   - per-player `timeBudgetMs`
   - per-player `nnueModelId`
   - search diagnostics output toggle
+  - expose the same knobs on one-shot runner config, `HeadlessMatchPlayerConfig`, and MCP match creation/player config surfaces
 
 ### 1) Decision Model and Macro-Action Generator
 - Add a decision-node detector from `GameState` to separate tactical choices from auto-flow.
 - Introduce macro-action generation for full-turn planning:
   - Movement: unit-level destination templates (not raw per-model Cartesian explosion).
-  - Shooting: attacker/target/weapon bundle candidates.
-  - Assault: charge target and challenge/aftermath candidates.
+  - Shooting: attacker/target/weapon bundle candidates, including required blast/template placement decisions for special shots.
+  - Assault: charge target plus challenge, gambit, and aftermath candidates where applicable.
   - Reactions: select/decline with eligible unit ranking.
 - Convert each macro-action to valid engine command sequence and stop expansion on first invalid command.
+- Respect the current command surface shape, including `declareShooting(... blastPlacements/templatePlacements)`, reaction commands, challenge/gambit commands, and aftermath selection.
 - Keep `endSubPhase`/`endPhase` available but deprioritized in ordering unless no tactical action exists.
 
 ### 2) Mixed Search Core
@@ -75,15 +86,17 @@
 - Add continuous improvement loop: generate games, train, gate, promote model.
 
 ### 5) UI and Headless Integration
-- Integrate `Engine` strategy in `generateNextCommand`.
+- Integrate `Engine` strategy in `generateNextCommand`, `HeadlessMatchSession.advanceAiDecision`, and MCP `advance_ai_decision`.
 - Add search cancellation token and run search in a UI Worker to avoid blocking render/input.
+- Keep `useAITurn` as the orchestration layer, but move actual search/eval work off the main thread.
 - Make worker progress updates mandatory:
   - worker posts `searchProgress` every ~50 ms (configurable 50–100 ms).
   - include `elapsedMs`, `depth`, `nodes`, `nps`, `bestScore`, `principalVariation`.
   - UI displays live "thinking" telemetry without blocking input/render.
 - Surface diagnostics (optional): depth, nodes, nps, eval, principal variation.
+- Surface `Engine` tier selection anywhere the current UI already exposes AI selection (`ArmyLoadScreen`, `ArmyBuilderScreen`) without regressing existing `Basic`/`Tactical` flows.
 - Keep deployment AI path unchanged initially, then optionally migrate to search later.
-- Extend headless CLI to choose `Engine` tier and NNUE model for both players.
+- Extend headless runner, session host, and MCP match creation/player configs to choose `Engine` tier and NNUE model for both players.
 
 ### 6) Advanced AI Army List Builder
 - Add a dedicated roster-generation pipeline in `@hh/army-builder` that produces legal, high-strength `ArmyList` outputs.
@@ -106,7 +119,7 @@
   - `generateCounterList(request, opponentCandidates): ArmyBuildCandidate`
 
 #### 6.2 Hard-Constraint Layer (Non-Negotiable)
-- Start from detachment templates (`createDetachment`, `findDetachmentTemplate`).
+- Start from detachment templates (`@hh/army-builder:createDetachment`, `@hh/data:findDetachmentTemplate`).
 - Fill slots only through role-compatible assignment (`validateUnitAssignmentToSlot`).
 - Enforce points and caps continuously (`calculateArmyTotalPoints`, LoW cap, allied cap).
 - Apply rite/doctrine restrictions at each expansion step.
@@ -119,7 +132,7 @@
   - Add optional detachments only when unlock conditions are satisfied.
 - Stage B: Beam expansion
   - Expand partial rosters with legal unit/profile/model-count/wargear additions.
-  - Candidate pool comes from `getProfilesByFactionAndRole`.
+  - Candidate pool comes from `@hh/data` `getProfilesByFactionAndRole`.
   - Keep top `B` partial rosters by intermediate score and legality confidence.
 - Stage C: Local optimization
   - Perform swap/mutate passes (replace unit, adjust model count, adjust wargear) under constraints.
@@ -143,6 +156,7 @@
 #### 6.5 Integration Targets
 - UI:
   - Add `Auto Build` in Army Builder to generate and apply a legal list into current player state.
+  - Preserve the current manual builder, validation, and import/export workflow as the default/fallback path.
   - Show rationale panel (why this roster was selected).
 - Headless:
   - Add CLI flags for roster generation:
@@ -160,7 +174,7 @@
 
 ### 7) Acceptance Gates
 - Correctness gate:
-  - 100% command legality from generated macro-actions in regression suite.
+  - 100% command legality from generated macro-actions in regression suite, including special-shot placement flows.
   - deterministic replay parity with fixed dice/model/version.
 - Determinism gate:
   - identical best move, PV, and final decision score for same `GameState + baseSeed + config`.
@@ -172,21 +186,23 @@
   - no frame hitch from AI computation (worker path).
 - Stability gate:
   - no increase in command rejection rate vs baseline.
-  - no regression in reaction/challenge flow correctness.
+  - no regression in reaction, challenge, aftermath, or blast/template flow correctness.
 
 ### Test Cases and Scenarios
 - Unit tests:
-  - macro-action generation validity per sub-phase.
+  - macro-action generation validity per sub-phase, including special-shot placement requirements and challenge/aftermath branches.
   - NNUE feature extraction symmetry and bounds.
   - accumulator incremental update equals full recompute.
   - TT key stability and collision-handling behavior.
 - Integration tests:
   - mixed-search chooses legal command in every decision state.
   - reaction states always evaluate reactive player decisions correctly.
+  - blast/template decisions are represented and replayed deterministically.
   - fixed-dice search reproducibility across runs.
 - Headless match tests:
   - baseline Tactical vs Engine series with summary stats.
   - stress scenarios with high reaction density and assault-heavy states.
+  - parity checks across one-shot headless runner, `HeadlessMatchSession`, and MCP-driven AI advancement under fixed dice.
 - Performance tests:
   - nodes/ms benchmarks on representative midgame states.
   - worker cancellation latency and timeout fallback behavior.
@@ -194,7 +210,7 @@
 ### Assumptions and Defaults
 - Search approach: mixed (alpha-beta core + stochastic handling), not pure alpha-beta or pure MCTS.
 - Evaluator: NNUE-style incremental evaluator is required in first release.
-- Inference target: shared UI + headless.
+- Inference target: shared UI + headless (one-shot runner, session host, and MCP-backed match flow).
 - Training bootstrap: self-play + heuristic teacher labels.
 - Time budget default: 500ms per decision (within 300–800ms target).
 - Turbo mode:

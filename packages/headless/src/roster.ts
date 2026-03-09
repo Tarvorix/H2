@@ -15,6 +15,29 @@ export interface HeadlessArmyListGameSetupOptions
   armyLists: [ArmyList, ArmyList];
 }
 
+function findDuplicateUnitIdErrors(
+  armyLists: [ArmyList, ArmyList],
+): string[] {
+  const seen = new Map<string, number[]>();
+
+  armyLists.forEach((armyList, playerIndex) => {
+    for (const detachment of armyList.detachments) {
+      for (const unit of detachment.units) {
+        const existing = seen.get(unit.id) ?? [];
+        existing.push(playerIndex + 1);
+        seen.set(unit.id, existing);
+      }
+    }
+  });
+
+  return [...seen.entries()]
+    .filter(([, playerIndexes]) => playerIndexes.length > 1)
+    .map(([unitId, playerIndexes]) => {
+      const owners = [...new Set(playerIndexes)].map((index) => `player ${index}`).join(', ');
+      return `Duplicate unit ID "${unitId}" appears multiple times across the provided army lists (${owners}).`;
+    });
+}
+
 function summarizeArmyErrors(
   playerIndex: number,
   validation: ArmyValidationResult,
@@ -72,13 +95,15 @@ export function validateHeadlessArmyLists(
 ): HeadlessArmyListValidationSummary {
   const player0 = validateArmyListWithDoctrine(armyLists[0]);
   const player1 = validateArmyListWithDoctrine(armyLists[1]);
+  const duplicateUnitIdErrors = findDuplicateUnitIdErrors(armyLists);
 
   return {
-    isValid: player0.isValid && player1.isValid,
+    isValid: player0.isValid && player1.isValid && duplicateUnitIdErrors.length === 0,
     playerResults: [player0, player1],
     errors: [
       ...summarizeArmyErrors(0, player0),
       ...summarizeArmyErrors(1, player1),
+      ...duplicateUnitIdErrors,
     ],
   };
 }

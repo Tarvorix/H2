@@ -16,7 +16,7 @@ import {
 
 function createModel(id: string, x: number, y: number): ModelState {
   return {
-    id, profileModelName: 'Legionary', unitProfileId: 'tactical',
+    id, profileModelName: 'Legionary', unitProfileId: 'tactical-squad',
     position: { x, y }, currentWounds: 1, isDestroyed: false,
     modifiers: [], equippedWargear: [], isWarlord: false,
   };
@@ -24,7 +24,7 @@ function createModel(id: string, x: number, y: number): ModelState {
 
 function createUnit(id: string, models: ModelState[], overrides: Partial<UnitState> = {}): UnitState {
   return {
-    id, profileId: 'tactical', models, statuses: [],
+    id, profileId: 'tactical-squad', models, statuses: [],
     hasReactedThisTurn: false, movementState: UnitMovementState.Stationary,
     isLockedInCombat: false, embarkedOnId: null,
     isInReserves: false, isDeployed: true, engagedWithUnitIds: [], modifiers: [],
@@ -61,7 +61,7 @@ describe('handleEmbark', () => {
     const infantryModels = [createModel('i-m0', 10, 10), createModel('i-m1', 11, 10)];
     const infantryUnit = createUnit('infantry', infantryModels);
     const transportModels = [createModel('t-m0', 10.5, 10)];
-    const transportUnit = createUnit('transport', transportModels);
+    const transportUnit = createUnit('transport', transportModels, { profileId: 'rhino' });
 
     const state = createGameState({
       armies: [
@@ -83,7 +83,7 @@ describe('handleEmbark', () => {
     const infantryModels = [createModel('i-m0', 10, 10), createModel('i-m1', 20, 10)]; // m1 is 9.5" away
     const infantryUnit = createUnit('infantry', infantryModels);
     const transportModels = [createModel('t-m0', 10.5, 10)];
-    const transportUnit = createUnit('transport', transportModels);
+    const transportUnit = createUnit('transport', transportModels, { profileId: 'rhino' });
 
     const state = createGameState({
       armies: [createArmy(0, [infantryUnit, transportUnit]), createArmy(1, [])],
@@ -106,7 +106,7 @@ describe('handleEmbark', () => {
 
   it('should reject embark on enemy transport', () => {
     const unit = createUnit('u1', [createModel('m0', 10, 10)]);
-    const transport = createUnit('t1', [createModel('t-m0', 10, 10)]);
+    const transport = createUnit('t1', [createModel('t-m0', 10, 10)], { profileId: 'rhino' });
     const state = createGameState({
       armies: [createArmy(0, [unit]), createArmy(1, [transport])],
     });
@@ -117,7 +117,7 @@ describe('handleEmbark', () => {
 
   it('should reject embark when already embarked', () => {
     const unit = createUnit('u1', [createModel('m0', 10, 10)], { embarkedOnId: 'other' });
-    const transport = createUnit('t1', [createModel('t-m0', 10, 10)]);
+    const transport = createUnit('t1', [createModel('t-m0', 10, 10)], { profileId: 'rhino' });
     const state = createGameState({ armies: [createArmy(0, [unit, transport]), createArmy(1, [])] });
     const result = handleEmbark(state, 'u1', 't1', new FixedDiceProvider([]));
     expect(result.accepted).toBe(false);
@@ -126,10 +126,42 @@ describe('handleEmbark', () => {
 
   it('should emit embark event', () => {
     const unit = createUnit('u1', [createModel('m0', 10, 10)]);
-    const transport = createUnit('t1', [createModel('t-m0', 10, 10)]);
+    const transport = createUnit('t1', [createModel('t-m0', 10, 10)], { profileId: 'rhino' });
     const state = createGameState({ armies: [createArmy(0, [unit, transport]), createArmy(1, [])] });
     const result = handleEmbark(state, 'u1', 't1', new FixedDiceProvider([]));
     expect(result.events.some(e => e.type === 'embark')).toBe(true);
+  });
+
+  it('should reject bulky infantry embarking on a light transport', () => {
+    const assaultUnit = createUnit(
+      'assault',
+      [createModel('a-m0', 10, 10), createModel('a-m1', 11, 10)],
+      { profileId: 'assault-squad' },
+    );
+    const rhino = createUnit('rhino-1', [createModel('t-m0', 10.5, 10)], { profileId: 'rhino' });
+    const state = createGameState({
+      armies: [createArmy(0, [assaultUnit, rhino]), createArmy(1, [])],
+    });
+
+    const result = handleEmbark(state, 'assault', 'rhino-1', new FixedDiceProvider([]));
+    expect(result.accepted).toBe(false);
+    expect(result.errors[0].code).toBe('TRANSPORT_INCOMPATIBLE');
+    expect(result.errors[0].message).toContain('Light Transport');
+  });
+
+  it('should allow a walker to embark on a dreadnought transport', () => {
+    const dreadnought = createUnit('dread', [createModel('d-m0', 10, 10)], {
+      profileId: 'contemptor-dreadnought',
+    });
+    const pod = createUnit('pod-1', [createModel('p-m0', 10.5, 10)], {
+      profileId: 'dreadnought-drop-pod',
+    });
+    const state = createGameState({
+      armies: [createArmy(0, [dreadnought, pod]), createArmy(1, [])],
+    });
+
+    const result = handleEmbark(state, 'dread', 'pod-1', new FixedDiceProvider([]));
+    expect(result.accepted).toBe(true);
   });
 });
 
@@ -139,7 +171,7 @@ describe('handleDisembark', () => {
   it('should disembark unit with valid positions', () => {
     const models = [createModel('m0', 0, 0), createModel('m1', 0, 0)];
     const unit = createUnit('u1', models, { embarkedOnId: 't1', isDeployed: false });
-    const transport = createUnit('t1', [createModel('t-m0', 20, 24)]);
+    const transport = createUnit('t1', [createModel('t-m0', 20, 24)], { profileId: 'rhino' });
 
     const state = createGameState({ armies: [createArmy(0, [unit, transport]), createArmy(1, [])] });
 
@@ -167,7 +199,7 @@ describe('handleDisembark', () => {
 
   it('should reject disembark when positions too far from transport', () => {
     const unit = createUnit('u1', [createModel('m0', 0, 0)], { embarkedOnId: 't1', isDeployed: false });
-    const transport = createUnit('t1', [createModel('t-m0', 20, 24)]);
+    const transport = createUnit('t1', [createModel('t-m0', 20, 24)], { profileId: 'rhino' });
     const state = createGameState({ armies: [createArmy(0, [unit, transport]), createArmy(1, [])] });
 
     const result = handleDisembark(state, 'u1', [
@@ -181,7 +213,7 @@ describe('handleDisembark', () => {
   it('should reject disembark with broken coherency', () => {
     const models = [createModel('m0', 0, 0), createModel('m1', 0, 0)];
     const unit = createUnit('u1', models, { embarkedOnId: 't1', isDeployed: false });
-    const transport = createUnit('t1', [createModel('t-m0', 20, 24)]);
+    const transport = createUnit('t1', [createModel('t-m0', 20, 24)], { profileId: 'rhino' });
     const state = createGameState({ armies: [createArmy(0, [unit, transport]), createArmy(1, [])] });
 
     // Need edge-to-edge > 2". Centers need to be > 2 + 2*0.63 = 3.26" apart
@@ -197,7 +229,7 @@ describe('handleDisembark', () => {
 
   it('should emit disembark event', () => {
     const unit = createUnit('u1', [createModel('m0', 0, 0)], { embarkedOnId: 't1', isDeployed: false });
-    const transport = createUnit('t1', [createModel('t-m0', 20, 24)]);
+    const transport = createUnit('t1', [createModel('t-m0', 20, 24)], { profileId: 'rhino' });
     const state = createGameState({ armies: [createArmy(0, [unit, transport]), createArmy(1, [])] });
 
     const result = handleDisembark(state, 'u1', [
@@ -213,7 +245,7 @@ describe('handleDisembark', () => {
 describe('handleEmergencyDisembark', () => {
   it('should pass cool check and not pin unit', () => {
     const unit = createUnit('u1', [createModel('m0', 0, 0)], { embarkedOnId: 't1', isDeployed: false });
-    const transport = createUnit('t1', [createModel('t-m0', 20, 24)]);
+    const transport = createUnit('t1', [createModel('t-m0', 20, 24)], { profileId: 'rhino' });
     const state = createGameState({ armies: [createArmy(0, [unit, transport]), createArmy(1, [])] });
 
     // 2d6 = 3 + 2 = 5 <= 7 (CL), passes
@@ -229,7 +261,7 @@ describe('handleEmergencyDisembark', () => {
 
   it('should fail cool check and pin unit', () => {
     const unit = createUnit('u1', [createModel('m0', 0, 0)], { embarkedOnId: 't1', isDeployed: false });
-    const transport = createUnit('t1', [createModel('t-m0', 20, 24)]);
+    const transport = createUnit('t1', [createModel('t-m0', 20, 24)], { profileId: 'rhino' });
     const state = createGameState({ armies: [createArmy(0, [unit, transport]), createArmy(1, [])] });
 
     // 2d6 = 5 + 5 = 10 > 7 (CL), fails
@@ -245,7 +277,7 @@ describe('handleEmergencyDisembark', () => {
 
   it('should emit cool check and emergency disembark events', () => {
     const unit = createUnit('u1', [createModel('m0', 0, 0)], { embarkedOnId: 't1', isDeployed: false });
-    const transport = createUnit('t1', [createModel('t-m0', 20, 24)]);
+    const transport = createUnit('t1', [createModel('t-m0', 20, 24)], { profileId: 'rhino' });
     const state = createGameState({ armies: [createArmy(0, [unit, transport]), createArmy(1, [])] });
 
     const dice = new FixedDiceProvider([3, 3]);
@@ -259,7 +291,7 @@ describe('handleEmergencyDisembark', () => {
 
   it('should disembark unit and set moved state', () => {
     const unit = createUnit('u1', [createModel('m0', 0, 0)], { embarkedOnId: 't1', isDeployed: false });
-    const transport = createUnit('t1', [createModel('t-m0', 20, 24)]);
+    const transport = createUnit('t1', [createModel('t-m0', 20, 24)], { profileId: 'rhino' });
     const state = createGameState({ armies: [createArmy(0, [unit, transport]), createArmy(1, [])] });
 
     const dice = new FixedDiceProvider([2, 2]);

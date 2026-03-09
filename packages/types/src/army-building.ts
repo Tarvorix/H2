@@ -124,6 +124,8 @@ export interface ArmyListUnit {
   totalPoints: number;
   /** Which Force Org slot this fills */
   battlefieldRole: BattlefieldRole;
+  /** Optional planned transport assignment used for roster legality and deployment planning. */
+  assignedTransportUnitId?: string;
   /** Original legion lineage for faction-mixing rules (e.g. Shattered Legions). */
   originLegion?: LegionFaction;
 }

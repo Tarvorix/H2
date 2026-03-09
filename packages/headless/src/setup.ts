@@ -52,6 +52,22 @@ export interface HeadlessGameSetupOptions {
   firstPlayerIndex?: 0 | 1;
 }
 
+function assertUniqueConfiguredUnitIds(
+  armies: [HeadlessArmySetup, HeadlessArmySetup],
+): void {
+  const seen = new Set<string>();
+
+  armies.forEach((army, playerIndex) => {
+    army.units.forEach((unit, unitIndex) => {
+      const resolvedUnitId = unit.unitId ?? `p${playerIndex}-unit-${unitIndex}`;
+      if (seen.has(resolvedUnitId)) {
+        throw new Error(`Duplicate unit ID "${resolvedUnitId}" is configured in headless setup.`);
+      }
+      seen.add(resolvedUnitId);
+    });
+  });
+}
+
 function buildDefaultModelPositions(
   playerIndex: number,
   modelCount: number,
@@ -342,6 +358,8 @@ export function createHeadlessGameState(options: HeadlessGameSetupOptions): Game
     battlefieldHeight,
     objectiveOverrides,
   );
+
+  assertUniqueConfiguredUnitIds(options.armies);
 
   const armies: [ArmyState, ArmyState] = [
     createArmyState(options.armies[0], 0, battlefieldWidth, battlefieldHeight),

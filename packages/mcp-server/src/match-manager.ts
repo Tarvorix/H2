@@ -1,5 +1,6 @@
 import { EventEmitter } from 'node:events';
 import type { GameCommand, GameState } from '@hh/types';
+import type { AIDiagnostics } from '@hh/ai';
 import type {
   HeadlessLegalActionsSnapshot,
   HeadlessMatchCommandRecord,
@@ -33,6 +34,7 @@ export interface HHMatchSummary {
   isGameOver: boolean;
   winnerPlayerIndex: number | null;
   nudge: HeadlessNudgeSnapshot;
+  aiDiagnostics: [AIDiagnostics | null, AIDiagnostics | null];
 }
 
 export interface HHObserverSnapshot {
@@ -152,6 +154,7 @@ export class HHMatchManager extends EventEmitter {
       isGameOver: state.isGameOver,
       winnerPlayerIndex: state.winnerPlayerIndex,
       nudge: record.session.getNudgeSnapshot(),
+      aiDiagnostics: record.session.getAIDiagnostics(),
     };
   }
 

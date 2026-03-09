@@ -19,8 +19,11 @@ import {
   SpecialFaction,
 } from '@hh/types';
 import {
+  canProfileEmbarkOnTransport,
   findBlackshieldsOath,
   findDetachmentTemplate,
+  isProfileCompatibleWithArmyAllegiance,
+  isProfileCompatibleWithArmyFaction,
   getProfileById,
   getBlackshieldsOathLimit,
   isProfileAllowedForBlackshields,
@@ -97,6 +100,8 @@ export function validateArmyListWithDoctrine(armyList: ArmyList): ArmyValidation
   const extraErrors: ArmyValidationError[] = [
     ...validatePlayableFactionScope(armyList),
     ...validateUnitProfilesExist(armyList),
+    ...validateProfileTraitRestrictions(armyList),
+    ...validateTransportAssignments(armyList),
     ...validateDoctrineConstraints(armyList),
   ];
 
@@ -471,6 +476,131 @@ export function validateUnitProfilesExist(armyList: ArmyList): ArmyValidationErr
         });
       }
     }
+  }
+
+  return errors;
+}
+
+/**
+ * Validate fixed faction/allegiance profile traits against the chosen army identity.
+ */
+export function validateProfileTraitRestrictions(
+  armyList: ArmyList,
+): ArmyValidationError[] {
+  const errors: ArmyValidationError[] = [];
+
+  for (const detachment of armyList.detachments) {
+    for (const unit of detachment.units) {
+      const profile = getProfileById(unit.profileId);
+      if (!profile) continue;
+
+      if (!isProfileCompatibleWithArmyAllegiance(profile, armyList.allegiance)) {
+        errors.push({
+          severity: 'error',
+          scope: 'unit',
+          elementId: unit.id,
+          message:
+            `Unit "${unit.id}" profile "${unit.profileId}" is locked to a different allegiance ` +
+            `than army allegiance "${armyList.allegiance}".`,
+        });
+      }
+
+      if (!isProfileCompatibleWithArmyFaction(profile, detachment.faction)) {
+        errors.push({
+          severity: 'error',
+          scope: 'unit',
+          elementId: unit.id,
+          message:
+            `Unit "${unit.id}" profile "${unit.profileId}" is not available to detachment faction ` +
+            `"${detachment.faction}".`,
+        });
+      }
+    }
+  }
+
+  return errors;
+}
+
+/**
+ * Validate explicit transport assignments against faction, type, and capacity rules.
+ */
+export function validateTransportAssignments(
+  armyList: ArmyList,
+): ArmyValidationError[] {
+  const errors: ArmyValidationError[] = [];
+  const unitContexts = armyList.detachments.flatMap((detachment) =>
+    detachment.units.map((unit) => ({
+      detachment,
+      unit,
+      profile: getProfileById(unit.profileId),
+    })),
+  );
+  const unitById = new Map(unitContexts.map((context) => [context.unit.id, context] as const));
+  const embarkedUnitIdsByTransport = new Map<string, string[]>();
+  const occupiedCapacityByTransport = new Map<string, number>();
+
+  for (const context of unitContexts) {
+    const { detachment, unit, profile } = context;
+    if (!unit.assignedTransportUnitId) {
+      continue;
+    }
+
+    const transportContext = unitById.get(unit.assignedTransportUnitId);
+    if (!transportContext) {
+      errors.push({
+        severity: 'error',
+        scope: 'unit',
+        elementId: unit.id,
+        message:
+          `Unit "${unit.id}" references unknown assigned transport "${unit.assignedTransportUnitId}".`,
+      });
+      continue;
+    }
+
+    if (transportContext.unit.id === unit.id) {
+      errors.push({
+        severity: 'error',
+        scope: 'unit',
+        elementId: unit.id,
+        message: `Unit "${unit.id}" cannot assign itself as its own transport.`,
+      });
+      continue;
+    }
+
+    if (!profile || !transportContext.profile) {
+      continue;
+    }
+
+    const embarkedUnitIds = embarkedUnitIdsByTransport.get(transportContext.unit.id) ?? [];
+    const occupiedCapacity = occupiedCapacityByTransport.get(transportContext.unit.id) ?? 0;
+    const compatibility = canProfileEmbarkOnTransport({
+      passengerProfile: profile,
+      passengerModelCount: unit.modelCount,
+      passengerFaction: detachment.faction,
+      transportProfile: transportContext.profile,
+      transportFaction: transportContext.detachment.faction,
+      occupiedCapacity,
+      embarkedUnitCount: embarkedUnitIds.length,
+    });
+
+    if (!compatibility.isCompatible) {
+      errors.push({
+        severity: 'error',
+        scope: 'unit',
+        elementId: unit.id,
+        message:
+          `Unit "${unit.id}" cannot be assigned to transport "${transportContext.unit.id}": ` +
+          `${compatibility.reason ?? 'incompatible transport assignment.'}`,
+      });
+      continue;
+    }
+
+    embarkedUnitIds.push(unit.id);
+    embarkedUnitIdsByTransport.set(transportContext.unit.id, embarkedUnitIds);
+    occupiedCapacityByTransport.set(
+      transportContext.unit.id,
+      occupiedCapacity + compatibility.requiredCapacity,
+    );
   }
 
   return errors;

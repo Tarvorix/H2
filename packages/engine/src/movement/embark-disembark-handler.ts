@@ -7,8 +7,9 @@
  */
 
 import type { GameState, Position } from '@hh/types';
-import { UnitMovementState, TacticalStatus } from '@hh/types';
+import { LegionFaction, UnitMovementState, TacticalStatus } from '@hh/types';
 import { vec2Distance, createCircleBase, checkCoherency, STANDARD_COHERENCY_RANGE } from '@hh/geometry';
+import { canProfileEmbarkOnTransport } from '@hh/data';
 import type { CommandResult, GameEvent, DiceProvider } from '../types';
 import type { EmbarkEvent, DisembarkEvent, EmergencyDisembarkEvent, CoolCheckEvent, StatusAppliedEvent } from '../types';
 import {
@@ -25,15 +26,12 @@ import {
   findUnitPlayerIndex,
   getAliveModels,
 } from '../game-queries';
-import { getModelCool } from '../profile-lookup';
+import { getModelCool, lookupUnitProfile } from '../profile-lookup';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 /** Maximum distance from transport access point to embark (2") */
 export const ACCESS_POINT_RANGE = 2;
-
-/** Default transport capacity (until profile lookup is available) */
-export const DEFAULT_TRANSPORT_CAPACITY = 10;
 
 /** Default Cool stat for emergency disembark checks */
 export const DEFAULT_COOL = 7;
@@ -108,10 +106,73 @@ export function handleEmbark(
     return { state, events: [], errors, accepted: false };
   }
 
-  // Capacity check (simplified)
-  const modelCount = aliveModels.length;
-  if (modelCount > DEFAULT_TRANSPORT_CAPACITY) {
-    return { state, events: [], errors: [{ code: 'OVER_CAPACITY', message: `${modelCount} models exceeds transport capacity of ${DEFAULT_TRANSPORT_CAPACITY}` }], accepted: false };
+  const unitProfile = lookupUnitProfile(unit.profileId);
+  const transportProfile = lookupUnitProfile(transport.profileId);
+  if (!unitProfile || !transportProfile) {
+    return {
+      state,
+      events: [],
+      errors: [{
+        code: 'PROFILE_NOT_FOUND',
+        message: 'Unit or transport profile could not be resolved for embark validation',
+      }],
+      accepted: false,
+    };
+  }
+
+  const army = state.armies[unitPlayer ?? 0];
+  const embarkedUnits = army.units.filter(
+    (candidate) => candidate.id !== unitId && candidate.embarkedOnId === transportId,
+  );
+  const occupiedCapacity = embarkedUnits.reduce((sum, embarkedUnit) => {
+    const embarkedProfile = lookupUnitProfile(embarkedUnit.profileId);
+    if (!embarkedProfile) {
+      return sum;
+    }
+    return sum + canProfileEmbarkOnTransport({
+      passengerProfile: embarkedProfile,
+      passengerModelCount: getAliveModels(embarkedUnit).length,
+      passengerFaction:
+        embarkedUnit.originLegion ??
+        (Object.values(LegionFaction).includes(army.faction as LegionFaction)
+          ? (army.faction as LegionFaction)
+          : undefined),
+      transportProfile,
+      transportFaction:
+        transport.originLegion ??
+        (Object.values(LegionFaction).includes(army.faction as LegionFaction)
+          ? (army.faction as LegionFaction)
+          : undefined),
+    }).requiredCapacity;
+  }, 0);
+  const compatibility = canProfileEmbarkOnTransport({
+    passengerProfile: unitProfile,
+    passengerModelCount: aliveModels.length,
+    passengerFaction:
+      unit.originLegion ??
+      (Object.values(LegionFaction).includes(army.faction as LegionFaction)
+        ? (army.faction as LegionFaction)
+        : undefined),
+    transportProfile,
+    transportFaction:
+      transport.originLegion ??
+      (Object.values(LegionFaction).includes(army.faction as LegionFaction)
+        ? (army.faction as LegionFaction)
+        : undefined),
+    occupiedCapacity,
+    embarkedUnitCount: embarkedUnits.length,
+  });
+
+  if (!compatibility.isCompatible) {
+    return {
+      state,
+      events: [],
+      errors: [{
+        code: 'TRANSPORT_INCOMPATIBLE',
+        message: compatibility.reason ?? 'Unit cannot embark on the selected transport.',
+      }],
+      accepted: false,
+    };
   }
 
   // Embark the unit

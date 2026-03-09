@@ -178,4 +178,26 @@ describe('headless mission setup integration', () => {
     expect(result.state.currentPhase).toBe(state.currentPhase);
     expect(result.state.currentSubPhase).toBe(state.currentSubPhase);
   });
+
+  it('rejects duplicate explicit unit IDs in raw headless setup', () => {
+    expect(() =>
+      createHeadlessGameState({
+        missionId: 'heart-of-battle',
+        armies: [
+          {
+            playerName: 'Player 1',
+            faction: LegionFaction.WorldEaters,
+            allegiance: Allegiance.Traitor,
+            units: [{ profileId: 'techmarine', modelCount: 1, isWarlord: true, unitId: 'shared-unit' }],
+          },
+          {
+            playerName: 'Player 2',
+            faction: LegionFaction.AlphaLegion,
+            allegiance: Allegiance.Traitor,
+            units: [{ profileId: 'techmarine', modelCount: 1, isWarlord: true, unitId: 'shared-unit' }],
+          },
+        ],
+      }),
+    ).toThrow('Duplicate unit ID "shared-unit"');
+  });
 });

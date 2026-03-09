@@ -97,6 +97,10 @@ function migrateArmyListV1ToV2(armyList: Record<string, unknown>): ArmyList {
 
     const units = unitsRaw.map((unit) => ({
       ...unit,
+      assignedTransportUnitId:
+        typeof unit.assignedTransportUnitId === 'string'
+          ? unit.assignedTransportUnitId
+          : undefined,
       originLegion:
         unit.originLegion !== undefined
           ? unit.originLegion
@@ -306,6 +310,12 @@ function validateUnitStructure(
   }
   if (typeof unit.battlefieldRole !== 'string') {
     errors.push(`${prefix}: Missing or invalid "battlefieldRole" (expected string).`);
+  }
+  if (
+    unit.assignedTransportUnitId !== undefined &&
+    typeof unit.assignedTransportUnitId !== 'string'
+  ) {
+    errors.push(`${prefix}: Invalid "assignedTransportUnitId" (expected string when present).`);
   }
   if (!Array.isArray(unit.selectedOptions)) {
     errors.push(`${prefix}: Missing or invalid "selectedOptions" (expected array).`);
