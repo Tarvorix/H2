@@ -135,6 +135,150 @@ Last Updated: 2026-03-09
   - Updated the limitations and improvement sections so they no longer recommend work that is already implemented, and instead reflect the current remaining gaps after the 25-feature + trainer-validation pass.
   - Re-read the patched primer against the current source after editing. No tests were run because this was a documentation-only refresh.
 
+## Execution Plan (Gameplay Artifact Cleanup + Fresh 100-Match V2 Run - 2026-03-09)
+- [x] Remove obsolete pre-`v2` gameplay self-play/training artifacts after explicit confirmation.
+- [x] Run a fresh `100`-match gameplay self-play batch under the current 25-feature gameplay schema.
+- [x] Train a new gameplay candidate from that fresh shard and gate it against `Tactical`.
+- [x] Record the cleanup scope and the new benchmark results here.
+- Progress:
+  - Identified the cleanup target as obsolete gameplay-training artifacts from before the 25-feature gameplay schema bump. Current `v2` smoke artifacts and roster audit artifacts are not in the initial delete set.
+  - Deleted the approved obsolete gameplay artifact set:
+    - full directories: `tmp/nnue-100`, `tmp/nnue-100-2000-final`, `tmp/nnue-curated-default-smoke`, `tmp/nnue-smoke`, `tmp/nnue-starter-2000`, `tmp/nnue-starter-2000-final`, `tmp/nnue-starter-2000-fixed`, `tmp/nnue-starter-2000-repro`, `tmp/nnue-starter-2000-repro-after-build`, `tmp/nnue-starter-2000-repro-after-fix`, `tmp/nnue-starter-2000-run2`, and `tmp/nnue-acceptance/selfplay-16x300`
+    - stale pre-`v2` gameplay candidate / gate files under `tmp/nnue-acceptance`: `candidate-a*`, `candidate-b*`, `candidate-c*`, `candidate-d*`, `candidate-e*`, plus the old gameplay baseline / smoke gate summaries
+  - Fresh `v2` self-play completed with:
+    - `pnpm nnue:selfplay --matches 100 --time-budget-ms 150 --max-commands 1500 --shard-size 1000000 --out-dir tmp/nnue-100-2000-v2`
+    - Result: `100/100 game-over`, `23,499` samples, `1` shard, manifest at `tmp/nnue-100-2000-v2/manifest.json`
+  - Fresh `v2` training completed with:
+    - `pnpm nnue:train --input tmp/nnue-100-2000-v2/selfplay-shard-001.jsonl --out tmp/nnue-100-2000-v2/candidate.json --epochs 12 --learning-rate 0.01 --l2 0.0005 --validation-split 0.2 --patience 3 --min-delta 0.0001`
+    - Result: model `gameplay-default-v1-candidate-1773040019904`, `18,799` training samples, `4,700` validation samples, `bestEpoch=12`, `stoppedEarly=false`
+  - Fresh `v2` gate completed with:
+    - `pnpm nnue:gate --model tmp/nnue-100-2000-v2/candidate.json --matches 8 --time-budget-ms 150 --threshold -1 --out tmp/nnue-100-2000-v2/gate.json`
+    - Result: `2 wins / 6 losses / 0 draws / 0 aborted / 0 timeouts` vs `Tactical` (`winRate: 0.25`)
+  - Comparison against the prior short 2000-point benchmark:
+    - previous 100-match candidate: `3 wins / 5 losses / 0 draws` (`winRate: 0.375`)
+    - fresh `v2` candidate: `2 wins / 6 losses / 0 draws` (`winRate: 0.25`)
+  - Outcome:
+    - The rerun fully succeeded from an infrastructure perspective: obsolete pre-`v2` gameplay artifacts were removed, the fresh 100-match curated self-play batch finished `100/100 game-over`, the candidate trained cleanly under the new validation-split trainer, and the benchmark had `0` aborted matches.
+    - The model-strength result is worse than the prior short benchmark, so the current `v2` feature/trainer change did not improve short-match strength by itself.
+
+## Execution Plan (Fresh 400-Match V2 Self-Play Corpus - 2026-03-09)
+- [x] Run a fresh `400`-match gameplay self-play batch on the curated 2000-point `v2` setup using the current benchmark settings.
+- [x] Record the corpus output path, sample count, and termination stability here.
+- Progress:
+  - `pnpm nnue:selfplay --matches 400 --time-budget-ms 150 --max-commands 1500 --shard-size 1000000 --out-dir tmp/nnue-400-2000-v2`
+  - Result: `400/400 game-over`, `94,090` samples, `1` shard, manifest at `tmp/nnue-400-2000-v2/manifest.json`
+  - Stability outcome: `0` abnormal terminations across the full 400-match curated 2000-point `v2` corpus run.
+  - Follow-on training from the 400-match corpus completed with:
+    - `pnpm nnue:train --input tmp/nnue-400-2000-v2/selfplay-shard-001.jsonl --out tmp/nnue-400-2000-v2/candidate.json --epochs 12 --learning-rate 0.01 --l2 0.0005 --validation-split 0.2 --patience 3 --min-delta 0.0001`
+    - Result: model `gameplay-default-v1-candidate-1773063413765`, `75,272` training samples, `18,818` validation samples, `epochsCompleted=10`, `bestEpoch=7`, `stoppedEarly=true`
+  - Follow-on benchmark against `Tactical` completed with:
+    - `pnpm nnue:gate --model tmp/nnue-400-2000-v2/candidate.json --matches 8 --time-budget-ms 150 --threshold -1 --out tmp/nnue-400-2000-v2/gate.json`
+    - Result: `1 win / 7 losses / 0 draws / 0 aborted / 0 timeouts` (`winRate: 0.125`)
+  - Comparison:
+    - prior 100-match `v2` candidate: `2 wins / 6 losses` (`winRate: 0.25`)
+    - current 400-match `v2` candidate: `1 win / 7 losses` (`winRate: 0.125`)
+  - Outcome:
+    - The larger corpus improved data volume and remained perfectly stable, but it did not improve short-match strength. On this benchmark, the 400-match candidate is the weakest of the recent `v2` candidates.
+
+## Implementation Plan (Search Candidate Generation + Root Ordering Pass - 2026-03-09)
+- [x] Diversify movement candidate generation so root actions include tactically distinct lanes instead of only the top few destinations from one generic score.
+- [x] Make shooting candidate ordering damage-aware and target-value-aware before root pruning.
+- [x] Improve reaction unit selection / decline scoring within the current fixed-reaction-type command surface.
+- [x] Add a cheap root pre-order using transitioned states so search sees better actions first before full depth search.
+- [x] Add focused regression coverage and run targeted AI package verification.
+- Progress:
+  - Updated `packages/ai/src/engine/candidate-generator.ts` so Movement actions now keep tactically distinct lane candidates (`objective`, `fire`, `safety`, `pressure`, `center`, fallback best) instead of only the top few destinations from one score.
+  - Updated shooting macro-action pruning in `packages/ai/src/engine/candidate-generator.ts` to widen the coarse target pool, estimate expected damage from the actual selected weapons, and boost warlord/objective-holder/kill-pressure targets before root pruning.
+  - Updated reaction generation in `packages/ai/src/engine/candidate-generator.ts` so eligible units are scored by reaction-context value and decline is no longer a fixed constant.
+  - Updated `packages/ai/src/engine/search.ts` so root actions get a cached cheap pre-order from transitioned states before the full depth search loop.
+  - Added focused generator coverage in `packages/ai/src/engine/candidate-generator.test.ts`.
+  - Verification passed:
+    - `pnpm test -- packages/ai/src/engine/candidate-generator.test.ts packages/ai/src/engine/search.test.ts` (`2 files / 6 tests`)
+    - `pnpm --filter @hh/ai build`
+
+## Documentation + Benchmark Plan (Engine Primer Refresh + Fresh 100-Match Search-Pass Run - 2026-03-09)
+- [x] Update `engine_primer.md` so it reflects the new search candidate-generation and root-ordering behavior rather than the older narrower search description.
+- [x] Rebuild the AI/headless runtime path before benchmarking so the 100-match run uses the new search code.
+- [x] Run a fresh `100`-match curated 2000-point gameplay self-play batch on the current search code.
+- [x] Train a fresh gameplay candidate from that corpus and gate it against `Tactical`.
+- [x] Record the documentation refresh and the new benchmark outcome here.
+- Progress:
+  - Updated `engine_primer.md` so the shipped search description now includes the cheap root pre-order, diversified movement lanes, damage-aware shooting pruning, and current fixed-reaction-type unit/decline scoring behavior.
+  - Updated the primer limitations/improvement section so it no longer recommends the exact search-side work that is now already implemented.
+  - Rebuilt the runtime path with:
+    - `pnpm --filter @hh/ai build`
+    - `pnpm --filter @hh/headless build`
+  - Fresh self-play completed with:
+    - `pnpm nnue:selfplay --matches 100 --time-budget-ms 150 --max-commands 1500 --shard-size 1000000 --out-dir tmp/nnue-100-2000-v2-searchpass`
+    - Result: `100/100 game-over`, `19,853` samples, `1` shard, manifest at `tmp/nnue-100-2000-v2-searchpass/manifest.json`
+  - Fresh training completed with:
+    - `pnpm nnue:train --input tmp/nnue-100-2000-v2-searchpass/selfplay-shard-001.jsonl --out tmp/nnue-100-2000-v2-searchpass/candidate.json --epochs 12 --learning-rate 0.01 --l2 0.0005 --validation-split 0.2 --patience 3 --min-delta 0.0001`
+    - Result: model `gameplay-default-v1-candidate-1773070576502`, `15,882` training samples, `3,971` validation samples, `epochsCompleted=12`, `bestEpoch=11`, `stoppedEarly=false`
+  - Fresh gate completed with:
+    - `pnpm nnue:gate --model tmp/nnue-100-2000-v2-searchpass/candidate.json --matches 8 --time-budget-ms 150 --threshold -1 --out tmp/nnue-100-2000-v2-searchpass/gate.json`
+    - Result: `2 wins / 6 losses / 0 draws / 0 aborted / 0 timeouts` vs `Tactical` (`winRate: 0.25`)
+  - Outcome:
+    - The primer is now current with the shipped search behavior.
+    - The rebuilt 100-match 2000-point corpus run was fully stable (`100/100 game-over`, `0` abnormal terminations).
+    - The fresh candidate did not improve the short benchmark versus the earlier `v2` 100-match run; it matched the prior `2-6` result exactly.
+
+## Review Plan (Engine Timing + Search/Evaluator Effectiveness Audit - 2026-03-09)
+- [x] Compare the old and new 100-match corpus artifacts to quantify whether unchanged wall-clock is due to time-budget capping, fewer decisions, or missing code paths.
+- [x] Audit the current search/evaluator runtime path to verify the new feature extractor and search candidate-generation logic are actually active during self-play.
+- [x] Summarize the concrete findings, including whether the unchanged run time is expected or indicates a bug.
+- Progress:
+  - Both 100-match corpus runs use the same per-turn search budget: `timeBudgetMs = 150`.
+  - The new search/evaluator code is definitely active:
+    - gameplay extraction is still `v2` / `25` features (`packages/ai/src/engine/feature-extractor.ts`)
+    - the evaluator consumes those live gameplay features (`packages/ai/src/engine/evaluator.ts`)
+    - root pre-ordering is present in the built runtime (`packages/ai/dist/engine/search.js`)
+    - movement diversification / damage-aware shooting / reaction scoring are present in the built runtime (`packages/ai/dist/engine/candidate-generator.js`)
+  - The unchanged wall-clock is not evidence that the new code was skipped:
+    - the run is still capped by the same `150ms` per-decision budget
+    - the evaluator cost increase from `10` to `25` features is tiny relative to command simulation/search
+    - the final root/per-unit breadth caps did not change
+  - The bigger issue is a new movement-legality regression in the search-pass run:
+    - prior `tmp/nnue-100-2000-v2/manifest.json`: `0` aborted, `23,499` samples, approx `3702.3s`
+    - new `tmp/nnue-100-2000-v2-searchpass/manifest.json`: `20` aborted, `19,853` samples, approx `3375.6s`
+    - all new abnormal terminations are `command-rejected` movement failures: `Target position is outside the battlefield`, `Model base overlaps with another model`, and `Cannot end move within 1" of an enemy model`
+  - Replay inspection shows the new diversified movement selector is surfacing illegal translated formations:
+    - one rejected move sends the lead model to `x = -1.42`
+    - another rejected move overlaps another model
+  - Root cause is in `packages/ai/src/engine/candidate-generator.ts`:
+    - `generateCandidatePositions(...)` clamps only the destination centroid
+    - `translateUnitToCentroid(...)` blindly offsets every model from that centroid
+    - the diversified lane selector now chooses more edge/pressure destinations, which exposes those previously latent legality gaps
+
+## Fix Plan (Movement Candidate Legality Hardening + Fresh 100-Match Rerun - 2026-03-09)
+- [x] Add full-formation movement legality filtering so search never emits move candidates that the engine would reject for battlefield bounds, model overlap, or enemy proximity.
+- [x] Add focused regression coverage for the rejected movement cases found in the latest self-play audit.
+- [x] Rebuild the AI/headless runtime path after the legality fix.
+- [x] Rerun the 100-match curated 2000-point self-play batch and confirm abnormal terminations return to zero.
+- [x] If the corpus is clean, retrain and re-gate from the fresh shard and record the corrected result here.
+- Progress:
+  - Updated `packages/ai/src/engine/candidate-generator.ts` so Movement candidates now keep only full translated formations that the real engine `handleMoveUnit(...)` validator accepts, rather than relying on centroid-only clamping.
+  - Added focused regression coverage in `packages/ai/src/engine/candidate-generator.test.ts` for edge-pressure and enemy-exclusion movement cases, and tightened the existing movement-lane test so every generated `moveUnit` action must pass engine validation.
+  - Verification passed:
+    - `pnpm test -- packages/ai/src/engine/candidate-generator.test.ts packages/ai/src/engine/search.test.ts` (`2 files / 8 tests`)
+    - `pnpm --filter @hh/ai build`
+    - `pnpm --filter @hh/headless build`
+  - Fresh corrected self-play completed with:
+    - `pnpm nnue:selfplay --matches 100 --time-budget-ms 150 --max-commands 1500 --shard-size 1000000 --out-dir tmp/nnue-100-2000-v2-searchpass-fixed`
+    - Result: `100/100 game-over`, `25,173` samples, `1` shard, manifest at `tmp/nnue-100-2000-v2-searchpass-fixed/manifest.json`
+  - Post-run audit:
+    - `manifest.json` reports `100` matches, all `terminatedReason = game-over`
+    - replay inventory count is `100`, matching the manifest
+    - abnormal terminations returned to `0`
+  - Fresh corrected training completed with:
+    - `pnpm nnue:train --input tmp/nnue-100-2000-v2-searchpass-fixed/selfplay-shard-001.jsonl --out tmp/nnue-100-2000-v2-searchpass-fixed/candidate.json --epochs 12 --learning-rate 0.01 --l2 0.0005 --validation-split 0.2 --patience 3 --min-delta 0.0001`
+    - Result: model `gameplay-default-v1-candidate-1773075368635`, `20,138` training samples, `5,035` validation samples, `epochsCompleted=12`, `bestEpoch=12`, `stoppedEarly=false`
+  - Fresh corrected gate completed with:
+    - `pnpm nnue:gate --model tmp/nnue-100-2000-v2-searchpass-fixed/candidate.json --matches 8 --time-budget-ms 150 --threshold -1 --out tmp/nnue-100-2000-v2-searchpass-fixed/gate.json`
+    - Result: `3 wins / 5 losses / 0 draws / 0 aborted / 0 timeouts` vs `Tactical` (`winRate: 0.375`)
+  - Outcome:
+    - The legality fix worked: the corrected corpus is fully clean and no longer hides runtime/strength behavior behind command rejections.
+    - The corrected 100-match candidate is stronger than the previous search-pass rerun (`3-5` vs `2-6`) and matches the earlier best short 100-match result on the curated 2000-point surface.
+
 ## Implementation Plan (Curated 2000pt Faction Rosters - 2026-03-08)
 - [x] Inventory the currently playable factions and the actual profile/detachment surface the code can validate.
 - [x] Research online faction identity/list-building references, then map those themes onto the current local rules/docs and supported datasheets.

@@ -9,6 +9,7 @@ import type {
 } from '@hh/types';
 import {
   ChallengeGambit,
+  CoreReaction,
   Phase,
   SubPhase,
   UnitMovementState,
@@ -16,32 +17,49 @@ import {
 import {
   canUnitMove,
   canUnitRush,
+  FixedDiceProvider,
   formFireGroups,
   getAliveModels,
   getBlastSizeInches,
   getClosestModelDistance,
+  getModelBS,
+  getModelSave,
+  getModelToughness,
   getModelsWithLOSToUnit,
   getValidCommands,
+  handleMoveUnit,
   hasLOSToUnit,
+  resolveWeaponAssignment,
 } from '@hh/engine';
 import type { MacroAction, SearchConfig } from '../types';
 import { generateCandidatePositions, evaluateMovementDestination } from '../evaluation/position-evaluation';
+import { evaluateUnitThreat } from '../evaluation/threat-evaluation';
 import { prioritizeChargeTargets, prioritizeShootingTargets } from '../evaluation/target-priority';
 import {
   getChargeableUnits,
+  getEnemyDeployedUnits,
   getModelMovementCharacteristic,
   getShootableUnits,
   getUnitCentroid,
   getValidChargeTargets,
   getValidShootingTargets,
 } from '../helpers/unit-queries';
-import { selectWeaponsForAttack } from '../helpers/weapon-selection';
+import { estimateExpectedDamage, selectWeaponsForAttack } from '../helpers/weapon-selection';
 import { getAvailableAftermathOptions } from '@hh/engine';
 import { TacticalStatus } from '@hh/types';
 
 export interface SearchNodeState {
   state: GameState;
   actedUnitIds: Set<string>;
+}
+
+type MovementLane = 'objective' | 'fire' | 'safety' | 'pressure' | 'center' | 'best';
+
+interface MovementDestinationCandidate {
+  position: Position;
+  baseScore: number;
+  laneScores: Record<Exclude<MovementLane, 'best'>, number>;
+  modelPositions: { modelId: string; position: Position }[];
 }
 
 function makeAction(
@@ -71,6 +89,33 @@ function translateUnitToCentroid(unit: UnitState, targetCentroid: Position): { m
       y: model.position.y + dy,
     },
   }));
+}
+
+function areModelPositionsWithinBattlefield(
+  state: GameState,
+  modelPositions: { modelId: string; position: Position }[],
+): boolean {
+  return modelPositions.every(({ position }) =>
+    position.x >= 0 &&
+    position.y >= 0 &&
+    position.x <= state.battlefield.width &&
+    position.y <= state.battlefield.height,
+  );
+}
+
+function isLegalMoveFormation(
+  state: GameState,
+  unitId: string,
+  modelPositions: { modelId: string; position: Position }[],
+): boolean {
+  if (!areModelPositionsWithinBattlefield(state, modelPositions)) {
+    return false;
+  }
+
+  const dice = new FixedDiceProvider(
+    Array.from({ length: Math.max(16, modelPositions.length * 4) }, () => 6),
+  );
+  return handleMoveUnit(state, unitId, modelPositions, dice).accepted;
 }
 
 function buildReserveEntryPositions(
@@ -164,11 +209,250 @@ function buildSpecialPlacements(
   return { blastPlacements, templatePlacements };
 }
 
+function positionKey(position: Position): string {
+  return `${position.x.toFixed(1)}:${position.y.toFixed(1)}`;
+}
+
+function distanceBetween(left: Position, right: Position): number {
+  return Math.hypot(left.x - right.x, left.y - right.y);
+}
+
+function findUnitInState(state: GameState, unitId: string): UnitState | null {
+  return state.armies
+    .flatMap((army) => army.units)
+    .find((unit) => unit.id === unitId) ?? null;
+}
+
+function getNearestEnemyDistance(
+  state: GameState,
+  playerIndex: number,
+  position: Position,
+): number {
+  const enemies = getEnemyDeployedUnits(state, playerIndex);
+  const distances = enemies
+    .map((enemy) => getUnitCentroid(enemy))
+    .filter((centroid): centroid is Position => centroid !== null)
+    .map((centroid) => distanceBetween(position, centroid));
+  return distances.length > 0 ? Math.min(...distances) : 999;
+}
+
+function getNearestObjectiveDistance(state: GameState, position: Position): number {
+  const objectives = state.missionState?.objectives?.filter((objective) => !objective.isRemoved) ?? [];
+  if (objectives.length === 0) return Number.POSITIVE_INFINITY;
+  return Math.min(...objectives.map((objective) => distanceBetween(position, objective.position)));
+}
+
+function buildMovementLaneScores(
+  state: GameState,
+  playerIndex: number,
+  position: Position,
+  baseScore: number,
+): Record<Exclude<MovementLane, 'best'>, number> {
+  const nearestEnemyDistance = getNearestEnemyDistance(state, playerIndex, position);
+  const nearestObjectiveDistance = getNearestObjectiveDistance(state, position);
+  const centerDistance = distanceBetween(position, {
+    x: state.battlefield.width / 2,
+    y: state.battlefield.height / 2,
+  });
+
+  const objectiveScore = Number.isFinite(nearestObjectiveDistance)
+    ? (30 - (nearestObjectiveDistance * 2.2)) + (baseScore * 0.4)
+    : Number.NEGATIVE_INFINITY;
+  const fireScore = (24 - Math.abs(nearestEnemyDistance - 15)) + (baseScore * 0.35);
+  const safetyScore = (Math.min(nearestEnemyDistance, 24) * 1.25) + (baseScore * 0.2);
+  const pressureScore = (30 - nearestEnemyDistance) + (baseScore * 0.3);
+  const centerScore = (24 - centerDistance) + (baseScore * 0.25);
+
+  return {
+    objective: objectiveScore,
+    fire: fireScore,
+    safety: safetyScore,
+    pressure: pressureScore,
+    center: centerScore,
+  };
+}
+
+function laneReason(lane: MovementLane): string {
+  switch (lane) {
+    case 'objective':
+      return 'objective lane';
+    case 'fire':
+      return 'fire lane';
+    case 'safety':
+      return 'safety lane';
+    case 'pressure':
+      return 'pressure lane';
+    case 'center':
+      return 'center lane';
+    default:
+      return 'best lane';
+  }
+}
+
+function selectDiversifiedMovementDestinations(
+  candidates: MovementDestinationCandidate[],
+  maxActions: number,
+): Array<MovementDestinationCandidate & { lane: MovementLane; selectedScore: number }> {
+  const selected: Array<MovementDestinationCandidate & { lane: MovementLane; selectedScore: number }> = [];
+  const selectedPositions = new Set<string>();
+
+  const takeBestForLane = (lane: Exclude<MovementLane, 'best'>): void => {
+    const bestCandidate = [...candidates]
+      .filter((candidate) => !selectedPositions.has(positionKey(candidate.position)))
+      .sort((left, right) => {
+        const laneDelta = right.laneScores[lane] - left.laneScores[lane];
+        if (laneDelta !== 0) return laneDelta;
+        return right.baseScore - left.baseScore;
+      })[0];
+    if (!bestCandidate || !Number.isFinite(bestCandidate.laneScores[lane])) return;
+
+    selected.push({
+      ...bestCandidate,
+      lane,
+      selectedScore: Math.max(bestCandidate.baseScore, bestCandidate.laneScores[lane]),
+    });
+    selectedPositions.add(positionKey(bestCandidate.position));
+  };
+
+  takeBestForLane('objective');
+  takeBestForLane('fire');
+  takeBestForLane('safety');
+  takeBestForLane('pressure');
+  takeBestForLane('center');
+
+  for (const candidate of [...candidates].sort((left, right) => right.baseScore - left.baseScore)) {
+    if (selected.length >= maxActions) break;
+    if (selectedPositions.has(positionKey(candidate.position))) continue;
+    selected.push({
+      ...candidate,
+      lane: 'best',
+      selectedScore: candidate.baseScore,
+    });
+    selectedPositions.add(positionKey(candidate.position));
+  }
+
+  return selected
+    .sort((left, right) => right.selectedScore - left.selectedScore)
+    .slice(0, maxActions);
+}
+
+function isObjectiveHolder(state: GameState, unit: UnitState): boolean {
+  const centroid = getUnitCentroid(unit);
+  if (!centroid) return false;
+  return (state.missionState?.objectives ?? []).some((objective) =>
+    !objective.isRemoved && distanceBetween(centroid, objective.position) <= 3,
+  );
+}
+
+function estimateUnitShootingDamage(
+  attackerUnit: UnitState,
+  targetUnit: UnitState,
+  weaponSelections: { modelId: string; weaponId: string; profileName?: string }[],
+): number {
+  const targetModel = getAliveModels(targetUnit)[0];
+  if (!targetModel) return 0;
+
+  const targetToughness = getModelToughness(targetModel.unitProfileId, targetModel.profileModelName) || 4;
+  const targetSave = getModelSave(targetModel.unitProfileId, targetModel.profileModelName) ?? 3;
+
+  let totalExpectedDamage = 0;
+  for (const selection of weaponSelections) {
+    const attackerModel = attackerUnit.models.find((model) => model.id === selection.modelId);
+    if (!attackerModel) continue;
+
+    const profile = resolveWeaponAssignment(selection, attackerUnit);
+    if (!profile) continue;
+
+    const attackerBS = getModelBS(attackerModel.unitProfileId, attackerModel.profileModelName);
+    const firepower = Math.max(1, profile.firepower);
+    let expectedDamage = estimateExpectedDamage(
+      firepower,
+      attackerBS,
+      profile.rangedStrength,
+      targetToughness,
+      targetSave,
+    ) * Math.max(1, profile.damage);
+
+    if (profile.hasTemplate) {
+      expectedDamage *= 1.35;
+    }
+    if (profile.specialRules.some((rule) => rule.name === 'Breaching')) {
+      expectedDamage *= 1.1;
+    }
+
+    totalExpectedDamage += expectedDamage;
+  }
+
+  return totalExpectedDamage;
+}
+
+function scoreReactionUnit(
+  node: SearchNodeState,
+  unitId: string,
+): { score: number; reasons: string[] } | null {
+  const pendingReaction = node.state.pendingReaction;
+  if (!pendingReaction) return null;
+
+  const reactingPlayerIndex = node.state.activePlayerIndex === 0 ? 1 : 0;
+  const unit = findUnitInState(node.state, unitId);
+  if (!unit) return null;
+
+  const aliveModels = getAliveModels(unit);
+  if (aliveModels.length === 0) return null;
+
+  const totalWeapons = aliveModels.reduce((total, model) => total + model.equippedWargear.length, 0);
+  const triggerDistance = getClosestModelDistance(node.state, unit.id, pendingReaction.triggerSourceUnitId) ?? 24;
+  const reasons: string[] = ['legal reaction'];
+  let score = aliveModels.length * 2.5 + totalWeapons * 2;
+
+  switch (pendingReaction.reactionType) {
+    case CoreReaction.ReturnFire:
+      score += totalWeapons * 4;
+      score += Math.max(0, 20 - triggerDistance);
+      reasons.push('best return fire');
+      break;
+    case CoreReaction.Overwatch:
+      score += totalWeapons * 3;
+      score += Math.max(0, 14 - triggerDistance) * 1.5;
+      reasons.push('best overwatch');
+      break;
+    case CoreReaction.Reposition:
+      score += Math.max(0, 18 - triggerDistance) * 1.75;
+      score += aliveModels.length;
+      reasons.push('best reposition');
+      break;
+    default:
+      score += Math.max(0, 16 - triggerDistance);
+      reasons.push('best reaction unit');
+      break;
+  }
+
+  if (aliveModels.some((model) => model.isWarlord)) {
+    score -= 8;
+    reasons.push('protect warlord');
+  }
+
+  if (isObjectiveHolder(node.state, unit)) {
+    score -= 4;
+    reasons.push('holds objective');
+  }
+
+  const enemyThreat = evaluateUnitThreat(node.state, reactingPlayerIndex, pendingReaction.triggerSourceUnitId);
+  score += enemyThreat * 0.1;
+
+  return { score, reasons };
+}
+
 function generateReactionActions(node: SearchNodeState): MacroAction[] {
   const pendingReaction = node.state.pendingReaction;
   if (!node.state.awaitingReaction || !pendingReaction) return [];
 
-  const actions = pendingReaction.eligibleUnitIds.map((unitId) =>
+  const scoredUnits = pendingReaction.eligibleUnitIds
+    .map((unitId) => ({ unitId, scoring: scoreReactionUnit(node, unitId) }))
+    .filter((entry): entry is { unitId: string; scoring: NonNullable<ReturnType<typeof scoreReactionUnit>> } => entry.scoring !== null)
+    .sort((left, right) => right.scoring.score - left.scoring.score);
+
+  const actions = scoredUnits.map(({ unitId, scoring }) =>
     makeAction(
       `reaction:${unitId}`,
       `React with ${unitId}`,
@@ -177,20 +461,24 @@ function generateReactionActions(node: SearchNodeState): MacroAction[] {
         unitId,
         reactionType: String(pendingReaction.reactionType),
       }],
-      25,
+      scoring.score,
       [unitId],
-      ['legal reaction'],
+      scoring.reasons,
     ),
   );
+
+  const bestReactionScore = scoredUnits[0]?.scoring.score ?? 0;
+  const declineScore = bestReactionScore < 18 ? 6 : -Math.min(12, bestReactionScore / 3);
+  const declineReasons = bestReactionScore < 18 ? ['decline weak reaction'] : ['decline'];
 
   actions.push(
     makeAction(
       'reaction:decline',
       'Decline reaction',
       [{ type: 'declineReaction' }],
-      -10,
+      declineScore,
       [],
-      ['decline'],
+      declineReasons,
     ),
   );
 
@@ -269,16 +557,24 @@ function generateMoveActions(
     );
 
     const destinations = generateCandidatePositions(centroid, maxMove, battlefieldWidth, battlefieldHeight)
-      .map((position) => ({
-        position,
-        score: evaluateMovementDestination(node.state, unit.id, position, playerIndex),
-      }))
-      .sort((left, right) => right.score - left.score)
-      .slice(0, config.maxActionsPerUnit);
+      .map((position) => {
+        const modelPositions = translateUnitToCentroid(unit, position);
+        if (!modelPositions) return null;
+        if (!isLegalMoveFormation(node.state, unit.id, modelPositions)) {
+          return null;
+        }
+        const baseScore = evaluateMovementDestination(node.state, unit.id, position, playerIndex);
+        return {
+          position,
+          baseScore,
+          laneScores: buildMovementLaneScores(node.state, playerIndex, position, baseScore),
+          modelPositions,
+        };
+      })
+      .filter((candidate): candidate is MovementDestinationCandidate => candidate !== null);
+    const selectedDestinations = selectDiversifiedMovementDestinations(destinations, config.maxActionsPerUnit);
 
-    for (const destination of destinations) {
-      const modelPositions = translateUnitToCentroid(unit, destination.position);
-      if (!modelPositions) continue;
+    for (const destination of selectedDestinations) {
       actions.push(
         makeAction(
           `move:${unit.id}:${destination.position.x.toFixed(1)}:${destination.position.y.toFixed(1)}`,
@@ -286,11 +582,11 @@ function generateMoveActions(
           [{
             type: 'moveUnit',
             unitId: unit.id,
-            modelPositions,
+            modelPositions: destination.modelPositions,
           }],
-          destination.score,
+          destination.selectedScore,
           [unit.id],
-          ['movement candidate'],
+          [laneReason(destination.lane)],
         ),
       );
     }
@@ -387,7 +683,8 @@ function generateShootingActions(
 
   for (const unit of shootableUnits) {
     const prioritizedTargets = prioritizeShootingTargets(node.state, unit.id, playerIndex)
-      .slice(0, config.maxActionsPerUnit);
+      .slice(0, Math.max(config.maxActionsPerUnit * 2, config.maxActionsPerUnit + 2));
+    const scoredActions: MacroAction[] = [];
 
     for (const targetScore of prioritizedTargets) {
       const target = getValidShootingTargets(node.state, unit.id).find((candidate) => candidate.id === targetScore.unitId);
@@ -397,7 +694,34 @@ function generateShootingActions(
       if (weaponSelections.length === 0) continue;
 
       const placements = buildSpecialPlacements(node.state, unit.id, target.id, weaponSelections);
-      actions.push(
+      const expectedDamage = estimateUnitShootingDamage(unit, target, weaponSelections);
+      const targetThreat = evaluateUnitThreat(node.state, playerIndex, target.id);
+      const targetRemainingWounds = getAliveModels(target)
+        .reduce((total, model) => total + model.currentWounds, 0);
+      const killPressure = targetRemainingWounds > 0
+        ? Math.min(18, (expectedDamage / targetRemainingWounds) * 14)
+        : 0;
+
+      const reasons = [...targetScore.reasons];
+      reasons.push(`expected damage ${expectedDamage.toFixed(1)}`);
+      if (isObjectiveHolder(node.state, target)) {
+        reasons.push('objective holder');
+      }
+      if (getAliveModels(target).some((model) => model.isWarlord)) {
+        reasons.push('warlord target');
+      }
+      if (killPressure >= 6) {
+        reasons.push('kill pressure');
+      }
+
+      const shootingScore = targetScore.score
+        + (expectedDamage * 12)
+        + (targetThreat * 0.2)
+        + killPressure
+        + (isObjectiveHolder(node.state, target) ? 12 : 0)
+        + (getAliveModels(target).some((model) => model.isWarlord) ? 14 : 0);
+
+      scoredActions.push(
         makeAction(
           `shoot:${unit.id}:${target.id}`,
           `Shoot ${target.id} with ${unit.id}`,
@@ -409,12 +733,18 @@ function generateShootingActions(
             blastPlacements: placements.blastPlacements,
             templatePlacements: placements.templatePlacements,
           }],
-          targetScore.score,
+          shootingScore,
           [unit.id],
-          targetScore.reasons,
+          reasons,
         ),
       );
     }
+
+    actions.push(
+      ...scoredActions
+        .sort((left, right) => right.orderingScore - left.orderingScore)
+        .slice(0, config.maxActionsPerUnit),
+    );
   }
 
   return actions;

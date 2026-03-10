@@ -134,6 +134,7 @@ The current implementation is a deterministic, depth-limited search with:
 - a transposition table
 - killer move tracking
 - history heuristic ordering
+- cheap root pre-ordering from transitioned states plus static evaluation
 - deterministic rollout sampling for stochastic commands
 - best-completed-depth fallback when time expires
 
@@ -175,7 +176,7 @@ The current macro-action generator covers the following surfaces:
 - Movement
   - reserves tests
   - reserve deployment
-  - normal movement
+  - diversified normal movement candidates
   - rush
 - Shooting
   - declare shooting
@@ -199,7 +200,13 @@ The current macro-action generator covers the following surfaces:
 
 Every generated action is filtered against the current `getValidCommands(state)` result so the engine is not considering command types that are illegal for the current phase/sub-phase.
 
-The most important recent fix here is that movement generation now uses `canUnitMove()` before constructing move actions, which prevents search from generating `moveUnit` for combat-locked, pinned, embarked, undeployed, or otherwise non-movable units.
+The generator is more selective and more structured than the earlier baseline:
+
+- Movement candidates are no longer just "top N destinations by one generic score." They are diversified into tactically distinct lanes: `objective`, `fire`, `safety`, `pressure`, `center`, and fallback best-score destinations.
+- Shooting candidates are no longer pruned only by coarse target heuristics. The generator now widens the coarse target pool, selects actual weapons, estimates expected damage from those weapon assignments, and then boosts warlord, objective-holder, and kill-pressure targets before final pruning.
+- Reaction generation still does not invent alternate reaction types, because `reactionType` is already fixed by engine state. Instead, it now scores eligible reacting units and decline options within that fixed reaction-type surface.
+
+The earlier movement-legality fix is still critical: movement generation uses `canUnitMove()` before constructing move actions, which prevents search from generating `moveUnit` for combat-locked, pinned, embarked, undeployed, or otherwise non-movable units.
 
 ## Evaluation Model
 
@@ -454,8 +461,8 @@ This is a strong foundation. It is one of the most valuable things already prese
 - The gameplay evaluator is richer than before, but 25 summary features is still a very small representation for a full tabletop battle state.
 - The trainer now has validation splitting and early stopping, but it is still a lightweight weight-fitting loop over a fixed feature basis.
 - The built-in default gameplay model is still a lightweight baseline.
-- Search breadth is intentionally narrow because of budget constraints.
-- Some phase-specific candidate generation is still heuristic and selective rather than exhaustive.
+- Search breadth is still intentionally narrow because of budget constraints, even after the recent candidate-generation improvements.
+- Phase-specific candidate generation is better than the earlier baseline, but it is still heuristic and selective rather than exhaustive.
 - Runtime model deployment still depends on model ids already being registered; there is no finished user-facing model loader in the UI.
 - Engine gameplay uses tactical deployment logic rather than a separate engine deployment planner.
 
@@ -484,15 +491,19 @@ This is a strong foundation. It is one of the most valuable things already prese
 
 ### Search improvements
 
-- Widen candidate generation in critical phases.
-  - More movement destinations.
-  - Better charge target exploration.
-  - Better reaction alternatives.
-  - Better shooting candidate pruning before search.
+- Make movement diversification more phase-aware.
+  - Distinguish ranged-anchor, assault-staging, fallback, and objective-flip lanes by unit role instead of using one shared lane set for every unit.
+  - Add formation-preservation and transport rendezvous concepts to movement candidate generation.
+- Make shooting pre-scores more faithful.
+  - Use richer damage estimation that accounts for target profile mix, AP/save pressure, and multi-wound kill breakpoints.
+  - Add better blast/template target-shape heuristics before full simulation.
+- Improve reaction search inside the current fixed-type command surface.
+  - Better unit-selection scoring for `Reposition`, `Return Fire`, and `Overwatch`.
+  - Better decline heuristics when reacting would expose a unit or waste a scarce advanced reaction.
 - Improve ordering.
   - TT-first ordering.
   - Better evaluator-assisted pre-sort.
-  - More informative action ordering scores.
+  - More informative action ordering scores beyond the current cheap root pre-order plus history/killer mix.
 - Improve time management.
   - Spend more time in tactically sharp positions.
   - Spend less time on obvious or procedural states.

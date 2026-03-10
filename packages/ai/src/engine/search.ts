@@ -26,6 +26,7 @@ interface SearchRuntime {
   transpositionTable: Map<string, { depth: number; score: number; principalVariation: string[] }>;
   historyHeuristic: Map<string, number>;
   killerMoves: Map<number, string[]>;
+  rootOrderingScores: Map<string, number>;
 }
 
 interface SearchEvaluation {
@@ -222,18 +223,60 @@ function registerKillerMove(runtime: SearchRuntime, depth: number, action: Macro
   runtime.killerMoves.set(depth, updated);
 }
 
+function compareActionPriority(
+  runtime: SearchRuntime,
+  depth: number,
+  left: MacroAction,
+  right: MacroAction,
+): number {
+  const killerMoves = new Set(runtime.killerMoves.get(depth) ?? []);
+  const killerDelta = Number(killerMoves.has(right.id)) - Number(killerMoves.has(left.id));
+  if (killerDelta !== 0) return killerDelta;
+  const historyDelta = (runtime.historyHeuristic.get(right.id) ?? 0) - (runtime.historyHeuristic.get(left.id) ?? 0);
+  if (historyDelta !== 0) return historyDelta;
+  return right.orderingScore - left.orderingScore;
+}
+
 function orderActions(
   runtime: SearchRuntime,
   depth: number,
   actions: MacroAction[],
 ): MacroAction[] {
-  const killerMoves = new Set(runtime.killerMoves.get(depth) ?? []);
+  return [...actions].sort((left, right) => compareActionPriority(runtime, depth, left, right));
+}
+
+function getRootOrderingScore(
+  runtime: SearchRuntime,
+  rootNode: SearchNodeState,
+  action: MacroAction,
+): number {
+  const cached = runtime.rootOrderingScores.get(action.id);
+  if (cached !== undefined) {
+    return cached;
+  }
+
+  const transition = transitionNode(runtime, rootNode, action, 0);
+  if (!transition) {
+    runtime.rootOrderingScores.set(action.id, Number.NEGATIVE_INFINITY);
+    return Number.NEGATIVE_INFINITY;
+  }
+
+  const staticScore = staticEvaluate(runtime, transition.node).score;
+  const rootScore = staticScore + (action.orderingScore * 0.25) + (transition.queuedPlan.length * 1.5);
+  runtime.rootOrderingScores.set(action.id, rootScore);
+  return rootScore;
+}
+
+function orderRootActions(
+  runtime: SearchRuntime,
+  rootNode: SearchNodeState,
+  depth: number,
+  actions: MacroAction[],
+): MacroAction[] {
   return [...actions].sort((left, right) => {
-    const killerDelta = Number(killerMoves.has(right.id)) - Number(killerMoves.has(left.id));
-    if (killerDelta !== 0) return killerDelta;
-    const historyDelta = (runtime.historyHeuristic.get(right.id) ?? 0) - (runtime.historyHeuristic.get(left.id) ?? 0);
-    if (historyDelta !== 0) return historyDelta;
-    return right.orderingScore - left.orderingScore;
+    const rootDelta = getRootOrderingScore(runtime, rootNode, right) - getRootOrderingScore(runtime, rootNode, left);
+    if (rootDelta !== 0) return rootDelta;
+    return compareActionPriority(runtime, depth, left, right);
   });
 }
 
@@ -353,6 +396,7 @@ export function searchBestAction(
     transpositionTable: new Map(),
     historyHeuristic: new Map(),
     killerMoves: new Map(),
+    rootOrderingScores: new Map(),
   };
 
   const rootNode: SearchNodeState = {
@@ -407,7 +451,7 @@ export function searchBestAction(
       let localBestPV = depthBestPV;
       let localBestQueuedPlan = depthBestQueuedPlan;
 
-      for (const action of orderActions(runtime, depth, rootActions)) {
+      for (const action of orderRootActions(runtime, rootNode, depth, rootActions)) {
         if (nowMs() >= runtime.deadlineAt) break;
 
         let totalScore = 0;
