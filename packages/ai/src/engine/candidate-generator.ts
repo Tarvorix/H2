@@ -44,6 +44,7 @@ import { selectWeaponsForAttack } from '../helpers/weapon-selection';
 import { getAvailableAftermathOptions } from '@hh/engine';
 import { TacticalStatus } from '@hh/types';
 import {
+  estimateObjectiveRemovalSwing,
   estimateProjectedObjectiveValue,
   estimateProjectedOutgoingPressure,
   estimateUnitExposureBreakdown,
@@ -265,29 +266,32 @@ function buildMovementLaneScores(
 
   const objectiveScore = Number.isFinite(nearestObjectiveDistance)
     ? (30 - (nearestObjectiveDistance * 2.2)) +
-      (baseScore * 0.4) +
-      (projectedObjectiveValue * 0.85) -
-      (projectedExposure.total * 0.6)
+      (baseScore * 0.25) +
+      (projectedObjectiveValue * 1.45) -
+      (projectedExposure.total * 0.45)
     : Number.NEGATIVE_INFINITY;
   const fireScore =
     (24 - Math.abs(nearestEnemyDistance - 15)) +
-    (baseScore * 0.35) +
+    (baseScore * 0.25) +
     (projectedOutgoing * 0.4) -
-    (projectedExposure.ranged * 0.25);
+    (projectedExposure.ranged * 0.2) +
+    (projectedObjectiveValue * 0.3);
   const safetyScore =
     (Math.min(nearestEnemyDistance, 24) * 1.25) +
-    (baseScore * 0.2) +
-    (strategicValue * 0.35) -
-    (projectedExposure.total * 0.9);
+    (baseScore * 0.15) +
+    (strategicValue * 0.45) +
+    (projectedObjectiveValue * 0.35) -
+    (projectedExposure.total * 0.8);
   const pressureScore =
     (30 - nearestEnemyDistance) +
-    (baseScore * 0.3) +
+    (baseScore * 0.2) +
     (projectedOutgoing * 0.45) -
-    (projectedExposure.total * 0.2);
+    (projectedExposure.total * 0.15) +
+    (projectedObjectiveValue * 0.25);
   const centerScore =
     (24 - centerDistance) +
-    (baseScore * 0.25) +
-    (projectedObjectiveValue * 0.25) +
+    (baseScore * 0.15) +
+    (projectedObjectiveValue * 0.55) +
     (projectedOutgoing * 0.15) -
     (projectedExposure.total * 0.2);
 
@@ -693,6 +697,7 @@ function generateShootingActions(
       const targetStrategicValue = estimateUnitStrategicValue(node.state, playerIndex === 0 ? 1 : 0, target);
       const targetExposure = estimateUnitExposureBreakdown(node.state, playerIndex === 0 ? 1 : 0, target);
       const targetRetaliation = estimateProjectedOutgoingPressure(node.state, playerIndex === 0 ? 1 : 0, target);
+      const targetObjectiveSwing = estimateObjectiveRemovalSwing(node.state, playerIndex === 0 ? 1 : 0, target);
       const killPressure = targetRemainingWounds > 0
         ? Math.min(18, (expectedDamage / targetRemainingWounds) * 14)
         : 0;
@@ -717,6 +722,9 @@ function generateShootingActions(
       if (targetRetaliation >= 3) {
         reasons.push('cuts retaliation');
       }
+      if (targetObjectiveSwing >= 1) {
+        reasons.push(`objective swing ${targetObjectiveSwing.toFixed(1)}`);
+      }
 
       const shootingScore = targetScore.score
         + (expectedDamage * 12)
@@ -725,6 +733,7 @@ function generateShootingActions(
         + (targetStrategicValue * 0.65)
         + (targetExposure.total * 1.5)
         + (targetRetaliation * 0.35)
+        + (targetObjectiveSwing * 14)
         + (isObjectiveHolder(node.state, target) ? 12 : 0)
         + (getAliveModels(target).some((model) => model.isWarlord) ? 14 : 0);
 

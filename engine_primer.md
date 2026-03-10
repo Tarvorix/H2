@@ -269,8 +269,8 @@ Every generated action is filtered against the current `getValidCommands(state)`
 
 The generator is more selective and more structured than the earlier baseline:
 
-- Movement candidates are no longer just "top N destinations by one generic score." They are diversified into tactically distinct lanes: `objective`, `fire`, `safety`, `pressure`, `center`, and fallback best-score destinations.
-- Shooting candidates are no longer pruned only by coarse target heuristics. The generator now widens the coarse target pool, selects actual weapons, estimates expected damage from those weapon assignments, and then boosts warlord, objective-holder, and kill-pressure targets before final pruning.
+- Movement candidates are no longer just "top N destinations by one generic score." They are diversified into tactically distinct lanes: `objective`, `fire`, `safety`, `pressure`, `center`, and fallback best-score destinations. The objective lane is now heavily driven by projected scoring swing, held-VP protection, and reachable objective value rather than only generic distance pressure.
+- Shooting candidates are no longer pruned only by coarse target heuristics. The generator now widens the coarse target pool, selects actual weapons, estimates expected damage from those weapon assignments, and then boosts warlord, objective-holder, scorer, retaliation-cut, and direct objective-swing targets before final pruning.
 - Reaction generation still does not invent alternate reaction types, because `reactionType` is already fixed by engine state. Instead, it now scores eligible reacting units and decline options within that fixed reaction-type surface.
 
 The earlier movement-legality fix is still critical: movement generation uses `canUnitMove()` before constructing move actions, which prevents search from generating `moveUnit` for combat-locked, pinned, embarked, undeployed, or otherwise non-movable units.
@@ -290,7 +290,7 @@ The evaluator resolves a gameplay model by `modelId`, extracts gameplay features
 
 ### Current gameplay features
 
-The current gameplay feature extractor emits 39 bounded features and is currently versioned as gameplay feature schema `v3`.
+The current gameplay feature extractor emits 50 bounded features and is currently versioned as gameplay feature schema `v4`.
 
 The feature order is explicit and versioned. This is the current extractor order:
 
@@ -302,75 +302,97 @@ The feature order is explicit and versioned. This is the current extractor order
    - `(friendly alive units - enemy alive units) / total alive units`
 4. Victory-point differential
    - `(friendly VP - enemy VP) / 10`
-5. Objective-control differential
-   - objective holders within `3"` of objectives
-6. Objective-contest differential
-   - objective presence within `6"` of objectives
-7. Objective-pressure differential
-   - average closeness to objectives across the board
-8. Center-presence differential
-   - alive models within an `18"` center-radius bubble
-9. Threat-projection differential
-   - broad closeness-to-enemy pressure estimate
-10. Reserve deployment advantage
-   - `(enemy reserves - friendly reserves) / total units`
-11. Pinned-status advantage
-   - `(enemy pinned - friendly pinned) / total units`
-12. Suppressed-status advantage
-   - `(enemy suppressed - friendly suppressed) / total units`
-13. Stunned-status advantage
-   - `(enemy stunned - friendly stunned) / total units`
-14. Routed-status advantage
-   - `(enemy routed - friendly routed) / total units`
-15. Locked-in-combat advantage
-   - `(enemy locked units - friendly locked units) / total units`
-16. Embarked-unit differential
-   - `(friendly embarked units - enemy embarked units) / total units`
-17. Vehicle-count differential
-   - `(friendly vehicles - enemy vehicles) / total vehicles`
-18. Vehicle-wound differential
-   - `(friendly vehicle wounds - enemy vehicle wounds) / total vehicle wounds`
-19. Reaction-allotment differential
-   - `(friendly reaction allotment remaining - enemy allotment remaining) / total reaction allotment`
-20. Reaction-ready-unit differential
-   - `(friendly units able to react - enemy units able to react) / total alive units`
-21. Warlord-alive differential
+5. Controlled-objective count differential
+   - actual objectives controlled under the real mission control query
+6. Contested-objective count differential
+   - actual objectives contested under the real mission control query
+7. Controlled-objective VP differential
+   - current VP value of objectives each side actually controls
+8. Contested-objective VP differential
+   - current VP value tied up in contested objectives
+9. Objective tactical-strength differential
+   - actual objective-control strength across all active objectives
+10. Objective control-margin differential
+   - aggregate friendly-vs-enemy control margin on objectives
+11. Durable-held-VP differential
+   - VP currently held on objectives that are not under immediate flip pressure
+12. Threatened-held-VP advantage
+   - `(enemy threatened held VP - friendly threatened held VP)`
+13. Flippable-enemy-VP differential
+   - VP currently under realistic near-term flip pressure in your favor
+14. Reachable-objective-VP differential
+   - VP on neutral/enemy objectives that friendly units can plausibly reach next turn
+15. Projected scoring-swing differential
+   - `flippable enemy VP + reachable VP - threatened held VP`
+16. Scoring-unit count differential
+   - count of units judged useful for objective play
+17. Scoring-unit value differential
+   - strategic value of likely scorers, weighted by their scoring profile
+18. Ready-scoring-unit value differential
+   - scorer value that can still move/act meaningfully
+19. Warlord-alive differential
    - `friendly alive warlords - enemy alive warlords`
-22. Charge-range differential
+20. Reaction-allotment differential
+   - `(friendly reaction allotment remaining - enemy allotment remaining) / total reaction allotment`
+21. Reaction-ready-unit differential
+   - `(friendly units able to react - enemy units able to react) / total alive units`
+22. Reserve deployment advantage
+   - `(enemy reserves - friendly reserves) / total units`
+23. Pinned-status advantage
+   - `(enemy pinned - friendly pinned) / total units`
+24. Suppressed-status advantage
+   - `(enemy suppressed - friendly suppressed) / total units`
+25. Stunned-status advantage
+   - `(enemy stunned - friendly stunned) / total units`
+26. Routed-status advantage
+   - `(enemy routed - friendly routed) / total units`
+27. Locked-in-combat advantage
+   - `(enemy locked units - friendly locked units) / total units`
+28. Embarked-unit differential
+   - `(friendly embarked units - enemy embarked units) / total units`
+29. Vehicle-count differential
+   - `(friendly vehicles - enemy vehicles) / total vehicles`
+30. Vehicle-wound differential
+   - `(friendly vehicle wounds - enemy vehicle wounds) / total vehicle wounds`
+31. Threat-projection differential
+   - broad closeness-to-enemy pressure estimate
+32. Charge-range differential
    - `(friendly units with an enemy within 12" - enemy units with a friendly within 12") / total alive units`
-23. Fire-range differential
-   - `(friendly units with an enemy within 24" - enemy units with a friendly within 24") / total alive units`
-24. Best ranged pressure into enemy objective holders
+33. Best ranged pressure into enemy objective holders
+   - top ranged kill pressure specifically against current holders
+34. Best melee pressure into enemy objective holders
+   - top melee kill pressure specifically against current holders
+35. Best ranged pressure into enemy scorers
+   - top ranged pressure against likely scoring units, not just current holders
+36. Best melee pressure into enemy scorers
+   - top melee pressure against likely scoring units, not just current holders
+37. Best ranged pressure into enemy high-value targets
    - differential from `summarizeTacticalBalance(...)`
-25. Best melee pressure into enemy objective holders
+38. Best melee pressure into enemy high-value targets
    - differential from `summarizeTacticalBalance(...)`
-26. Best ranged pressure into enemy high-value targets
-   - differential from `summarizeTacticalBalance(...)`
-27. Best melee pressure into enemy high-value targets
-   - differential from `summarizeTacticalBalance(...)`
-28. Objective-holder durability differential
+39. Objective-holder durability differential
    - value of holders adjusted down by incoming exposure
-29. Objective-holder value differential
-   - strategic value of units currently holding objectives
-30. Contested-objective value differential
-   - strategic value of units contesting objectives
-31. Objective-holder exposure advantage
+40. Objective-holder exposure advantage
    - `(enemy exposed holder value - friendly exposed holder value)`
-32. High-value-target exposure advantage
+41. Scoring-unit exposure advantage
+   - `(enemy exposed scorer value - friendly exposed scorer value)`
+42. High-value-target exposure advantage
    - `(enemy exposed high-value value - friendly exposed high-value value)`
-33. Retaliation-pressure advantage
+43. Retaliation-pressure advantage
    - `(enemy retaliation pressure - friendly retaliation pressure)`
-34. Warlord-exposure advantage
+44. Warlord-exposure advantage
    - `(enemy warlord exposure value - friendly warlord exposure value)`
-35. Transport-payload exposure advantage
+45. Transport-payload exposure advantage
    - `(enemy transport payload exposure - friendly transport payload exposure)`
-36. Anti-vehicle ranged-pressure differential
+46. Transport-delivery differential
+   - value of embarked payloads adjusted by likely objective delivery distance and safety
+47. Anti-vehicle ranged-pressure differential
    - best ranged kill pressure into vehicle targets
-37. Anti-vehicle melee-pressure differential
+48. Anti-vehicle melee-pressure differential
    - best melee kill pressure into vehicle targets
-38. Decision-owner flag
+49. Decision-owner flag
    - `+1` if the extractor player currently owns the decision, otherwise `-1`
-39. Battle-progress
+50. Battle-progress
    - normalized current battle turn mapped into `[-1, 1]`
 
 The tactical-summary portion comes from `summarizeTacticalBalance(...)` in `tactical-signals.ts`, which in turn is built from concrete unit-level estimators:
@@ -382,7 +404,7 @@ The tactical-summary portion comes from `summarizeTacticalBalance(...)` in `tact
 - `estimateProjectedOutgoingPressure(...)`
 - `estimateProjectedObjectiveValue(...)`
 
-So the evaluator is still a compact board-summary model, but it is no longer limited to raw model counts and VP totals. It now explicitly tries to encode who matters, what can threaten whom, which holders are durable, what is exposed, and what retaliation is likely next.
+So the evaluator is still a compact board-summary model, but it is no longer limited to raw model counts and VP totals. It now explicitly tries to encode who matters, what can threaten whom, which VP is actually controlled, what held VP is at risk, what enemy VP is flippable, which scorers are exposed, and what retaliation is likely next.
 
 ### Model registry and default model
 
@@ -654,7 +676,7 @@ This is a strong foundation. It is one of the most valuable things already prese
 
 ## Current Limitations
 
-- The gameplay evaluator is richer than before, but 39 summary features is still a compact representation for a full tabletop battle state.
+- The gameplay evaluator is richer than before, but 50 summary features is still a compact representation for a full tabletop battle state.
 - The trainer now has validation splitting and early stopping, but it is still a lightweight weight-fitting loop over a fixed feature basis.
 - The built-in default gameplay model is still a lightweight baseline.
 - Search breadth is still intentionally narrow because of budget constraints, even after the recent candidate-generation improvements.
@@ -729,7 +751,7 @@ This is a strong foundation. It is one of the most valuable things already prese
   - Improved shooting pruning with damage-aware ordering and special-shot placement handling.
 - Evaluation
   - Started from a very small board-summary evaluator.
-  - Expanded first to a richer aggregate feature set, then to the current tactical-summary evaluator that models kill pressure, hold durability, exposure, retaliation, payload risk, and anti-vehicle pressure.
+  - Expanded first to a richer aggregate feature set, then to the current objective-first tactical-summary evaluator that models controlled VP, threatened held VP, flippable enemy VP, scorer value, exposure, retaliation, payload risk, and anti-vehicle pressure.
 - Training pipeline
   - Added deterministic self-play, candidate serialization, validation split, early stopping, progress reporting, and benchmark gating.
   - Moved the default gameplay training surface from tiny toy setups to curated 2000-point rosters.

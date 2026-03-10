@@ -143,11 +143,11 @@ function createGameState(overrides: Partial<GameState> = {}): GameState {
       objectives: [
         {
           id: 'obj-1',
-          name: 'Hold',
           position: { x: 18, y: 18 },
-          controlledByPlayerIndex: 0,
+          vpValue: 3,
+          currentVpValue: 3,
           isRemoved: false,
-          grantsVictoryPoints: 1,
+          label: 'Hold',
         },
       ],
     },
@@ -181,6 +181,8 @@ describe('tactical signals', () => {
     const state = createGameState();
     const summary = summarizePlayerTacticalState(state, 0);
 
+    expect(summary.controlledObjectiveVp).toBeGreaterThan(0);
+    expect(summary.projectedScoringSwing).toBeLessThanOrEqual(summary.controlledObjectiveVp);
     expect(summary.objectiveHolderValue).toBeGreaterThan(0);
     expect(summary.objectiveHoldDurability).toBeGreaterThan(0);
     expect(summary.retaliationPressure).toBeGreaterThan(0);

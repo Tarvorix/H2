@@ -4,8 +4,8 @@ import { canUnitReact, getAliveModels, getClosestModelDistance, isVehicleUnit } 
 import { getDecisionPlayerIndex } from '../state-utils';
 import { summarizeTacticalBalance } from './tactical-signals';
 
-export const GAMEPLAY_FEATURE_VERSION = 3;
-export const GAMEPLAY_FEATURE_DIMENSION = 39;
+export const GAMEPLAY_FEATURE_VERSION = 4;
+export const GAMEPLAY_FEATURE_DIMENSION = 50;
 
 function clampFeature(value: number): number {
   return Math.max(-1, Math.min(1, value));
@@ -69,91 +69,6 @@ function countAliveWarlords(units: UnitState[]): number {
     (sum, unit) => sum + getAliveModels(unit).filter((model) => model.isWarlord).length,
     0,
   );
-}
-
-function unitsNearCenter(state: GameState, units: UnitState[]): number {
-  const centerX = state.battlefield.width / 2;
-  const centerY = state.battlefield.height / 2;
-  const radiusSq = 18 * 18;
-  let count = 0;
-
-  for (const unit of units) {
-    for (const model of getAliveModels(unit)) {
-      const dx = model.position.x - centerX;
-      const dy = model.position.y - centerY;
-      if ((dx * dx) + (dy * dy) <= radiusSq) {
-        count += 1;
-      }
-    }
-  }
-
-  return count;
-}
-
-function countObjectivePresence(
-  state: GameState,
-  units: UnitState[],
-  radius: number,
-): number {
-  const objectives = state.missionState?.objectives ?? [];
-  if (objectives.length === 0) return 0;
-
-  let controlCount = 0;
-  for (const objective of objectives) {
-    if (objective.isRemoved) continue;
-
-    let hasModelInRange = false;
-    for (const unit of units) {
-      for (const model of getAliveModels(unit)) {
-        const dx = model.position.x - objective.position.x;
-        const dy = model.position.y - objective.position.y;
-        if (Math.sqrt((dx * dx) + (dy * dy)) <= radius) {
-          hasModelInRange = true;
-          break;
-        }
-      }
-      if (hasModelInRange) break;
-    }
-
-    if (hasModelInRange) {
-      controlCount += 1;
-    }
-  }
-
-  return controlCount;
-}
-
-function countObjectiveControl(state: GameState, units: UnitState[]): number {
-  return countObjectivePresence(state, units, 3);
-}
-
-function countObjectiveContest(state: GameState, units: UnitState[]): number {
-  return countObjectivePresence(state, units, 6);
-}
-
-function objectivePressure(state: GameState, units: UnitState[]): number {
-  const objectives = state.missionState?.objectives ?? [];
-  if (objectives.length === 0) return 0;
-
-  let score = 0;
-  for (const objective of objectives) {
-    if (objective.isRemoved) continue;
-
-    let closest = Infinity;
-    for (const unit of units) {
-      for (const model of getAliveModels(unit)) {
-        const dx = model.position.x - objective.position.x;
-        const dy = model.position.y - objective.position.y;
-        closest = Math.min(closest, Math.sqrt((dx * dx) + (dy * dy)));
-      }
-    }
-
-    if (Number.isFinite(closest)) {
-      score += Math.max(0, 1 - (closest / 24));
-    }
-  }
-
-  return objectives.length > 0 ? score / objectives.length : 0;
 }
 
 function threatProjectionScore(friendlyUnits: UnitState[], enemyUnits: UnitState[]): number {
@@ -234,16 +149,10 @@ export function extractGameplayFeatures(
   const battleProgress = state.maxBattleTurns > 0
     ? state.currentBattleTurn / state.maxBattleTurns
     : 0;
-  const friendlyObjectivePressure = objectivePressure(state, friendlyUnits);
-  const enemyObjectivePressure = objectivePressure(state, enemyUnits);
-  const friendlyCenterPresence = unitsNearCenter(state, friendlyUnits);
-  const enemyCenterPresence = unitsNearCenter(state, enemyUnits);
   const friendlyThreatProjection = threatProjectionScore(friendlyUnits, enemyUnits);
   const enemyThreatProjection = threatProjectionScore(enemyUnits, friendlyUnits);
   const friendlyUnitsWithinChargeRange = countUnitsWithEnemyWithinDistance(state, friendlyUnits, enemyUnits, 12);
   const enemyUnitsWithinChargeRange = countUnitsWithEnemyWithinDistance(state, enemyUnits, friendlyUnits, 12);
-  const friendlyUnitsWithinFireRange = countUnitsWithEnemyWithinDistance(state, friendlyUnits, enemyUnits, 24);
-  const enemyUnitsWithinFireRange = countUnitsWithEnemyWithinDistance(state, enemyUnits, friendlyUnits, 24);
   const tacticalBalance = summarizeTacticalBalance(state, playerIndex);
   const { friendly, enemy } = tacticalBalance;
 
@@ -253,11 +162,23 @@ export function extractGameplayFeatures(
     clampFeature((friendlyAliveWounds - enemyAliveWounds) / totalWounds),
     clampFeature((friendlyAliveUnits - enemyAliveUnits) / aliveTotalUnits),
     clampFeature((state.armies[playerIndex].victoryPoints - state.armies[playerIndex === 0 ? 1 : 0].victoryPoints) / 10),
-    clampFeature((countObjectiveControl(state, friendlyUnits) - countObjectiveControl(state, enemyUnits)) / objectiveCount),
-    clampFeature((countObjectiveContest(state, friendlyUnits) - countObjectiveContest(state, enemyUnits)) / objectiveCount),
-    clampFeature(friendlyObjectivePressure - enemyObjectivePressure),
-    clampFeature((friendlyCenterPresence - enemyCenterPresence) / totalModels),
-    clampFeature(friendlyThreatProjection - enemyThreatProjection),
+    clampFeature((friendly.controlledObjectiveCount - enemy.controlledObjectiveCount) / objectiveCount),
+    clampFeature((friendly.contestedObjectiveCount - enemy.contestedObjectiveCount) / objectiveCount),
+    clampFeature((friendly.controlledObjectiveVp - enemy.controlledObjectiveVp) / (objectiveCount * 3)),
+    clampFeature((friendly.contestedObjectiveVp - enemy.contestedObjectiveVp) / (objectiveCount * 3)),
+    clampFeature((friendly.objectiveTacticalStrength - enemy.objectiveTacticalStrength) / totalModels),
+    clampFeature((friendly.objectiveControlMargin - enemy.objectiveControlMargin) / totalModels),
+    clampFeature((friendly.durableControlledVp - enemy.durableControlledVp) / (objectiveCount * 3)),
+    clampFeature((enemy.threatenedControlledVp - friendly.threatenedControlledVp) / (objectiveCount * 3)),
+    clampFeature((friendly.flippableEnemyVp - enemy.flippableEnemyVp) / (objectiveCount * 3)),
+    clampFeature((friendly.reachableObjectiveVp - enemy.reachableObjectiveVp) / (objectiveCount * 3)),
+    clampFeature((friendly.projectedScoringSwing - enemy.projectedScoringSwing) / (objectiveCount * 4)),
+    clampFeature((friendly.scoringUnitCount - enemy.scoringUnitCount) / aliveTotalUnits),
+    clampFeature((friendly.scoringUnitValue - enemy.scoringUnitValue) / 80),
+    clampFeature((friendly.readyScoringUnitValue - enemy.readyScoringUnitValue) / 80),
+    clampFeature(countAliveWarlords(friendlyUnits) - countAliveWarlords(enemyUnits)),
+    clampFeature((state.armies[playerIndex].reactionAllotmentRemaining - state.armies[playerIndex === 0 ? 1 : 0].reactionAllotmentRemaining) / totalReactionAllotment),
+    clampFeature((countReactionReadyUnits(friendlyUnits) - countReactionReadyUnits(enemyUnits)) / aliveTotalUnits),
     clampFeature((countReserves(enemyUnits) - countReserves(friendlyUnits)) / totalUnits),
     clampFeature((countStatus(enemyUnits, TacticalStatus.Pinned) - countStatus(friendlyUnits, TacticalStatus.Pinned)) / totalUnits),
     clampFeature((countStatus(enemyUnits, TacticalStatus.Suppressed) - countStatus(friendlyUnits, TacticalStatus.Suppressed)) / totalUnits),
@@ -267,23 +188,22 @@ export function extractGameplayFeatures(
     clampFeature((countEmbarkedUnits(friendlyUnits) - countEmbarkedUnits(enemyUnits)) / totalUnits),
     clampFeature((countVehicleUnits(friendlyUnits) - countVehicleUnits(enemyUnits)) / totalVehicles),
     clampFeature((countVehicleWounds(friendlyUnits) - countVehicleWounds(enemyUnits)) / totalVehicleWounds),
-    clampFeature((state.armies[playerIndex].reactionAllotmentRemaining - state.armies[playerIndex === 0 ? 1 : 0].reactionAllotmentRemaining) / totalReactionAllotment),
-    clampFeature((countReactionReadyUnits(friendlyUnits) - countReactionReadyUnits(enemyUnits)) / aliveTotalUnits),
-    clampFeature(countAliveWarlords(friendlyUnits) - countAliveWarlords(enemyUnits)),
+    clampFeature(friendlyThreatProjection - enemyThreatProjection),
     clampFeature((friendlyUnitsWithinChargeRange - enemyUnitsWithinChargeRange) / aliveTotalUnits),
-    clampFeature((friendlyUnitsWithinFireRange - enemyUnitsWithinFireRange) / aliveTotalUnits),
     clampFeature((friendly.bestRangedVsObjectiveHolders - enemy.bestRangedVsObjectiveHolders) / 8),
     clampFeature((friendly.bestMeleeVsObjectiveHolders - enemy.bestMeleeVsObjectiveHolders) / 8),
+    clampFeature((friendly.bestRangedVsScorers - enemy.bestRangedVsScorers) / 8),
+    clampFeature((friendly.bestMeleeVsScorers - enemy.bestMeleeVsScorers) / 8),
     clampFeature((friendly.bestRangedVsHighValueTargets - enemy.bestRangedVsHighValueTargets) / 10),
     clampFeature((friendly.bestMeleeVsHighValueTargets - enemy.bestMeleeVsHighValueTargets) / 10),
     clampFeature((friendly.objectiveHoldDurability - enemy.objectiveHoldDurability) / 24),
-    clampFeature((friendly.objectiveHolderValue - enemy.objectiveHolderValue) / 30),
-    clampFeature((friendly.contestedObjectiveValue - enemy.contestedObjectiveValue) / 30),
     clampFeature((enemy.exposedObjectiveHolderValue - friendly.exposedObjectiveHolderValue) / 24),
+    clampFeature((enemy.exposedScoringValue - friendly.exposedScoringValue) / 30),
     clampFeature((enemy.exposedHighValueValue - friendly.exposedHighValueValue) / 30),
     clampFeature((enemy.retaliationPressure - friendly.retaliationPressure) / 40),
     clampFeature((enemy.warlordExposureValue - friendly.warlordExposureValue) / 20),
     clampFeature((enemy.transportPayloadExposure - friendly.transportPayloadExposure) / 30),
+    clampFeature((friendly.transportDeliveryValue - enemy.transportDeliveryValue) / 30),
     clampFeature((friendly.antiVehicleRangedPressure - enemy.antiVehicleRangedPressure) / 8),
     clampFeature((friendly.antiVehicleMeleePressure - enemy.antiVehicleMeleePressure) / 8),
     decisionPlayerIndex === playerIndex ? 1 : -1,

@@ -9,14 +9,19 @@ import type {
 } from '@hh/types';
 import {
   canUnitCharge,
+  canUnitMove,
   canUnitReact,
+  canModelHoldObjective,
   getAliveModels,
   getClosestModelDistance,
   getModelAttacks,
   getModelBS,
+  getModelMovement,
   getModelSave,
   getModelStrength,
   getModelToughness,
+  getObjectiveController,
+  getUnitSpecialRules,
   getModelWS,
   getVehicleArmour,
   isVehicleUnit,
@@ -42,20 +47,49 @@ export interface ExposureBreakdown {
 }
 
 export interface PlayerTacticalSummary {
+  controlledObjectiveCount: number;
+  contestedObjectiveCount: number;
+  controlledObjectiveVp: number;
+  contestedObjectiveVp: number;
+  objectiveTacticalStrength: number;
+  objectiveControlMargin: number;
+  durableControlledVp: number;
+  threatenedControlledVp: number;
+  flippableEnemyVp: number;
+  reachableObjectiveVp: number;
+  projectedScoringSwing: number;
+  scoringUnitCount: number;
+  scoringUnitValue: number;
+  readyScoringUnitValue: number;
   bestRangedVsObjectiveHolders: number;
   bestMeleeVsObjectiveHolders: number;
+  bestRangedVsScorers: number;
+  bestMeleeVsScorers: number;
   bestRangedVsHighValueTargets: number;
   bestMeleeVsHighValueTargets: number;
   objectiveHoldDurability: number;
   objectiveHolderValue: number;
   contestedObjectiveValue: number;
   exposedObjectiveHolderValue: number;
+  exposedScoringValue: number;
   exposedHighValueValue: number;
   retaliationPressure: number;
   warlordExposureValue: number;
   transportPayloadExposure: number;
+  transportDeliveryValue: number;
   antiVehicleRangedPressure: number;
   antiVehicleMeleePressure: number;
+}
+
+interface ObjectiveRoleProfile {
+  scorerWeight: number;
+  holdWeight: number;
+  raidWeight: number;
+}
+
+interface ObjectiveInfluence {
+  currentStrength: number;
+  reachableStrength: number;
 }
 
 function distanceBetween(left: Position, right: Position): number {
@@ -96,6 +130,92 @@ function normalizeWeaponToken(value: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
+}
+
+function parseNumericRuleValue(
+  specialRules: Array<{ name: string; value?: string }>,
+  ruleName: string,
+): number | null {
+  const rule = specialRules.find((candidate) => candidate.name.toLowerCase() === ruleName.toLowerCase());
+  if (!rule?.value) return null;
+  const match = rule.value.match(/-?\d+(\.\d+)?/);
+  if (!match) return null;
+  const parsed = Number.parseFloat(match[0]);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function getUnitObjectiveRoleProfile(unit: UnitState): ObjectiveRoleProfile {
+  const specialRules = getUnitSpecialRules(unit.profileId);
+  const lineValue = parseNumericRuleValue(specialRules, 'Line') ?? 0;
+  const supportValue = parseNumericRuleValue(specialRules, 'Support Unit');
+  const vanguardValue = parseNumericRuleValue(specialRules, 'Vanguard') ?? 0;
+
+  let scorerWeight = 1;
+  let holdWeight = 1;
+  let raidWeight = 1;
+
+  if (lineValue > 0) {
+    scorerWeight += 0.45 + (lineValue * 0.15);
+    holdWeight += 0.4 + (lineValue * 0.15);
+    raidWeight += lineValue * 0.1;
+  }
+
+  if (supportValue !== null) {
+    scorerWeight *= 0.5;
+    holdWeight *= 0.45;
+  }
+
+  if (vanguardValue > 0) {
+    holdWeight *= 0.85;
+    raidWeight += 0.25 + (vanguardValue * 0.15);
+  }
+
+  if (isVehicleUnit(unit)) {
+    scorerWeight *= 0.35;
+    holdWeight *= 0.35;
+    raidWeight *= 0.6;
+  }
+
+  return {
+    scorerWeight,
+    holdWeight,
+    raidWeight,
+  };
+}
+
+function getUnitEligibleObjectiveModels(unit: UnitState): ModelState[] {
+  return unit.models.filter((model) => canModelHoldObjective(model, unit));
+}
+
+function getUnitObjectiveStrengthAtPosition(
+  unit: UnitState,
+  objective: { position: Position },
+  positionOverride?: Position,
+): number {
+  if (positionOverride) {
+    const centroid = getUnitPosition(unit, positionOverride);
+    if (!centroid) return 0;
+    return distanceBetween(centroid, objective.position) <= OBJECTIVE_HOLD_RANGE
+      ? getUnitEligibleObjectiveModels(unit).length
+      : 0;
+  }
+
+  let strength = 0;
+  for (const model of getUnitEligibleObjectiveModels(unit)) {
+    if (distanceBetween(model.position, objective.position) <= OBJECTIVE_HOLD_RANGE) {
+      strength += 1;
+    }
+  }
+  return strength;
+}
+
+function getUnitMinimumMove(unit: UnitState): number {
+  const aliveModels = getAliveModels(unit);
+  if (aliveModels.length === 0) return 0;
+  return aliveModels.reduce(
+    (minimum, model) => Math.min(minimum, getModelMovement(model.unitProfileId, model.profileModelName)),
+    Number.POSITIVE_INFINITY,
+  );
 }
 
 function resolveDedicatedMeleeWeapon(unit: UnitState, weaponId: string): MeleeWeaponProfile | undefined {
@@ -423,11 +543,68 @@ function getObjectiveDistances(state: GameState, unit: UnitState, positionOverri
 }
 
 function isObjectiveHolder(state: GameState, unit: UnitState, positionOverride?: Position): boolean {
-  return getObjectiveDistances(state, unit, positionOverride).some((distance) => distance <= OBJECTIVE_HOLD_RANGE);
+  const objectives = state.missionState?.objectives?.filter((objective) => !objective.isRemoved) ?? [];
+  return objectives.some((objective) => getUnitObjectiveStrengthAtPosition(unit, objective, positionOverride) > 0);
 }
 
 function isObjectiveContester(state: GameState, unit: UnitState, positionOverride?: Position): boolean {
   return getObjectiveDistances(state, unit, positionOverride).some((distance) => distance <= OBJECTIVE_CONTEST_RANGE);
+}
+
+function getUnitReachRange(unit: UnitState): number {
+  if (getAliveModels(unit).length === 0) return 0;
+  const move = getUnitMinimumMove(unit);
+  if (!Number.isFinite(move)) return OBJECTIVE_HOLD_RANGE;
+  return move + OBJECTIVE_HOLD_RANGE;
+}
+
+function canUnitReachObjectiveNextTurn(
+  unit: UnitState,
+  objective: { position: Position },
+  positionOverride?: Position,
+): boolean {
+  if (getAliveModels(unit).length === 0) return false;
+  if (unit.embarkedOnId !== null || unit.isInReserves) return false;
+  const centroid = getUnitPosition(unit, positionOverride);
+  if (!centroid) return false;
+
+  if (distanceBetween(centroid, objective.position) <= OBJECTIVE_HOLD_RANGE) {
+    return getUnitEligibleObjectiveModels(unit).length > 0;
+  }
+
+  if (!canUnitMove(unit)) {
+    return false;
+  }
+
+  return distanceBetween(centroid, objective.position) <= getUnitReachRange(unit);
+}
+
+function getUnitObjectiveVpValue(
+  state: GameState,
+  unit: UnitState,
+  positionOverride?: Position,
+): number {
+  const objectives = state.missionState?.objectives?.filter((objective) => !objective.isRemoved) ?? [];
+  let value = 0;
+
+  for (const objective of objectives) {
+    if (getUnitObjectiveStrengthAtPosition(unit, objective, positionOverride) > 0) {
+      value += objective.currentVpValue;
+      continue;
+    }
+
+    const centroid = getUnitPosition(unit, positionOverride);
+    if (!centroid) continue;
+
+    const distance = distanceBetween(centroid, objective.position);
+    if (distance <= OBJECTIVE_CONTEST_RANGE) {
+      value += objective.currentVpValue * 0.5;
+    } else if (canUnitReachObjectiveNextTurn(unit, objective, positionOverride)) {
+      value += objective.currentVpValue * 0.75;
+    }
+  }
+
+  return value;
 }
 
 function getEmbarkedPayloadValue(state: GameState, playerIndex: number, transportUnitId: string): number {
@@ -448,22 +625,28 @@ export function estimateUnitStrategicValue(
   if (aliveModels.length === 0) return 0;
 
   const woundValue = aliveModels.reduce((sum, model) => sum + Math.max(model.currentWounds, 0), 0);
-  let value = woundValue * 2 + aliveModels.length;
+  const objectiveRole = getUnitObjectiveRoleProfile(unit);
+  const objectiveVpValue = getUnitObjectiveVpValue(state, unit, positionOverride);
+  let value = woundValue * 1.75 + aliveModels.length;
 
   if (aliveModels.some((model) => model.isWarlord)) {
-    value += 18;
+    value += 16 + (state.armies[playerIndex].victoryPoints <= state.armies[playerIndex === 0 ? 1 : 0].victoryPoints ? 4 : 0);
   }
   if (isObjectiveHolder(state, unit, positionOverride)) {
-    value += 12;
+    value += (10 + (objectiveVpValue * 5)) * objectiveRole.holdWeight;
   } else if (isObjectiveContester(state, unit, positionOverride)) {
-    value += 6;
+    value += (4 + (objectiveVpValue * 3)) * objectiveRole.raidWeight;
+  } else if (objectiveVpValue > 0) {
+    value += objectiveVpValue * 2.5 * objectiveRole.scorerWeight;
   }
   if (isVehicleUnit(unit)) {
-    value += 6;
+    value += 4;
   }
   if (canUnitReact(unit)) {
     value += 2;
   }
+
+  value += aliveModels.length * objectiveRole.scorerWeight;
 
   const payloadValue = getEmbarkedPayloadValue(state, playerIndex, unit.id);
   if (payloadValue > 0) {
@@ -642,11 +825,54 @@ function summarizeBestPressure(
 function getPlayerObjectiveUnits(
   state: GameState,
   playerIndex: number,
-): { holders: UnitState[]; contesters: UnitState[] } {
+): { holders: UnitState[]; contesters: UnitState[]; scorers: UnitState[] } {
   const units = state.armies[playerIndex].units.filter((unit) => getAliveModels(unit).length > 0 && unit.embarkedOnId === null);
   return {
     holders: units.filter((unit) => isObjectiveHolder(state, unit)),
     contesters: units.filter((unit) => isObjectiveContester(state, unit)),
+    scorers: units.filter((unit) => {
+      const role = getUnitObjectiveRoleProfile(unit);
+      return role.scorerWeight >= 0.75 || isObjectiveHolder(state, unit) || isObjectiveContester(state, unit);
+    }),
+  };
+}
+
+function getUnitsHoldingObjective(
+  state: GameState,
+  playerIndex: number,
+  objective: { position: Position },
+): UnitState[] {
+  return state.armies[playerIndex].units.filter((unit) =>
+    getAliveModels(unit).length > 0 && getUnitObjectiveStrengthAtPosition(unit, objective) > 0,
+  );
+}
+
+function getObjectiveInfluence(
+  state: GameState,
+  playerIndex: number,
+  objective: { position: Position },
+): ObjectiveInfluence {
+  const units = state.armies[playerIndex].units.filter((unit) => getAliveModels(unit).length > 0);
+  let currentStrength = 0;
+  let reachableStrength = 0;
+
+  for (const unit of units) {
+    const inRangeStrength = getUnitObjectiveStrengthAtPosition(unit, objective);
+    currentStrength += inRangeStrength;
+    if (inRangeStrength > 0) continue;
+
+    if (!canUnitReachObjectiveNextTurn(unit, objective)) continue;
+
+    const eligibleModels = getUnitEligibleObjectiveModels(unit).length;
+    if (eligibleModels <= 0) continue;
+
+    const role = getUnitObjectiveRoleProfile(unit);
+    reachableStrength += eligibleModels * role.holdWeight;
+  }
+
+  return {
+    currentStrength,
+    reachableStrength,
   };
 }
 
@@ -673,19 +899,82 @@ export function summarizePlayerTacticalState(
   const friendlyUnits = state.armies[playerIndex].units.filter((unit) => getAliveModels(unit).length > 0 && unit.embarkedOnId === null);
   const enemyIndex = playerIndex === 0 ? 1 : 0;
   const enemyUnits = state.armies[enemyIndex].units.filter((unit) => getAliveModels(unit).length > 0 && unit.embarkedOnId === null);
-  const { holders, contesters } = getPlayerObjectiveUnits(state, playerIndex);
-  const { holders: enemyHolders } = getPlayerObjectiveUnits(state, enemyIndex);
+  const { holders, contesters, scorers } = getPlayerObjectiveUnits(state, playerIndex);
+  const { holders: enemyHolders, scorers: enemyScorers } = getPlayerObjectiveUnits(state, enemyIndex);
   const highValueTargets = getHighValueUnits(state, enemyIndex);
   const vehicleTargets = enemyUnits.filter((unit) => isVehicleUnit(unit));
+  const objectives = state.missionState?.objectives?.filter((objective) => !objective.isRemoved) ?? [];
+
+  let controlledObjectiveCount = 0;
+  let contestedObjectiveCount = 0;
+  let controlledObjectiveVp = 0;
+  let contestedObjectiveVp = 0;
+  let objectiveTacticalStrength = 0;
+  let objectiveControlMargin = 0;
+  let durableControlledVp = 0;
+  let threatenedControlledVp = 0;
+  let flippableEnemyVp = 0;
+  let reachableObjectiveVp = 0;
+  let projectedScoringSwing = 0;
+  let scoringUnitCount = scorers.length;
+  let scoringUnitValue = 0;
+  let readyScoringUnitValue = 0;
 
   let objectiveHoldDurability = 0;
   let objectiveHolderValue = 0;
   let contestedObjectiveValue = 0;
   let exposedObjectiveHolderValue = 0;
+  let exposedScoringValue = 0;
   let exposedHighValueValue = 0;
   let retaliationPressure = 0;
   let warlordExposureValue = 0;
   let transportPayloadExposure = 0;
+  let transportDeliveryValue = 0;
+
+  for (const objective of objectives) {
+    const control = getObjectiveController(state, objective);
+    const friendlyStrength = playerIndex === 0 ? control.player0Strength : control.player1Strength;
+    const enemyStrength = playerIndex === 0 ? control.player1Strength : control.player0Strength;
+    const friendlyInfluence = getObjectiveInfluence(state, playerIndex, objective);
+    const enemyInfluence = getObjectiveInfluence(state, enemyIndex, objective);
+    const enemyPotential = enemyStrength + enemyInfluence.reachableStrength;
+    const friendlyPotential = friendlyStrength + friendlyInfluence.reachableStrength;
+
+    objectiveTacticalStrength += friendlyStrength;
+    objectiveControlMargin += friendlyStrength - enemyStrength;
+
+    if (control.controllerPlayerIndex === playerIndex) {
+      controlledObjectiveCount += 1;
+      controlledObjectiveVp += objective.currentVpValue;
+
+      const holderUnits = getUnitsHoldingObjective(state, playerIndex, objective);
+      const holderExposure = holderUnits.reduce(
+        (maximum, holder) => Math.max(maximum, estimateUnitExposureBreakdown(state, playerIndex, holder).total),
+        0,
+      );
+
+      if ((enemyPotential >= friendlyStrength) || holderExposure >= HIGH_EXPOSURE_THRESHOLD) {
+        threatenedControlledVp += objective.currentVpValue;
+      } else {
+        durableControlledVp += objective.currentVpValue;
+      }
+    } else if (control.controllerPlayerIndex === enemyIndex) {
+      if (friendlyPotential > enemyStrength) {
+        flippableEnemyVp += objective.currentVpValue;
+      }
+    } else if (control.isContested) {
+      contestedObjectiveCount += 1;
+      contestedObjectiveVp += objective.currentVpValue;
+
+      if (friendlyPotential > enemyPotential) {
+        flippableEnemyVp += objective.currentVpValue * 0.5;
+      }
+    } else if (friendlyInfluence.reachableStrength > 0) {
+      reachableObjectiveVp += objective.currentVpValue;
+    }
+  }
+
+  projectedScoringSwing = flippableEnemyVp + reachableObjectiveVp - threatenedControlledVp;
 
   for (const holder of holders) {
     const holderValue = estimateUnitStrategicValue(state, playerIndex, holder);
@@ -699,6 +988,21 @@ export function summarizePlayerTacticalState(
 
   for (const contester of contesters) {
     contestedObjectiveValue += estimateUnitStrategicValue(state, playerIndex, contester);
+  }
+
+  for (const scorer of scorers) {
+    const role = getUnitObjectiveRoleProfile(scorer);
+    const strategicValue = estimateUnitStrategicValue(state, playerIndex, scorer);
+    const scoringValue = strategicValue * role.scorerWeight;
+    const exposure = estimateUnitExposureBreakdown(state, playerIndex, scorer);
+
+    scoringUnitValue += scoringValue;
+    if (canUnitMove(scorer) || isObjectiveHolder(state, scorer)) {
+      readyScoringUnitValue += scoringValue;
+    }
+    if (exposure.total >= HIGH_EXPOSURE_THRESHOLD) {
+      exposedScoringValue += scoringValue;
+    }
   }
 
   for (const unit of getHighValueUnits(state, playerIndex)) {
@@ -717,19 +1021,49 @@ export function summarizePlayerTacticalState(
     }
   }
 
+  for (const transport of friendlyUnits) {
+    const payloadValue = getEmbarkedPayloadValue(state, playerIndex, transport.id);
+    if (payloadValue <= 0) continue;
+
+    const nearestObjectiveDistance = Math.min(...getObjectiveDistances(state, transport));
+    const exposure = estimateUnitExposureBreakdown(state, playerIndex, transport);
+    const deliveryFactor = Number.isFinite(nearestObjectiveDistance)
+      ? Math.max(0, 1.6 - (nearestObjectiveDistance / 24))
+      : 0;
+    transportDeliveryValue += payloadValue * deliveryFactor * (1 / (1 + (exposure.total * 0.2)));
+  }
+
   return {
+    controlledObjectiveCount,
+    contestedObjectiveCount,
+    controlledObjectiveVp,
+    contestedObjectiveVp,
+    objectiveTacticalStrength,
+    objectiveControlMargin,
+    durableControlledVp,
+    threatenedControlledVp,
+    flippableEnemyVp,
+    reachableObjectiveVp,
+    projectedScoringSwing,
+    scoringUnitCount,
+    scoringUnitValue,
+    readyScoringUnitValue,
     bestRangedVsObjectiveHolders: summarizeBestPressure(state, friendlyUnits, enemyHolders, 'ranged'),
     bestMeleeVsObjectiveHolders: summarizeBestPressure(state, friendlyUnits, enemyHolders, 'melee'),
+    bestRangedVsScorers: summarizeBestPressure(state, friendlyUnits, enemyScorers, 'ranged'),
+    bestMeleeVsScorers: summarizeBestPressure(state, friendlyUnits, enemyScorers, 'melee'),
     bestRangedVsHighValueTargets: summarizeBestPressure(state, friendlyUnits, highValueTargets, 'ranged'),
     bestMeleeVsHighValueTargets: summarizeBestPressure(state, friendlyUnits, highValueTargets, 'melee'),
     objectiveHoldDurability,
     objectiveHolderValue,
     contestedObjectiveValue,
     exposedObjectiveHolderValue,
+    exposedScoringValue,
     exposedHighValueValue,
     retaliationPressure,
     warlordExposureValue,
     transportPayloadExposure,
+    transportDeliveryValue,
     antiVehicleRangedPressure: summarizeBestPressure(state, friendlyUnits, vehicleTargets, 'ranged'),
     antiVehicleMeleePressure: summarizeBestPressure(state, friendlyUnits, vehicleTargets, 'melee'),
   };
@@ -751,12 +1085,71 @@ export function estimateProjectedObjectiveValue(
   unit: UnitState,
   positionOverride?: Position,
 ): number {
-  const objectiveValue = estimateUnitStrategicValue(state, playerIndex, unit, positionOverride);
-  if (isObjectiveHolder(state, unit, positionOverride)) {
-    return objectiveValue;
+  const objectives = state.missionState?.objectives?.filter((objective) => !objective.isRemoved) ?? [];
+  const objectiveRole = getUnitObjectiveRoleProfile(unit);
+  let projectedValue = 0;
+
+  for (const objective of objectives) {
+    const control = getObjectiveController(state, objective);
+    const friendlyStrength = playerIndex === 0 ? control.player0Strength : control.player1Strength;
+    const enemyStrength = playerIndex === 0 ? control.player1Strength : control.player0Strength;
+    const currentContribution = getUnitObjectiveStrengthAtPosition(unit, objective);
+    const projectedContribution = getUnitObjectiveStrengthAtPosition(unit, objective, positionOverride);
+    const netContribution = projectedContribution - currentContribution;
+
+    if (projectedContribution > 0) {
+      if (control.controllerPlayerIndex === playerIndex) {
+        projectedValue += objective.currentVpValue * (4 + objectiveRole.holdWeight + Math.max(0, netContribution));
+      } else if ((friendlyStrength + netContribution) > enemyStrength) {
+        projectedValue += objective.currentVpValue * (10 + (objectiveRole.holdWeight * 2));
+      } else if ((friendlyStrength + netContribution) === enemyStrength) {
+        projectedValue += objective.currentVpValue * (6 + objectiveRole.raidWeight);
+      } else {
+        projectedValue += objective.currentVpValue * (2 + objectiveRole.raidWeight);
+      }
+      continue;
+    }
+
+    if (canUnitReachObjectiveNextTurn(unit, objective, positionOverride)) {
+      projectedValue += objective.currentVpValue * (2.5 + objectiveRole.scorerWeight);
+    }
   }
-  if (isObjectiveContester(state, unit, positionOverride)) {
-    return objectiveValue * 0.6;
+
+  return projectedValue;
+}
+
+export function estimateObjectiveRemovalSwing(
+  state: GameState,
+  playerIndex: number,
+  unit: UnitState,
+): number {
+  const objectives = state.missionState?.objectives?.filter((objective) => !objective.isRemoved) ?? [];
+  let swing = 0;
+
+  for (const objective of objectives) {
+    const control = getObjectiveController(state, objective);
+    const friendlyStrength = playerIndex === 0 ? control.player0Strength : control.player1Strength;
+    const enemyStrength = playerIndex === 0 ? control.player1Strength : control.player0Strength;
+    const unitStrength = getUnitObjectiveStrengthAtPosition(unit, objective);
+
+    if (unitStrength <= 0) continue;
+
+    const remainingStrength = Math.max(0, friendlyStrength - unitStrength);
+    if (control.controllerPlayerIndex === playerIndex) {
+      if (remainingStrength < enemyStrength) {
+        swing += objective.currentVpValue * 2;
+      } else if (remainingStrength === enemyStrength && remainingStrength > 0) {
+        swing += objective.currentVpValue * 1.4;
+      } else {
+        swing += objective.currentVpValue * Math.min(1, unitStrength / Math.max(1, friendlyStrength));
+      }
+      continue;
+    }
+
+    if (control.isContested && remainingStrength < enemyStrength) {
+      swing += objective.currentVpValue;
+    }
   }
-  return 0;
+
+  return swing;
 }

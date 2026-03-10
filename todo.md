@@ -180,6 +180,81 @@ Last Updated: 2026-03-09
   - Outcome:
     - The larger corpus improved data volume and remained perfectly stable, but it did not improve short-match strength. On this benchmark, the 400-match candidate is the weakest of the recent `v2` candidates.
 
+## Execution Plan (200-Match 1000ms Self-Play Audit + Train + 10-Game Gate - 2026-03-10)
+- [x] Audit the completed `200`-match curated 2000-point self-play corpus at `1000ms` for clean terminations and obvious anomalies before using it for training.
+- [x] Train a fresh gameplay candidate from the audited shard using the current gameplay `v3` schema and trainer settings.
+- [x] Gate the trained candidate over `10` mirrored curated matchups at `1000ms` and record the outcome here.
+- Progress:
+  - Audited `tmp/nnue-200-2000-v3-1000ms/manifest.json` and `selfplay-shard-001.jsonl`:
+    - `200/200` matches terminated as `game-over`
+    - `0` missing replay artifacts
+    - shard line count exactly matched the recorded `49,512` samples
+    - sample spread was `227` to `299` per game (`247.56` average)
+  - Trained a fresh gameplay candidate with:
+    - `pnpm nnue:train --input tmp/nnue-200-2000-v3-1000ms/selfplay-shard-001.jsonl --out tmp/nnue-200-2000-v3-1000ms/candidate.json --epochs 12 --learning-rate 0.01 --validation-split 0.2 --patience 3 --min-delta 0.0001`
+    - Result: model `gameplay-default-v1-candidate-1773156308483`
+    - Training samples: `39,610`
+    - Validation samples: `9,902`
+    - Early-stopped at epoch `5`; best validation epoch was `2`
+  - Gated the trained candidate with:
+    - `pnpm nnue:gate --model tmp/nnue-200-2000-v3-1000ms/candidate.json --matches 10 --time-budget-ms 1000 --threshold -1 --out tmp/nnue-200-2000-v3-1000ms/gate-10.json`
+    - Result: `0 wins / 10 losses / 0 draws / 0 aborted / 0 timeouts` vs `Tactical` (`winRate: 0.0`)
+  - Outcome:
+    - The overnight `200 @ 1000ms` corpus is mechanically clean and suitable as training input.
+    - The trained candidate is decisively weaker than `Tactical` on a mirrored 10-game gate, which points at evaluator/training quality rather than runtime stability problems.
+
+## Implementation Plan (50-Feature Objective-First Evaluator Pass - 2026-03-10)
+- [x] Audit the current objective/control/scoring helpers so the next evaluator pass uses real mission-aware signals instead of proximity-only approximations.
+- [x] Expand the gameplay feature schema from `39` to `50` features with stronger VP, objective-value, control-strength, holder-survival, and flip-risk modeling.
+- [x] Rework tactical signal summaries and candidate ordering so scorer survival, objective swing, and delivery/retaliation risk outrank generic kill pressure.
+- [x] Update the built-in gameplay model/schema wiring and refresh `engine_primer.md` so the documented Engine matches the new evaluator shape.
+- [x] Run focused AI/headless verification and record the outcome here.
+- Progress:
+  - Audited the existing mission/evaluator path and confirmed the main blind spot: the old gameplay evaluator still leaned on proximity-style objective features and generic target value rather than actual controlled VP, threatened held VP, flippable enemy VP, and scorer survival.
+  - Upgraded `packages/ai/src/engine/tactical-signals.ts` to a more mission-aware summary layer:
+    - objective control now reads through the real mission control query instead of simple proximity counts
+    - added controlled/count/VP summaries, control margin, durable-held VP, threatened-held VP, flippable enemy VP, reachable objective VP, projected scoring swing, scoring-unit value, exposed scorer value, and transport delivery value
+    - added `estimateObjectiveRemovalSwing(...)` so target ordering can value removing holders/scorers by actual objective swing
+  - Upgraded `packages/ai/src/engine/feature-extractor.ts` from gameplay schema `v3` / `39` features to gameplay schema `v4` / `50` features.
+    - the new schema is explicitly objective-first and now encodes actual controlled VP, threatened held VP, flippable enemy VP, reachable objective VP, projected scoring swing, scorer counts/value/readiness, scorer pressure, scorer exposure, and transport delivery alongside the older material/status/threat features
+  - Updated `packages/ai/src/engine/default-model.ts` so the built-in gameplay model now ships with `50` feature priors that weight objective/VP features more heavily than the old layout.
+  - Updated `packages/ai/src/engine/candidate-generator.ts` so:
+    - movement lane scoring gives more weight to projected objective swing and less weight to generic base-score carryover
+    - shooting ordering now adds direct objective-swing value from `estimateObjectiveRemovalSwing(...)`
+  - Updated `packages/ai/src/engine/feature-extractor.test.ts` and `packages/ai/src/engine/tactical-signals.test.ts` for the new schema/objective data shape.
+  - Updated `engine_primer.md` so it now documents the shipped `50`-feature `v4` gameplay schema, the objective-first tactical summary layer, and the stronger movement/shoot ordering rules.
+  - Verification passed:
+    - `pnpm test -- packages/ai/src/engine/feature-extractor.test.ts packages/ai/src/engine/tactical-signals.test.ts packages/ai/src/engine/candidate-generator.test.ts packages/ai/src/engine/search.test.ts` (`4 files / 14 tests`)
+    - `pnpm --filter @hh/ai build`
+    - `pnpm --filter @hh/headless build`
+    - `pnpm nnue:selfplay --matches 1 --time-budget-ms 50 --max-commands 200 --shard-size 1000000 --out-dir tmp/nnue-v4-smoke/selfplay`
+      - Result: emitted a valid gameplay `v4` shard with `200` samples; the single smoke match hit the tiny `max-commands` cap, which is acceptable for a schema smoke run
+    - `pnpm nnue:train --input tmp/nnue-v4-smoke/selfplay/selfplay-shard-001.jsonl --out tmp/nnue-v4-smoke/candidate.json --epochs 2 --learning-rate 0.01 --validation-split 0.2 --patience 1 --min-delta 0.0001`
+      - Result: emitted a valid `v4` gameplay candidate, `160` train samples / `40` validation samples
+  - Outcome:
+    - The gameplay evaluator/search stack is now materially more objective-first than the prior `39`-feature `v3` path.
+    - Old gameplay self-play shards and gameplay candidates are stale again after the `v4` schema bump; fresh gameplay self-play is required for any new real training or gate run.
+
+## Execution Plan (Full Workspace Rebuild - 2026-03-10)
+- [x] Inspect the available workspace build targets so the rebuild covers the intended packages and does not rely on a wrong top-level assumption.
+- [x] Run the full workspace rebuild and capture any failing package/output.
+- [x] Record the rebuild outcome here.
+- Progress:
+  - Confirmed the root workspace script is the intended full rebuild path: `pnpm build` -> `pnpm -r build`.
+  - Rebuilt all workspace packages successfully:
+    - `@hh/types`
+    - `@hh/data`
+    - `@hh/geometry`
+    - `@hh/army-builder`
+    - `@hh/engine`
+    - `@hh/ai`
+    - `@hh/headless`
+    - `@hh/ui`
+    - `@hh/mcp-server`
+  - UI production bundling completed successfully under Vite.
+  - Notable non-failing output:
+    - Vite emitted chunk-size warnings for the production UI bundle (`engine-ai.worker` and main `index` bundle), but the build still completed cleanly.
+
 ## Implementation Plan (Search Candidate Generation + Root Ordering Pass - 2026-03-09)
 - [x] Diversify movement candidate generation so root actions include tactically distinct lanes instead of only the top few destinations from one generic score.
 - [x] Make shooting candidate ordering damage-aware and target-value-aware before root pruning.

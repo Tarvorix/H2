@@ -6,15 +6,16 @@ export const DEFAULT_GAMEPLAY_NNUE_MODEL_ID = 'gameplay-default-v1';
 
 function buildDefaultGameplayModel(): NNUEModel {
   const featureImportances = [
-    14, 15, 11, 15, 14,
-    9, 11, 6, 8, 10,
-    5, 5, 7, 9, 8,
-    5, 6, 9, 6, 7,
-    12, 9, 7,
-    11, 11, 12, 12, 13,
-    10, 9, 11, 12, 12,
-    10, 8, 9, 9,
-    4, 3,
+    12, 13, 10, 18, 16,
+    11, 18, 10, 15, 14,
+    16, 18, 17, 16, 19,
+    14, 15, 15, 11, 8,
+    8, 7, 6, 6, 6,
+    7, 7, 5, 6, 8,
+    10, 9, 15, 15, 14,
+    14, 11, 11, 13, 12,
+    12, 11, 11, 10, 10,
+    9, 10, 9, 5, 4,
   ];
   const hiddenSize = GAMEPLAY_FEATURE_DIMENSION * 2;
   const hiddenWeights = new Int8Array(hiddenSize * GAMEPLAY_FEATURE_DIMENSION);
