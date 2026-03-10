@@ -125,12 +125,12 @@ function createGameState(overrides: Partial<GameState> = {}): GameState {
 }
 
 describe('extractGameplayFeatures', () => {
-  it('returns the 25-feature gameplay schema with bounded values', () => {
+  it('returns the 39-feature gameplay schema with bounded values', () => {
     const features = extractGameplayFeatures(createGameState(), 0);
 
-    expect(GAMEPLAY_FEATURE_VERSION).toBe(2);
+    expect(GAMEPLAY_FEATURE_VERSION).toBe(3);
     expect(features).toHaveLength(GAMEPLAY_FEATURE_DIMENSION);
-    expect(GAMEPLAY_FEATURE_DIMENSION).toBe(25);
+    expect(GAMEPLAY_FEATURE_DIMENSION).toBe(39);
     expect(Array.from(features).every((feature) => feature >= -1 && feature <= 1)).toBe(true);
   });
 
@@ -143,9 +143,9 @@ describe('extractGameplayFeatures', () => {
       maxBattleTurns: 8,
     }), 0);
 
-    expect(activeFeatures[23]).toBe(1);
-    expect(activeFeatures[24]).toBeCloseTo((-1 / 3), 5);
-    expect(reactiveFeatures[23]).toBe(-1);
-    expect(reactiveFeatures[24]).toBe(0, 5);
+    expect(activeFeatures[37]).toBe(1);
+    expect(activeFeatures[38]).toBeCloseTo((-1 / 3), 5);
+    expect(reactiveFeatures[37]).toBe(-1);
+    expect(reactiveFeatures[38]).toBe(0, 5);
   });
 });

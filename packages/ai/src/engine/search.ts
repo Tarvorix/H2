@@ -38,6 +38,15 @@ function nowMs(): number {
   return typeof performance !== 'undefined' ? performance.now() : Date.now();
 }
 
+function getBudgetSafetyMarginMs(timeBudgetMs: number): number {
+  if (timeBudgetMs <= 0) return 0;
+  return Math.max(10, Math.min(100, Math.floor(timeBudgetMs * 0.15)));
+}
+
+function hasTimedOut(runtime: SearchRuntime): boolean {
+  return nowMs() >= runtime.deadlineAt;
+}
+
 function createSearchConfig(config: AIPlayerConfig): SearchConfig {
   if (config.strategyTier !== AIStrategyTier.Engine) {
     throw new Error('Engine search config requested for a non-Engine AI player.');
@@ -96,6 +105,10 @@ function transitionNode(
   const queuedPlan: QueuedCommandStep[] = [];
 
   for (let commandIndex = 0; commandIndex < action.commands.length; commandIndex++) {
+    if (hasTimedOut(runtime)) {
+      return null;
+    }
+
     const command = action.commands[commandIndex];
     const fingerprintBeforeCommand = getStateFingerprint(state);
     const dice = new SeededDiceProvider([
@@ -146,6 +159,7 @@ function transitionNode(
   };
 
   for (let step = 0; step < runtime.config.maxAutoAdvanceSteps; step++) {
+    if (hasTimedOut(runtime)) break;
     if (autoAdvanceState.state.isGameOver) break;
     const decisionOwner = autoAdvanceState.state.awaitingReaction
       ? (autoAdvanceState.state.activePlayerIndex === 0 ? 1 : 0)
@@ -255,6 +269,12 @@ function getRootOrderingScore(
     return cached;
   }
 
+  if (hasTimedOut(runtime)) {
+    const fallback = action.orderingScore;
+    runtime.rootOrderingScores.set(action.id, fallback);
+    return fallback;
+  }
+
   const transition = transitionNode(runtime, rootNode, action, 0);
   if (!transition) {
     runtime.rootOrderingScores.set(action.id, Number.NEGATIVE_INFINITY);
@@ -287,7 +307,7 @@ function searchNode(
   alpha: number,
   beta: number,
 ): SearchEvaluation {
-  if (nowMs() >= runtime.deadlineAt || depth <= 0 || node.state.isGameOver) {
+  if (hasTimedOut(runtime) || depth <= 0 || node.state.isGameOver) {
     return staticEvaluate(runtime, node);
   }
 
@@ -317,11 +337,13 @@ function searchNode(
   let bestPV: string[] = [];
 
   for (const action of actions) {
+    if (hasTimedOut(runtime)) break;
     let totalScore = 0;
     let validSamples = 0;
     let actionPV: string[] = [];
 
     for (let sampleIndex = 0; sampleIndex < runtime.config.rolloutCount; sampleIndex++) {
+      if (hasTimedOut(runtime)) break;
       const transition = transitionNode(runtime, node, action, sampleIndex);
       if (!transition) {
         continue;
@@ -380,18 +402,88 @@ function searchNode(
   return evaluation;
 }
 
+function evaluateEmergencyRootBaseline(
+  runtime: SearchRuntime,
+  rootNode: SearchNodeState,
+  rootActions: MacroAction[],
+): {
+  bestAction: MacroAction | null;
+  bestScore: number;
+  bestPV: string[];
+  bestQueuedPlan: QueuedCommandStep[];
+  scoredActionCount: number;
+} {
+  const prioritizedActions = [...rootActions].sort((left, right) => right.orderingScore - left.orderingScore);
+  let bestAction: MacroAction | null = null;
+  let bestScore = -Infinity;
+  let bestPV: string[] = [];
+  let bestQueuedPlan: QueuedCommandStep[] = [];
+  let scoredActionCount = 0;
+
+  for (const action of prioritizedActions) {
+    if (hasTimedOut(runtime)) break;
+
+    let totalScore = 0;
+    let validSamples = 0;
+    let principalVariation: string[] = [];
+    let queuedPlan: QueuedCommandStep[] = [];
+
+    for (let sampleIndex = 0; sampleIndex < runtime.config.rolloutCount; sampleIndex++) {
+      if (hasTimedOut(runtime)) break;
+
+      const transition = transitionNode(runtime, rootNode, action, sampleIndex);
+      if (!transition) continue;
+
+      const evaluation = staticEvaluate(runtime, transition.node);
+      totalScore += evaluation.score;
+      validSamples += 1;
+      if (principalVariation.length === 0) {
+        principalVariation = evaluation.principalVariation;
+        queuedPlan = transition.queuedPlan;
+      }
+    }
+
+    if (validSamples === 0) continue;
+
+    scoredActionCount += 1;
+    const averageScore = totalScore / validSamples;
+    runtime.rootOrderingScores.set(
+      action.id,
+      averageScore + (action.orderingScore * 0.25) + (queuedPlan.length * 1.5),
+    );
+
+    if (averageScore > bestScore || bestAction === null) {
+      bestAction = action;
+      bestScore = averageScore;
+      bestPV = [action.label, ...principalVariation];
+      bestQueuedPlan = queuedPlan;
+    }
+  }
+
+  return {
+    bestAction,
+    bestScore,
+    bestPV,
+    bestQueuedPlan,
+    scoredActionCount,
+  };
+}
+
 export function searchBestAction(
   state: GameState,
   playerConfig: AIPlayerConfig,
   actedUnitIds: Set<string>,
 ): SearchResult {
   const config = createSearchConfig(playerConfig);
+  const startedAt = nowMs();
+  const timeBudgetMs = Math.max(1, config.timeBudgetMs);
+  const safetyMarginMs = getBudgetSafetyMarginMs(timeBudgetMs);
   const runtime: SearchRuntime = {
     rootPlayerIndex: playerConfig.playerIndex,
     config,
     evaluator: new NNUEEvaluator(config.nnueModelId),
-    startedAt: nowMs(),
-    deadlineAt: nowMs() + config.timeBudgetMs,
+    startedAt,
+    deadlineAt: startedAt + Math.max(1, timeBudgetMs - safetyMarginMs),
     nodeCount: 0,
     transpositionTable: new Map(),
     historyHeuristic: new Map(),
@@ -426,33 +518,48 @@ export function searchBestAction(
     };
   }
 
-  let bestAction = rootActions[0];
+  let bestAction: MacroAction | null = null;
   let bestScore = -Infinity;
-  let bestPV = [bestAction.label];
+  let bestPV: string[] = [];
   let bestQueuedPlan: QueuedCommandStep[] = [];
   let completedDepth = 0;
   let aspirationCenter = 0;
 
-  for (let depth = 1; depth <= config.maxDepthSoft; depth++) {
-    if (nowMs() >= runtime.deadlineAt) {
+  const emergencyBaseline = evaluateEmergencyRootBaseline(runtime, rootNode, rootActions);
+  if (emergencyBaseline.bestAction) {
+    bestAction = emergencyBaseline.bestAction;
+    bestScore = emergencyBaseline.bestScore;
+    bestPV = emergencyBaseline.bestPV;
+    bestQueuedPlan = emergencyBaseline.bestQueuedPlan;
+    completedDepth = 1;
+    aspirationCenter = emergencyBaseline.bestScore;
+  } else {
+    bestAction = [...rootActions].sort((left, right) => right.orderingScore - left.orderingScore)[0] ?? null;
+    if (bestAction) {
+      bestPV = [bestAction.label];
+    }
+  }
+
+  for (let depth = completedDepth >= 1 ? 2 : 1; depth <= config.maxDepthSoft; depth++) {
+    if (hasTimedOut(runtime)) {
       break;
     }
 
     let alpha = aspirationCenter - config.aspirationWindow;
     let beta = aspirationCenter + config.aspirationWindow;
-    let depthBestAction = bestAction;
-    let depthBestScore = -Infinity;
+    let depthBestAction: MacroAction | null = bestAction;
+    let depthBestScore = bestAction && Number.isFinite(bestScore) ? bestScore : -Infinity;
     let depthBestPV = bestPV;
     let depthBestQueuedPlan = bestQueuedPlan;
 
     for (let attempt = 0; attempt < 2; attempt++) {
-      let localBestAction = depthBestAction;
-      let localBestScore = -Infinity;
+      let localBestAction: MacroAction | null = depthBestAction;
+      let localBestScore = depthBestScore;
       let localBestPV = depthBestPV;
       let localBestQueuedPlan = depthBestQueuedPlan;
 
       for (const action of orderRootActions(runtime, rootNode, depth, rootActions)) {
-        if (nowMs() >= runtime.deadlineAt) break;
+        if (hasTimedOut(runtime)) break;
 
         let totalScore = 0;
         let validSamples = 0;
@@ -460,6 +567,7 @@ export function searchBestAction(
         let queuedPlan: QueuedCommandStep[] = [];
 
         for (let sampleIndex = 0; sampleIndex < config.rolloutCount; sampleIndex++) {
+          if (hasTimedOut(runtime)) break;
           const transition = transitionNode(runtime, rootNode, action, sampleIndex);
           if (!transition) continue;
 
@@ -514,9 +622,9 @@ export function searchBestAction(
   const diagnostics: AIDiagnostics = {
     tier: AIStrategyTier.Engine,
     modelId: config.nnueModelId,
-    selectedMacroActionId: bestAction.id,
-    selectedMacroActionLabel: bestAction.label,
-    selectedCommandType: bestAction.commands[0]?.type,
+    selectedMacroActionId: bestAction?.id,
+    selectedMacroActionLabel: bestAction?.label,
+    selectedCommandType: bestAction?.commands[0]?.type,
     score: bestScore,
     depthCompleted: completedDepth,
     nodesVisited: runtime.nodeCount,

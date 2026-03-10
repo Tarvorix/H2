@@ -10,7 +10,11 @@ function buildDefaultGameplayModel(): NNUEModel {
     9, 11, 6, 8, 10,
     5, 5, 7, 9, 8,
     5, 6, 9, 6, 7,
-    12, 9, 7, 4, 3,
+    12, 9, 7,
+    11, 11, 12, 12, 13,
+    10, 9, 11, 12, 12,
+    10, 8, 9, 9,
+    4, 3,
   ];
   const hiddenSize = GAMEPLAY_FEATURE_DIMENSION * 2;
   const hiddenWeights = new Int8Array(hiddenSize * GAMEPLAY_FEATURE_DIMENSION);

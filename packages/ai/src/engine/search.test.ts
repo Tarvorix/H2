@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   Allegiance,
   LegionFaction,
@@ -144,6 +144,10 @@ function createAwaitingTargetSelectionAttack(): ShootingAttackState {
 }
 
 describe('searchBestAction', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('returns the same root action and score for the same state/config/seed', () => {
     const state = createGameState({
       armies: [
@@ -245,5 +249,28 @@ describe('searchBestAction', () => {
     expect(result.bestAction).not.toBeNull();
     expect(result.bestAction?.commands[0]?.type).not.toBe('moveUnit');
     expect(result.bestAction?.commands[0]?.type).toBe('endSubPhase');
+  });
+
+  it('returns a scored emergency root baseline when the budget expires before full deepening completes', () => {
+    const state = createGameState();
+    const config = createEngineConfig({
+      timeBudgetMs: 5,
+      maxDepthSoft: 3,
+    });
+    const nowSequence = [0, 0, 0, 0, 0.25, 2, 2, 2, 2, 2, 2, 2];
+    let nowIndex = 0;
+
+    vi.spyOn(globalThis.performance, 'now').mockImplementation(() => {
+      const value = nowSequence[Math.min(nowIndex, nowSequence.length - 1)];
+      nowIndex += 1;
+      return value;
+    });
+
+    const result = searchBestAction(state, config, new Set());
+
+    expect(result.bestAction).not.toBeNull();
+    expect(Number.isFinite(result.score)).toBe(true);
+    expect(result.depthCompleted).toBeGreaterThanOrEqual(1);
+    expect(result.diagnostics.selectedMacroActionId).toBeTruthy();
   });
 });

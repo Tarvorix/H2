@@ -22,14 +22,10 @@ import {
   getAliveModels,
   getBlastSizeInches,
   getClosestModelDistance,
-  getModelBS,
-  getModelSave,
-  getModelToughness,
   getModelsWithLOSToUnit,
   getValidCommands,
   handleMoveUnit,
   hasLOSToUnit,
-  resolveWeaponAssignment,
 } from '@hh/engine';
 import type { MacroAction, SearchConfig } from '../types';
 import { generateCandidatePositions, evaluateMovementDestination } from '../evaluation/position-evaluation';
@@ -44,9 +40,16 @@ import {
   getValidChargeTargets,
   getValidShootingTargets,
 } from '../helpers/unit-queries';
-import { estimateExpectedDamage, selectWeaponsForAttack } from '../helpers/weapon-selection';
+import { selectWeaponsForAttack } from '../helpers/weapon-selection';
 import { getAvailableAftermathOptions } from '@hh/engine';
 import { TacticalStatus } from '@hh/types';
+import {
+  estimateProjectedObjectiveValue,
+  estimateProjectedOutgoingPressure,
+  estimateUnitExposureBreakdown,
+  estimateUnitRangedDamagePotential,
+  estimateUnitStrategicValue,
+} from './tactical-signals';
 
 export interface SearchNodeState {
   state: GameState;
@@ -245,23 +248,48 @@ function getNearestObjectiveDistance(state: GameState, position: Position): numb
 function buildMovementLaneScores(
   state: GameState,
   playerIndex: number,
+  unit: UnitState,
   position: Position,
   baseScore: number,
 ): Record<Exclude<MovementLane, 'best'>, number> {
   const nearestEnemyDistance = getNearestEnemyDistance(state, playerIndex, position);
   const nearestObjectiveDistance = getNearestObjectiveDistance(state, position);
+  const projectedExposure = estimateUnitExposureBreakdown(state, playerIndex, unit, position);
+  const projectedOutgoing = estimateProjectedOutgoingPressure(state, playerIndex, unit, position);
+  const projectedObjectiveValue = estimateProjectedObjectiveValue(state, playerIndex, unit, position);
+  const strategicValue = estimateUnitStrategicValue(state, playerIndex, unit);
   const centerDistance = distanceBetween(position, {
     x: state.battlefield.width / 2,
     y: state.battlefield.height / 2,
   });
 
   const objectiveScore = Number.isFinite(nearestObjectiveDistance)
-    ? (30 - (nearestObjectiveDistance * 2.2)) + (baseScore * 0.4)
+    ? (30 - (nearestObjectiveDistance * 2.2)) +
+      (baseScore * 0.4) +
+      (projectedObjectiveValue * 0.85) -
+      (projectedExposure.total * 0.6)
     : Number.NEGATIVE_INFINITY;
-  const fireScore = (24 - Math.abs(nearestEnemyDistance - 15)) + (baseScore * 0.35);
-  const safetyScore = (Math.min(nearestEnemyDistance, 24) * 1.25) + (baseScore * 0.2);
-  const pressureScore = (30 - nearestEnemyDistance) + (baseScore * 0.3);
-  const centerScore = (24 - centerDistance) + (baseScore * 0.25);
+  const fireScore =
+    (24 - Math.abs(nearestEnemyDistance - 15)) +
+    (baseScore * 0.35) +
+    (projectedOutgoing * 0.4) -
+    (projectedExposure.ranged * 0.25);
+  const safetyScore =
+    (Math.min(nearestEnemyDistance, 24) * 1.25) +
+    (baseScore * 0.2) +
+    (strategicValue * 0.35) -
+    (projectedExposure.total * 0.9);
+  const pressureScore =
+    (30 - nearestEnemyDistance) +
+    (baseScore * 0.3) +
+    (projectedOutgoing * 0.45) -
+    (projectedExposure.total * 0.2);
+  const centerScore =
+    (24 - centerDistance) +
+    (baseScore * 0.25) +
+    (projectedObjectiveValue * 0.25) +
+    (projectedOutgoing * 0.15) -
+    (projectedExposure.total * 0.2);
 
   return {
     objective: objectiveScore,
@@ -344,48 +372,6 @@ function isObjectiveHolder(state: GameState, unit: UnitState): boolean {
   );
 }
 
-function estimateUnitShootingDamage(
-  attackerUnit: UnitState,
-  targetUnit: UnitState,
-  weaponSelections: { modelId: string; weaponId: string; profileName?: string }[],
-): number {
-  const targetModel = getAliveModels(targetUnit)[0];
-  if (!targetModel) return 0;
-
-  const targetToughness = getModelToughness(targetModel.unitProfileId, targetModel.profileModelName) || 4;
-  const targetSave = getModelSave(targetModel.unitProfileId, targetModel.profileModelName) ?? 3;
-
-  let totalExpectedDamage = 0;
-  for (const selection of weaponSelections) {
-    const attackerModel = attackerUnit.models.find((model) => model.id === selection.modelId);
-    if (!attackerModel) continue;
-
-    const profile = resolveWeaponAssignment(selection, attackerUnit);
-    if (!profile) continue;
-
-    const attackerBS = getModelBS(attackerModel.unitProfileId, attackerModel.profileModelName);
-    const firepower = Math.max(1, profile.firepower);
-    let expectedDamage = estimateExpectedDamage(
-      firepower,
-      attackerBS,
-      profile.rangedStrength,
-      targetToughness,
-      targetSave,
-    ) * Math.max(1, profile.damage);
-
-    if (profile.hasTemplate) {
-      expectedDamage *= 1.35;
-    }
-    if (profile.specialRules.some((rule) => rule.name === 'Breaching')) {
-      expectedDamage *= 1.1;
-    }
-
-    totalExpectedDamage += expectedDamage;
-  }
-
-  return totalExpectedDamage;
-}
-
 function scoreReactionUnit(
   node: SearchNodeState,
   unitId: string,
@@ -409,16 +395,19 @@ function scoreReactionUnit(
     case CoreReaction.ReturnFire:
       score += totalWeapons * 4;
       score += Math.max(0, 20 - triggerDistance);
+      score += estimateProjectedOutgoingPressure(node.state, reactingPlayerIndex, unit) * 0.45;
       reasons.push('best return fire');
       break;
     case CoreReaction.Overwatch:
       score += totalWeapons * 3;
       score += Math.max(0, 14 - triggerDistance) * 1.5;
+      score += estimateProjectedOutgoingPressure(node.state, reactingPlayerIndex, unit) * 0.35;
       reasons.push('best overwatch');
       break;
     case CoreReaction.Reposition:
       score += Math.max(0, 18 - triggerDistance) * 1.75;
       score += aliveModels.length;
+      score += estimateUnitExposureBreakdown(node.state, reactingPlayerIndex, unit).total * 0.8;
       reasons.push('best reposition');
       break;
     default:
@@ -439,6 +428,7 @@ function scoreReactionUnit(
 
   const enemyThreat = evaluateUnitThreat(node.state, reactingPlayerIndex, pendingReaction.triggerSourceUnitId);
   score += enemyThreat * 0.1;
+  score += estimateUnitStrategicValue(node.state, reactingPlayerIndex, unit) * 0.15;
 
   return { score, reasons };
 }
@@ -567,7 +557,7 @@ function generateMoveActions(
         return {
           position,
           baseScore,
-          laneScores: buildMovementLaneScores(node.state, playerIndex, position, baseScore),
+          laneScores: buildMovementLaneScores(node.state, playerIndex, unit, position, baseScore),
           modelPositions,
         };
       })
@@ -631,6 +621,8 @@ function generateShootingContinuationActions(node: SearchNodeState): MacroAction
   }
 
   if (!attackState.selectedTargetModelId) {
+    const targetPlayerIndex = attackState.attackerPlayerIndex === 0 ? 1 : 0;
+    const targetStrategicValue = estimateUnitStrategicValue(node.state, targetPlayerIndex, targetUnit);
     const candidateModels = getAliveModels(targetUnit)
       .sort((left, right) => {
         if (left.isWarlord !== right.isWarlord) return left.isWarlord ? -1 : 1;
@@ -647,7 +639,7 @@ function generateShootingContinuationActions(node: SearchNodeState): MacroAction
             { type: 'selectTargetModel', modelId: model.id },
             { type: 'resolveShootingCasualties' },
           ],
-          model.isWarlord ? 24 : 12 - model.currentWounds,
+          (model.isWarlord ? 24 : 12 - model.currentWounds) + (targetStrategicValue * 0.6),
           [targetUnit.id],
           ['directed allocation'],
         ),
@@ -694,10 +686,13 @@ function generateShootingActions(
       if (weaponSelections.length === 0) continue;
 
       const placements = buildSpecialPlacements(node.state, unit.id, target.id, weaponSelections);
-      const expectedDamage = estimateUnitShootingDamage(unit, target, weaponSelections);
+      const expectedDamage = estimateUnitRangedDamagePotential(node.state, unit, target);
       const targetThreat = evaluateUnitThreat(node.state, playerIndex, target.id);
       const targetRemainingWounds = getAliveModels(target)
         .reduce((total, model) => total + model.currentWounds, 0);
+      const targetStrategicValue = estimateUnitStrategicValue(node.state, playerIndex === 0 ? 1 : 0, target);
+      const targetExposure = estimateUnitExposureBreakdown(node.state, playerIndex === 0 ? 1 : 0, target);
+      const targetRetaliation = estimateProjectedOutgoingPressure(node.state, playerIndex === 0 ? 1 : 0, target);
       const killPressure = targetRemainingWounds > 0
         ? Math.min(18, (expectedDamage / targetRemainingWounds) * 14)
         : 0;
@@ -713,11 +708,23 @@ function generateShootingActions(
       if (killPressure >= 6) {
         reasons.push('kill pressure');
       }
+      if (targetStrategicValue >= 16) {
+        reasons.push('high value target');
+      }
+      if (targetExposure.total >= 3) {
+        reasons.push('already exposed');
+      }
+      if (targetRetaliation >= 3) {
+        reasons.push('cuts retaliation');
+      }
 
       const shootingScore = targetScore.score
         + (expectedDamage * 12)
         + (targetThreat * 0.2)
         + killPressure
+        + (targetStrategicValue * 0.65)
+        + (targetExposure.total * 1.5)
+        + (targetRetaliation * 0.35)
         + (isObjectiveHolder(node.state, target) ? 12 : 0)
         + (getAliveModels(target).some((model) => model.isWarlord) ? 14 : 0);
 

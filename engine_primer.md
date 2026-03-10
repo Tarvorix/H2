@@ -14,20 +14,78 @@ In project terms:
 
 ## High-Level Architecture
 
-The current Engine stack is split across a few layers:
+The current Engine stack is split across a few concrete runtime surfaces:
 
 - `packages/ai`
-  - Owns AI types, controller flow, the `EngineStrategy`, macro-action generation, search, feature extraction, evaluator runtime, model registry, and model serialization.
+  - `src/ai-controller.ts`
+    - main synchronous entry point for `generateNextCommand(...)`
+    - owns turn-context lifecycle, queued-plan invalidation, and strategy dispatch
+  - `src/strategy/engine-strategy.ts`
+    - Engine-specific strategy wrapper
+    - runs phase-control helpers first, then calls `searchBestAction(...)`
+  - `src/engine/search.ts`
+    - deterministic macro-action search runtime
+  - `src/engine/candidate-generator.ts`
+    - movement, shooting, reaction, assault, and phase-control macro-action generation
+  - `src/engine/feature-extractor.ts`
+    - emits the gameplay evaluator feature vector
+  - `src/engine/tactical-signals.ts`
+    - computes higher-level threat, exposure, holder, retaliation, and anti-vehicle signals shared by evaluation and action ordering
+  - `src/engine/evaluator.ts`
+    - quantized gameplay NNUE runtime
+  - `src/engine/model-registry.ts`
+    - validates, registers, and resolves gameplay and roster models
 - `packages/ui`
-  - Owns the in-game AI loop and the dedicated worker path used when `Engine` is selected.
+  - `src/game/hooks/useAITurn.ts`
+    - in-game AI loop
+    - sends `Engine` work to a dedicated worker instead of running search on the main thread
+  - `src/game/hooks/engine-ai.worker.ts`
+    - worker-side bridge that calls `generateNextCommand(...)`
+  - `src/game/screens/ArmyLoadScreen.tsx`
+    - exposes `Engine` in the UI and maps the `Normal` and `Turbo` presets to `500ms` and `1000ms`
 - `packages/headless`
-  - Owns headless match execution, replay generation, session hosting, generated/curated roster setup, and CLI integration.
+  - `src/session.ts`
+    - `HeadlessMatchSession`
+    - persistent match host that can run `Engine`, `Tactical`, or human/agent players
+  - `src/index.ts`
+    - one-shot `runHeadlessMatch(...)` entry used by tooling and tests
+  - curated/generated army-list setup and replay helpers live here as well
 - `packages/mcp-server`
-  - Exposes AI configuration and match/session control over MCP.
+  - `src/register-tools.ts`
+    - Zod schema surface for remote match creation, AI advancement, and Engine config fields
 - `tools/nnue`
-  - Owns self-play, training, gating, model load/save helpers, and progress reporting.
+  - `common.mjs`
+    - shared setup/defaults, model load/save helpers, headless instrumentation, and gate helpers
+  - `self-play.mjs`
+    - Engine-vs-Engine corpus generation
+  - `train-gameplay-model.mjs`
+    - supervised gameplay-model fitting and quantized model export
+  - `gate-gameplay-model.mjs`
+    - Engine-vs-Tactical benchmark runner
 
 The runtime engine is command-based from end to end. Search does not directly mutate the game. It proposes macro-actions, simulates them through the real command processor, and returns one legal `GameCommand` at a time to the caller.
+
+## Outer Runtime Architecture
+
+The important architectural point is that `Engine` is not a standalone subsystem used only by tooling. The same core path is reused everywhere:
+
+1. UI worker or headless session decides an AI player should act.
+2. `generateNextCommand(...)` in `packages/ai` resolves the configured tier.
+3. `EngineStrategy` calls the search stack.
+4. Search generates macro-actions and simulates them through the real engine command processor.
+5. One legal command is emitted.
+6. If the macro-action had follow-up commands, they are stored in the shared queued plan and only replayed if the state fingerprint still matches.
+
+That same path is used by:
+
+- the browser worker path
+- one-shot headless matches
+- persistent `HeadlessMatchSession`
+- MCP `advance_ai_decision`
+- self-play corpus generation
+- gameplay gating
+
+This reuse is one of the strongest parts of the current implementation. It means most Engine bugs, determinism issues, and legality issues can be reproduced in headless runs and then fixed at the shared core.
 
 ## What the Engine Tier Is
 
@@ -135,8 +193,9 @@ The current implementation is a deterministic, depth-limited search with:
 - killer move tracking
 - history heuristic ordering
 - cheap root pre-ordering from transitioned states plus static evaluation
+- a scored emergency root baseline so timeout can still return an evaluated move
 - deterministic rollout sampling for stochastic commands
-- best-completed-depth fallback when time expires
+- best-completed-depth fallback when deeper search expires
 
 The current default configuration is budget-aware:
 
@@ -150,6 +209,14 @@ The current default configuration is budget-aware:
   - `maxActionsPerUnit = 5`
 
 Search is not "full-tree exhaustive." It is a selective search bounded by time, root breadth, per-unit action breadth, and depth.
+
+The current budget behavior is stricter than the earlier implementation:
+
+- search now reserves a safety margin inside the requested budget instead of spending right up to the raw deadline
+- timeout checks exist inside root iteration, rollout loops, recursive search, and multi-command action transitions
+- if deeper search cannot complete, the engine falls back to a scored emergency root pass instead of blindly returning the first generated root action
+
+That means the current engine should not hit the old "depth 0 because we timed out before finishing a real scored pass" failure mode during normal budgeted search.
 
 ### Deterministic rollouts
 
@@ -223,37 +290,99 @@ The evaluator resolves a gameplay model by `modelId`, extracts gameplay features
 
 ### Current gameplay features
 
-The current gameplay feature extractor emits 25 bounded features and is currently versioned as gameplay feature schema `v2`.
+The current gameplay feature extractor emits 39 bounded features and is currently versioned as gameplay feature schema `v3`.
 
-The feature vector currently includes:
+The feature order is explicit and versioned. This is the current extractor order:
 
-1. alive model differential
-2. alive wound differential
-3. alive unit differential
-4. VP differential
-5. objective-control differential
-6. objective-contest differential
-7. objective-pressure differential
-8. center-presence differential
-9. threat-projection differential
-10. reserve differential
-11. pinned differential
-12. suppressed differential
-13. stunned differential
-14. routed differential
-15. locked-in-combat differential
-16. embarked-unit differential
-17. vehicle-count differential
-18. vehicle-wound differential
-19. reaction-allotment differential
-20. reaction-ready-unit differential
-21. warlord-alive differential
-22. units within 12" of an enemy differential
-23. units within 24" of an enemy differential
-24. decision owner
-25. battle progress
+1. Alive model differential
+   - `(friendly alive models - enemy alive models) / total alive models`
+2. Alive wound differential
+   - `(friendly alive wounds - enemy alive wounds) / total alive wounds`
+3. Alive unit differential
+   - `(friendly alive units - enemy alive units) / total alive units`
+4. Victory-point differential
+   - `(friendly VP - enemy VP) / 10`
+5. Objective-control differential
+   - objective holders within `3"` of objectives
+6. Objective-contest differential
+   - objective presence within `6"` of objectives
+7. Objective-pressure differential
+   - average closeness to objectives across the board
+8. Center-presence differential
+   - alive models within an `18"` center-radius bubble
+9. Threat-projection differential
+   - broad closeness-to-enemy pressure estimate
+10. Reserve deployment advantage
+   - `(enemy reserves - friendly reserves) / total units`
+11. Pinned-status advantage
+   - `(enemy pinned - friendly pinned) / total units`
+12. Suppressed-status advantage
+   - `(enemy suppressed - friendly suppressed) / total units`
+13. Stunned-status advantage
+   - `(enemy stunned - friendly stunned) / total units`
+14. Routed-status advantage
+   - `(enemy routed - friendly routed) / total units`
+15. Locked-in-combat advantage
+   - `(enemy locked units - friendly locked units) / total units`
+16. Embarked-unit differential
+   - `(friendly embarked units - enemy embarked units) / total units`
+17. Vehicle-count differential
+   - `(friendly vehicles - enemy vehicles) / total vehicles`
+18. Vehicle-wound differential
+   - `(friendly vehicle wounds - enemy vehicle wounds) / total vehicle wounds`
+19. Reaction-allotment differential
+   - `(friendly reaction allotment remaining - enemy allotment remaining) / total reaction allotment`
+20. Reaction-ready-unit differential
+   - `(friendly units able to react - enemy units able to react) / total alive units`
+21. Warlord-alive differential
+   - `friendly alive warlords - enemy alive warlords`
+22. Charge-range differential
+   - `(friendly units with an enemy within 12" - enemy units with a friendly within 12") / total alive units`
+23. Fire-range differential
+   - `(friendly units with an enemy within 24" - enemy units with a friendly within 24") / total alive units`
+24. Best ranged pressure into enemy objective holders
+   - differential from `summarizeTacticalBalance(...)`
+25. Best melee pressure into enemy objective holders
+   - differential from `summarizeTacticalBalance(...)`
+26. Best ranged pressure into enemy high-value targets
+   - differential from `summarizeTacticalBalance(...)`
+27. Best melee pressure into enemy high-value targets
+   - differential from `summarizeTacticalBalance(...)`
+28. Objective-holder durability differential
+   - value of holders adjusted down by incoming exposure
+29. Objective-holder value differential
+   - strategic value of units currently holding objectives
+30. Contested-objective value differential
+   - strategic value of units contesting objectives
+31. Objective-holder exposure advantage
+   - `(enemy exposed holder value - friendly exposed holder value)`
+32. High-value-target exposure advantage
+   - `(enemy exposed high-value value - friendly exposed high-value value)`
+33. Retaliation-pressure advantage
+   - `(enemy retaliation pressure - friendly retaliation pressure)`
+34. Warlord-exposure advantage
+   - `(enemy warlord exposure value - friendly warlord exposure value)`
+35. Transport-payload exposure advantage
+   - `(enemy transport payload exposure - friendly transport payload exposure)`
+36. Anti-vehicle ranged-pressure differential
+   - best ranged kill pressure into vehicle targets
+37. Anti-vehicle melee-pressure differential
+   - best melee kill pressure into vehicle targets
+38. Decision-owner flag
+   - `+1` if the extractor player currently owns the decision, otherwise `-1`
+39. Battle-progress
+   - normalized current battle turn mapped into `[-1, 1]`
 
-This is still a compact board-summary evaluator, not a full piece-square-style board encoding, but it is materially richer than the original 10-feature baseline and now captures more of transport state, reactions, warlord risk, near-term engagement pressure, and objective posture.
+The tactical-summary portion comes from `summarizeTacticalBalance(...)` in `tactical-signals.ts`, which in turn is built from concrete unit-level estimators:
+
+- `estimateUnitStrategicValue(...)`
+- `estimateUnitRangedDamagePotential(...)`
+- `estimateUnitMeleeDamagePotential(...)`
+- `estimateUnitExposureBreakdown(...)`
+- `estimateProjectedOutgoingPressure(...)`
+- `estimateProjectedObjectiveValue(...)`
+
+So the evaluator is still a compact board-summary model, but it is no longer limited to raw model counts and VP totals. It now explicitly tries to encode who matters, what can threaten whom, which holders are durable, what is exposed, and what retaliation is likely next.
 
 ### Model registry and default model
 
@@ -326,6 +455,14 @@ The current in-game presets expose:
 
 The UI currently uses `DEFAULT_GAMEPLAY_NNUE_MODEL_ID` when Engine is selected.
 
+The concrete flow is:
+
+1. `useAITurn.ts` notices the AI should act.
+2. If the tier is `Engine`, it posts the full `GameState`, `AIPlayerConfig`, and `AITurnContext` to `engine-ai.worker.ts`.
+3. The worker calls `generateNextCommand(...)`.
+4. The worker returns the chosen command, updated context, diagnostics, and any error.
+5. The hook dispatches the returned command back into the UI reducer.
+
 One important implementation detail: Engine still uses tactical deployment logic for pre-game placement. Gameplay decisions use the search plus NNUE path; deployment does not yet have a separate engine searcher.
 
 ### Headless runtime
@@ -345,11 +482,39 @@ Both headless surfaces understand:
 - soft depth
 - diagnostics
 
+`HeadlessMatchSession` is the main persistent host abstraction. It owns:
+
+- the current `GameState`
+- per-player configs
+- per-player AI turn contexts
+- latest AI diagnostics
+- command history
+- replay-oriented dice recording
+
+That makes it the common foundation for:
+
+- MCP remote control
+- headless debugging
+- deterministic replay/export
+- AI-vs-AI automation outside the browser
+
 Headless is also what powers self-play, replay artifacts, deterministic verification, curated setup usage, and generated-roster setup.
 
 ### MCP runtime
 
 The MCP server exposes match/session creation and AI advancement on top of the headless session layer. Engine-specific configuration fields are part of the schema, so Engine matches can be created and advanced externally while still using the same core AI code.
+
+The exposed player schema already includes the Engine-specific fields:
+
+- `strategyTier`
+- `timeBudgetMs`
+- `nnueModelId`
+- `baseSeed`
+- `rolloutCount`
+- `maxDepthSoft`
+- `diagnosticsEnabled`
+
+So MCP is not a parallel AI implementation. It is a transport and schema layer over the same headless + AI runtime.
 
 ## Training and Benchmarking Pipeline
 
@@ -366,6 +531,14 @@ The MCP server exposes match/session creation and AI advancement on top of the h
 - final outcome labels
 
 By default, self-play now uses the curated 2000-point army-list registry, not the old tiny mirror setup.
+
+The current default self-play flow is:
+
+1. Build a curated 2000-point matchup through `createDefaultSetupOptions(...)`.
+2. Create Engine configs for both players with the requested time budget and model id.
+3. Run the match through the shared headless instrumentation path.
+4. Emit replay artifacts plus JSONL samples.
+5. Write a manifest recording match outcomes, sample count, and shard paths.
 
 ### Training
 
@@ -384,7 +557,14 @@ By default, self-play now uses the curated 2000-point army-list registry, not th
 - write `candidate.json`
 - write `candidate.json.metrics.json`
 
-The current trainer also records richer metadata alongside the serialized model, including training sample count, validation sample count, epochs requested, epochs completed, best epoch, and whether early stopping fired.
+The trainer now defaults to an outcome-heavier target blend:
+
+- `0.9 * finalOutcome`
+- `0.1 * searchValue`
+
+Those weights are configurable at the CLI, but the default no longer leans as hard on weak self-search labels.
+
+The current trainer also records richer metadata alongside the serialized model, including training sample count, validation sample count, epochs requested, epochs completed, best epoch, whether early stopping fired, and the normalized target-weight split used for that run.
 
 This trainer is effective enough to prove the pipeline works and is now less blind than the original single-stream fit, but it is still not a sophisticated NNUE training stack.
 
@@ -405,6 +585,20 @@ The gate reports:
 - per-match termination details
 
 This is the main mechanism currently used to judge whether a trained candidate is stronger than the heuristic baseline.
+
+By default, the gameplay gate now uses mirrored curated matchup pairs. So a pairing is benchmarked as:
+
+- `army A vs army B`
+- then `army B vs army A`
+
+before the gate advances to the next curated pairing. This reduces the chance that player-slot bias or an intrinsically stronger curated army slot skews a short benchmark.
+
+One important nuance: self-play and gate both use the same Engine runtime on the Engine side, but they are testing different opponents:
+
+- self-play: `Engine` vs `Engine`
+- gate: candidate `Engine` vs `Tactical`
+
+So a candidate can fit self-play labels better while still benchmarking worse against `Tactical`.
 
 ## Deployment Path Today
 
@@ -450,15 +644,17 @@ This is a strong foundation. It is one of the most valuable things already prese
 - Single AI stack shared across UI, headless, MCP, and tooling
 - Real search plus real engine command simulation
 - Deterministic seeded search rollouts
+- Hardened timeout behavior with a scored emergency root fallback
 - Macro-action support for more than trivial one-command decisions
 - Off-main-thread UI execution for Engine via web worker
 - Clean replay artifacts and self-play data generation
 - Versioned, checksummed model format
 - Curated 2000-point default training surface
+- Mirrored default gameplay gate pairings for fairer short benchmarks
 
 ## Current Limitations
 
-- The gameplay evaluator is richer than before, but 25 summary features is still a very small representation for a full tabletop battle state.
+- The gameplay evaluator is richer than before, but 39 summary features is still a compact representation for a full tabletop battle state.
 - The trainer now has validation splitting and early stopping, but it is still a lightweight weight-fitting loop over a fixed feature basis.
 - The built-in default gameplay model is still a lightweight baseline.
 - Search breadth is still intentionally narrow because of budget constraints, even after the recent candidate-generation improvements.
@@ -470,14 +666,12 @@ This is a strong foundation. It is one of the most valuable things already prese
 
 ### Trainer / evaluator improvements
 
-- Expand the gameplay feature set beyond the current 25 summary features.
-  - Add transport occupancy depth and passenger quality, not just embarked/vehicle differentials.
-  - Add unit-role and threat composition features.
-  - Add damage projection and expected retaliation features.
-  - Add objective holding strength rather than only presence/contest pressure.
-  - Add leader, warlord, and scoring-unit exposure.
+- Expand beyond the current tactical-summary board encoding.
+  - Add role-cluster features so the evaluator understands not just value/exposure, but what kind of unit is exposed.
+  - Add stronger transport payload and embarked-assault quality features.
+  - Add better phase-sensitive features for shooting states, assault states, and challenge/aftermath transitions.
 - Improve the training target.
-  - Test different blends of search value and final outcome.
+  - Test whether pure-outcome training beats the current outcome-heavy blend.
   - Try phase-aware or discounted outcome targets.
 - Improve the optimizer loop.
   - Add mini-batching.
@@ -519,6 +713,33 @@ This is a strong foundation. It is one of the most valuable things already prese
 - Add a proper promotion workflow for blessed gameplay candidates.
 - Add benchmark suites with stable seeds, curated matchup rotations, and tracked historical results.
 - Split gameplay deployment AI from gameplay turn AI if deployment quality becomes a bottleneck.
+
+## Engine Improvement Summary Since Inception
+
+- Strategy surface
+  - Added `Engine` as a third AI tier without removing or changing `Basic` / `Tactical`.
+  - Wired Engine through UI, headless, and MCP.
+- Search core
+  - Added deterministic iterative-deepening search with alpha-beta, TT, killer/history heuristics, aspiration windows, and queued macro-action continuation.
+  - Added legality hardening so self-play no longer tolerates silent command-rejected move candidates.
+  - Added scored emergency-root fallback and tighter budget checks so timeout does not devolve into an unscored first-action return.
+- Macro-action quality
+  - Expanded Engine action generation across movement, shooting, reactions, charges, challenges, gambits, fights, aftermath, and phase control.
+  - Improved movement with diversified lanes and full-formation legality filtering.
+  - Improved shooting pruning with damage-aware ordering and special-shot placement handling.
+- Evaluation
+  - Started from a very small board-summary evaluator.
+  - Expanded first to a richer aggregate feature set, then to the current tactical-summary evaluator that models kill pressure, hold durability, exposure, retaliation, payload risk, and anti-vehicle pressure.
+- Training pipeline
+  - Added deterministic self-play, candidate serialization, validation split, early stopping, progress reporting, and benchmark gating.
+  - Moved the default gameplay training surface from tiny toy setups to curated 2000-point rosters.
+  - Tightened the trainer target to rely more on real outcomes than on weak search labels.
+  - Changed default gameplay gating to mirrored curated matchup pairs so short benchmark runs are less sensitive to army-slot skew.
+- Data and legality
+  - Fixed generated-roster legality problems, including allegiance mismatches and transport assignment correctness.
+  - Added curated 2000-point rosters for the currently supported factions so training and benchmarking run on realistic army surfaces.
+- Determinism and observability
+  - Added replay artifacts, deterministic verification, diagnostics, and better benchmark logging so engine work can be audited instead of guessed at.
 
 ## Closing Summary
 

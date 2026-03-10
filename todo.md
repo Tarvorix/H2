@@ -334,9 +334,151 @@ Last Updated: 2026-03-09
   - In an 8-match / 16-roster audit sample, 6 rosters included fixed-allegiance named characters in armies with the opposite allegiance:
     - `marduk-sedras` and `corswain` appeared in `Traitor` Dark Angels rosters even though `HH_v2_units.md` marks both as `Allegiance: Loyalist`.
     - `kh-rn-the-bloody` appeared in `Loyalist` World Eaters rosters even though `HH_v2_units.md` marks it as `Allegiance: Traitor`.
-  - These rosters still pass current validation because generation filters only by faction + battlefield role (`packages/headless/src/roster-ai.ts` + `packages/data/src/profile-registry.ts`) and army validation never checks per-profile allegiance traits (`packages/army-builder/src/validation.ts`).
-  - Transport legality is also not fully enforced at roster-build time: the generator fills Transport / Heavy Transport slots purely by battlefield role and budget, while the army-list types/validator do not encode parent-unit transport assignment or capacity legality. That means transport-bearing rosters should currently be treated as force-org legal, not fully transport-legal versus the docs.
-  - Bottom line: generated rosters are not yet fully rules-doc legal; the most concrete current blocker is missing enforcement of fixed profile allegiance constraints.
+
+## Benchmark Plan (25-Match Gameplay Gate - 2026-03-09)
+- [x] Run a longer 25-match gate on the latest fixed gameplay candidate from `tmp/nnue-100-2000-v2-searchpass-fixed/candidate.json`.
+- [x] Record the outcome artifact path and W/L/D/abort/timeout summary here.
+- Progress:
+  - Completed:
+    - `pnpm nnue:gate --model tmp/nnue-100-2000-v2-searchpass-fixed/candidate.json --matches 25 --time-budget-ms 150 --threshold -1 --out tmp/nnue-100-2000-v2-searchpass-fixed/gate-25.json`
+  - Result artifact:
+    - `tmp/nnue-100-2000-v2-searchpass-fixed/gate-25.json`
+  - Outcome:
+    - `7 wins / 17 losses / 1 draw / 0 aborted / 0 timeouts`
+    - `winRate: 0.28`
+    - The longer gate confirms the current candidate is still materially behind `Tactical`, but the run was mechanically clean with no abnormal terminations.
+
+## Implementation Plan (Threat-Aware Evaluator + Search Ordering Pass - 2026-03-09)
+- [x] Add shared tactical-summary helpers that estimate pairwise kill pressure, retaliation danger, objective-holder durability, and exposed high-value units from the real game state.
+- [x] Expand the gameplay feature extractor to encode those tactical summaries directly, with a new versioned feature schema and compatible default gameplay model shape.
+- [x] Reuse the new tactical summaries in movement, shooting, and reaction ordering so search and static evaluation prioritize the same signals.
+- [x] Tighten the gameplay trainer target so it relies less on weak self-search scores and more on actual outcomes, while preserving validation split and early stopping.
+- [x] Add focused tests, rebuild affected packages, and refresh `engine_primer.md` with both the new evaluator/search behavior and a summary of engine improvements since inception.
+- Progress:
+  - Added `packages/ai/src/engine/tactical-signals.ts` with shared Engine-only tactical helpers for:
+    - strategic unit value
+    - ranged/melee kill pressure using real profile data
+    - exposure / retaliation summaries
+    - objective-holder durability and transport-payload threat
+  - Updated `packages/ai/src/engine/feature-extractor.ts` to a `v3` / `41`-feature gameplay schema that now encodes:
+    - kill pressure against objective holders and high-value targets
+    - hold durability and contested-objective value
+    - exposed objective-holder / high-value / warlord / payload pressure
+    - anti-vehicle ranged and melee pressure
+  - Updated `packages/ai/src/engine/default-model.ts` so the built-in gameplay model remains compatible with the new feature schema.
+  - Updated `packages/ai/src/engine/candidate-generator.ts` so Engine movement, shooting, and reaction ordering now incorporate the same tactical signals used by the evaluator.
+  - Updated `tools/nnue/train-gameplay-model.mjs` so gameplay training now defaults to a stronger outcome-weighted target (`0.9 outcome / 0.1 search`) while keeping target weights configurable.
+  - Added focused regression coverage in:
+    - `packages/ai/src/engine/feature-extractor.test.ts`
+    - `packages/ai/src/engine/tactical-signals.test.ts`
+  - Verification passed:
+    - `pnpm test -- packages/ai/src/engine/feature-extractor.test.ts packages/ai/src/engine/tactical-signals.test.ts packages/ai/src/engine/candidate-generator.test.ts packages/ai/src/engine/search.test.ts` (`4 files / 13 tests`)
+    - `pnpm --filter @hh/ai build`
+    - `pnpm --filter @hh/headless build`
+  - End-to-end NNUE smoke verification passed on the new `v3` gameplay schema:
+    - `pnpm nnue:selfplay --matches 2 --time-budget-ms 50 --max-commands 300 --shard-size 1000000 --out-dir tmp/nnue-tactical-signals-smoke/selfplay`
+      - result: `2/2 game-over`, `458` samples, `0` abnormal terminations
+    - `pnpm nnue:train --input tmp/nnue-tactical-signals-smoke/selfplay/selfplay-shard-001.jsonl --out tmp/nnue-tactical-signals-smoke/candidate.json --epochs 4 --learning-rate 0.01 --validation-split 0.2 --patience 2 --min-delta 0.0001`
+      - result: model `gameplay-default-v1-candidate-1773111162009`, `366` training samples, `92` validation samples, `bestEpoch=4`
+    - `pnpm nnue:gate --model tmp/nnue-tactical-signals-smoke/candidate.json --matches 2 --time-budget-ms 50 --threshold -1 --out tmp/nnue-tactical-signals-smoke/gate.json`
+      - result: `0 wins / 2 losses / 0 draws / 0 aborted / 0 timeouts`
+  - Documentation:
+    - Updated `engine_primer.md` to describe the tactical-summary evaluator/search path and added an end-of-document summary of Engine improvements since inception.
+
+## Benchmark Plan (Fresh 100-Match v3 Self-Play + 8-Match Gate - 2026-03-09)
+- [x] Run a fresh `100`-match curated 2000-point gameplay self-play batch on the current `v3` evaluator/search path.
+- [x] Audit the finished manifest for abnormal terminations before training.
+- [x] Train a fresh gameplay candidate from the `v3` shard.
+- [x] Run the standard `8`-match gameplay gate and record the result.
+- Progress:
+  - `pnpm nnue:selfplay --matches 100 --time-budget-ms 150 --max-commands 1500 --shard-size 1000000 --out-dir tmp/nnue-100-2000-v3-tactical`: PASS
+  - Output artifact: `tmp/nnue-100-2000-v3-tactical/manifest.json`
+  - Result: `100/100` matches ended `game-over`, `23,420` samples, `1` shard
+  - Manifest audit confirms `0` abnormal terminations before training
+  - `pnpm nnue:train --input /Users/kylebullock/HHv2/tmp/nnue-100-2000-v3-tactical/selfplay-shard-001.jsonl --out /Users/kylebullock/HHv2/tmp/nnue-100-2000-v3-tactical/candidate.json --epochs 12 --learning-rate 0.01 --validation-split 0.2 --patience 3 --min-delta 0.0001`: PASS
+  - Candidate: `gameplay-default-v1-candidate-1773119964921`
+  - Training result: `23,420` total samples, `18,736` train, `4,684` validation, `bestEpoch=12`, `stoppedEarly=false`
+  - `pnpm nnue:gate --model /Users/kylebullock/HHv2/tmp/nnue-100-2000-v3-tactical/candidate.json --matches 8 --time-budget-ms 150 --threshold -1 --out /Users/kylebullock/HHv2/tmp/nnue-100-2000-v3-tactical/gate.json`: PASS execution
+  - Gate result: `0 wins / 8 losses / 0 draws / 0 aborted / 0 timeouts`
+
+## Documentation Plan (Engine Primer Full Architecture + Feature Inventory - 2026-03-10)
+- [x] Re-audit the current Engine package, UI worker path, headless session path, MCP schema, and NNUE tooling entry points.
+- [x] Expand `engine_primer.md` so it documents the outer architecture around Engine with concrete runtime surfaces and responsibilities.
+- [x] Replace the grouped gameplay feature summary with the full explicit `v3` feature inventory in extractor order.
+- [x] Re-read the revised primer against the current code and record the documentation pass here.
+- Outcome:
+  - `engine_primer.md` now names the concrete Engine entry points in `packages/ai`, `packages/ui`, `packages/headless`, `packages/mcp-server`, and `tools/nnue` instead of only describing them abstractly.
+  - The gameplay evaluator section now lists all `39` `v3` gameplay features explicitly in extractor order, including the sign/differential meaning of each feature.
+  - The UI/headless/MCP/training sections were refreshed so they describe the actual worker path, session host, schema surface, curated default setup path, and current self-play vs gate split.
+- Verification:
+  - Re-read `engine_primer.md` against `packages/ai/src/ai-controller.ts`, `packages/ai/src/strategy/engine-strategy.ts`, `packages/ai/src/engine/feature-extractor.ts`, `packages/ai/src/engine/tactical-signals.ts`, `packages/ui/src/game/hooks/useAITurn.ts`, `packages/ui/src/game/hooks/engine-ai.worker.ts`, `packages/headless/src/session.ts`, `packages/mcp-server/src/register-tools.ts`, and `tools/nnue/common.mjs`
+  - No tests run; documentation-only update
+
+## Benchmark Plan (Single-Game Engine Telemetry at 500ms / 700ms / 1000ms - 2026-03-10)
+- [x] Run one full curated 2000-point headless game at `500ms`, `700ms`, and `1000ms` with player 0 as `Engine` and player 1 as `Tactical`.
+- [x] Use the same deterministic dice sequence and the same curated matchup for all three runs.
+- [x] Aggregate exact per-decision Engine telemetry (`depthCompleted`, `nodesVisited`, `searchTimeMs`) for each game.
+- [x] Record the resulting per-game stats and output artifact path.
+- Outcome:
+  - Matchup used for all three runs: `Dark Angels Combined Deathwing/Dreadwing` vs `World Eaters Chainaxe Spearhead`
+  - Output artifact: `tmp/engine-budget-stats-20260310.json`
+  - All three games ended `game-over` with player `1` winning
+  - `500ms`: `264` executed commands, `146` Engine decisions, average `searchTimeMs=624.13`, average `nodesVisited=47.44`, average `depthCompleted=1.67`, depth histogram `{0:44,1:14,2:34,3:54}`
+  - `700ms`: `252` executed commands, `140` Engine decisions, average `searchTimeMs=922.45`, average `nodesVisited=68.44`, average `depthCompleted=1.87`, depth histogram `{0:43,1:8,2:37,3:28,4:24}`
+  - `1000ms`: `249` executed commands, `137` Engine decisions, average `searchTimeMs=1275.34`, average `nodesVisited=95.77`, average `depthCompleted=2.28`, depth histogram `{0:15,1:22,2:29,3:51,4:20}`
+  - Observed issue from the raw telemetry: measured `searchTimeMs` can exceed the nominal budget ceiling substantially, so the current time-budget behavior is soft in practice rather than a hard wall-clock cap
+- Verification:
+  - `node --loader ./tools/esm-js-extension-loader.mjs --input-type=module -e "<benchmark harness>"`: PASS
+  - `tmp/engine-budget-stats-20260310.json`: written successfully with the full raw per-budget summaries
+
+## Hotfix Plan (Engine Budget Hardening + Depth-0 Fallback Removal - 2026-03-10)
+- [x] Audit the current `search.ts` fallback behavior and the exact deadline-check locations that allow `depthCompleted = 0` and major wall-clock overruns.
+- [x] Replace the unscored `rootActions[0]` fallback with a scored emergency root baseline so every returned move has at least one evaluated root pass behind it.
+- [x] Harden deadline enforcement with a search safety margin and mid-loop checks so the configured budget behaves as a real cap in practice.
+- [x] Add focused regression tests for emergency-root fallback and budget-aware early exit behavior.
+- [x] Run focused AI tests plus a small search/timing verification and record the outcome here.
+- Outcome:
+  - `packages/ai/src/engine/search.ts` now uses a scored emergency root baseline instead of pre-seeding `bestAction` from `rootActions[0]`.
+  - Deadline checks now run inside transition, auto-advance, recursive search, root loops, and rollout loops with a safety margin applied before the hard budget edge.
+  - The previous `depthCompleted = 0` timeout fallback path is eliminated in normal budgeted search because every returned move now has at least an evaluated emergency-root pass behind it.
+- Verification:
+  - `pnpm test -- /Users/kylebullock/HHv2/packages/ai/src/engine/search.test.ts /Users/kylebullock/HHv2/packages/ai/src/engine/candidate-generator.test.ts`: PASS (`2 files / 9 tests`)
+  - `pnpm --filter @hh/ai build`: PASS
+  - `pnpm --filter @hh/headless build`: PASS
+  - Post-fix telemetry artifact: `tmp/engine-budget-stats-20260310-postfix.json`
+  - Post-fix telemetry summary:
+    - `500ms`: avg `searchTimeMs=357.98`, max `450.52`, avg `depthCompleted=2.46`, depth histogram `{1:4,2:67,3:67}`
+    - `700ms`: avg `searchTimeMs=536.05`, max `634.55`, avg `depthCompleted=2.97`, depth histogram `{2:64,3:29,4:60}`
+    - `1000ms`: avg `searchTimeMs=775.86`, max `931.16`, avg `depthCompleted=3.04`, depth histogram `{2:57,3:20,4:62}`
+
+## Documentation Plan (Engine Primer Refresh After Budget + Gate Fixes - 2026-03-10)
+- [x] Refresh `engine_primer.md` so it reflects the current post-fix Engine behavior.
+- [x] Document the scored emergency-root fallback and tighter budget enforcement in the search section.
+- [x] Document the mirrored default gameplay gate rotation in the tooling section.
+- [x] Re-read the updated primer against the current code and record the pass here.
+- Outcome:
+  - `engine_primer.md` now describes the current budget-hardened search behavior instead of the older soft-timeout behavior.
+  - The primer now states that default gameplay gate runs mirrored curated matchup pairs before advancing to the next matchup family.
+- Verification:
+  - Re-read against `packages/ai/src/engine/search.ts` and `tools/nnue/common.mjs`
+  - No tests run; documentation-only refresh
+
+## Hotfix Plan (Mirrored Gameplay Gate Army Rotation - 2026-03-10)
+- [x] Change the default gameplay gate matchup rotation so each curated pairing is evaluated twice in mirrored army-slot order before advancing to the next pairing.
+- [x] Keep the change scoped to gameplay gate defaults, leaving self-play rotation unchanged.
+- [x] Verify the first few generated gate matchups now alternate `A vs B`, then `B vs A`.
+- [x] Run a small gameplay gate smoke command to confirm the mirrored setup path still executes cleanly.
+- Outcome:
+  - Added `createMirroredGateSetupOptions(...)` in `tools/nnue/common.mjs` and switched `runGateMatches(...)` to use it as the default gameplay gate setup factory.
+  - The gameplay gate now evaluates curated pairings as mirrored two-game sets before advancing to the next matchup family.
+  - Self-play still uses the existing non-mirrored curated rotation.
+- Verification:
+  - Pairing check:
+    - `0: Dark Angels 2000pt Curated vs World Eaters 2000pt Curated`
+    - `1: World Eaters 2000pt Curated vs Dark Angels 2000pt Curated`
+    - `2: World Eaters 2000pt Curated vs Alpha Legion 2000pt Curated`
+    - `3: Alpha Legion 2000pt Curated vs World Eaters 2000pt Curated`
+  - `pnpm nnue:gate --matches 2 --time-budget-ms 50 --threshold -1 --out /Users/kylebullock/HHv2/tmp/nnue-gate-mirror-smoke.json`: PASS execution (`0 wins / 2 losses / 0 draws / 0 aborted / 0 timeouts`)
 
 ## Review Verification (Generated Roster Legality Audit - 2026-03-08)
 - `pnpm nnue:roster:gate --matches 8 --points-limit 2000 --threshold -1 --out tmp/nnue-legality-audit/roster-gate-8.json`: PASS execution (used as the audit sample)

@@ -250,6 +250,55 @@ export function createDefaultSetupOptions(overrides = {}) {
   };
 }
 
+export function createMirroredGateSetupOptions(matchIndex, overrides = {}) {
+  const {
+    pairIndex = Math.floor(matchIndex / 2),
+    swapSides = (matchIndex % 2) === 1,
+    ...restOverrides
+  } = overrides;
+  const curatedArmyLists = getCurated2000PointArmyLists();
+
+  if (curatedArmyLists.length >= 2) {
+    const leftBase = curatedArmyLists[pairIndex % curatedArmyLists.length];
+    const rightBase = curatedArmyLists[(pairIndex + 1) % curatedArmyLists.length];
+    const [left, right] = swapSides
+      ? [rightBase, leftBase]
+      : [leftBase, rightBase];
+
+    return {
+      missionId: 'heart-of-battle',
+      maxBattleTurns: 4,
+      armyLists: [left.armyList, right.armyList],
+      ...restOverrides,
+    };
+  }
+
+  const fallback = createDefaultSetupOptions({
+    matchIndex: pairIndex,
+    ...restOverrides,
+  });
+
+  if (!swapSides) {
+    return fallback;
+  }
+
+  if (Array.isArray(fallback.armyLists)) {
+    return {
+      ...fallback,
+      armyLists: [fallback.armyLists[1], fallback.armyLists[0]],
+    };
+  }
+
+  if (Array.isArray(fallback.armies)) {
+    return {
+      ...fallback,
+      armies: [fallback.armies[1], fallback.armies[0]],
+    };
+  }
+
+  return fallback;
+}
+
 export function createEnginePlayerConfig(playerIndex, overrides = {}) {
   const {
     timeBudgetMs: requestedTimeBudgetMs,
@@ -631,8 +680,7 @@ export function runGateMatches({
   candidateModelId,
   maxDepthSoft,
   rolloutCount,
-  setupFactory = (matchIndex) => createDefaultSetupOptions({
-    matchIndex,
+  setupFactory = (matchIndex) => createMirroredGateSetupOptions(matchIndex, {
     firstPlayerIndex: matchIndex % 2,
   }),
   onMatchComplete,

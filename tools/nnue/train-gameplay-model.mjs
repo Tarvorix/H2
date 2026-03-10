@@ -36,9 +36,26 @@ const DEFAULT_FEATURE_WEIGHTS = [
   1.2,
   0.9,
   0.7,
+  1.1,
+  1.1,
+  1.2,
+  1.2,
+  1.3,
+  1.0,
+  0.9,
+  1.1,
+  1.2,
+  1.2,
+  1.0,
+  0.8,
+  0.9,
+  0.9,
   0.4,
   0.3,
 ];
+
+let normalizedSearchTargetWeight = 0.1;
+let normalizedOutcomeTargetWeight = 0.9;
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
@@ -64,7 +81,8 @@ function shuffleSamples(samples, seed) {
 
 function getSampleTarget(sample) {
   return clamp(
-    ((sample.searchValue ?? 0) / 120) * 0.25 + (sample.finalOutcome * 0.75),
+    ((sample.searchValue ?? 0) / 120) * normalizedSearchTargetWeight +
+      (sample.finalOutcome * normalizedOutcomeTargetWeight),
     -1,
     1,
   );
@@ -260,12 +278,22 @@ const validationSplit = toFloat(args['validation-split'], 0.1);
 const patience = toInt(args.patience, 5);
 const minDelta = toFloat(args['min-delta'], 0.0005);
 const shuffleSeed = toInt(args['shuffle-seed'], 20260309);
+const outcomeTargetWeight = toFloat(args['outcome-target-weight'], 0.9);
+const searchTargetWeight = toFloat(args['search-target-weight'], 0.1);
 if (validationSplit < 0 || validationSplit >= 1) {
   throw new Error('Expected --validation-split to be between 0 (inclusive) and 1 (exclusive).');
 }
 if (patience < 1) {
   throw new Error('Expected --patience to be at least 1.');
 }
+if (outcomeTargetWeight < 0 || searchTargetWeight < 0) {
+  throw new Error('Expected target weights to be non-negative.');
+}
+if ((outcomeTargetWeight + searchTargetWeight) <= 0) {
+  throw new Error('Expected at least one positive target weight.');
+}
+normalizedOutcomeTargetWeight = outcomeTargetWeight / (outcomeTargetWeight + searchTargetWeight);
+normalizedSearchTargetWeight = searchTargetWeight / (outcomeTargetWeight + searchTargetWeight);
 const samples = readJsonLines(inputs);
 const progress = createProgressReporter({
   label: 'train',
@@ -311,6 +339,8 @@ const outputFile = saveSerializedModel(outputPath, model, {
   patience,
   minDelta,
   shuffleSeed,
+  outcomeTargetWeight: normalizedOutcomeTargetWeight,
+  searchTargetWeight: normalizedSearchTargetWeight,
 });
 const metricsPath = writeJson(`${outputPath}.metrics.json`, {
   modelId,
@@ -330,6 +360,8 @@ const metricsPath = writeJson(`${outputPath}.metrics.json`, {
   patience,
   minDelta,
   shuffleSeed,
+  outcomeTargetWeight: normalizedOutcomeTargetWeight,
+  searchTargetWeight: normalizedSearchTargetWeight,
   weights,
   bias,
   history: trainingResult.history,

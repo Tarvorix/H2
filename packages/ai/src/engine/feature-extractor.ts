@@ -2,9 +2,10 @@ import type { GameState, UnitState } from '@hh/types';
 import { TacticalStatus } from '@hh/types';
 import { canUnitReact, getAliveModels, getClosestModelDistance, isVehicleUnit } from '@hh/engine';
 import { getDecisionPlayerIndex } from '../state-utils';
+import { summarizeTacticalBalance } from './tactical-signals';
 
-export const GAMEPLAY_FEATURE_VERSION = 2;
-export const GAMEPLAY_FEATURE_DIMENSION = 25;
+export const GAMEPLAY_FEATURE_VERSION = 3;
+export const GAMEPLAY_FEATURE_DIMENSION = 39;
 
 function clampFeature(value: number): number {
   return Math.max(-1, Math.min(1, value));
@@ -243,6 +244,8 @@ export function extractGameplayFeatures(
   const enemyUnitsWithinChargeRange = countUnitsWithEnemyWithinDistance(state, enemyUnits, friendlyUnits, 12);
   const friendlyUnitsWithinFireRange = countUnitsWithEnemyWithinDistance(state, friendlyUnits, enemyUnits, 24);
   const enemyUnitsWithinFireRange = countUnitsWithEnemyWithinDistance(state, enemyUnits, friendlyUnits, 24);
+  const tacticalBalance = summarizeTacticalBalance(state, playerIndex);
+  const { friendly, enemy } = tacticalBalance;
 
   // Feature order is versioned. Keep this stable unless GAMEPLAY_FEATURE_VERSION changes.
   return new Float32Array([
@@ -269,6 +272,20 @@ export function extractGameplayFeatures(
     clampFeature(countAliveWarlords(friendlyUnits) - countAliveWarlords(enemyUnits)),
     clampFeature((friendlyUnitsWithinChargeRange - enemyUnitsWithinChargeRange) / aliveTotalUnits),
     clampFeature((friendlyUnitsWithinFireRange - enemyUnitsWithinFireRange) / aliveTotalUnits),
+    clampFeature((friendly.bestRangedVsObjectiveHolders - enemy.bestRangedVsObjectiveHolders) / 8),
+    clampFeature((friendly.bestMeleeVsObjectiveHolders - enemy.bestMeleeVsObjectiveHolders) / 8),
+    clampFeature((friendly.bestRangedVsHighValueTargets - enemy.bestRangedVsHighValueTargets) / 10),
+    clampFeature((friendly.bestMeleeVsHighValueTargets - enemy.bestMeleeVsHighValueTargets) / 10),
+    clampFeature((friendly.objectiveHoldDurability - enemy.objectiveHoldDurability) / 24),
+    clampFeature((friendly.objectiveHolderValue - enemy.objectiveHolderValue) / 30),
+    clampFeature((friendly.contestedObjectiveValue - enemy.contestedObjectiveValue) / 30),
+    clampFeature((enemy.exposedObjectiveHolderValue - friendly.exposedObjectiveHolderValue) / 24),
+    clampFeature((enemy.exposedHighValueValue - friendly.exposedHighValueValue) / 30),
+    clampFeature((enemy.retaliationPressure - friendly.retaliationPressure) / 40),
+    clampFeature((enemy.warlordExposureValue - friendly.warlordExposureValue) / 20),
+    clampFeature((enemy.transportPayloadExposure - friendly.transportPayloadExposure) / 30),
+    clampFeature((friendly.antiVehicleRangedPressure - enemy.antiVehicleRangedPressure) / 8),
+    clampFeature((friendly.antiVehicleMeleePressure - enemy.antiVehicleMeleePressure) / 8),
     decisionPlayerIndex === playerIndex ? 1 : -1,
     clampFeature((battleProgress * 2) - 1),
   ]);
