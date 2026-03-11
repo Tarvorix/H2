@@ -176,11 +176,6 @@ const gameCommandSchema = z.discriminatedUnion('type', [
     modelId: idSchema,
   }),
   z.object({
-    type: z.literal('placeBlastMarker'),
-    position: positionSchema,
-    size: z.number(),
-  }),
-  z.object({
     type: z.literal('placeTerrain'),
     terrain: terrainPieceSchema,
   }),

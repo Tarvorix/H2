@@ -265,12 +265,34 @@ export {
   handleEmergencyDisembark,
   ACCESS_POINT_RANGE,
   EMBARK_DEFAULT_COOL,
+  getTransportAccessDistanceAtPosition,
+  getEmergencyDisembarkAnchorShape,
   // Reposition handler
   checkRepositionTrigger,
   handleRepositionReaction,
   REPOSITION_TRIGGER_RANGE,
   REPOSITION_DEFAULT_INITIATIVE,
 } from './movement';
+
+// ─── Psychic ────────────────────────────────────────────────────────────────
+export {
+  getModelPsychicDisciplines,
+  modelHasPsychicTrait,
+  modelHasGrantedPsychicTrait,
+  getModelPsychicPower,
+  getModelPsychicGambit,
+  getModelPsychicRangedWeapon,
+  getModelPsychicMeleeWeapon,
+  unitHasUsedPsychicPower,
+  unitCanUsePsychicAbilities,
+  modelHasLOSToUnit,
+  modelIsWithinRangeOfUnit,
+  getBestAvailablePsychicFocus,
+} from './psychic/psychic-runtime';
+export {
+  hasAvailableManifestPsychicPower,
+  unitCanDeclarePsychicReaction,
+} from './psychic/power-handler';
 
 // ─── Special Rules ───────────────────────────────────────────────────────────
 export {

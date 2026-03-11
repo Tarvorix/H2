@@ -14,7 +14,7 @@
  * DeclineReactionCommand are accepted.
  */
 
-import type { GameState, GameCommand, Position, DeclareShootingCommand, DeclareChargeCommand, DeclareChallengeCommand, SelectGambitCommand, AcceptChallengeCommand, DeclineChallengeCommand, SelectAftermathCommand, ResolveFightCommand, SelectTargetModelCommand, PlaceBlastMarkerCommand, PlaceTerrainCommand, RemoveTerrainCommand, SelectWargearOptionCommand, DeclareWeaponsCommand, ManifestPsychicPowerCommand } from '@hh/types';
+import type { GameState, GameCommand, Position, DeclareShootingCommand, DeclareChargeCommand, DeclareChallengeCommand, SelectGambitCommand, AcceptChallengeCommand, DeclineChallengeCommand, SelectAftermathCommand, ResolveFightCommand, SelectTargetModelCommand, PlaceTerrainCommand, RemoveTerrainCommand, SelectWargearOptionCommand, DeclareWeaponsCommand, ManifestPsychicPowerCommand } from '@hh/types';
 import { Phase, SubPhase, CoreReaction } from '@hh/types';
 import { findAdvancedReaction, findLegionWeapon, findWeapon, getDisciplineIds } from '@hh/data';
 import type {
@@ -215,9 +215,6 @@ export function processCommand(
 
     case 'selectTargetModel':
       return processSelectTargetModel(state, command);
-
-    case 'placeBlastMarker':
-      return processPlaceBlastMarker(state, command);
 
     case 'placeTerrain':
       return processPlaceTerrain(state, command);
@@ -1580,83 +1577,6 @@ function processSelectTargetModel(
       type: 'targetModelSelected' as const,
       modelId: command.modelId,
       unitId: targetUnitId,
-    }],
-    errors: [],
-    accepted: true,
-  };
-}
-
-// ─── Place Blast Marker ──────────────────────────────────────────────────────
-
-/**
- * Process a placeBlastMarker command.
- * Places a blast template at a position during shooting phase for blast weapons.
- * Validates position is on the battlefield and a shooting attack is in progress.
- */
-function processPlaceBlastMarker(
-  state: GameState,
-  command: PlaceBlastMarkerCommand,
-): CommandResult {
-  if (state.currentPhase !== Phase.Shooting) {
-    return reject(state, 'WRONG_PHASE', 'placeBlastMarker requires Shooting phase');
-  }
-
-  if (!state.shootingAttackState) {
-    return reject(state, 'NO_ACTIVE_ATTACK', 'No shooting attack is currently in progress');
-  }
-
-  // Validate position is within battlefield bounds
-  const { width, height } = state.battlefield;
-  if (command.position.x < 0 || command.position.x > width ||
-      command.position.y < 0 || command.position.y > height) {
-    return reject(state, 'OUT_OF_BOUNDS', 'Blast marker position is outside the battlefield');
-  }
-
-  // Validate blast size (3" small, 5" large, or 7" apocalyptic)
-  const validSizes = [3, 5, 7];
-  if (!validSizes.includes(command.size)) {
-    return reject(state, 'INVALID_BLAST_SIZE', `Invalid blast size: ${command.size}. Valid sizes are 3, 5, or 7 inches.`);
-  }
-
-  // Find all models under the blast template
-  const blastRadius = command.size / 2;
-  const hitModelIds: string[] = [];
-
-  for (const army of state.armies) {
-    for (const unit of army.units) {
-      for (const model of unit.models) {
-        if (model.isDestroyed) continue;
-        const dx = model.position.x - command.position.x;
-        const dy = model.position.y - command.position.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        if (distance <= blastRadius) {
-          hitModelIds.push(model.id);
-        }
-      }
-    }
-  }
-
-  // Store blast marker on the shooting attack state
-  const newState: GameState = {
-    ...state,
-    shootingAttackState: {
-      ...state.shootingAttackState,
-      blastMarker: {
-        position: command.position,
-        size: command.size,
-        hitModelIds,
-      },
-    },
-  };
-
-  return {
-    state: newState,
-    events: [{
-      type: 'blastMarkerPlaced' as const,
-      center: command.position,
-      radius: command.size / 2,
-      modelsHit: hitModelIds,
-      scattered: false,
     }],
     errors: [],
     accepted: true,

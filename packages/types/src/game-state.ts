@@ -752,7 +752,6 @@ export type GameCommand =
   | EndPhaseCommand
   | EndSubPhaseCommand
   | SelectTargetModelCommand
-  | PlaceBlastMarkerCommand
   | PlaceTerrainCommand
   | RemoveTerrainCommand
   | DeployUnitCommand
@@ -844,12 +843,6 @@ export interface EndSubPhaseCommand {
 export interface SelectTargetModelCommand {
   type: 'selectTargetModel';
   modelId: string;
-}
-
-export interface PlaceBlastMarkerCommand {
-  type: 'placeBlastMarker';
-  position: Position;
-  size: number;
 }
 
 export interface PlaceTerrainCommand {

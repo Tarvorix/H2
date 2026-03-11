@@ -2,6 +2,222 @@
 
 Last Updated: 2026-03-11
 
+## Execution Plan (Full Engine Selfplay Coverage Repair - 2026-03-11)
+- [ ] Inventory every live human-playable runtime decision surface and compare it to the current Engine search macro-action surface.
+- [ ] Cross-check each confirmed coverage gap against the local Horus Heresy rules docs before changing code.
+- [ ] Implement the missing candidate-generation / command-wiring needed so selfplay can legally exercise those runtime features.
+- [ ] Add or update focused tests for the repaired search surfaces.
+- [ ] Re-run targeted verification and selfplay smoke so the repaired coverage claims are evidence-backed.
+- Progress:
+  - Coverage audit findings before edits:
+    - runtime supports standalone `manifestPsychicPower` during `Start/StartEffects` and `Movement/Move`, but Engine search generates none of those commands.
+    - runtime supports declared psychic payloads on `declareShooting` (`Foresight's Blessing`) and `declareCharge` (`Biomantic Rage`), but Engine search currently emits those commands without `psychicPower`.
+    - runtime exposes `embark` and `disembark` in `Movement/Move`, but Engine search currently generates neither transport action.
+    - core `Reposition` reactions and White Scars `ws-chasing-wind` both need legal `modelPositions`, but Engine search currently emits bare `selectReaction` commands with no movement payload.
+    - `declareWeapons` is a real live fight-surface override; without it the engine falls back to auto-selecting the best melee weapon per model, which keeps selfplay playable but not fully human-equivalent where alternate melee choices matter.
+  - Rules-doc cross-check completed for the first confirmed gaps:
+    - `HH_Armoury.md`
+      - `Biomantic Rage`: Charge Sub-Phase, step 4, before volley attacks
+      - `Force Barrier`: psychic reaction at shooting step 3 / charge step 4
+      - `Foresight's Blessing`: Shooting Phase, step 4 of the attack
+      - `Mind-burst`: Movement Phase, before the focus unit moves
+      - `Tranquillity`: Start Phase, Effects Sub-Phase
+    - `HH_Rules_Battle.md`
+      - movement-phase `Embark` / `Disembark`
+      - reaction movement and assault/shooting decision timing
+  - Current implementation target for this pass:
+    - add search coverage for standalone psychic powers, declared shooting/charge psychic powers, legal reposition-style reaction moves, and transport embark/disembark.
+    - then re-evaluate whether `declareWeapons` still needs explicit search generation after the higher-priority feature-family gaps are closed.
+  - 2026-03-11 implementation progress:
+    - exported the live psychic-runtime and transport-access helpers through `@hh/engine` so the AI layer can consume the same rule-validation surfaces instead of duplicating psychic/transport legality logic.
+    - updated the shared AI shooting-weapon selector so discipline-granted ranged psychic weapons are part of the candidate pool and are resolved through the live engine weapon-assignment path.
+    - rewired `packages/ai/src/engine/candidate-generator.ts` so Engine search now emits:
+      - standalone `manifestPsychicPower` actions for `Tranquillity` and `Mind-burst`
+      - `declareShooting` variants with `Foresight's Blessing`
+      - `declareCharge` variants with `Biomantic Rage`
+      - direct and move-into-position `embark` actions plus legal `disembark` actions
+      - `selectReaction` payloads for core `Reposition` and White Scars `ws-chasing-wind`
+      - challenge declarations from runtime challenger/acceptor eligibility instead of name heuristics
+      - gambit selections from runtime-available gambits plus psychic gambits
+      - `declareWeapons` + `resolveFight` macro-actions for the current combat
+    - corrected the engine movement barrel so the newly used transport-access helpers are actually exported during package builds.
+  - Verification after the selfplay-coverage repair:
+    - `pnpm test -- packages/ai/src/helpers/weapon-selection.test.ts packages/ai/src/engine/search.test.ts packages/ai/src/engine/candidate-generator.test.ts`
+      - passed: `3` files, `36` tests
+    - `pnpm build`
+      - passed across the workspace after fixing the movement export barrel
+    - `pnpm test`
+      - passed: `138` files, `3838` tests
+    - selfplay smoke:
+      - `node --loader ./tools/esm-js-extension-loader.mjs tools/nnue/self-play.mjs --matches 1 --time-budget-ms 50 --max-depth-soft 2 --rollout-count 1 --max-commands 400 --out-dir tmp/selfplay-smoke-20260311`
+      - passed with `terminatedReason: "game-over"` and `239` samples in `tmp/selfplay-smoke-20260311/manifest.json`
+
+## Execution Plan (Refresh engine_primer.md - 2026-03-11)
+- [x] Re-audit `engine_primer.md` against the current Engine runtime, UI worker path, MCP schema, and NNUE tooling defaults.
+- [x] Update only the stale primer sections so the document matches the live code, including any recent public-surface removals.
+- [x] Re-read the edited primer against the referenced code paths and record what was updated.
+- Progress:
+  - Current doc/code drift identified before editing:
+    - the primer still treats blast/template placement as a generic macro-action surface, but the live public command path now bundles those placements into `declareShooting` and no longer exposes standalone `placeBlastMarker`.
+    - the primer does not state that the engine runtime supports psychic commands/reactions while the current AI searcher still does not generate standalone `manifestPsychicPower` actions or psychic declarations on shooting/charge attacks.
+    - the primer describes the budget-aware search defaults, but not the current UI override that hardcodes `maxDepthSoft: 4` for Engine in both setup screens.
+    - the primer does not record the current CLI defaults for self-play, training, and gameplay gate.
+  - Updated `engine_primer.md` to reflect the current live surface:
+    - documented that blast/template placement is bundled into `declareShooting` and that standalone `placeBlastMarker` is gone from the public type/MCP surface.
+    - documented the current rush macro behavior (`rushUnit` plus rushed `moveUnit`, or continuation from `RushDeclared`).
+    - documented the current runtime-vs-search gap for psychic decisions: runtime supports them, current Engine search does not generate them yet.
+    - documented the UI worker fallback and the current setup-screen Engine overrides (`maxDepthSoft: 4`, `rolloutCount: 1`, `baseSeed: 1337`, `diagnosticsEnabled: true`).
+    - documented current self-play, training, and gameplay-gate CLI defaults.
+  - Verification for the doc refresh was a code-vs-doc reread against:
+    - `packages/ai/src/engine/candidate-generator.ts`
+    - `packages/ui/src/game/hooks/useAITurn.ts`
+    - `packages/ui/src/game/screens/ArmyLoadScreen.tsx`
+    - `packages/ui/src/game/screens/ArmyBuilderScreen.tsx`
+    - `packages/mcp-server/src/register-tools.ts`
+    - `packages/types/src/game-state.ts`
+    - `tools/nnue/self-play.mjs`
+    - `tools/nnue/train-gameplay-model.mjs`
+    - `tools/nnue/gate-gameplay-model.mjs`
+    - `tools/nnue/common.mjs`
+  - Final proofreading cleanup:
+    - normalized the UI worker-fallback bullet wording in `engine_primer.md` after the verification reread.
+
+## Execution Plan (Remove Stale Standalone Blast Marker Command - 2026-03-11)
+- [x] Remove the unused standalone `placeBlastMarker` command from the public type surface, command processor, and MCP schema.
+- [x] Preserve the live blast/template gameplay path on `declareShooting` with `blastPlacements` / `templatePlacements`.
+- [x] Re-run targeted engine and MCP verification to confirm blast/template attacks still work and the stale command surface is gone.
+- Progress:
+  - Audit confirmed the live rules-accurate path already uses `declareShooting.blastPlacements` and `templatePlacements`.
+  - Rules-doc check against `HH_Rules_Battle.md` and `HH_Armoury.md` confirms blast marker placement must happen before Hit Tests, but does not require a separate command boundary.
+  - The stale standalone `placeBlastMarker` surface is isolated to:
+    - `packages/types/src/game-state.ts`
+    - `packages/types/src/index.ts`
+    - `packages/engine/src/command-processor.ts`
+    - `packages/mcp-server/src/register-tools.ts`
+  - Removed the stale standalone `placeBlastMarker` command from:
+    - `packages/types/src/game-state.ts`
+    - `packages/types/src/index.ts`
+    - `packages/engine/src/command-processor.ts`
+    - `packages/mcp-server/src/register-tools.ts`
+  - Added an MCP regression assertion in `packages/mcp-server/src/register-tools.test.ts` so the `submit_action` schema no longer advertises `placeBlastMarker`.
+  - Verification after the fix:
+    - `pnpm build` passed
+    - `pnpm test -- packages/engine/src/command-processor.test.ts packages/engine/src/shooting/shooting-integration.test.ts packages/mcp-server/src/register-tools.test.ts` passed
+    - targeted result: `3` files, `138` tests passed
+
+## Execution Plan (Full Engine Feature Wiring Audit - 2026-03-11)
+- [ ] Inventory the full engine feature surface and map each feature family to its runtime entrypoints, registries, and verification coverage.
+- [ ] Audit registry-backed systems for wiring gaps between data definitions and executable engine/runtime handlers.
+- [ ] Run targeted and integration verification across each engine feature family, then re-run the full suite to catch cross-system regressions.
+- [ ] Fix only the concrete wiring/runtime defects proven by the audit, updating this file after each change.
+- [ ] Re-run the affected targeted suites plus headless/selfplay smoke to confirm the engine remains fully playable after any fixes.
+- Progress:
+  - Initial surface inventory confirms active engine feature families under `packages/engine/src`:
+    - `movement`
+    - `shooting`
+    - `assault`
+    - `missions`
+    - `legion` (`tacticas`, `advanced-reactions`, `legion-gambits`, integration hooks)
+    - `psychic`
+    - `special-rules`
+    - core runtime (`command-processor`, `state-machine`, `state-helpers`, `game-queries`, `phase-ux`, `phases`)
+  - Current test surface across `packages/engine/src`, `packages/ai/src`, and `packages/headless/src` contains `5018` `describe` / `it` blocks, so this pass should focus on whether the right things are wired, not only whether tests exist.
+  - Registry/data wiring audit:
+    - `LEGION_ADVANCED_REACTIONS`: `20` data definitions, `20` registered handlers after `registerAllAdvancedReactions()`.
+    - `LEGION_GAMBITS`: `21` data definitions, `21` registered runtime gambits after `registerAllLegionGambits()`.
+    - `RITES_OF_WAR`: `20` data definitions, `20` registered runtime definitions after `registerAllRitesOfWar()`.
+    - `LEGION_TACTICAS`: `20` data definitions; tactica runtime intentionally registers by `(legion, hook)` pair rather than tactica ID, producing `22` active hook registrations across the supported tactica hooks.
+    - `PSYCHIC_DISCIPLINES`: `6` definitions present in data and consumed by the live psychic runtime.
+    - `ALL_MISSIONS`: `3` core missions and `3` deployment maps present in data.
+  - Targeted engine-family verification passed:
+    - core runtime + headless:
+      - `pnpm test -- packages/engine/src/command-processor.test.ts packages/engine/src/phase-ux.test.ts packages/engine/src/state-machine.test.ts packages/engine/src/state-helpers.test.ts packages/engine/src/game-queries.test.ts packages/headless/src/index.test.ts packages/headless/src/run.test.ts packages/headless/src/session.test.ts packages/headless/src/replay.test.ts`
+      - result: `9` files, `227` tests passed
+    - movement:
+      - `pnpm test -- packages/engine/src/movement/move-handler.test.ts packages/engine/src/movement/movement-validator.test.ts packages/engine/src/movement/reserves-handler.test.ts packages/engine/src/movement/embark-disembark-handler.test.ts packages/engine/src/movement/reposition-handler.test.ts packages/engine/src/movement/rout-handler.test.ts packages/engine/src/special-rules/movement-rules.test.ts`
+      - result: `7` files, `201` tests passed
+    - shooting:
+      - `pnpm test -- packages/engine/src/shooting/shooting-integration.test.ts packages/engine/src/shooting/shooting-validator.test.ts packages/engine/src/shooting/weapon-declaration.test.ts packages/engine/src/shooting/hit-resolution.test.ts packages/engine/src/shooting/wound-resolution.test.ts packages/engine/src/shooting/save-resolution.test.ts packages/engine/src/shooting/damage-resolution.test.ts packages/engine/src/shooting/vehicle-damage.test.ts packages/engine/src/shooting/morale-handler.test.ts packages/engine/src/shooting/return-fire-handler.test.ts packages/engine/src/shooting/overload-misfire.test.ts packages/engine/src/special-rules/shooting-rules.test.ts`
+      - result: `12` files, `373` tests passed
+    - assault:
+      - `pnpm test -- packages/engine/src/assault/assault-integration.test.ts packages/engine/src/assault/charge-validator.test.ts packages/engine/src/assault/setup-move-handler.test.ts packages/engine/src/assault/volley-attack-handler.test.ts packages/engine/src/assault/charge-move-handler.test.ts packages/engine/src/assault/overwatch-handler.test.ts packages/engine/src/assault/challenge-handler.test.ts packages/engine/src/assault/gambit-handler.test.ts packages/engine/src/assault/challenge-strike-handler.test.ts packages/engine/src/assault/fight-handler.test.ts packages/engine/src/assault/initiative-step-handler.test.ts packages/engine/src/assault/melee-resolution.test.ts packages/engine/src/assault/resolution-handler.test.ts packages/engine/src/assault/aftermath-handler.test.ts packages/engine/src/assault/pile-in-handler.test.ts packages/engine/src/special-rules/assault-rules.test.ts`
+      - result: `16` files, `536` tests passed
+    - legion systems:
+      - `pnpm test -- packages/engine/src/legion/legion-tactica-registry.test.ts packages/engine/src/legion/tacticas/shooting-tacticas.test.ts packages/engine/src/legion/tacticas/assault-tacticas.test.ts packages/engine/src/legion/tacticas/movement-tacticas.test.ts packages/engine/src/legion/tacticas/passive-tacticas.test.ts packages/engine/src/legion/tacticas/hereticus-tacticas.test.ts packages/engine/src/legion/integration/tactica-shooting-integration.test.ts packages/engine/src/legion/integration/tactica-assault-integration.test.ts packages/engine/src/legion/advanced-reaction-registry.test.ts packages/engine/src/legion/advanced-reactions/movement-reactions.test.ts packages/engine/src/legion/advanced-reactions/shooting-reactions.test.ts packages/engine/src/legion/advanced-reactions/assault-reactions.test.ts packages/engine/src/legion/integration/advanced-reaction-integration.test.ts packages/engine/src/legion/legion-gambit-registry.test.ts packages/engine/src/legion/legion-gambits/all-gambits.test.ts packages/engine/src/legion/integration/gambit-integration.test.ts packages/engine/src/legion/rite-of-war-registry.test.ts packages/engine/src/legion/allegiance.test.ts`
+      - result: `18` files, `798` tests passed
+    - missions + registry:
+      - `pnpm test -- packages/engine/src/missions/mission-state.test.ts packages/engine/src/missions/objective-queries.test.ts packages/engine/src/missions/secondary-objectives.test.ts packages/engine/src/missions/victory-handler.test.ts packages/engine/src/missions/vanguard-bonus.test.ts packages/engine/src/special-rules/rule-registry.test.ts`
+      - result: `6` files, `107` tests passed
+  - Rules-doc cross-check for fix candidates:
+    - reviewed `HH_Rules_Battle.md` Shooting Attack Procedure steps 1-11 and `HH_Armoury.md` `Blast (X)` rules before changing any blast/template path
+    - rules require the blast marker to be placed before Hit Tests, but do not require a separate command boundary between declaration and placement
+    - current live gameplay path remains rules-compatible because blast/template placement is bundled into `declareShooting` via `blastPlacements` / `templatePlacements`, and that is the path used by current UI, AI, out-of-phase shooting, and tests
+  - Residual engine-surface inconsistency found during audit:
+    - `placeBlastMarker` is still present in `GameCommand`, `processCommand(...)`, and the MCP schema, but it is not surfaced by `getValidCommands()` and the live shooting pipeline does not consume its stored `shootingAttackState.blastMarker` data
+    - this is not breaking current gameplay because live blast/template attacks use bundled placements on `declareShooting`
+    - fully wiring standalone marker placement would require a deliberate two-step shooting declaration flow (and equivalent template-placement surface), which is larger than a safe audit hotfix
+  - Current direct-test blind spots are integration-covered rather than unit-covered:
+    - `psychic/power-handler.ts`
+    - `psychic/psychic-runtime.ts`
+    - `phases/start-phase.ts`
+    - `phases/shooting-phase.ts`
+    - `phases/assault-phase.ts`
+    - `phases/end-phase.ts`
+    - `shooting/out-of-phase-shooting.ts`
+    - `shooting/special-shot-resolution.ts`
+    - `movement/transport-access.ts`
+    - and related helper/types modules
+    - these are currently exercised indirectly through command-processor, integration, replay, and selfplay verification rather than dedicated file-local tests
+  - Audit conclusion for this pass:
+    - no new rules-runtime defect was proven in the live engine feature families
+    - movement, shooting, assault, missions, legion systems, psychic integration, headless runtime, replay determinism, and selfplay all executed cleanly on the current rebuilt workspace
+    - no code changes were made in this audit pass because the only concrete mismatch found was a stale standalone blast-marker API surface, not a broken live gameplay path
+
+## Execution Plan (Full Selfplay / Training / Rebuild Pipeline Audit - 2026-03-11)
+- [x] Trace the live selfplay, training, gating, and headless execution paths from the current local workspace and confirm which built artifacts they actually consume.
+- [x] Rebuild the workspace from the current source so the pipeline is running against fresh local `dist` output rather than stale artifacts.
+- [x] Run targeted and full verification across build, tests, replay determinism, selfplay, training, and gate flows to surface any concrete breakpoints.
+- [x] Fix only the issues proven by the audit that block the engine from completing clean rules-accurate headless games and NNUE pipeline runs.
+- [x] Re-run the full pipeline end-to-end and record the final commands, outputs, and any residual risks.
+- Progress:
+  - Initial audit confirms the current NNUE pipeline executes through:
+    - `tools/nnue/self-play.mjs` -> `runInstrumentedMatch(...)` in `tools/nnue/common.mjs`
+    - `tools/nnue/train-gameplay-model.mjs`
+    - `tools/nnue/gate-gameplay-model.mjs`
+    - built runtime packages in `packages/*/dist`, especially `@hh/ai`, `@hh/headless`, and `@hh/engine`
+  - Initial audit focus for this pass:
+    - validate that engine-vs-engine selfplay terminates cleanly with no command rejections, AI errors, or non-terminal stalls
+    - validate that replay artifacts remain deterministic after rebuild
+    - validate that training consumes current-schema features and emits a loadable gameplay model artifact
+    - validate that gating can benchmark the rebuilt candidate against Tactical without hidden runtime drift
+    - validate that the rebuild path itself is complete and reproducible from the current workspace
+  - Rebuild + verification results for this pass:
+    - `pnpm build` passed on the current workspace, rebuilding all package `dist` outputs used by the NNUE pipeline.
+    - `pnpm test -- packages/headless/src/replay.test.ts` passed, preserving deterministic replay verification on rebuilt output.
+    - `pnpm content:validate` passed with `102` whitelist units, `102` indexed units, and `102` generated unit files.
+    - `pnpm test` passed cleanly: `138` test files and `3828` tests.
+  - Live selfplay audit results:
+    - `pnpm nnue:selfplay --matches 4 --time-budget-ms 75 --max-commands 600 --shard-size 1000000 --out-dir tmp/pipeline-audit/selfplay`
+    - manifest: `tmp/pipeline-audit/selfplay/manifest.json`
+    - result: `4/4` matches terminated as `game-over`, `0` command rejections, `0` AI errors, `0` abnormal terminations, `1052` samples, `1` shard
+    - replay final-state hashes:
+      - `f7c84d5cb2f8022e`
+      - `2d4d1c23be25ed97`
+      - `fea16ad0c973ca6e`
+      - `19570fdfe63236f3`
+  - Training + gate audit results:
+    - `pnpm nnue:train --input tmp/pipeline-audit/selfplay/selfplay-shard-001.jsonl --out tmp/pipeline-audit/candidate-gameplay-model.json --epochs 12`
+    - training output: `tmp/pipeline-audit/candidate-gameplay-model.json`
+    - training metrics: `tmp/pipeline-audit/candidate-gameplay-model.json.metrics.json`
+    - trainer consumed the current feature schema and completed `12/12` epochs with `947` training samples and `105` validation samples.
+    - `pnpm nnue:gate --model tmp/pipeline-audit/candidate-gameplay-model.json --matches 4 --time-budget-ms 75 --out tmp/pipeline-audit/gate-summary.json`
+    - gate summary: `tmp/pipeline-audit/gate-summary.json`
+    - gate runtime completed with `0` aborts and `0` timeouts; the tiny fresh candidate lost `0-4` to Tactical and therefore failed the promotion threshold, which is a model-strength result rather than a pipeline/runtime failure.
+  - Audit conclusion for this pass:
+    - No code defects were surfaced by the rebuild, test, replay, selfplay, training, or gate runs.
+    - The engine/selfplay/training pipeline is rebuilt and operational for a larger corpus regeneration run.
+    - The next meaningful improvement is regenerating a larger selfplay dataset and retraining from that broader corpus, not patching runtime code blindly.
+
 ## Execution Plan (Full Rules-Critical Engine Accuracy Pass - 2026-03-11)
 - Audit scope for this pass:
   - Current local workspace only. No GitHub comparison, no fallback to older remote state.

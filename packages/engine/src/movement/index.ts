@@ -44,6 +44,11 @@ export {
 } from './embark-disembark-handler';
 
 export {
+  getTransportAccessDistanceAtPosition,
+  getEmergencyDisembarkAnchorShape,
+} from './transport-access';
+
+export {
   checkRepositionTrigger,
   handleRepositionReaction,
   REPOSITION_TRIGGER_RANGE,

@@ -33,6 +33,16 @@ function createModel(overrides: Partial<ModelState> = {}): ModelState {
   };
 }
 
+function createLibrarianModel(overrides: Partial<ModelState> = {}): ModelState {
+  return createModel({
+    profileModelName: 'Librarian',
+    unitProfileId: 'librarian',
+    currentWounds: 3,
+    equippedWargear: ['force-weapon', 'bolt-pistol', 'frag-grenades', 'krak-grenades'],
+    ...overrides,
+  });
+}
+
 function createUnit(overrides: Partial<UnitState> = {}): UnitState {
   return {
     id: `unit-${Math.random().toString(36).slice(2, 8)}`,
@@ -449,6 +459,513 @@ describe('generateMacroActions', () => {
     expect(actions.find((action) => action.id === 'reaction:decline')?.orderingScore).toBeLessThan(
       actions[0]?.orderingScore ?? 0,
     );
+  });
+
+  it('generates standalone Tranquillity actions during StartEffects', () => {
+    const state = createGameState({
+      currentPhase: Phase.Start,
+      currentSubPhase: SubPhase.StartEffects,
+      armies: [
+        createArmy({
+          playerIndex: 0,
+          units: [
+            createUnit({
+              id: 'p0-psyker',
+              profileId: 'librarian',
+              models: [createLibrarianModel({ id: 'p0-lib', position: { x: 10, y: 10 }, equippedWargear: ['thaumaturgy'] })],
+            }),
+          ],
+        }),
+        createArmy({
+          playerIndex: 1,
+          playerName: 'Player 2',
+          faction: LegionFaction.WorldEaters,
+          allegiance: Allegiance.Traitor,
+          units: [
+            createUnit({
+              id: 'p1-psyker',
+              profileId: 'librarian',
+              models: [createLibrarianModel({ id: 'p1-lib', position: { x: 18, y: 10 }, equippedWargear: ['telepathy'] })],
+            }),
+          ],
+        }),
+      ],
+    });
+
+    const actions = generateMacroActions(
+      { state, actedUnitIds: new Set() },
+      0,
+      createSearchConfig(),
+    );
+    const action = actions.find((candidate) =>
+      candidate.commands[0]?.type === 'manifestPsychicPower' &&
+      candidate.commands[0].powerId === 'tranquillity',
+    );
+
+    expect(action).toBeDefined();
+    const result = processCommand(state, action!.commands[0], new FixedDiceProvider([4, 6]));
+    expect(result.accepted).toBe(true);
+  });
+
+  it('generates standalone Mind-burst actions during the Move sub-phase', () => {
+    const state = createGameState({
+      armies: [
+        createArmy({
+          playerIndex: 0,
+          units: [
+            createUnit({
+              id: 'p0-psyker',
+              profileId: 'librarian',
+              models: [createLibrarianModel({ id: 'p0-lib', position: { x: 10, y: 10 }, equippedWargear: ['telepathy'] })],
+            }),
+          ],
+        }),
+        createArmy({
+          playerIndex: 1,
+          playerName: 'Player 2',
+          faction: LegionFaction.WorldEaters,
+          allegiance: Allegiance.Traitor,
+          units: [
+            createUnit({
+              id: 'p1-target',
+              models: [createModel({ id: 'p1-m1', position: { x: 18, y: 10 } })],
+            }),
+          ],
+        }),
+      ],
+    });
+
+    const actions = generateMacroActions(
+      { state, actedUnitIds: new Set() },
+      0,
+      createSearchConfig(),
+    );
+    const action = actions.find((candidate) =>
+      candidate.commands[0]?.type === 'manifestPsychicPower' &&
+      candidate.commands[0].powerId === 'mind-burst',
+    );
+
+    expect(action).toBeDefined();
+    const result = processCommand(state, action!.commands[0], new FixedDiceProvider(Array.from({ length: 16 }, () => 4)));
+    expect(result.accepted).toBe(true);
+  });
+
+  it('emits Foresight\'s Blessing shooting declarations when a legal Diviner focus exists', () => {
+    const state = createGameState({
+      currentPhase: Phase.Shooting,
+      currentSubPhase: SubPhase.Attack,
+      armies: [
+        createArmy({
+          playerIndex: 0,
+          units: [
+            createUnit({
+              id: 'p0-shooters',
+              models: [createModel({ id: 'p0-m1', position: { x: 12, y: 12 }, equippedWargear: ['bolter'] })],
+            }),
+            createUnit({
+              id: 'p0-diviner',
+              profileId: 'librarian',
+              models: [createLibrarianModel({ id: 'p0-lib', position: { x: 10, y: 12 }, equippedWargear: ['divination'] })],
+            }),
+          ],
+        }),
+        createArmy({
+          playerIndex: 1,
+          playerName: 'Player 2',
+          faction: LegionFaction.WorldEaters,
+          allegiance: Allegiance.Traitor,
+          units: [
+            createUnit({
+              id: 'p1-target',
+              models: [createModel({ id: 'p1-m1', position: { x: 20, y: 12 } })],
+            }),
+          ],
+        }),
+      ],
+    });
+
+    const actions = generateMacroActions(
+      { state, actedUnitIds: new Set() },
+      0,
+      createSearchConfig(),
+    );
+    const action = actions.find((candidate) =>
+      candidate.commands[0]?.type === 'declareShooting' &&
+      candidate.commands[0].psychicPower?.powerId === 'foresights-blessing',
+    );
+
+    expect(action).toBeDefined();
+    const result = processCommand(state, action!.commands[0], new FixedDiceProvider(Array.from({ length: 32 }, () => 4)));
+    expect(result.accepted).toBe(true);
+  });
+
+  it('emits Biomantic Rage charge declarations when a legal Biomancer focus exists', () => {
+    const state = createGameState({
+      currentPhase: Phase.Assault,
+      currentSubPhase: SubPhase.Charge,
+      armies: [
+        createArmy({
+          playerIndex: 0,
+          units: [
+            createUnit({
+              id: 'p0-chargers',
+              models: [createModel({ id: 'p0-m1', position: { x: 12, y: 12 }, equippedWargear: ['bolt-pistol', 'chainsword'] })],
+            }),
+            createUnit({
+              id: 'p0-biomancer',
+              profileId: 'librarian',
+              models: [createLibrarianModel({ id: 'p0-lib', position: { x: 10, y: 12 }, equippedWargear: ['biomancy'] })],
+            }),
+          ],
+        }),
+        createArmy({
+          playerIndex: 1,
+          playerName: 'Player 2',
+          faction: LegionFaction.WorldEaters,
+          allegiance: Allegiance.Traitor,
+          units: [
+            createUnit({
+              id: 'p1-target',
+              models: [createModel({ id: 'p1-m1', position: { x: 18, y: 12 }, equippedWargear: ['bolt-pistol', 'chainsword'] })],
+            }),
+          ],
+        }),
+      ],
+    });
+
+    const actions = generateMacroActions(
+      { state, actedUnitIds: new Set() },
+      0,
+      createSearchConfig(),
+    );
+    const action = actions.find((candidate) =>
+      candidate.commands[0]?.type === 'declareCharge' &&
+      candidate.commands[0].psychicPower?.powerId === 'biomantic-rage',
+    );
+
+    expect(action).toBeDefined();
+    const result = processCommand(state, action!.commands[0], new FixedDiceProvider(Array.from({ length: 32 }, () => 4)));
+    expect(result.accepted).toBe(true);
+  });
+
+  it('includes legal modelPositions for Reposition reactions', () => {
+    const pendingReaction: PendingReaction = {
+      reactionType: CoreReaction.Reposition,
+      isAdvancedReaction: false,
+      eligibleUnitIds: ['p1-react'],
+      triggerDescription: 'Enemy ended a move nearby',
+      triggerSourceUnitId: 'p0-unit-1',
+    };
+    const state = createGameState({
+      activePlayerIndex: 0,
+      currentPhase: Phase.Movement,
+      currentSubPhase: SubPhase.Move,
+      awaitingReaction: true,
+      pendingReaction,
+      armies: [
+        createArmy({
+          playerIndex: 0,
+          units: [createUnit({
+            id: 'p0-unit-1',
+            models: [createModel({ id: 'p0-m1', position: { x: 20, y: 20 } })],
+          })],
+        }),
+        createArmy({
+          playerIndex: 1,
+          playerName: 'Player 2',
+          faction: LegionFaction.WorldEaters,
+          allegiance: Allegiance.Traitor,
+          units: [createUnit({
+            id: 'p1-react',
+            models: [
+              createModel({ id: 'p1-r1', position: { x: 28, y: 20 } }),
+              createModel({ id: 'p1-r2', position: { x: 29.5, y: 20 } }),
+            ],
+          })],
+        }),
+      ],
+    });
+
+    const actions = generateMacroActions(
+      { state, actedUnitIds: new Set() },
+      1,
+      createSearchConfig(),
+    );
+    const action = actions.find((candidate) =>
+      candidate.commands[0]?.type === 'selectReaction' &&
+      candidate.commands[0].reactionType === CoreReaction.Reposition &&
+      candidate.commands[0].modelPositions !== undefined,
+    );
+
+    expect(action).toBeDefined();
+    const result = processCommand(state, action!.commands[0], new FixedDiceProvider(Array.from({ length: 32 }, () => 6)));
+    expect(result.accepted).toBe(true);
+  });
+
+  it('includes explicit movement payloads for White Scars Chasing the Wind', () => {
+    const pendingReaction: PendingReaction = {
+      reactionType: 'ws-chasing-wind',
+      isAdvancedReaction: true,
+      requiredLegion: LegionFaction.WhiteScars,
+      eligibleUnitIds: ['p1-ws'],
+      triggerDescription: 'Enemy ended a move nearby',
+      triggerSourceUnitId: 'p0-unit-1',
+    };
+    const state = createGameState({
+      activePlayerIndex: 0,
+      currentPhase: Phase.Movement,
+      currentSubPhase: SubPhase.Move,
+      awaitingReaction: true,
+      pendingReaction,
+      armies: [
+        createArmy({
+          playerIndex: 0,
+          units: [createUnit({
+            id: 'p0-unit-1',
+            models: [createModel({ id: 'p0-m1', position: { x: 20, y: 10 } })],
+          })],
+        }),
+        createArmy({
+          playerIndex: 1,
+          playerName: 'Player 2',
+          faction: LegionFaction.WhiteScars,
+          allegiance: Allegiance.Traitor,
+          units: [createUnit({
+            id: 'p1-ws',
+            models: [createModel({ id: 'p1-w1', position: { x: 10, y: 10 } })],
+          })],
+        }),
+      ],
+    });
+
+    const actions = generateMacroActions(
+      { state, actedUnitIds: new Set() },
+      1,
+      createSearchConfig(),
+    );
+    const action = actions.find((candidate) =>
+      candidate.commands[0]?.type === 'selectReaction' &&
+      candidate.commands[0].reactionType === 'ws-chasing-wind' &&
+      candidate.commands[0].modelPositions !== undefined,
+    );
+
+    expect(action).toBeDefined();
+    const result = processCommand(state, action!.commands[0], new FixedDiceProvider(Array.from({ length: 32 }, () => 6)));
+    expect(result.accepted).toBe(true);
+  });
+
+  it('can generate a move-then-embark transport macro', () => {
+    const state = createGameState({
+      armies: [
+        createArmy({
+          playerIndex: 0,
+          units: [
+            createUnit({
+              id: 'p0-squad',
+              models: [
+                createModel({ id: 'p0-m1', position: { x: 4, y: 10 } }),
+                createModel({ id: 'p0-m2', position: { x: 5.5, y: 10 } }),
+              ],
+            }),
+            createUnit({
+              id: 'p0-rhino',
+              profileId: 'rhino',
+              models: [createModel({ id: 'p0-rhino-m0', position: { x: 10.5, y: 10 }, unitProfileId: 'rhino', profileModelName: 'Rhino', equippedWargear: [] })],
+            }),
+          ],
+        }),
+        createArmy({
+          playerIndex: 1,
+          playerName: 'Player 2',
+          faction: LegionFaction.WorldEaters,
+          allegiance: Allegiance.Traitor,
+          units: [],
+        }),
+      ],
+    });
+
+    const actions = generateMacroActions(
+      { state, actedUnitIds: new Set() },
+      0,
+      createSearchConfig(),
+    );
+    const action = actions.find((candidate) => candidate.commands.some((command) => command.type === 'embark'));
+
+    expect(action).toBeDefined();
+    let currentState = state;
+    const dice = new FixedDiceProvider(Array.from({ length: 64 }, () => 6));
+    for (const command of action?.commands ?? []) {
+      const result = processCommand(currentState, command, dice);
+      expect(result.accepted).toBe(true);
+      currentState = result.state;
+    }
+
+    expect(currentState.armies[0].units.find((unit) => unit.id === 'p0-squad')?.embarkedOnId).toBe('p0-rhino');
+  });
+
+  it('generates legal disembark actions for embarked units', () => {
+    const state = createGameState({
+      armies: [
+        createArmy({
+          playerIndex: 0,
+          units: [
+            createUnit({
+              id: 'p0-squad',
+              profileId: 'tactical-squad',
+              embarkedOnId: 'p0-rhino',
+              isDeployed: false,
+              models: [
+                createModel({ id: 'p0-m1', position: { x: 0, y: 0 } }),
+                createModel({ id: 'p0-m2', position: { x: 0, y: 0 } }),
+              ],
+            }),
+            createUnit({
+              id: 'p0-rhino',
+              profileId: 'rhino',
+              models: [createModel({ id: 'p0-rhino-m0', position: { x: 20, y: 24 }, unitProfileId: 'rhino', profileModelName: 'Rhino', equippedWargear: [] })],
+            }),
+          ],
+        }),
+        createArmy({
+          playerIndex: 1,
+          playerName: 'Player 2',
+          faction: LegionFaction.WorldEaters,
+          allegiance: Allegiance.Traitor,
+          units: [],
+        }),
+      ],
+    });
+
+    const actions = generateMacroActions(
+      { state, actedUnitIds: new Set() },
+      0,
+      createSearchConfig(),
+    );
+    const action = actions.find((candidate) => candidate.commands[0]?.type === 'disembark');
+
+    expect(action).toBeDefined();
+    const result = processCommand(state, action!.commands[0], new FixedDiceProvider([]));
+    expect(result.accepted).toBe(true);
+  });
+
+  it('offers psychic gambits that are actually available to the challenged model', () => {
+    const state = createGameState({
+      currentPhase: Phase.Assault,
+      currentSubPhase: SubPhase.Challenge,
+      armies: [
+        createArmy({
+          playerIndex: 0,
+          units: [createUnit({
+            id: 'p0-diviner',
+            profileId: 'librarian',
+            isLockedInCombat: true,
+            engagedWithUnitIds: ['p1-challenged'],
+            models: [createLibrarianModel({ id: 'p0-lib', position: { x: 10, y: 10 }, equippedWargear: ['divination'] })],
+          })],
+        }),
+        createArmy({
+          playerIndex: 1,
+          playerName: 'Player 2',
+          faction: LegionFaction.WorldEaters,
+          allegiance: Allegiance.Traitor,
+          units: [createUnit({
+            id: 'p1-challenged',
+            isLockedInCombat: true,
+            engagedWithUnitIds: ['p0-diviner'],
+            models: [createModel({ id: 'p1-sgt', position: { x: 11, y: 10 }, profileModelName: 'Sergeant', equippedWargear: ['bolt-pistol', 'chainsword'] })],
+          })],
+        }),
+      ],
+      activeCombats: [{
+        combatId: 'combat-0',
+        activePlayerUnitIds: ['p0-diviner'],
+        reactivePlayerUnitIds: ['p1-challenged'],
+        initiativeSteps: [],
+        currentInitiativeStepIndex: 0,
+        activePlayerCRP: 0,
+        reactivePlayerCRP: 0,
+        challengeState: {
+          challengerId: 'p0-lib',
+          challengedId: 'p1-sgt',
+          challengerPlayerIndex: 0,
+          challengedPlayerIndex: 1,
+          challengerGambit: null,
+          challengedGambit: null,
+          currentStep: 'FACE_OFF',
+        },
+        activePlayerCasualties: [],
+        reactivePlayerCasualties: [],
+        resolved: false,
+        isMassacre: false,
+        massacreWinnerPlayerIndex: null,
+      }] as any,
+    });
+
+    const actions = generateMacroActions(
+      { state, actedUnitIds: new Set() },
+      0,
+      createSearchConfig(),
+    );
+
+    expect(actions.some((candidate) =>
+      candidate.commands[0]?.type === 'selectGambit' &&
+      candidate.commands[0].gambit === 'every-strike-foreseen',
+    )).toBe(true);
+  });
+
+  it('emits a declareWeapons fight macro for the current combat', () => {
+    const state = createGameState({
+      currentPhase: Phase.Assault,
+      currentSubPhase: SubPhase.Fight,
+      armies: [
+        createArmy({
+          playerIndex: 0,
+          units: [createUnit({
+            id: 'p0-fighters',
+            isLockedInCombat: true,
+            engagedWithUnitIds: ['p1-fighters'],
+            models: [createModel({ id: 'p0-f1', position: { x: 10, y: 10 }, equippedWargear: ['bolt-pistol', 'chainsword'] })],
+          })],
+        }),
+        createArmy({
+          playerIndex: 1,
+          playerName: 'Player 2',
+          faction: LegionFaction.WorldEaters,
+          allegiance: Allegiance.Traitor,
+          units: [createUnit({
+            id: 'p1-fighters',
+            isLockedInCombat: true,
+            engagedWithUnitIds: ['p0-fighters'],
+            models: [createModel({ id: 'p1-f1', position: { x: 11, y: 10 }, equippedWargear: ['bolt-pistol', 'chainsword'] })],
+          })],
+        }),
+      ],
+      activeCombats: [{
+        combatId: 'combat-0',
+        activePlayerUnitIds: ['p0-fighters'],
+        reactivePlayerUnitIds: ['p1-fighters'],
+        initiativeSteps: [],
+        currentInitiativeStepIndex: 0,
+        activePlayerCRP: 0,
+        reactivePlayerCRP: 0,
+        challengeState: null,
+        activePlayerCasualties: [],
+        reactivePlayerCasualties: [],
+        resolved: false,
+        isMassacre: false,
+        massacreWinnerPlayerIndex: null,
+      }] as any,
+    });
+
+    const actions = generateMacroActions(
+      { state, actedUnitIds: new Set() },
+      0,
+      createSearchConfig(),
+    );
+    const action = actions.find((candidate) => candidate.commands[0]?.type === 'declareWeapons');
+
+    expect(action).toBeDefined();
+    expect(action?.commands[1]).toMatchObject({ type: 'resolveFight', combatId: 'combat-0' });
   });
 
   it('emits a full rush macro with declaration and rush move resolution', () => {

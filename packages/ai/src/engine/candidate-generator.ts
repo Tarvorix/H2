@@ -1,8 +1,11 @@
 import type {
   AftermathOption,
   BlastPlacement,
+  DeclaredPsychicPower,
   GameCommand,
   GameState,
+  MeleeWeaponProfile,
+  ModelState,
   Position,
   TemplatePlacement,
   UnitState,
@@ -15,17 +18,39 @@ import {
   UnitMovementState,
 } from '@hh/types';
 import {
+  findLegionWeapon,
+  findWeapon,
+  isMeleeWeapon,
+} from '@hh/data';
+import {
   canUnitMove,
   canUnitRush,
+  findModel,
   FixedDiceProvider,
   formFireGroups,
   getAliveModels,
+  getAvailableGambits,
+  getBestAvailablePsychicFocus,
   getBlastSizeInches,
   getClosestModelDistance,
+  getEligibleAcceptors,
+  getEligibleChallengers,
+  getModelPsychicDisciplines,
+  getModelPsychicMeleeWeapon,
   getModelsWithLOSToUnit,
+  getUnitLegion,
   getValidCommands,
+  handleDisembark,
+  handleEmbark,
   handleMoveUnit,
+  handleRepositionReaction,
   hasLOSToUnit,
+  isVehicleUnit,
+  modelHasPsychicTrait,
+  modelHasLOSToUnit,
+  modelIsWithinRangeOfUnit,
+  unitCanUsePsychicAbilities,
+  unitHasUsedPsychicPower,
 } from '@hh/engine';
 import type { MacroAction, SearchConfig } from '../types';
 import { generateCandidatePositions, evaluateMovementDestination } from '../evaluation/position-evaluation';
@@ -65,6 +90,11 @@ interface MovementDestinationCandidate {
   baseScore: number;
   laneScores: Record<Exclude<MovementLane, 'best'>, number>;
   modelPositions: { modelId: string; position: Position }[];
+}
+
+interface PsychicFocusChoice {
+  unit: UnitState;
+  model: ModelState;
 }
 
 function makeAction(
@@ -228,6 +258,308 @@ function buildSpecialPlacements(
   }
 
   return { blastPlacements, templatePlacements };
+}
+
+function getPlayerUnits(
+  state: GameState,
+  playerIndex: number,
+): UnitState[] {
+  return state.armies[playerIndex]?.units ?? [];
+}
+
+function unitHasPsyker(
+  state: GameState,
+  unit: UnitState,
+): boolean {
+  return getAliveModels(unit).some((model) => modelHasPsychicTrait(state, model));
+}
+
+function hasPsychicPowerWithGrantedTrait(
+  model: ModelState,
+  powerId: string,
+  grantedTrait: string,
+): boolean {
+  return getModelPsychicDisciplines(model).some((discipline) =>
+    discipline.grantedTrait.toLowerCase() === grantedTrait.toLowerCase() &&
+    discipline.powers.some((power) => power.id === powerId),
+  );
+}
+
+function getCandidatePsychicFocuses(
+  state: GameState,
+  playerIndex: number,
+  powerId: string,
+  grantedTrait: string,
+): PsychicFocusChoice[] {
+  return getPlayerUnits(state, playerIndex).flatMap((unit) => {
+    if (!unitCanUsePsychicAbilities(state, unit) || unitHasUsedPsychicPower(state, unit.id)) {
+      return [];
+    }
+
+    const focus = getBestAvailablePsychicFocus(state, unit.id, (model) =>
+      hasPsychicPowerWithGrantedTrait(model, powerId, grantedTrait),
+    );
+    return focus ? [{ unit, model: focus }] : [];
+  });
+}
+
+function buildDeclaredPsychicPower(
+  powerId: string,
+  focusModelId: string,
+): DeclaredPsychicPower {
+  return { powerId, focusModelId };
+}
+
+function selectDeclaredPsychicPower(
+  state: GameState,
+  playerIndex: number,
+  beneficiaryUnitId: string,
+  powerId: string,
+  grantedTrait: string,
+): DeclaredPsychicPower | null {
+  const candidates = getCandidatePsychicFocuses(state, playerIndex, powerId, grantedTrait)
+    .filter(({ unit, model }) =>
+      unit.id === beneficiaryUnitId ||
+      (
+        modelIsWithinRangeOfUnit(state, model.id, beneficiaryUnitId, 18) &&
+        modelHasLOSToUnit(state, model.id, beneficiaryUnitId)
+      ),
+    )
+    .sort((left, right) => {
+      const leftSameUnit = Number(left.unit.id === beneficiaryUnitId);
+      const rightSameUnit = Number(right.unit.id === beneficiaryUnitId);
+      if (leftSameUnit !== rightSameUnit) {
+        return rightSameUnit - leftSameUnit;
+      }
+
+      const leftDistance = left.unit.id === beneficiaryUnitId
+        ? 0
+        : (getClosestModelDistance(state, left.unit.id, beneficiaryUnitId) ?? Number.POSITIVE_INFINITY);
+      const rightDistance = right.unit.id === beneficiaryUnitId
+        ? 0
+        : (getClosestModelDistance(state, right.unit.id, beneficiaryUnitId) ?? Number.POSITIVE_INFINITY);
+      return leftDistance - rightDistance;
+    });
+
+  const chosen = candidates[0];
+  return chosen ? buildDeclaredPsychicPower(powerId, chosen.model.id) : null;
+}
+
+function getModelAvailableMeleeWeaponIds(model: ModelState): string[] {
+  const weaponIds = new Set<string>(model.equippedWargear);
+
+  for (const discipline of getModelPsychicDisciplines(model)) {
+    for (const weapon of discipline.weapons) {
+      if (getModelPsychicMeleeWeapon(model, weapon.id)) {
+        weaponIds.add(weapon.id);
+      }
+    }
+  }
+
+  return [...weaponIds].filter((weaponId) => resolveCandidateMeleeWeapon(model, weaponId) !== null);
+}
+
+function buildCompactFormation(
+  unit: UnitState,
+  center: Position,
+): { modelId: string; position: Position }[] {
+  const aliveModels = getAliveModels(unit);
+  const columns = Math.max(1, Math.ceil(Math.sqrt(aliveModels.length)));
+  const totalRows = Math.max(1, Math.ceil(aliveModels.length / columns));
+  const spacing = 1.5;
+
+  return aliveModels.map((model, index) => {
+    const row = Math.floor(index / columns);
+    const column = index % columns;
+    const rowCount = Math.min(columns, aliveModels.length - (row * columns));
+    return {
+      modelId: model.id,
+      position: {
+        x: center.x + ((column - ((rowCount - 1) / 2)) * spacing),
+        y: center.y + ((row - ((totalRows - 1) / 2)) * spacing),
+      },
+    };
+  });
+}
+
+function getFormationCentroid(
+  modelPositions: { modelId: string; position: Position }[],
+): Position | null {
+  if (modelPositions.length === 0) {
+    return null;
+  }
+
+  const total = modelPositions.reduce((sum, entry) => ({
+    x: sum.x + entry.position.x,
+    y: sum.y + entry.position.y,
+  }), { x: 0, y: 0 });
+
+  return {
+    x: total.x / modelPositions.length,
+    y: total.y / modelPositions.length,
+  };
+}
+
+function buildDisembarkDestinations(
+  state: GameState,
+  unit: UnitState,
+  config: SearchConfig,
+): Array<MovementDestinationCandidate & { lane: MovementLane; selectedScore: number }> {
+  if (unit.embarkedOnId === null) {
+    return [];
+  }
+
+  const transport = findUnitInState(state, unit.embarkedOnId);
+  const transportModel = transport ? getAliveModels(transport)[0] : null;
+  if (!transport || !transportModel) {
+    return [];
+  }
+
+  const maxMove = getUnitMaxTranslation(unit, false);
+  const candidateCenters = generateCandidatePositions(
+    transportModel.position,
+    maxMove,
+    state.battlefield.width,
+    state.battlefield.height,
+  );
+  const playerIndex = state.armies.findIndex((army) => army.units.some((candidate) => candidate.id === unit.id));
+  if (playerIndex < 0) {
+    return [];
+  }
+
+  const destinations = candidateCenters
+    .map((center) => {
+      const modelPositions = buildCompactFormation(unit, center);
+      if (!areModelPositionsWithinBattlefield(state, modelPositions)) {
+        return null;
+      }
+
+      const validation = handleDisembark(
+        state,
+        unit.id,
+        modelPositions,
+        new FixedDiceProvider([]),
+      );
+      if (!validation.accepted) {
+        return null;
+      }
+
+      const centroid = getFormationCentroid(modelPositions);
+      if (!centroid) {
+        return null;
+      }
+
+      const baseScore = evaluateMovementDestination(state, unit.id, centroid, playerIndex);
+      return {
+        position: centroid,
+        baseScore,
+        laneScores: buildMovementLaneScores(state, playerIndex, unit, centroid, baseScore),
+        modelPositions,
+      };
+    })
+    .filter((candidate): candidate is MovementDestinationCandidate => candidate !== null);
+
+  return selectDiversifiedMovementDestinations(destinations, Math.max(2, config.maxActionsPerUnit));
+}
+
+function findNearestModelPosition(
+  state: GameState,
+  targetUnitId: string,
+  fromPosition: Position,
+): Position | null {
+  const targetUnit = findUnitInState(state, targetUnitId);
+  if (!targetUnit) return null;
+
+  const aliveModels = getAliveModels(targetUnit);
+  if (aliveModels.length === 0) return null;
+
+  let nearestPosition: Position | null = null;
+  let nearestDistance = Number.POSITIVE_INFINITY;
+  for (const model of aliveModels) {
+    const distance = distanceBetween(fromPosition, model.position);
+    if (distance < nearestDistance) {
+      nearestDistance = distance;
+      nearestPosition = model.position;
+    }
+  }
+
+  return nearestPosition;
+}
+
+function computeMoveToward(
+  from: Position,
+  target: Position,
+  maxDistance: number,
+): Position {
+  const dx = target.x - from.x;
+  const dy = target.y - from.y;
+  const distance = Math.hypot(dx, dy);
+  if (distance < 0.01) {
+    return { x: from.x, y: from.y };
+  }
+
+  const moveDistance = Math.min(maxDistance, distance);
+  return {
+    x: from.x + ((dx / distance) * moveDistance),
+    y: from.y + ((dy / distance) * moveDistance),
+  };
+}
+
+function buildChasingTheWindModelPositions(
+  state: GameState,
+  unit: UnitState,
+  triggerSourceUnitId: string,
+): { modelId: string; position: Position }[] | null {
+  const modelPositions = getAliveModels(unit).map((model) => {
+    const nearestEnemyPosition = findNearestModelPosition(state, triggerSourceUnitId, model.position);
+    if (!nearestEnemyPosition) {
+      return { modelId: model.id, position: model.position };
+    }
+
+    return {
+      modelId: model.id,
+      position: computeMoveToward(
+        model.position,
+        nearestEnemyPosition,
+        getModelMovementCharacteristic(model),
+      ),
+    };
+  });
+
+  return areModelPositionsWithinBattlefield(state, modelPositions) ? modelPositions : null;
+}
+
+function resolveCandidateMeleeWeapon(
+  model: ModelState,
+  weaponId: string,
+): MeleeWeaponProfile | null {
+  const dataWeapon = findWeapon(weaponId) ?? findLegionWeapon(weaponId);
+  if (dataWeapon && isMeleeWeapon(dataWeapon)) {
+    return dataWeapon;
+  }
+
+  return getModelPsychicMeleeWeapon(model, weaponId) ?? null;
+}
+
+function scoreMeleeWeaponChoice(
+  model: ModelState,
+  weaponId: string,
+): number {
+  const weapon = resolveCandidateMeleeWeapon(model, weaponId);
+  if (!weapon) {
+    return Number.NEGATIVE_INFINITY;
+  }
+
+  const initiativeBonus = typeof weapon.initiativeModifier === 'number'
+    ? weapon.initiativeModifier
+    : 0;
+  const apScore = weapon.ap === null ? 0 : (10 - weapon.ap);
+  return (
+    (weapon.damage * 10) +
+    apScore +
+    initiativeBonus +
+    (weapon.specialRules.length * 0.5)
+  );
 }
 
 function positionKey(position: Position): string {
@@ -463,20 +795,129 @@ function generateReactionActions(node: SearchNodeState): MacroAction[] {
     .filter((entry): entry is { unitId: string; scoring: NonNullable<ReturnType<typeof scoreReactionUnit>> } => entry.scoring !== null)
     .sort((left, right) => right.scoring.score - left.scoring.score);
 
-  const actions = scoredUnits.map(({ unitId, scoring }) =>
-    makeAction(
-      `reaction:${unitId}`,
-      `React with ${unitId}`,
-      [{
-        type: 'selectReaction',
-        unitId,
-        reactionType: String(pendingReaction.reactionType),
-      }],
-      scoring.score,
-      [unitId],
-      scoring.reasons,
-    ),
-  );
+  const actions = scoredUnits.flatMap(({ unitId, scoring }) => {
+    const unit = findUnitInState(node.state, unitId);
+    if (!unit) {
+      return [];
+    }
+
+    if (pendingReaction.reactionType === CoreReaction.Reposition) {
+      const centroid = getUnitCentroid(unit);
+      if (!centroid) {
+        return [];
+      }
+
+      const maxMove = getAliveModels(unit).reduce(
+        (minimum, model) => Math.min(minimum, getModelInitiativeCharacteristic(model)),
+        Number.POSITIVE_INFINITY,
+      );
+      const destinations = generateCandidatePositions(
+        centroid,
+        maxMove,
+        node.state.battlefield.width,
+        node.state.battlefield.height,
+      )
+        .map((position) => {
+          const modelPositions = translateUnitToCentroid(unit, position);
+          if (!modelPositions || !areModelPositionsWithinBattlefield(node.state, modelPositions)) {
+            return null;
+          }
+
+          const validation = handleRepositionReaction(
+            node.state,
+            unit.id,
+            modelPositions,
+            new FixedDiceProvider(Array.from({ length: 64 }, () => 6)),
+          );
+          if (!validation.accepted) {
+            return null;
+          }
+
+          const baseScore = evaluateMovementDestination(
+            node.state,
+            unit.id,
+            position,
+            node.state.activePlayerIndex === 0 ? 1 : 0,
+          );
+          return {
+            position,
+            baseScore,
+            laneScores: buildMovementLaneScores(node.state, node.state.activePlayerIndex === 0 ? 1 : 0, unit, position, baseScore),
+            modelPositions,
+          };
+        })
+        .filter((candidate): candidate is MovementDestinationCandidate => candidate !== null);
+
+      return selectDiversifiedMovementDestinations(destinations, 3).map((destination) =>
+        makeAction(
+          `reaction:${unitId}:${destination.position.x.toFixed(1)}:${destination.position.y.toFixed(1)}`,
+          `Reposition ${unitId}`,
+          [{
+            type: 'selectReaction',
+            unitId,
+            reactionType: String(pendingReaction.reactionType),
+            modelPositions: destination.modelPositions,
+          }],
+          scoring.score + destination.selectedScore,
+          [unitId],
+          [...scoring.reasons, laneReason(destination.lane)],
+        ),
+      );
+    }
+
+    if (pendingReaction.reactionType === 'ws-chasing-wind') {
+      const modelPositions = buildChasingTheWindModelPositions(
+        node.state,
+        unit,
+        pendingReaction.triggerSourceUnitId,
+      );
+      if (!modelPositions) {
+        return [];
+      }
+
+      const validation = handleMoveUnit(
+        node.state,
+        unit.id,
+        modelPositions,
+        new FixedDiceProvider(Array.from({ length: 64 }, () => 6)),
+        { expectedPlayerIndex: node.state.activePlayerIndex === 0 ? 1 : 0 },
+      );
+      if (!validation.accepted) {
+        return [];
+      }
+
+      return [
+        makeAction(
+          `reaction:${unitId}:ws-chasing-wind`,
+          `React with ${unitId}`,
+          [{
+            type: 'selectReaction',
+            unitId,
+            reactionType: String(pendingReaction.reactionType),
+            modelPositions,
+          }],
+          scoring.score + 8,
+          [unitId],
+          [...scoring.reasons, 'move toward enemy'],
+        ),
+      ];
+    }
+
+    return [
+      makeAction(
+        `reaction:${unitId}`,
+        `React with ${unitId}`,
+        [{
+          type: 'selectReaction',
+          unitId,
+          reactionType: String(pendingReaction.reactionType),
+        }],
+        scoring.score,
+        [unitId],
+        scoring.reasons,
+      ),
+    ];
+  });
 
   const bestReactionScore = scoredUnits[0]?.scoring.score ?? 0;
   const declineScore = bestReactionScore < 18 ? 6 : -Math.min(12, bestReactionScore / 3);
@@ -536,6 +977,231 @@ function generateReserveActions(
         ),
       );
     }
+  }
+
+  return actions;
+}
+
+function generateStandalonePsychicActions(
+  node: SearchNodeState,
+  playerIndex: number,
+  config: SearchConfig,
+): MacroAction[] {
+  const actions: MacroAction[] = [];
+  const enemyIndex = playerIndex === 0 ? 1 : 0;
+  const enemyUnits = getPlayerUnits(node.state, enemyIndex).filter((unit) => getAliveModels(unit).length > 0);
+
+  if (node.state.currentPhase === Phase.Start && node.state.currentSubPhase === SubPhase.StartEffects) {
+    const focuses = getCandidatePsychicFocuses(node.state, playerIndex, 'tranquillity', 'Thaumaturge');
+    for (const focus of focuses) {
+      const scoredTargets = enemyUnits
+        .filter((target) =>
+          unitCanUsePsychicAbilities(node.state, target) &&
+          unitHasPsyker(node.state, target) &&
+          modelIsWithinRangeOfUnit(node.state, focus.model.id, target.id, 18) &&
+          modelHasLOSToUnit(node.state, focus.model.id, target.id),
+        )
+        .map((target) => ({
+          target,
+          score:
+            estimateUnitStrategicValue(node.state, enemyIndex, target) +
+            evaluateUnitThreat(node.state, enemyIndex, target.id) +
+            (isObjectiveHolder(node.state, target) ? 8 : 0) +
+            (getAliveModels(target).some((model) => model.isWarlord) ? 10 : 0),
+        }))
+        .sort((left, right) => right.score - left.score)
+        .slice(0, Math.max(2, config.maxActionsPerUnit));
+
+      for (const { target, score } of scoredTargets) {
+        actions.push(
+          makeAction(
+            `psychic:manifest:tranquillity:${focus.model.id}:${target.id}`,
+            `Manifest Tranquillity on ${target.id}`,
+            [{
+              type: 'manifestPsychicPower',
+              powerId: 'tranquillity',
+              focusModelId: focus.model.id,
+              targetUnitId: target.id,
+            }],
+            score + 10,
+            [focus.unit.id],
+            ['standalone psychic power', 'psyker suppression'],
+          ),
+        );
+      }
+    }
+  }
+
+  if (node.state.currentPhase === Phase.Movement && node.state.currentSubPhase === SubPhase.Move) {
+    const focuses = getCandidatePsychicFocuses(node.state, playerIndex, 'mind-burst', 'Telepath')
+      .filter(({ unit }) => unit.movementState === UnitMovementState.Stationary && canUnitMove(unit));
+
+    for (const focus of focuses) {
+      const scoredTargets = enemyUnits
+        .filter((target) =>
+          target.isDeployed &&
+          !target.isInReserves &&
+          target.embarkedOnId === null &&
+          !target.isLockedInCombat &&
+          modelIsWithinRangeOfUnit(node.state, focus.model.id, target.id, 18) &&
+          modelHasLOSToUnit(node.state, focus.model.id, target.id)
+        )
+        .filter((target) => !isVehicleUnit(target))
+        .map((target) => ({
+          target,
+          score:
+            estimateUnitStrategicValue(node.state, enemyIndex, target) +
+            (evaluateUnitThreat(node.state, enemyIndex, target.id) * 1.2) +
+            (isObjectiveHolder(node.state, target) ? 12 : 0) +
+            (getAliveModels(target).some((model) => model.isWarlord) ? 10 : 0),
+        }))
+        .sort((left, right) => right.score - left.score)
+        .slice(0, Math.max(2, config.maxActionsPerUnit));
+
+      for (const { target, score } of scoredTargets) {
+        actions.push(
+          makeAction(
+            `psychic:manifest:mind-burst:${focus.model.id}:${target.id}`,
+            `Manifest Mind-burst on ${target.id}`,
+            [{
+              type: 'manifestPsychicPower',
+              powerId: 'mind-burst',
+              focusModelId: focus.model.id,
+              targetUnitId: target.id,
+            }],
+            score + 8,
+            [focus.unit.id],
+            ['standalone psychic power', 'movement denial'],
+          ),
+        );
+      }
+    }
+  }
+
+  return actions;
+}
+
+function generateTransportActions(
+  node: SearchNodeState,
+  playerIndex: number,
+  config: SearchConfig,
+): MacroAction[] {
+  const actions: MacroAction[] = [];
+  const armyUnits = getPlayerUnits(node.state, playerIndex);
+  const aliveUnits = armyUnits.filter((unit) => getAliveModels(unit).length > 0);
+  const transports = aliveUnits.filter((unit) => unit.isDeployed && unit.embarkedOnId === null);
+  const validationDice = new FixedDiceProvider(Array.from({ length: 128 }, () => 6));
+
+  for (const unit of aliveUnits) {
+    if (node.actedUnitIds.has(unit.id)) {
+      continue;
+    }
+
+    if (unit.embarkedOnId !== null) {
+      const destinations = buildDisembarkDestinations(node.state, unit, config);
+      for (const destination of destinations) {
+        actions.push(
+          makeAction(
+            `transport:disembark:${unit.id}:${destination.position.x.toFixed(1)}:${destination.position.y.toFixed(1)}`,
+            `Disembark ${unit.id}`,
+            [{
+              type: 'disembark',
+              unitId: unit.id,
+              modelPositions: destination.modelPositions,
+            }],
+            destination.selectedScore + estimateUnitStrategicValue(node.state, playerIndex, unit),
+            [unit.id],
+            ['transport action', laneReason(destination.lane)],
+          ),
+        );
+      }
+      continue;
+    }
+
+    const embarkCandidates = transports
+      .filter((transport) => transport.id !== unit.id)
+      .flatMap((transport) => {
+        const directEmbark = handleEmbark(node.state, unit.id, transport.id, validationDice);
+        const scored: MacroAction[] = [];
+        const unitValue = estimateUnitStrategicValue(node.state, playerIndex, unit);
+        const transportValue = estimateUnitStrategicValue(node.state, playerIndex, transport);
+
+        if (directEmbark.accepted) {
+          scored.push(
+            makeAction(
+              `transport:embark:${unit.id}:${transport.id}`,
+              `Embark ${unit.id} on ${transport.id}`,
+              [{
+                type: 'embark',
+                unitId: unit.id,
+                transportId: transport.id,
+              }],
+              12 + (unitValue * 0.5) + (transportValue * 0.15),
+              [unit.id],
+              ['transport action', 'board transport'],
+            ),
+          );
+        }
+
+        const transportModel = getAliveModels(transport)[0];
+        if (
+          transportModel &&
+          unit.movementState === UnitMovementState.Stationary &&
+          canUnitMove(unit)
+        ) {
+          const embarkCenters = generateCandidatePositions(
+            transportModel.position,
+            2.5,
+            node.state.battlefield.width,
+            node.state.battlefield.height,
+          );
+
+          for (const center of embarkCenters) {
+            const modelPositions = translateUnitToCentroid(unit, center);
+            if (!modelPositions || !areModelPositionsWithinBattlefield(node.state, modelPositions)) {
+              continue;
+            }
+
+            const moved = handleMoveUnit(node.state, unit.id, modelPositions, validationDice);
+            if (!moved.accepted) {
+              continue;
+            }
+
+            const embarked = handleEmbark(moved.state, unit.id, transport.id, validationDice);
+            if (!embarked.accepted) {
+              continue;
+            }
+
+            scored.push(
+              makeAction(
+                `transport:move-embark:${unit.id}:${transport.id}:${center.x.toFixed(1)}:${center.y.toFixed(1)}`,
+                `Move and embark ${unit.id}`,
+                [
+                  {
+                    type: 'moveUnit',
+                    unitId: unit.id,
+                    modelPositions,
+                  },
+                  {
+                    type: 'embark',
+                    unitId: unit.id,
+                    transportId: transport.id,
+                  },
+                ],
+                14 + (unitValue * 0.55) + (transportValue * 0.2),
+                [unit.id],
+                ['transport action', 'move to transport'],
+              ),
+            );
+          }
+        }
+
+        return scored;
+      })
+      .sort((left, right) => right.orderingScore - left.orderingScore)
+      .slice(0, Math.max(2, config.maxActionsPerUnit));
+
+    actions.push(...embarkCandidates);
   }
 
   return actions;
@@ -801,6 +1467,34 @@ function generateShootingActions(
           reasons,
         ),
       );
+
+      const declaredPsychicPower = selectDeclaredPsychicPower(
+        node.state,
+        playerIndex,
+        unit.id,
+        'foresights-blessing',
+        'Diviner',
+      );
+      if (declaredPsychicPower) {
+        scoredActions.push(
+          makeAction(
+            `shoot:${unit.id}:${target.id}:foresights-blessing:${declaredPsychicPower.focusModelId}`,
+            `Shoot ${target.id} with ${unit.id} using Foresight's Blessing`,
+            [{
+              type: 'declareShooting',
+              attackingUnitId: unit.id,
+              targetUnitId: target.id,
+              psychicPower: declaredPsychicPower,
+              weaponSelections,
+              blastPlacements: placements.blastPlacements,
+              templatePlacements: placements.templatePlacements,
+            }],
+            shootingScore + 6,
+            [unit.id],
+            [...reasons, 'psychic precision'],
+          ),
+        );
+      }
     }
 
     actions.push(
@@ -840,6 +1534,31 @@ function generateChargeActions(
           targetScore.reasons,
         ),
       );
+
+      const declaredPsychicPower = selectDeclaredPsychicPower(
+        node.state,
+        playerIndex,
+        unit.id,
+        'biomantic-rage',
+        'Biomancer',
+      );
+      if (declaredPsychicPower) {
+        actions.push(
+          makeAction(
+            `charge:${unit.id}:${targetScore.unitId}:biomantic-rage:${declaredPsychicPower.focusModelId}`,
+            `Charge ${targetScore.unitId} with ${unit.id} using Biomantic Rage`,
+            [{
+              type: 'declareCharge',
+              chargingUnitId: unit.id,
+              targetUnitId: targetScore.unitId,
+              psychicPower: declaredPsychicPower,
+            }],
+            targetScore.score + 5,
+            [unit.id],
+            [...targetScore.reasons, 'psychic assault buff'],
+          ),
+        );
+      }
     }
 
     if (prioritizedTargets.length === 0 && getValidChargeTargets(node.state, unit.id).length === 0) {
@@ -880,31 +1599,38 @@ function generateChallengeActions(
       );
       if (ownUnitIds.length === 0 || enemyUnitIds.length === 0) continue;
 
-      const ownModels = ownUnitIds
-        .flatMap((unitId) => node.state.armies[playerIndex].units.find((unit) => unit.id === unitId)?.models ?? [])
-        .filter((model) => !model.isDestroyed)
-        .filter((model) => model.isWarlord || model.profileModelName.toLowerCase().includes('sergeant'));
-      const enemyModels = enemyUnitIds
-        .flatMap((unitId) => node.state.armies[playerIndex === 0 ? 1 : 0].units.find((unit) => unit.id === unitId)?.models ?? [])
-        .filter((model) => !model.isDestroyed)
-        .filter((model) => model.isWarlord || model.profileModelName.toLowerCase().includes('sergeant'));
+      const declareActions = ownUnitIds.flatMap((ownUnitId) => {
+        const challengerIds = getEligibleChallengers(node.state, ownUnitId).eligibleChallengerIds;
+        return challengerIds.flatMap((challengerId) =>
+          enemyUnitIds.flatMap((enemyUnitId) =>
+            getEligibleAcceptors(node.state, enemyUnitId).map((targetModelId) => {
+              const challenger = findModel(node.state, challengerId)?.model;
+              const target = findModel(node.state, targetModelId)?.model;
+              const score =
+                8 +
+                (challenger?.isWarlord ? 3 : 0) +
+                (target?.isWarlord ? 4 : 0);
 
-      if (ownModels.length > 0 && enemyModels.length > 0) {
-        actions.push(
-          makeAction(
-            `challenge:declare:${ownModels[0].id}:${enemyModels[0].id}`,
-            `Declare challenge`,
-            [{
-              type: 'declareChallenge',
-              challengerModelId: ownModels[0].id,
-              targetModelId: enemyModels[0].id,
-            }],
-            8,
-            [ownModels[0].id],
-            ['challenge opportunity'],
+              return makeAction(
+                `challenge:declare:${challengerId}:${targetModelId}`,
+                'Declare challenge',
+                [{
+                  type: 'declareChallenge',
+                  challengerModelId: challengerId,
+                  targetModelId,
+                }],
+                score,
+                [challengerId],
+                ['challenge opportunity', target?.isWarlord ? 'enemy warlord' : 'eligible challenger'],
+              );
+            }),
           ),
         );
-      }
+      })
+        .sort((left, right) => right.orderingScore - left.orderingScore)
+        .slice(0, 4);
+
+      actions.push(...declareActions);
       continue;
     }
 
@@ -940,19 +1666,32 @@ function generateChallengeActions(
 
     if (challengerNeedsGambit || challengedNeedsGambit) {
       const modelId = challengerNeedsGambit ? challengeState.challengerId : challengeState.challengedId;
-      const gambits = [
-        ChallengeGambit.PressTheAttack,
-        ChallengeGambit.Guard,
-        ChallengeGambit.SeizeTheInitiative,
-      ];
+      const modelInfo = findModel(node.state, modelId);
+      const legion = modelInfo ? getUnitLegion(node.state, modelInfo.unit.id) : undefined;
+      const psychicGambits = modelInfo
+        ? getModelPsychicDisciplines(modelInfo.model).flatMap((discipline) => discipline.gambits.map((gambit) => gambit.id))
+        : [];
+      const gambits = new Set([
+        ...getAvailableGambits(legion ?? undefined),
+        ...psychicGambits,
+      ]);
 
-      gambits.forEach((gambit, index) => {
+      [...gambits].forEach((gambit) => {
+        const score = (
+          gambit === ChallengeGambit.PressTheAttack ? 12 :
+          gambit === 'every-strike-foreseen' ? 11 :
+          gambit === ChallengeGambit.Guard ? 10 :
+          gambit === ChallengeGambit.SeizeTheInitiative ? 9 :
+          gambit === ChallengeGambit.RecklessAssault ? 8 :
+          gambit === ChallengeGambit.AllOutAttack ? 7 :
+          6
+        );
         actions.push(
           makeAction(
             `gambit:${modelId}:${gambit}`,
             `Select ${gambit}`,
             [{ type: 'selectGambit', modelId, gambit }],
-            12 - (index * 2),
+            score,
             [modelId],
             ['gambit selection'],
           ),
@@ -965,18 +1704,53 @@ function generateChallengeActions(
 }
 
 function generateFightActions(node: SearchNodeState): MacroAction[] {
-  return (node.state.activeCombats ?? [])
-    .filter((combat) => !combat.resolved)
-    .map((combat, index) =>
+  const unresolvedCombats = (node.state.activeCombats ?? []).filter((combat) => !combat.resolved);
+  const actions = unresolvedCombats.map((combat, index) =>
+    makeAction(
+      `fight:${combat.combatId}`,
+      `Resolve fight ${index + 1}`,
+      [{ type: 'resolveFight', combatId: combat.combatId }],
+      6,
+      [combat.combatId],
+      ['resolve combat'],
+    ),
+  );
+
+  const currentCombat = unresolvedCombats[0];
+  if (!currentCombat) {
+    return actions;
+  }
+
+  const combatUnitIds = [...currentCombat.activePlayerUnitIds, ...currentCombat.reactivePlayerUnitIds];
+  const weaponSelections = combatUnitIds
+    .map((unitId) => findUnitInState(node.state, unitId))
+    .filter((unit): unit is UnitState => unit !== null)
+    .flatMap((unit) =>
+      getAliveModels(unit).map((model) => {
+        const weaponId = getModelAvailableMeleeWeaponIds(model)
+          .sort((left, right) => scoreMeleeWeaponChoice(model, right) - scoreMeleeWeaponChoice(model, left))[0];
+        return weaponId ? { modelId: model.id, weaponId } : null;
+      }),
+    )
+    .filter((selection): selection is { modelId: string; weaponId: string } => selection !== null);
+
+  if (weaponSelections.length > 0) {
+    actions.unshift(
       makeAction(
-        `fight:${combat.combatId}`,
-        `Resolve fight ${index + 1}`,
-        [{ type: 'resolveFight', combatId: combat.combatId }],
-        6,
-        [combat.combatId],
-        ['resolve combat'],
+        `fight:${currentCombat.combatId}:declare-weapons`,
+        `Declare weapons and resolve ${currentCombat.combatId}`,
+        [
+          { type: 'declareWeapons', weaponSelections },
+          { type: 'resolveFight', combatId: currentCombat.combatId },
+        ],
+        9,
+        [currentCombat.combatId],
+        ['declare weapons', 'resolve combat'],
       ),
     );
+  }
+
+  return actions;
 }
 
 function getResolutionState(
@@ -1075,12 +1849,20 @@ export function generateMacroActions(
     ? generateReactionActions(node)
     : (() => {
       switch (node.state.currentPhase) {
+        case Phase.Start:
+          return node.state.currentSubPhase === SubPhase.StartEffects
+            ? generateStandalonePsychicActions(node, playerIndex, config)
+            : [];
         case Phase.Movement:
           switch (node.state.currentSubPhase) {
             case SubPhase.Reserves:
               return generateReserveActions(node, playerIndex);
             case SubPhase.Move:
-              return generateMoveActions(node, playerIndex, config);
+              return [
+                ...generateStandalonePsychicActions(node, playerIndex, config),
+                ...generateTransportActions(node, playerIndex, config),
+                ...generateMoveActions(node, playerIndex, config),
+              ];
             default:
               return [];
           }

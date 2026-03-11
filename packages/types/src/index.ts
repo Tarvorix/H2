@@ -106,7 +106,6 @@ export type {
   EndPhaseCommand,
   EndSubPhaseCommand,
   SelectTargetModelCommand,
-  PlaceBlastMarkerCommand,
   PlaceTerrainCommand,
   RemoveTerrainCommand,
   DeployUnitCommand,

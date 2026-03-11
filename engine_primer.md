@@ -244,11 +244,10 @@ The current macro-action generator covers the following surfaces:
   - reserves tests
   - reserve deployment
   - diversified normal movement candidates
-  - rush
+  - rush declaration plus rushed move continuation
 - Shooting
   - declare shooting
-  - blast placements
-  - template placements
+  - bundled blast/template placement payloads on `declareShooting`
   - directed target-model selection
   - casualty resolution continuation
 - Reactions
@@ -265,6 +264,11 @@ The current macro-action generator covers the following surfaces:
   - `endSubPhase`
   - `endPhase`
 
+Two concrete details matter here:
+
+- The live special-shot path is no longer a separate public command surface. Blast and template attacks are declared through `declareShooting` with bundled `blastPlacements` / `templatePlacements`; standalone `placeBlastMarker` is not part of the current type or MCP command surface anymore.
+- Rush is also modeled as a real macro sequence now. Search either continues an already-declared rush with a rushed `moveUnit`, or emits `rushUnit` followed by the rushed move when the unit is still stationary.
+
 Every generated action is filtered against the current `getValidCommands(state)` result so the engine is not considering command types that are illegal for the current phase/sub-phase.
 
 The generator is more selective and more structured than the earlier baseline:
@@ -272,6 +276,8 @@ The generator is more selective and more structured than the earlier baseline:
 - Movement candidates are no longer just "top N destinations by one generic score." They are diversified into tactically distinct lanes: `objective`, `fire`, `safety`, `pressure`, `center`, and fallback best-score destinations. The objective lane is now heavily driven by projected scoring swing, held-VP protection, and reachable objective value rather than only generic distance pressure.
 - Shooting candidates are no longer pruned only by coarse target heuristics. The generator now widens the coarse target pool, selects actual weapons, estimates expected damage from those weapon assignments, and then boosts warlord, objective-holder, scorer, retaliation-cut, and direct objective-swing targets before final pruning.
 - Reaction generation still does not invent alternate reaction types, because `reactionType` is already fixed by engine state. Instead, it now scores eligible reacting units and decline options within that fixed reaction-type surface.
+
+The live engine command surface is now wider than the current search surface. Runtime and MCP both support `manifestPsychicPower`, plus psychic declarations attached to `declareShooting` and `declareCharge`, but the current macro-action generator still does not search those psychic choices.
 
 The earlier movement-legality fix is still critical: movement generation uses `canUnitMove()` before constructing move actions, which prevents search from generating `moveUnit` for combat-locked, pinned, embarked, undeployed, or otherwise non-movable units.
 
@@ -460,6 +466,7 @@ In the UI:
 
 - `Basic` and `Tactical` can run inline in the hook path.
 - `Engine` is sent through a dedicated web worker so search does not block the main thread.
+- If worker creation fails, the hook falls back to inline `generateNextCommand(...)` on the main thread
 
 When `Engine` is selected in the setup screens, the UI currently sends:
 
@@ -474,6 +481,15 @@ The current in-game presets expose:
 
 - `Normal`: 500 ms
 - `Turbo`: 1000 ms
+
+The setup screens currently hardcode these additional Engine values:
+
+- `maxDepthSoft: 4`
+- `rolloutCount: 1`
+- `baseSeed: 1337`
+- `diagnosticsEnabled: true`
+
+So the browser Engine path does not use the budget-derived `maxDepthSoft = 3` default at the `Normal` 500 ms preset unless the UI config is changed.
 
 The UI currently uses `DEFAULT_GAMEPLAY_NNUE_MODEL_ID` when Engine is selected.
 
@@ -536,6 +552,8 @@ The exposed player schema already includes the Engine-specific fields:
 - `maxDepthSoft`
 - `diagnosticsEnabled`
 
+The command schema also matches the live runtime surface: `declareShooting` carries optional `blastPlacements`, `templatePlacements`, and `psychicPower`, and the stale standalone `placeBlastMarker` command is no longer advertised.
+
 So MCP is not a parallel AI implementation. It is a transport and schema layer over the same headless + AI runtime.
 
 ## Training and Benchmarking Pipeline
@@ -562,6 +580,13 @@ The current default self-play flow is:
 4. Emit replay artifacts plus JSONL samples.
 5. Write a manifest recording match outcomes, sample count, and shard paths.
 
+Current CLI defaults are:
+
+- `--matches 4`
+- `--time-budget-ms 100`
+- `--max-commands 1500`
+- `--shard-size 256`
+
 ### Training
 
 `tools/nnue/train-gameplay-model.mjs` currently performs a lightweight supervised fit over the fixed gameplay feature basis:
@@ -585,6 +610,13 @@ The trainer now defaults to an outcome-heavier target blend:
 - `0.1 * searchValue`
 
 Those weights are configurable at the CLI, but the default no longer leans as hard on weak self-search labels.
+
+Other current training defaults include:
+
+- `--epochs 30`
+- `--validation-split 0.1`
+- `--patience 5`
+- `--shuffle-seed 20260309`
 
 The current trainer also records richer metadata alongside the serialized model, including training sample count, validation sample count, epochs requested, epochs completed, best epoch, whether early stopping fired, and the normalized target-weight split used for that run.
 
@@ -621,6 +653,13 @@ One important nuance: self-play and gate both use the same Engine runtime on the
 - gate: candidate `Engine` vs `Tactical`
 
 So a candidate can fit self-play labels better while still benchmarking worse against `Tactical`.
+
+Current gameplay-gate CLI defaults are:
+
+- `--matches 8`
+- `--time-budget-ms 100`
+- `--threshold 0.55`
+- `maxCommands 1500` inside the shared gate runner
 
 ## Deployment Path Today
 
@@ -681,6 +720,7 @@ This is a strong foundation. It is one of the most valuable things already prese
 - The built-in default gameplay model is still a lightweight baseline.
 - Search breadth is still intentionally narrow because of budget constraints, even after the recent candidate-generation improvements.
 - Phase-specific candidate generation is better than the earlier baseline, but it is still heuristic and selective rather than exhaustive.
+- The engine runtime now supports psychic commands and psychic reaction windows, but the current Engine searcher still does not generate those psychic decisions itself.
 - Runtime model deployment still depends on model ids already being registered; there is no finished user-facing model loader in the UI.
 - Engine gameplay uses tactical deployment logic rather than a separate engine deployment planner.
 

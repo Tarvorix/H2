@@ -48,6 +48,8 @@ describe('registerTools', () => {
 
     const createMatch = result.tools.find((tool) => tool.name === 'create_match');
     expect(createMatch).toBeDefined();
+    const submitAction = result.tools.find((tool) => tool.name === 'submit_action');
+    expect(submitAction).toBeDefined();
 
     const inputSchema = createMatch!.inputSchema as {
       properties: {
@@ -89,6 +91,7 @@ describe('registerTools', () => {
     expect(JSON.stringify(doctrineSchema)).toContain('selectedLegions');
     expect(JSON.stringify(doctrineSchema)).toContain('selectedLegionForArmoury');
     expect(JSON.stringify(doctrineSchema)).toContain('Sons of Horus');
+    expect(JSON.stringify(submitAction!.inputSchema)).not.toContain('placeBlastMarker');
 
     await clientTransport.close();
   });
