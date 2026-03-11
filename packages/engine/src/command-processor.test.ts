@@ -607,8 +607,12 @@ describe('processCommand', () => {
 
   describe('embark integration', () => {
     it('should successfully embark during Move sub-phase', () => {
-      const infantryUnit = createUnit('infantry', [createModel('i-m0', 10, 10)]);
-      const transportUnit = createUnit('transport', [createModel('t-m0', 10.5, 10)]);
+      const infantryUnit = createUnit('infantry', [createModel('i-m0', 10, 10)], {
+        profileId: 'tactical-squad',
+      });
+      const transportUnit = createUnit('transport', [createModel('t-m0', 10.5, 10)], {
+        profileId: 'rhino',
+      });
 
       const state = createGameState({
         currentPhase: Phase.Movement,

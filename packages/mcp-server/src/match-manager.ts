@@ -2,6 +2,7 @@ import { EventEmitter } from 'node:events';
 import type { GameCommand, GameState } from '@hh/types';
 import type { AIDiagnostics } from '@hh/ai';
 import type {
+  HeadlessDecisionOptionsSnapshot,
   HeadlessLegalActionsSnapshot,
   HeadlessMatchCommandRecord,
   HeadlessMatchPlayerConfig,
@@ -95,6 +96,12 @@ export class HHMatchManager extends EventEmitter {
     return record.session.getLegalActions(playerIndex);
   }
 
+  getDecisionOptions(matchId: string, playerIndex: 0 | 1, agentId?: string): HeadlessDecisionOptionsSnapshot {
+    const record = this.requireMatch(matchId);
+    this.ensureAgentBinding(record, playerIndex, agentId);
+    return record.session.getDecisionOptions(playerIndex);
+  }
+
   submitAction(
     matchId: string,
     playerIndex: 0 | 1,
@@ -112,6 +119,19 @@ export class HHMatchManager extends EventEmitter {
     const record = this.requireMatch(matchId);
     const result = record.session.advanceAiDecision(playerIndex);
     this.emitObserverSnapshot(matchId, 'ai_advanced');
+    return result;
+  }
+
+  submitDecisionOption(
+    matchId: string,
+    playerIndex: 0 | 1,
+    optionId: string,
+    agentId?: string,
+  ): HeadlessMatchCommandRecord[] {
+    const record = this.requireMatch(matchId);
+    this.ensureAgentBinding(record, playerIndex, agentId);
+    const result = record.session.submitDecisionOption(playerIndex, optionId);
+    this.emitObserverSnapshot(matchId, 'decision_option_submitted');
     return result;
   }
 

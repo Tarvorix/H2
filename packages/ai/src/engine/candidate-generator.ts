@@ -941,6 +941,9 @@ function getResolutionState(
     candidate.activePlayerUnitIds.includes(unitId) || candidate.reactivePlayerUnitIds.includes(unitId),
   );
   if (!combat) return null;
+  if ((combat.aftermathResolvedUnitIds ?? []).includes(unitId)) {
+    return null;
+  }
 
   const unit = state.armies.flatMap((army) => army.units).find((candidate) => candidate.id === unitId);
   if (!unit) return null;

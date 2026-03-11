@@ -78,10 +78,14 @@ export interface CombatState {
   reactivePlayerCRP: number;
   /** Challenge state (if a challenge is active within this combat) */
   challengeState: ChallengeState | null;
+  /** Melee weapon declarations per model for the fight step. */
+  weaponDeclarations?: { modelId: string; weaponId: string }[];
   /** Model IDs of casualties on the active player's side */
   activePlayerCasualties: string[];
   /** Model IDs of casualties on the reactive player's side */
   reactivePlayerCasualties: string[];
+  /** Unit IDs that have already completed an aftermath choice in Resolution. */
+  aftermathResolvedUnitIds?: string[];
   /** Whether this combat has been fully resolved */
   resolved: boolean;
   /** Whether one side was completely wiped (massacre) */

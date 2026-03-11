@@ -70,6 +70,15 @@ export {
   buildFallbackCommand,
 } from './fallback-command';
 export type {
+  DecisionSupportPlayerConfig,
+  HeadlessDecisionOption,
+  HeadlessDecisionOptionsSnapshot,
+} from './decision-support';
+export {
+  getDecisionOptionsSnapshot,
+  getDecisionPlayerIndex,
+} from './decision-support';
+export type {
   HeadlessLegalActionsSnapshot,
   HeadlessMatchCommandRecord,
   HeadlessMatchPlayerConfig,

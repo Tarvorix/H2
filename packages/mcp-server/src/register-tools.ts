@@ -327,6 +327,12 @@ const legalActionsSchema = z.object({
   agentId: idSchema.optional(),
 });
 
+const decisionOptionsSchema = z.object({
+  matchId: idSchema,
+  playerIndex: playerIndexSchema,
+  agentId: idSchema.optional(),
+});
+
 const submitActionSchema = z.object({
   matchId: idSchema,
   playerIndex: playerIndexSchema,
@@ -337,6 +343,13 @@ const submitActionSchema = z.object({
 const advanceAiSchema = z.object({
   matchId: idSchema,
   playerIndex: playerIndexSchema.optional(),
+});
+
+const submitDecisionOptionSchema = z.object({
+  matchId: idSchema,
+  playerIndex: playerIndexSchema,
+  agentId: idSchema.optional(),
+  optionId: idSchema,
 });
 
 export function registerTools(server: McpServer, matches: HHMatchManager): void {
@@ -399,6 +412,15 @@ export function registerTools(server: McpServer, matches: HHMatchManager): void 
   );
 
   server.registerTool(
+    'get_decision_options',
+    {
+      description: 'Returns concrete MCP-ready decision options for the current acting player, including full command payloads.',
+      inputSchema: decisionOptionsSchema.shape,
+    },
+    (args) => asToolResult(matches.getDecisionOptions(args.matchId, args.playerIndex, args.agentId)),
+  );
+
+  server.registerTool(
     'submit_action',
     {
       description: 'Submits one validated HH engine command for the current acting player.',
@@ -420,6 +442,20 @@ export function registerTools(server: McpServer, matches: HHMatchManager): void 
       inputSchema: advanceAiSchema.shape,
     },
     (args) => asToolResult(matches.advanceAiDecision(args.matchId, args.playerIndex)),
+  );
+
+  server.registerTool(
+    'submit_decision_option',
+    {
+      description: 'Submits one previously listed concrete decision option and auto-advances through non-decision states.',
+      inputSchema: submitDecisionOptionSchema.shape,
+    },
+    (args) => asToolResult(matches.submitDecisionOption(
+      args.matchId,
+      args.playerIndex,
+      args.optionId,
+      args.agentId,
+    )),
   );
 
   server.registerTool(

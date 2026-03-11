@@ -24,7 +24,7 @@ import type {
 } from '@hh/types';
 import { AftermathOption, CoreReaction, TacticalStatus } from '@hh/types';
 import type { CommandResult, DiceProvider, GameEvent } from '../types';
-import { findUnit, findUnitPlayerIndex, getAliveModels } from '../game-queries';
+import { findModel, findUnit, findUnitPlayerIndex, getAliveModels } from '../game-queries';
 import { setAwaitingReaction } from '../state-helpers';
 import { checkAssaultAdvancedReactionTriggers } from '../legion/advanced-reaction-registry';
 
@@ -45,15 +45,27 @@ import {
   acceptChallenge,
   declineChallenge,
 } from '../assault/challenge-handler';
-import { selectGambit } from '../assault/gambit-handler';
-import { determineCombats } from '../assault/fight-handler';
+import { resolveFocusRoll, selectGambit } from '../assault/gambit-handler';
 import { resolveInitiativeStep } from '../assault/initiative-step-handler';
 import { resolveFinalPileIn } from '../assault/pile-in-handler';
 import { resolveCombatResolution } from '../assault/resolution-handler';
+import { resolveChallengeGlory, resolveChallengeStrike } from '../assault/challenge-strike-handler';
 import {
   getAvailableAftermathOptions,
   resolveAftermathOption,
 } from '../assault/aftermath-handler';
+import {
+  prepareCombatForFight,
+  syncActiveCombats,
+} from '../assault/combat-state';
+import {
+  getModelAttacks,
+  getModelInitiative,
+  getModelSave,
+  getModelStrength,
+  getModelToughness,
+  getModelWS,
+} from '../profile-lookup';
 
 // ─── Charge Sub-Phase ──────────────────────────────────────────────────────
 
@@ -386,7 +398,8 @@ export function handleDeclareChallenge(
   command: DeclareChallengeCommand,
   _dice: DiceProvider,
 ): CommandResult {
-  const result = declareChallenge(state, command.challengerModelId, command.targetModelId);
+  const challengeState = state.activeCombats && state.activeCombats.length > 0 ? state : syncActiveCombats(state).state;
+  const result = declareChallenge(challengeState, command.challengerModelId, command.targetModelId);
   if (!result.valid) {
     return reject(state, 'CHALLENGE_INVALID', result.error || 'Challenge is not valid');
   }
@@ -415,38 +428,17 @@ export function handleAcceptChallenge(
   command: AcceptChallengeCommand,
   _dice: DiceProvider,
 ): CommandResult {
-  // The active challenge context should be stored in the assault attack state
-  // or in the active combat's challenge state.
-  // The challengerModelId comes from the pending challenge context.
-  // For now, look up from activeCombats to find a pending challenge.
-  let challengerModelId: string | undefined;
-
-  if (state.activeCombats) {
-    for (const combat of state.activeCombats) {
-      // AssaultCombatState from @hh/types is a simplified version;
-      // the challenge context is tracked via the engine's internal CombatState.
-      // For the orchestrator, we retrieve the challenger from the assault state.
-      if ((combat as unknown as { challengeState?: { challengerId: string } }).challengeState) {
-        challengerModelId = (combat as unknown as { challengeState: { challengerId: string } }).challengeState.challengerId;
-        break;
-      }
-    }
-  }
-
-  // Fallback: if assault attack state has charge context, use that
-  if (!challengerModelId && state.assaultAttackState) {
-    // The assault attack state stores the charging unit context.
-    // In the challenge flow, the challengerModelId would have been
-    // set during the declareChallenge step. Use the chargingUnitId as a fallback.
-    challengerModelId = state.assaultAttackState.chargingUnitId;
-  }
+  const challengeState = state.activeCombats && state.activeCombats.length > 0 ? state : syncActiveCombats(state).state;
+  const challengerModelId = ((challengeState.activeCombats ?? []) as import('../assault/assault-types').CombatState[])
+    .find((combat) => combat.challengeState?.currentStep === 'DECLARE')
+    ?.challengeState?.challengerId;
 
   if (!challengerModelId) {
     return reject(state, 'NO_CHALLENGE_PENDING', 'No challenge is currently pending.');
   }
 
   const result = acceptChallenge(
-    state,
+    challengeState,
     command.challengedModelId,
     challengerModelId,
   );
@@ -479,35 +471,19 @@ export function handleDeclineChallenge(
   _command: DeclineChallengeCommand,
   _dice: DiceProvider,
 ): CommandResult {
-  // Find the active challenge context
-  let challengerModelId: string | undefined;
-  let targetUnitId: string | undefined;
-
-  if (state.activeCombats) {
-    for (const combat of state.activeCombats) {
-      const combatWithChallenge = combat as unknown as {
-        challengeState?: { challengerId: string; challengedUnitId: string };
-      };
-      if (combatWithChallenge.challengeState) {
-        challengerModelId = combatWithChallenge.challengeState.challengerId;
-        targetUnitId = combatWithChallenge.challengeState.challengedUnitId;
-        break;
-      }
-    }
-  }
-
-  // Fallback: derive from assault attack state
-  if (!challengerModelId && state.assaultAttackState) {
-    challengerModelId = state.assaultAttackState.chargingUnitId;
-    targetUnitId = state.assaultAttackState.targetUnitId;
-  }
+  const challengeState = state.activeCombats && state.activeCombats.length > 0 ? state : syncActiveCombats(state).state;
+  const pendingChallenge = ((challengeState.activeCombats ?? []) as import('../assault/assault-types').CombatState[])
+    .find((combat) => combat.challengeState?.currentStep === 'DECLARE')
+    ?.challengeState;
+  const challengerModelId = pendingChallenge?.challengerId;
+  const targetUnitId = pendingChallenge?.challengedUnitId;
 
   if (!challengerModelId || !targetUnitId) {
     return reject(state, 'NO_CHALLENGE_PENDING', 'No challenge is currently pending.');
   }
 
   const result = declineChallenge(
-    state,
+    challengeState,
     challengerModelId,
     targetUnitId,
   );
@@ -534,18 +510,16 @@ export function handleDeclineChallenge(
 export function handleSelectGambit(
   state: GameState,
   command: SelectGambitCommand,
-  _dice: DiceProvider,
+  dice: DiceProvider,
 ): CommandResult {
-  // Find the active combat with a challenge state
-  if (!state.activeCombats || state.activeCombats.length === 0) {
+  const challengeState = state.activeCombats && state.activeCombats.length > 0 ? state : syncActiveCombats(state).state;
+  const activeCombats = challengeState.activeCombats;
+  if (!activeCombats || activeCombats.length === 0) {
     return reject(state, 'NO_ACTIVE_COMBAT', 'No active combat for gambit selection');
   }
 
-  // Look through active combats for one with a challenge state
-  // The challenge state is tracked internally via CombatState.challengeState
-  // We need to find the combat and its challenge state to pass to selectGambit
-  for (let i = 0; i < state.activeCombats.length; i++) {
-    const combat = state.activeCombats[i];
+  for (let i = 0; i < activeCombats.length; i++) {
+    const combat = activeCombats[i];
     const combatWithChallenge = combat as unknown as {
       challengeState?: import('../assault/assault-types').ChallengeState;
     };
@@ -556,20 +530,66 @@ export function handleSelectGambit(
         command.gambit,
         combatWithChallenge.challengeState,
       );
+      let updatedChallenge = gambitResult.challengeState;
+      let updatedState = challengeState;
+      const events = [...gambitResult.events];
 
-      // Update the combat's challenge state with the gambit selection
-      const updatedCombats = [...state.activeCombats];
+      if (updatedChallenge.challengerGambit && updatedChallenge.challengedGambit) {
+        const challengerInfo = findModel(updatedState, updatedChallenge.challengerId);
+        const challengedInfo = findModel(updatedState, updatedChallenge.challengedId);
+        if (!challengerInfo || !challengedInfo) {
+          return reject(state, 'CHALLENGE_INVALID', 'Challenge participants could not be resolved.');
+        }
+
+        const focusResult = resolveFocusRoll(
+          updatedChallenge,
+          dice,
+          getModelInitiative(challengerInfo.model.unitProfileId, challengerInfo.model.profileModelName),
+          getModelInitiative(challengedInfo.model.unitProfileId, challengedInfo.model.profileModelName),
+          updatedChallenge.challengerPlayerIndex,
+          updatedChallenge.challengedPlayerIndex,
+        );
+        updatedChallenge = focusResult.challengeState;
+        events.push(...focusResult.events);
+
+        if (!focusResult.needsReroll) {
+          const strikeResult = resolveChallengeStrike(
+            updatedState,
+            updatedChallenge,
+            dice,
+            getModelWS(challengerInfo.model.unitProfileId, challengerInfo.model.profileModelName),
+            getModelWS(challengedInfo.model.unitProfileId, challengedInfo.model.profileModelName),
+            getModelStrength(challengerInfo.model.unitProfileId, challengerInfo.model.profileModelName),
+            getModelStrength(challengedInfo.model.unitProfileId, challengedInfo.model.profileModelName),
+            getModelAttacks(challengerInfo.model.unitProfileId, challengerInfo.model.profileModelName),
+            getModelAttacks(challengedInfo.model.unitProfileId, challengedInfo.model.profileModelName),
+            getModelToughness(challengerInfo.model.unitProfileId, challengerInfo.model.profileModelName),
+            getModelToughness(challengedInfo.model.unitProfileId, challengedInfo.model.profileModelName),
+            getModelSave(challengerInfo.model.unitProfileId, challengerInfo.model.profileModelName),
+            getModelSave(challengedInfo.model.unitProfileId, challengedInfo.model.profileModelName),
+          );
+          updatedState = strikeResult.state;
+          updatedChallenge = strikeResult.challengeState;
+          events.push(...strikeResult.events);
+
+          const gloryResult = resolveChallengeGlory(updatedChallenge);
+          updatedChallenge = gloryResult.challengeState;
+          events.push(...gloryResult.events);
+        }
+      }
+
+      const updatedCombats = [...(updatedState.activeCombats ?? [])];
       updatedCombats[i] = {
         ...combat,
-        ...({ challengeState: gambitResult.challengeState } as Record<string, unknown>),
+        ...({ challengeState: updatedChallenge } as Record<string, unknown>),
       } as typeof combat;
 
       return {
         state: {
-          ...state,
+          ...updatedState,
           activeCombats: updatedCombats,
         },
-        events: gambitResult.events,
+        events,
         errors: [],
         accepted: true,
       };
@@ -596,38 +616,40 @@ export function handleFight(
   dice: DiceProvider,
 ): CommandResult {
   const events: GameEvent[] = [];
-
-  // Determine all combats
-  const combatsResult = determineCombats(state);
-  let newState = state;
-
-  // Find the requested combat
-  const combat = combatsResult.combats.find(c => c.combatId === command.combatId);
-  if (!combat) {
+  const synced = syncActiveCombats(state);
+  const activeCombats = synced.state.activeCombats as import('../assault/assault-types').CombatState[] | undefined;
+  if (!activeCombats || activeCombats.length === 0) {
     return reject(state, 'COMBAT_NOT_FOUND', `Combat "${command.combatId}" not found`);
   }
 
-  events.push(...combatsResult.events);
-
-  // Resolve each initiative step sequentially
-  // The initiative-step-handler returns updated combatState and gameState
-  let currentCombat = combat;
+  const combatIndex = activeCombats.findIndex((combat) => combat.combatId === command.combatId);
+  if (combatIndex < 0) {
+    return reject(state, 'COMBAT_NOT_FOUND', `Combat "${command.combatId}" not found`);
+  }
+  let currentCombat = prepareCombatForFight(synced.state, activeCombats[combatIndex]);
+  let newState: GameState = {
+    ...synced.state,
+    activeCombats: activeCombats.map((combat, index) => (
+      index === combatIndex ? currentCombat : combat
+    )),
+  };
 
   for (let i = 0; i < currentCombat.initiativeSteps.length; i++) {
-    // Get the majority toughness of the target unit for this step
-    // For simplicity, use the default toughness (4) and save (3+) —
-    // in a full implementation these would come from the actual model profiles
-    // and would be calculated per-strike-group.
     const stepResult = resolveInitiativeStep(
       newState,
       currentCombat,
       i,
       dice,
-      4, // default majority toughness
-      3, // default armour save (3+)
+      0,
+      null,
     );
-    newState = stepResult.state;
     currentCombat = stepResult.combatState;
+    newState = {
+      ...stepResult.state,
+      activeCombats: (stepResult.state.activeCombats as import('../assault/assault-types').CombatState[]).map((combat, index) => (
+        index === combatIndex ? currentCombat : combat
+      )),
+    };
     events.push(...stepResult.events);
   }
 
@@ -635,6 +657,16 @@ export function handleFight(
   const pileInResult = resolveFinalPileIn(newState, currentCombat);
   newState = pileInResult.state;
   events.push(...pileInResult.events);
+  currentCombat = {
+    ...currentCombat,
+    resolved: true,
+  };
+  newState = {
+    ...newState,
+    activeCombats: ((newState.activeCombats ?? []) as import('../assault/assault-types').CombatState[]).map((combat, index) => (
+      index === combatIndex ? currentCombat : combat
+    )),
+  };
 
   return {
     state: newState,
@@ -661,20 +693,32 @@ export function handleResolution(
   combatId?: string,
 ): CommandResult {
   const events: GameEvent[] = [];
-
-  // Determine combats to find the one being resolved
-  const combatsResult = determineCombats(state);
+  const synced = syncActiveCombats(state);
+  const activeCombats = synced.state.activeCombats as import('../assault/assault-types').CombatState[] | undefined;
   const combat = combatId
-    ? combatsResult.combats.find(c => c.combatId === combatId)
-    : combatsResult.combats[0]; // Default to first combat
+    ? activeCombats?.find((candidate) => candidate.combatId === combatId)
+    : activeCombats?.[0];
 
   if (!combat) {
     return reject(state, 'NO_COMBAT', 'No active combat to resolve');
   }
 
   // Run the full resolution pipeline
-  const resolutionResult = resolveCombatResolution(state, combat, dice);
-  const newState = resolutionResult.state;
+  const resolutionResult = resolveCombatResolution(synced.state, combat, dice);
+  const updatedCombat: import('../assault/assault-types').CombatState = {
+    ...combat,
+    activePlayerCRP: resolutionResult.crpResult.activePlayerCRP,
+    reactivePlayerCRP: resolutionResult.crpResult.reactivePlayerCRP,
+    isMassacre: resolutionResult.isMassacre,
+    massacreWinnerPlayerIndex: resolutionResult.winnerResult.winnerPlayerIndex,
+    aftermathResolvedUnitIds: combat.aftermathResolvedUnitIds ?? [],
+  };
+  const newState = {
+    ...resolutionResult.state,
+    activeCombats: (resolutionResult.state.activeCombats as import('../assault/assault-types').CombatState[]).map((candidate) => (
+      candidate.combatId === combat.combatId ? updatedCombat : candidate
+    )),
+  };
   events.push(...resolutionResult.events);
 
   return {
@@ -707,9 +751,8 @@ export function handleSelectAftermath(
     return reject(state, 'UNIT_NOT_FOUND', `Unit "${unitId}" not found`);
   }
 
-  // Find the combat this unit is in
-  const combatsResult = determineCombats(state);
-  const combat = combatsResult.combats.find(
+  const activeCombats = (state.activeCombats ?? []) as import('../assault/assault-types').CombatState[];
+  const combat = activeCombats.find(
     c => c.activePlayerUnitIds.includes(unitId) || c.reactivePlayerUnitIds.includes(unitId),
   );
 
@@ -717,15 +760,12 @@ export function handleSelectAftermath(
     return reject(state, 'NO_COMBAT', 'No active combat for aftermath selection');
   }
 
-  // Determine if this unit is winner/loser/draw based on CRP stored in the combat
   const isActiveUnit = combat.activePlayerUnitIds.includes(unitId);
   const isWinner = (isActiveUnit && combat.activePlayerCRP > combat.reactivePlayerCRP)
     || (!isActiveUnit && combat.reactivePlayerCRP > combat.activePlayerCRP);
   const isLoser = (isActiveUnit && combat.activePlayerCRP < combat.reactivePlayerCRP)
     || (!isActiveUnit && combat.reactivePlayerCRP < combat.activePlayerCRP);
   const isDraw = combat.activePlayerCRP === combat.reactivePlayerCRP;
-
-  // Check if all enemy units are fleeing (Routed status)
   const enemyUnitIds = isActiveUnit
     ? combat.reactivePlayerUnitIds
     : combat.activePlayerUnitIds;
@@ -759,9 +799,24 @@ export function handleSelectAftermath(
 
   // Resolve the aftermath option
   const result = resolveAftermathOption(state, unitId, selectedOption, combat, dice);
+  const updatedCombats = activeCombats.map((candidate) => {
+    if (candidate.combatId !== combat.combatId) {
+      return candidate;
+    }
+
+    const resolvedUnitIds = new Set(candidate.aftermathResolvedUnitIds ?? []);
+    resolvedUnitIds.add(unitId);
+    return {
+      ...candidate,
+      aftermathResolvedUnitIds: [...resolvedUnitIds],
+    };
+  });
 
   return {
-    state: result.state,
+    state: {
+      ...result.state,
+      activeCombats: updatedCombats,
+    },
     events: result.events,
     errors: [],
     accepted: true,

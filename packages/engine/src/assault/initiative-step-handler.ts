@@ -49,6 +49,7 @@ import type {
   MeleeStrikeGroup,
 } from './assault-types';
 import { applyLegionTactica } from '../legion';
+import { getTargetDurability } from './combat-state';
 
 // ─── Result Types ───────────────────────────────────────────────────────────
 
@@ -277,10 +278,13 @@ export function resolveInitiativeStep(
 
     // Step 3c: Roll wound tests (apply strength modifier from legion tactica)
     const effectiveStrength = strikeGroup.weaponStrength + strengthModifier;
+    const targetDurability = getTargetDurability(currentState, strikeGroup.targetUnitId);
+    const defenderToughness = targetDurability.toughness > 0 ? targetDurability.toughness : targetToughness;
+    const defenderArmourSave = targetDurability.armourSave ?? defenderSave;
     const woundResult = resolveStrikeGroupWounds(
       hitResult.hits,
       effectiveStrength,
-      targetToughness,
+      defenderToughness,
       dice,
     );
 
@@ -291,7 +295,7 @@ export function resolveInitiativeStep(
       rolls: woundResult.rolls,
       targetNumber: woundResult.targetNumber ?? 0,
       strength: strikeGroup.weaponStrength,
-      toughness: targetToughness,
+      toughness: defenderToughness,
       wounds: woundResult.wounds,
       failures: woundResult.failures,
     };
@@ -305,13 +309,13 @@ export function resolveInitiativeStep(
     // Step 3d: Roll saving throws
     const saveResult = resolveStrikeGroupSaves(
       woundResult.wounds,
-      defenderSave,
+      defenderArmourSave,
       strikeGroup.weaponAP,
       dice,
     );
 
     // Emit SavingThrowRollEvent for each save attempt
-    const effectiveSave = calculateEffectiveSave(defenderSave, strikeGroup.weaponAP);
+    const effectiveSave = calculateEffectiveSave(defenderArmourSave, strikeGroup.weaponAP);
     for (let i = 0; i < saveResult.rolls.length; i++) {
       const roll = saveResult.rolls[i];
       const passed = effectiveSave !== null && effectiveSave <= 6 && roll >= effectiveSave;

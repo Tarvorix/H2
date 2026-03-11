@@ -55,11 +55,13 @@ import {
   handleDeclineChallenge,
   handleSelectGambit,
   handleFight,
+  handleResolution,
   handleSelectAftermath,
 } from './phases/assault-phase';
 import { resolveVolleyAttacks } from './assault/volley-attack-handler';
 import { resolveChargeMove } from './assault/charge-move-handler';
 import { checkOverwatchTrigger, resolveOverwatch, declineOverwatch } from './assault/overwatch-handler';
+import { syncActiveCombats } from './assault/combat-state';
 
 // Phase lifecycle handlers
 import { handleStartPhase } from './phases/start-phase';
@@ -513,10 +515,39 @@ function autoProcessSubPhase(
       result = handleVictoryCheck(state, dice);
       return { state: result.state, events: result.events };
 
+    case SubPhase.Resolution: {
+      let currentState = state;
+      const events: GameEvent[] = [];
+      const combats = (state.activeCombats ?? []) as import('./assault/assault-types').CombatState[];
+      for (const combat of combats) {
+        result = handleResolution(currentState, dice, combat.combatId);
+        currentState = result.state;
+        events.push(...result.events);
+      }
+      return { state: currentState, events };
+    }
+
     default:
       // Not an auto-process sub-phase — no action needed
       return { state, events: [] };
   }
+}
+
+function prepareEnteredSubPhase(state: GameState): { state: GameState; events: GameEvent[] } {
+  if (state.currentPhase !== Phase.Assault) {
+    return { state, events: [] };
+  }
+
+  if (
+    state.currentSubPhase === SubPhase.Challenge ||
+    state.currentSubPhase === SubPhase.Fight ||
+    state.currentSubPhase === SubPhase.Resolution
+  ) {
+    const synced = syncActiveCombats(state);
+    return { state: synced.state, events: synced.events };
+  }
+
+  return { state, events: [] };
 }
 
 /**
@@ -531,8 +562,11 @@ function processEndSubPhase(state: GameState, dice: DiceProvider): CommandResult
   const { state: advancedState, events: advanceEvents } = advanceSubPhase(state);
   events.push(...advanceEvents);
 
+  const { state: preparedState, events: prepareEvents } = prepareEnteredSubPhase(advancedState);
+  events.push(...prepareEvents);
+
   // Auto-process the new sub-phase if it's engine-driven
-  const { state: processedState, events: processEvents } = autoProcessSubPhase(advancedState, dice);
+  const { state: processedState, events: processEvents } = autoProcessSubPhase(preparedState, dice);
   events.push(...processEvents);
 
   return {
@@ -550,9 +584,11 @@ function processEndSubPhase(state: GameState, dice: DiceProvider): CommandResult
  */
 function processEndPhase(state: GameState, dice: DiceProvider): CommandResult {
   const { state: advancedState, events } = advancePhase(state);
+  const { state: preparedState, events: prepareEvents } = prepareEnteredSubPhase(advancedState);
+  events.push(...prepareEvents);
 
   // Auto-process the new sub-phase if it's engine-driven
-  const { state: processedState, events: processEvents } = autoProcessSubPhase(advancedState, dice);
+  const { state: processedState, events: processEvents } = autoProcessSubPhase(preparedState, dice);
   events.push(...processEvents);
 
   return {

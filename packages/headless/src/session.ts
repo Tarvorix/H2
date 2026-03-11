@@ -22,6 +22,11 @@ import { createHeadlessGameState } from './setup';
 import { buildFallbackCommand } from './fallback-command';
 import type { HeadlessReplayArtifact } from './replay';
 import { createReplayArtifact } from './replay';
+import {
+  getDecisionOptionsSnapshot,
+  getDecisionPlayerIndex as getDecisionOwnerPlayerIndex,
+  type HeadlessDecisionOptionsSnapshot,
+} from './decision-support';
 
 export type HeadlessPlayerMode = 'human' | 'agent' | 'ai';
 
@@ -76,6 +81,8 @@ export interface HeadlessLegalActionsSnapshot {
   currentPhase: string;
   currentSubPhase: string;
 }
+
+export type { HeadlessDecisionOption, HeadlessDecisionOptionsSnapshot } from './decision-support';
 
 export interface HeadlessMatchSessionCreateOptions {
   matchId?: string;
@@ -166,10 +173,6 @@ function toAIPlayerConfig(playerIndex: 0 | 1, config: HeadlessMatchPlayerConfig)
   };
 }
 
-function getDecisionPlayerIndex(state: GameState): 0 | 1 {
-  return (state.awaitingReaction ? (state.activePlayerIndex === 0 ? 1 : 0) : state.activePlayerIndex) as 0 | 1;
-}
-
 export class HeadlessMatchSession {
   readonly id: string;
   private readonly initialState: GameState;
@@ -229,7 +232,7 @@ export class HeadlessMatchSession {
   }
 
   getDecisionPlayerIndex(): 0 | 1 {
-    return getDecisionPlayerIndex(this.state);
+    return getDecisionOwnerPlayerIndex(this.state) ?? 0;
   }
 
   getNudgeSnapshot(): HeadlessNudgeSnapshot {
@@ -279,7 +282,7 @@ export class HeadlessMatchSession {
   }
 
   getLegalActions(playerIndex: 0 | 1): HeadlessLegalActionsSnapshot {
-    const actingPlayerIndex = this.state.isGameOver ? null : this.getDecisionPlayerIndex();
+    const actingPlayerIndex = this.state.isGameOver ? null : getDecisionOwnerPlayerIndex(this.state);
     const validCommandTypes = actingPlayerIndex === null ? [] : getValidCommands(this.state);
 
     return {
@@ -293,13 +296,20 @@ export class HeadlessMatchSession {
     };
   }
 
+  getDecisionOptions(playerIndex: 0 | 1): HeadlessDecisionOptionsSnapshot {
+    return getDecisionOptionsSnapshot(this.state, this.playerConfigs, playerIndex);
+  }
+
   submitAction(
     playerIndex: 0 | 1,
     command: GameCommand,
     aiDiagnostics: AIDiagnostics | null = null,
   ): HeadlessMatchCommandRecord {
-    const actingPlayerIndex = this.getDecisionPlayerIndex();
+    const actingPlayerIndex = getDecisionOwnerPlayerIndex(this.state);
     if (!this.state.isGameOver && actingPlayerIndex !== playerIndex) {
+      if (actingPlayerIndex === null) {
+        throw new Error('No player can act because the game is over.');
+      }
       throw new Error(
         `Player ${playerIndex + 1} cannot act right now. Waiting on player ${actingPlayerIndex + 1}.`,
       );
@@ -330,6 +340,64 @@ export class HeadlessMatchSession {
     }
 
     return record;
+  }
+
+  submitDecisionOption(
+    playerIndex: 0 | 1,
+    optionId: string,
+    aiDiagnostics: AIDiagnostics | null = null,
+  ): HeadlessMatchCommandRecord[] {
+    const snapshot = this.getDecisionOptions(playerIndex);
+    if (!snapshot.canAct) {
+      const actingPlayerIndex = snapshot.actingPlayerIndex;
+      throw new Error(
+        actingPlayerIndex === null
+          ? 'No player can act because the game is over.'
+          : `Player ${playerIndex + 1} cannot act right now. Waiting on player ${actingPlayerIndex + 1}.`,
+      );
+    }
+
+    const selectedOption = snapshot.options.find((option) => option.id === optionId);
+    if (!selectedOption) {
+      throw new Error(`Unknown decision option "${optionId}" for player ${playerIndex + 1}.`);
+    }
+
+    const records: HeadlessMatchCommandRecord[] = [];
+    for (const command of selectedOption.commands) {
+      records.push(this.submitAction(playerIndex, command, aiDiagnostics));
+    }
+
+    this.autoAdvanceToNextDecision();
+    return records;
+  }
+
+  private autoAdvanceToNextDecision(maxSteps: number = 64): void {
+    for (let step = 0; step < maxSteps; step++) {
+      const actingPlayerIndex = getDecisionOwnerPlayerIndex(this.state);
+      if (actingPlayerIndex === null || this.state.isGameOver) {
+        return;
+      }
+
+      const snapshot = this.getDecisionOptions(actingPlayerIndex);
+      const nonAdvanceOptions = snapshot.options.filter((option) =>
+        option.commands.some((command) => command.type !== 'endSubPhase' && command.type !== 'endPhase'),
+      );
+      if (nonAdvanceOptions.length > 0) {
+        return;
+      }
+
+      const advanceOption = snapshot.options.find((option) =>
+        option.commands.length === 1 &&
+        (option.commands[0].type === 'endSubPhase' || option.commands[0].type === 'endPhase'),
+      );
+      if (!advanceOption) {
+        return;
+      }
+
+      this.submitAction(actingPlayerIndex, advanceOption.commands[0]);
+    }
+
+    throw new Error('Auto-advance did not settle on a real decision within the safety limit.');
   }
 
   advanceAiDecision(playerIndex?: 0 | 1): HeadlessMatchCommandRecord {

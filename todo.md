@@ -1,6 +1,25 @@
 # HHv2 TODO
 
-Last Updated: 2026-03-09
+Last Updated: 2026-03-10
+
+## Execution Plan (Embark Fixture Red Test Fix - 2026-03-10)
+- [x] Inspect the failing embark integration test and confirm whether the failure is in the engine logic or the test fixture.
+- [x] Correct the fixture so the embark integration test uses a real transport profile without changing embark behavior.
+- [x] Rerun the affected engine suite and record the result here.
+- Progress:
+  - Confirmed the failing red test was `packages/engine/src/command-processor.test.ts` under `processCommand > embark integration > should successfully embark during Move sub-phase`.
+  - Confirmed the test fixture was using shorthand profile IDs that no longer match the live data-backed embark validation path: the supposed transport used the default `profileId: 'tactical'`, and the infantry passenger also used the old shorthand profile instead of the real tactical squad ID.
+  - Updated the command-processor embark fixture to use `profileId: 'rhino'` for the transport and `profileId: 'tactical-squad'` for the embarking infantry, matching the dedicated embark/disembark handler tests and preserving the current engine behavior.
+  - Verification passed:
+    - `pnpm test -- packages/engine/src/command-processor.test.ts`
+    - `pnpm test -- packages/mcp-server/src/match-manager.test.ts packages/mcp-server/src/register-tools.test.ts packages/headless/src/session.test.ts packages/headless/src/run.test.ts`
+
+## Execution Plan (GitHub Sync - 2026-03-10)
+- [x] Confirm the working tree contains the intended HHv2 MCP external-play and fixture-fix changes only.
+- [x] Record the sync step here before committing.
+- [ ] Commit the current HHv2 work with `Tarvorix` as author/committer and push `main` to `origin`.
+- Progress:
+  - Confirmed the current working tree contains the MCP external-agent play implementation, the assault/combat persistence changes that support it, the focused regression coverage, and the embark fixture correction.
 
 ## Execution Plan (MCP Host Split Config - 2026-03-09)
 - [x] Add a machine-level Cloudflare tunnel ingress rule so `mcp.tarvorix.com` remains available for Strife while `hh.tarvorix.com` forwards to HHv2.
@@ -40,8 +59,43 @@ Last Updated: 2026-03-09
   - Verification passed:
     - `pnpm --filter @hh/mcp-server typecheck`
     - `pnpm --filter @hh/mcp-server build`
-    - `pnpm test -- packages/mcp-server/src/match-manager.test.ts packages/mcp-server/src/register-tools.test.ts`
-    - Live MCP SDK check against `https://hh.tarvorix.com/mcp` confirmed the 5-value top-level `faction` enum while the doctrine schema still includes `Sons of Horus`, `selectedLegions`, and `selectedLegionForArmoury`.
+  - `pnpm test -- packages/mcp-server/src/match-manager.test.ts packages/mcp-server/src/register-tools.test.ts`
+  - Live MCP SDK check against `https://hh.tarvorix.com/mcp` confirmed the 5-value top-level `faction` enum while the doctrine schema still includes `Sons of Horus`, `selectedLegions`, and `selectedLegionForArmoury`.
+
+## Review Plan (HH MCP Full-Play Support Audit - 2026-03-10)
+- [x] Inspect the HH MCP tool surface and the underlying headless session/match manager flow.
+- [x] Check whether all required match lifecycle actions for a full game are available through MCP today.
+- [x] Summarize whether the MCP server currently supports full complete play, including any concrete gaps or caveats.
+- Outcome:
+  - Confirmed the MCP command schema covers the current `GameCommand` union and the tool surface exposes the full match lifecycle: `create_match`, `get_match`, `get_legal_actions`, `submit_action`, `advance_ai_decision`, `get_observer_snapshot`, replay export, and archive.
+  - Confirmed over the actual MCP HTTP transport that an AI-vs-AI match can be created and advanced to `isGameOver=true` via repeated `advance_ai_decision` calls (`111` tool calls in the audited smoke test, ending on battle turn `4` in `End/Victory`).
+  - Caveat: manual/external-client play is not fully self-describing through MCP today because `get_legal_actions` only returns command types, not server-computed legal payload options such as valid move destinations, eligible shooting assignments, challenge targets, or aftermath options.
+
+## Implementation Plan (HH MCP Full External-Agent Play Support - 2026-03-10)
+- [x] Audit and, if needed, repair any engine/headless phase paths that would block externally driven full-game play once concrete MCP decision helpers are exposed.
+- [x] Add a shared headless decision-support layer that returns concrete legal MCP-ready commands and supporting metadata for the current decision window.
+- [x] Expose the new decision-support surface through the HH match manager and MCP server without removing the existing tool set.
+- [x] Add regression coverage proving the MCP server can provide complete concrete decisions for external agents across full-match play.
+- [x] Rebuild, run focused tests, and verify an externally driven match can reach a winner using the new MCP helper path.
+- Progress:
+  - Added persistent assault combat state syncing across Challenge, Fight, and Resolution so externally driven play is no longer relying on ephemeral combat detection during those sub-phases.
+  - Reworked the challenge/fight/resolution plumbing so declared challenges persist on a combat, gambit selections resolve into challenge state updates, Fight builds real melee strike groups from engaged models and melee weapons, and Resolution stores CRP back onto the combat state for aftermath decisions.
+  - Added a headless decision-support layer that computes the true acting player for reactions, challenge responses/gambits, and resolution aftermath, then returns concrete macro-actions with full command payloads.
+  - Exposed that surface through the session, match manager, and MCP server as `get_decision_options` and `submit_decision_option`.
+  - Added regression coverage:
+    - `packages/mcp-server/src/match-manager.test.ts` now drives a full external-agent match through `getDecisionOptions` + `submitDecisionOption` to `winnerPlayerIndex=0`.
+    - `packages/mcp-server/src/register-tools.test.ts` now asserts the expanded MCP tool catalog and calls `get_decision_options` through an in-memory MCP client.
+  - Verification passed:
+    - `pnpm --filter @hh/engine typecheck`
+    - `pnpm --filter @hh/engine build`
+    - `pnpm --filter @hh/ai build`
+    - `pnpm --filter @hh/headless typecheck`
+    - `pnpm --filter @hh/headless build`
+    - `pnpm --filter @hh/mcp-server typecheck`
+    - `pnpm --filter @hh/mcp-server build`
+    - `pnpm test -- packages/mcp-server/src/match-manager.test.ts packages/mcp-server/src/register-tools.test.ts packages/headless/src/session.test.ts packages/headless/src/run.test.ts`
+  - Additional note:
+    - A broader run of `pnpm test -- packages/engine/src/command-processor.test.ts` still reports one unrelated failing embark integration assertion (`should successfully embark during Move sub-phase`). This change did not touch embark/disembark code, so that failure is tracked as residual and not part of the MCP external-play path.
 
 ## Execution Plan (24-Match Starter Gameplay Training Run - 2026-03-08)
 - [x] Run a 24-match `nnue:selfplay` pass on the curated 2000-point default setups and capture the generated corpus manifest.

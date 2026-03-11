@@ -90,6 +90,7 @@ export {
   evaluateRosterArmyList,
 } from './engine/evaluator';
 export { searchBestAction } from './engine/search';
+export { generateMacroActions, isRealDecisionNode, type SearchNodeState } from './engine/candidate-generator';
 export { serializeNNUEModel, deserializeNNUEModel } from './engine/serialization';
 
 // Helpers

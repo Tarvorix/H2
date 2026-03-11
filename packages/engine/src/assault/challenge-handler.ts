@@ -18,6 +18,7 @@ import {
   getAliveModels,
 } from '../game-queries';
 import { applyDisgraced } from '../state-helpers';
+import type { ChallengeState, CombatState } from './assault-types';
 
 // ─── Result Types ───────────────────────────────────────────────────────────
 
@@ -232,8 +233,75 @@ export function declareChallenge(
   };
   events.push(challengeEvent);
 
+  const activeCombats = (state.activeCombats ?? []) as CombatState[];
+  const combatIndex = activeCombats.findIndex((combat) =>
+    combat.activePlayerUnitIds.includes(challengerUnit.id) &&
+    combat.reactivePlayerUnitIds.includes(targetUnit.id),
+  );
+  if (combatIndex < 0) {
+    return {
+      state,
+      events,
+      valid: false,
+      error: 'No active combat context found for this challenge',
+    };
+  }
+
+  if (activeCombats[combatIndex].challengeState) {
+    return {
+      state,
+      events,
+      valid: false,
+      error: 'A challenge is already active in this combat',
+    };
+  }
+
+  const challengedPlayerIndex = findUnitPlayerIndex(state, targetUnit.id);
+  if (challengedPlayerIndex === undefined) {
+    return {
+      state,
+      events,
+      valid: false,
+      error: `Could not determine the challenged player for unit '${targetUnit.id}'`,
+    };
+  }
+
+  const challengeState: ChallengeState = {
+    challengerId: challengerModelId,
+    challengedId: targetModelId,
+    challengerUnitId: challengerUnit.id,
+    challengedUnitId: targetUnit.id,
+    challengerPlayerIndex: challengerPlayerIndex!,
+    challengedPlayerIndex,
+    currentStep: 'DECLARE',
+    challengerGambit: null,
+    challengedGambit: null,
+    challengeAdvantagePlayerIndex: null,
+    focusRolls: null,
+    challengerWoundsInflicted: 0,
+    challengedWoundsInflicted: 0,
+    round: 1,
+    challengerCRP: 0,
+    challengedCRP: 0,
+    challengerWeaponId: null,
+    challengedWeaponId: null,
+    guardUpFocusBonus: {},
+    testTheFoeAdvantage: {},
+    tauntAndBaitSelections: {},
+    withdrawChosen: {},
+  };
+
+  const updatedCombats = [...activeCombats];
+  updatedCombats[combatIndex] = {
+    ...updatedCombats[combatIndex],
+    challengeState,
+  };
+
   return {
-    state,
+    state: {
+      ...state,
+      activeCombats: updatedCombats,
+    },
     events,
     valid: true,
   };
@@ -252,7 +320,7 @@ export function declareChallenge(
 export function acceptChallenge(
   state: GameState,
   challengedModelId: string,
-  _challengerModelId: string,
+  challengerModelId: string,
 ): ChallengeResponseResult {
   const events: GameEvent[] = [];
 
@@ -266,11 +334,45 @@ export function acceptChallenge(
     };
   }
 
-  // The challenge is accepted — both models are set aside for the challenge
-  // In the game state, this is tracked via the AssaultChallengeState on the combat
+  const activeCombats = (state.activeCombats ?? []) as CombatState[];
+  const combatIndex = activeCombats.findIndex((combat) =>
+    combat.challengeState?.challengerId === challengerModelId,
+  );
+  if (combatIndex < 0) {
+    return {
+      state,
+      events,
+      accepted: false,
+    };
+  }
+
+  const combat = activeCombats[combatIndex];
+  if (!combat.challengeState) {
+    return {
+      state,
+      events,
+      accepted: false,
+    };
+  }
+
+  const updatedChallenge: ChallengeState = {
+    ...combat.challengeState,
+    challengedId: challengedModelId,
+    challengedUnitId: challengedInfo.unit.id,
+    challengedPlayerIndex: challengedInfo.army.playerIndex,
+    currentStep: 'FACE_OFF',
+  };
+  const updatedCombats = [...activeCombats];
+  updatedCombats[combatIndex] = {
+    ...combat,
+    challengeState: updatedChallenge,
+  };
 
   return {
-    state,
+    state: {
+      ...state,
+      activeCombats: updatedCombats,
+    },
     events,
     accepted: true,
     challengedModelId,
@@ -329,6 +431,22 @@ export function declineChallenge(
     disgracedModelId: disgracedModelId ?? null,
   };
   events.push(declinedEvent);
+
+  const activeCombats = (newState.activeCombats ?? []) as CombatState[];
+  const combatIndex = activeCombats.findIndex((combat) =>
+    combat.challengeState?.challengerId === challengerModelId,
+  );
+  if (combatIndex >= 0) {
+    const updatedCombats = [...activeCombats];
+    updatedCombats[combatIndex] = {
+      ...updatedCombats[combatIndex],
+      challengeState: null,
+    };
+    newState = {
+      ...newState,
+      activeCombats: updatedCombats,
+    };
+  }
 
   return {
     state: newState,

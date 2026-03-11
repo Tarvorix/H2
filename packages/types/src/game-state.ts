@@ -401,6 +401,8 @@ export interface AssaultCombatState {
   challengeState: AssaultChallengeState | null;
   /** Melee weapon declarations per model for the fight step */
   weaponDeclarations?: { modelId: string; weaponId: string }[];
+  /** Unit IDs that have already completed an aftermath choice in Resolution. */
+  aftermathResolvedUnitIds?: string[];
 }
 
 /**

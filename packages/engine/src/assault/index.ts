@@ -125,6 +125,14 @@ export {
   declareWeaponsAndSetInitiativeSteps,
   getCombatInitiativeScore,
 } from './fight-handler';
+export {
+  getChallengeDecisionPlayerIndex,
+  getPendingAftermathUnitIds,
+  getResolutionDecisionPlayerIndex,
+  getTargetDurability,
+  prepareCombatForFight,
+  syncActiveCombats,
+} from './combat-state';
 
 // ─── Initiative Step Handler ──────────────────────────────────────────────
 export type { InitiativeStepResult } from './initiative-step-handler';
