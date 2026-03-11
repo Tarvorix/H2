@@ -93,6 +93,10 @@ export function resolveChallengeStrike(
   challengedSave: number | null = 3,
   weaponAP: number | null = null,
   weaponDamage: number = 1,
+  hitTargetOverrides: {
+    challengerHitTargetOverride?: number;
+    challengedHitTargetOverride?: number;
+  } = {},
 ): ChallengeStrikeResult {
   const events: GameEvent[] = [];
   let newState = state;
@@ -169,6 +173,7 @@ export function resolveChallengeStrike(
       challengedSave,
       weaponAP,
       effectiveChallengerDamage,
+      hitTargetOverrides.challengerHitTargetOverride,
     );
 
     // Apply damage to challenged model
@@ -193,6 +198,7 @@ export function resolveChallengeStrike(
         challengerSave,
         weaponAP,
         effectiveChallengedDamage,
+        hitTargetOverrides.challengedHitTargetOverride,
       );
 
       if (challengedWoundsInflicted > 0) {
@@ -216,6 +222,7 @@ export function resolveChallengeStrike(
       challengerSave,
       weaponAP,
       effectiveChallengedDamage,
+      hitTargetOverrides.challengedHitTargetOverride,
     );
 
     if (challengedWoundsInflicted > 0) {
@@ -238,6 +245,7 @@ export function resolveChallengeStrike(
         challengedSave,
         weaponAP,
         effectiveChallengerDamage,
+        hitTargetOverrides.challengerHitTargetOverride,
       );
 
       if (challengerWoundsInflicted > 0) {
@@ -414,8 +422,9 @@ function resolveAttacks(
   save: number | null,
   ap: number | null,
   damage: number,
+  forcedHitTarget?: number,
 ): number {
-  const hitTarget = meleeHitTable(attackerWS, defenderWS);
+  const hitTarget = forcedHitTarget ?? meleeHitTable(attackerWS, defenderWS);
   const woundTarget = woundTable(strength, toughness);
 
   if (woundTarget === null) return 0; // Cannot wound

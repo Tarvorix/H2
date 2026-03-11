@@ -21,12 +21,13 @@ import type { Position, TerrainPiece } from '@hh/types';
 import { TerrainType } from '@hh/types';
 import { EPSILON, MEDIUM_TERRAIN_CHORD_THRESHOLD } from './constants';
 import { vec2Distance } from './vec2';
-import type { ModelShape, RectHull, Segment } from './shapes';
+import type { ModelShape, Segment } from './shapes';
 import { areInBaseContact } from './distance';
 import {
   allTangentLines,
   circleToRectRays,
   rectToRectRays,
+  segmentCircleIntersection,
   segmentRectIntersection,
 } from './intersection';
 import { terrainChordLength } from './terrain';
@@ -369,7 +370,7 @@ function findTerrainExitT(
 function evaluateRay(
   ray: Segment,
   terrain: TerrainPiece[],
-  vehicleHulls: RectHull[],
+  vehicleHulls: ReadonlyArray<ModelShape>,
 ): LOSRay {
   const result: LOSRay = {
     start: ray.start,
@@ -387,7 +388,9 @@ function evaluateRay(
   // ── Step 3a: Check vehicle hulls ───────────────────────────────────────────
   // Reference: HH_Principles.md — "Models with the Vehicle Type ... always block LOS"
   for (const hull of vehicleHulls) {
-    const hits = segmentRectIntersection(ray.start, ray.end, hull);
+    const hits = hull.kind === 'rect'
+      ? segmentRectIntersection(ray.start, ray.end, hull)
+      : segmentCircleIntersection(ray.start, ray.end, hull);
     if (hits.length >= 1) {
       // Ray intersects the vehicle hull boundary — LOS is blocked
       result.isBlocked = true;
@@ -496,7 +499,7 @@ export function checkLOS(
   modelA: ModelShape,
   modelB: ModelShape,
   terrain: TerrainPiece[],
-  vehicleHulls: RectHull[],
+  vehicleHulls: ReadonlyArray<ModelShape>,
 ): LOSResult {
   // ── Step 1: Base contact check ─────────────────────────────────────────────
   // Reference: HH_Principles.md — "Models that are in Base-to-Base contact
@@ -563,7 +566,7 @@ export function hasLOS(
   modelA: ModelShape,
   modelB: ModelShape,
   terrain: TerrainPiece[],
-  vehicleHulls: RectHull[],
+  vehicleHulls: ReadonlyArray<ModelShape>,
 ): boolean {
   // Base contact is the fastest check — do it first
   // Reference: HH_Principles.md — "Models that are in Base-to-Base contact

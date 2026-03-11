@@ -55,6 +55,15 @@ import {
   resolveAftermathOption,
 } from '../assault/aftermath-handler';
 import {
+  resolveDeclaredChargePsychicPower,
+  unitCanDeclarePsychicReaction,
+} from '../psychic/power-handler';
+import {
+  getCurrentModelWillpower,
+  getModelPsychicGambit,
+} from '../psychic/psychic-runtime';
+import { awardVanguardBonusForCombatObjectiveUnits } from '../missions/vanguard-bonus';
+import {
   prepareCombatForFight,
   syncActiveCombats,
 } from '../assault/combat-state';
@@ -74,6 +83,27 @@ export interface ChargeExecutionOptions {
   skipAdvancedReactionChecks?: boolean;
 }
 
+function resolveEveryStrikeForeseenCheck(
+  state: GameState,
+  modelId: string,
+  dice: DiceProvider,
+): { passed: boolean } {
+  const modelInfo = findModel(state, modelId);
+  if (!modelInfo) {
+    return { passed: false };
+  }
+
+  const targetNumber = getCurrentModelWillpower(state, modelInfo.unit, modelInfo.model);
+  if (targetNumber <= 0) {
+    return { passed: false };
+  }
+
+  const [dieOne, dieTwo] = dice.roll2D6();
+  return {
+    passed: dieOne + dieTwo <= targetNumber,
+  };
+}
+
 function offerChargeAdvancedReaction(
   state: GameState,
   existingEvents: GameEvent[],
@@ -86,6 +116,7 @@ function offerChargeAdvancedReaction(
   isDisordered: boolean,
   closestDistance: number,
   modelsWithLOS: string[],
+  declaredPsychicPower: DeclareChargeCommand['psychicPower'],
 ): CommandResult {
   const playerIndex = eligibleUnitIds.length > 0
     ? findUnitPlayerIndex(state, eligibleUnitIds[0]) ?? -1
@@ -114,6 +145,7 @@ function offerChargeAdvancedReaction(
         overwatchResolved: false,
         closestDistance,
         modelsWithLOS,
+        declaredPsychicPower,
       },
     },
     events: [
@@ -201,6 +233,7 @@ export function handleCharge(
         disordered,
         targetValidation.closestDistance,
         targetValidation.modelsWithLOS,
+        command.psychicPower,
       );
     }
 
@@ -224,6 +257,7 @@ export function handleCharge(
         disordered,
         targetValidation.closestDistance,
         targetValidation.modelsWithLOS,
+        command.psychicPower,
       );
     }
   }
@@ -247,10 +281,55 @@ export function handleCharge(
   newState = setupResult.state;
   events.push(...setupResult.events);
 
+  const declaredPsychicResult = resolveDeclaredChargePsychicPower(
+    newState,
+    chargingUnitId,
+    command.psychicPower,
+    dice,
+  );
+  if (!declaredPsychicResult.accepted) {
+    return declaredPsychicResult;
+  }
+  newState = declaredPsychicResult.state;
+  events.push(...declaredPsychicResult.events);
+
   // If setup move achieved base contact, charge succeeds immediately
   if (setupResult.chargeCompleteViaSetup) {
     return {
       state: newState,
+      events,
+      errors: [],
+      accepted: true,
+    };
+  }
+
+  if (unitCanDeclarePsychicReaction(newState, chargingUnitId, 'force-barrier')) {
+    const reactionState = setAwaitingReaction(newState, true, {
+      reactionType: 'force-barrier',
+      isAdvancedReaction: false,
+      eligibleUnitIds: [chargingUnitId],
+      triggerDescription: `Unit "${chargingUnitId}" may manifest Force Barrier before charge volleys are resolved.`,
+      triggerSourceUnitId: targetUnitId,
+    });
+
+    return {
+      state: {
+        ...reactionState,
+        assaultAttackState: {
+          chargingUnitId,
+          targetUnitId,
+          chargerPlayerIndex: state.activePlayerIndex,
+          chargeStep: 'VOLLEY_ATTACKS' as const,
+          setupMoveDistance: setupResult.setupMoveDistance,
+          chargeRoll: 0,
+          isDisordered: disordered,
+          chargeCompleteViaSetup: false,
+          overwatchResolved: false,
+          closestDistance: targetValidation.closestDistance,
+          modelsWithLOS: targetValidation.modelsWithLOS,
+          declaredPsychicPower: command.psychicPower,
+        },
+      },
       events,
       errors: [],
       accepted: true,
@@ -278,6 +357,7 @@ export function handleCharge(
         disordered,
         targetValidation.closestDistance,
         targetValidation.modelsWithLOS,
+        command.psychicPower,
       );
     }
   }
@@ -312,6 +392,7 @@ export function handleCharge(
           overwatchResolved: false,
           closestDistance: targetValidation.closestDistance,
           modelsWithLOS: targetValidation.modelsWithLOS,
+          declaredPsychicPower: command.psychicPower,
         },
       },
       events,
@@ -359,6 +440,7 @@ export function handleCharge(
         disordered,
         targetValidation.closestDistance,
         targetValidation.modelsWithLOS,
+        command.psychicPower,
       );
     }
   }
@@ -443,8 +525,12 @@ export function handleAcceptChallenge(
     challengerModelId,
   );
 
-  if (!result.accepted) {
-    return reject(state, 'ACCEPT_CHALLENGE_INVALID', 'Cannot accept challenge');
+  if (!result.valid || !result.accepted) {
+    return reject(
+      state,
+      'ACCEPT_CHALLENGE_INVALID',
+      result.error || 'Cannot accept challenge',
+    );
   }
 
   return {
@@ -488,6 +574,14 @@ export function handleDeclineChallenge(
     targetUnitId,
   );
 
+  if (!result.valid) {
+    return reject(
+      state,
+      'DECLINE_CHALLENGE_INVALID',
+      result.error || 'Cannot decline challenge',
+    );
+  }
+
   return {
     state: result.state,
     events: result.events,
@@ -525,6 +619,14 @@ export function handleSelectGambit(
     };
 
     if (combatWithChallenge.challengeState) {
+      const selectedModel = findModel(challengeState, command.modelId);
+      if (
+        command.gambit === 'every-strike-foreseen' &&
+        (!selectedModel || !getModelPsychicGambit(selectedModel.model, 'every-strike-foreseen'))
+      ) {
+        return reject(state, 'GAMBIT_INVALID', 'This model cannot use Every Strike Foreseen.');
+      }
+
       const gambitResult = selectGambit(
         command.modelId,
         command.gambit,
@@ -553,6 +655,27 @@ export function handleSelectGambit(
         events.push(...focusResult.events);
 
         if (!focusResult.needsReroll) {
+          const strikeOverrides: {
+            challengerHitTargetOverride?: number;
+            challengedHitTargetOverride?: number;
+          } = {};
+          if (
+            updatedChallenge.challengerGambit === 'every-strike-foreseen' &&
+            getModelPsychicGambit(challengerInfo.model, 'every-strike-foreseen')
+          ) {
+            if (resolveEveryStrikeForeseenCheck(updatedState, challengerInfo.model.id, dice).passed) {
+              strikeOverrides.challengerHitTargetOverride = 2;
+            }
+          }
+          if (
+            updatedChallenge.challengedGambit === 'every-strike-foreseen' &&
+            getModelPsychicGambit(challengedInfo.model, 'every-strike-foreseen')
+          ) {
+            if (resolveEveryStrikeForeseenCheck(updatedState, challengedInfo.model.id, dice).passed) {
+              strikeOverrides.challengedHitTargetOverride = 2;
+            }
+          }
+
           const strikeResult = resolveChallengeStrike(
             updatedState,
             updatedChallenge,
@@ -567,6 +690,9 @@ export function handleSelectGambit(
             getModelToughness(challengedInfo.model.unitProfileId, challengedInfo.model.profileModelName),
             getModelSave(challengerInfo.model.unitProfileId, challengerInfo.model.profileModelName),
             getModelSave(challengedInfo.model.unitProfileId, challengedInfo.model.profileModelName),
+            undefined,
+            undefined,
+            strikeOverrides,
           );
           updatedState = strikeResult.state;
           updatedChallenge = strikeResult.challengeState;
@@ -719,10 +845,28 @@ export function handleResolution(
       candidate.combatId === combat.combatId ? updatedCombat : candidate
     )),
   };
+  let finalState: GameState = newState;
   events.push(...resolutionResult.events);
 
+  if (resolutionResult.isMassacre) {
+    const loserUnitIds = resolutionResult.winnerResult.loserPlayerIndex === 0
+      ? combat.activePlayerUnitIds
+      : resolutionResult.winnerResult.loserPlayerIndex === 1
+        ? combat.reactivePlayerUnitIds
+        : [];
+    const vanguardBonusResult = awardVanguardBonusForCombatObjectiveUnits(
+      finalState,
+      updatedCombat,
+      loserUnitIds,
+      resolutionResult.winnerResult.winnerPlayerIndex,
+      'assault-massacre',
+    );
+    finalState = vanguardBonusResult.state;
+    events.push(...vanguardBonusResult.events);
+  }
+
   return {
-    state: newState,
+    state: finalState,
     events,
     errors: [],
     accepted: true,
@@ -812,12 +956,29 @@ export function handleSelectAftermath(
     };
   });
 
+  let finalState: GameState = {
+    ...result.state,
+    activeCombats: updatedCombats,
+  };
+  const finalEvents = [...result.events];
+
+  if (selectedOption === AftermathOption.FallBack) {
+    const unitPlayerIndex = findUnitPlayerIndex(state, unitId);
+    const opposingPlayerIndex = unitPlayerIndex === null ? null : (unitPlayerIndex === 0 ? 1 : 0);
+    const vanguardBonusResult = awardVanguardBonusForCombatObjectiveUnits(
+      finalState,
+      combat,
+      [unitId],
+      opposingPlayerIndex,
+      'assault-fallback',
+    );
+    finalState = vanguardBonusResult.state;
+    finalEvents.push(...vanguardBonusResult.events);
+  }
+
   return {
-    state: {
-      ...result.state,
-      activeCombats: updatedCombats,
-    },
-    events: result.events,
+    state: finalState,
+    events: finalEvents,
     errors: [],
     accepted: true,
   };

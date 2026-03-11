@@ -182,6 +182,7 @@ export type LegionTacticaHandler = (
  * has both HeavyAfterLimitedMove and IgnoreDifficultTerrain at Movement hook).
  */
 const tacticaRegistry = new Map<LegionFaction, Map<PipelineHook, LegionTacticaHandler[]>>();
+let legionTacticasInitialized = false;
 
 /**
  * Register a legion tactica handler for a specific legion and pipeline hook.
@@ -227,6 +228,7 @@ export function hasLegionTactica(
  */
 export function clearLegionTacticaRegistry(): void {
   tacticaRegistry.clear();
+  legionTacticasInitialized = false;
 }
 
 /**
@@ -260,6 +262,7 @@ export function applyLegionTactica(
   hook: PipelineHook,
   context: LegionTacticaContext | ShootingTacticaContext | AssaultTacticaContext | MovementTacticaContext | MoraleTacticaContext,
 ): LegionTacticaResult {
+  ensureLegionTacticasRegistered();
   const handlers = getLegionTacticaHandlers(legion, hook);
   if (handlers.length === 0) return {};
 
@@ -377,9 +380,23 @@ import { registerHereticusTacticas } from './tacticas/hereticus-tacticas';
  * Called once during engine initialization.
  */
 export function registerAllLegionTacticas(): void {
+  if (legionTacticasInitialized) {
+    return;
+  }
   registerShootingTacticas();
   registerAssaultTacticas();
   registerMovementTacticas();
   registerPassiveTacticas();
   registerHereticusTacticas();
+  legionTacticasInitialized = true;
+}
+
+function ensureLegionTacticasRegistered(): void {
+  if (legionTacticasInitialized) {
+    return;
+  }
+  if (tacticaRegistry.size > 0) {
+    return;
+  }
+  registerAllLegionTacticas();
 }

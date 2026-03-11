@@ -14,6 +14,7 @@ import {
   getChargeableUnits,
   getUnitEquippedWeapons,
   getModelMovementCharacteristic,
+  getModelInitiativeCharacteristic,
   getUnitCentroid,
   getEnemyDeployedUnits,
   findOwnedUnit,
@@ -130,6 +131,15 @@ describe('getMovableUnits', () => {
     expect(result[0].id).toBe('u2');
   });
 
+  it('includes units with a declared rush so the rush move can be completed', () => {
+    const unit = createUnit({ id: 'u1', isDeployed: true, movementState: UnitMovementState.RushDeclared });
+    const state = createGameState();
+    state.armies[0] = createArmy({ playerIndex: 0, units: [unit] });
+
+    const result = getMovableUnits(state, 0, new Set());
+    expect(result.map((u) => u.id)).toContain('u1');
+  });
+
   it('excludes units in the actedIds set', () => {
     const unit1 = createUnit({ id: 'u1', isDeployed: true, movementState: UnitMovementState.Stationary });
     const state = createGameState();
@@ -209,6 +219,13 @@ describe('getShootableUnits', () => {
 
     const result = getShootableUnits(state, 0, new Set(['u1']));
     expect(result.length).toBe(0);
+  });
+});
+
+describe('getModelInitiativeCharacteristic', () => {
+  it('returns the model initiative from profile data', () => {
+    const model = createModel({ profileModelName: 'Tactical Marine', unitProfileId: 'tactical-squad' });
+    expect(getModelInitiativeCharacteristic(model)).toBeGreaterThan(0);
   });
 });
 

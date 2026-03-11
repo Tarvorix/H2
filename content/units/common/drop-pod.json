@@ -8,6 +8,10 @@
   "modelDefinitions": [
     {
       "name": "Drop Pod",
+      "modelType": "Vehicle",
+      "modelSubTypes": [
+        "Transport"
+      ],
       "baseSizeMM": 32,
       "countInBase": 1,
       "isAdditionalModelType": true,
@@ -57,10 +61,9 @@
   ],
   "accessPoints": [
     {
-      "name": "- This Model has Access Points on all Facings.",
-      "relativePosition": {
-        "x": 0,
-        "y": 0
+      "label": "- This Model has Access Points on all Facings.",
+      "geometry": {
+        "kind": "all-facings"
       }
     }
   ]

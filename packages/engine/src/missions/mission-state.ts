@@ -92,6 +92,8 @@ export function initializeMissionState(
     },
     scoringHistory: [],
     vpAtTurnStart: [],
+    vanguardBonusHistory: [],
+    assaultPhaseObjectiveSnapshot: null,
   };
 }
 
@@ -205,6 +207,49 @@ export function recordTurnStartVP(
   return {
     ...missionState,
     vpAtTurnStart: [...missionState.vpAtTurnStart, [player0VP, player1VP]],
+  };
+}
+
+/**
+ * Record a Vanguard(X) bonus claim.
+ */
+export function recordVanguardBonus(
+  missionState: MissionState,
+  entry: MissionState['vanguardBonusHistory'][number],
+): MissionState {
+  return {
+    ...missionState,
+    vanguardBonusHistory: [...missionState.vanguardBonusHistory, entry],
+  };
+}
+
+/**
+ * Check whether Vanguard(X) has already scored for this objective in the
+ * current player turn.
+ */
+export function hasVanguardBonusForObjective(
+  missionState: MissionState,
+  battleTurn: number,
+  playerIndex: number,
+  objectiveId: string,
+): boolean {
+  return missionState.vanguardBonusHistory.some((entry) =>
+    entry.battleTurn === battleTurn
+    && entry.playerIndex === playerIndex
+    && entry.objectiveId === objectiveId,
+  );
+}
+
+/**
+ * Update the start-of-Assault objective snapshot used by Vanguard(X).
+ */
+export function setAssaultPhaseObjectiveSnapshot(
+  missionState: MissionState,
+  snapshot: MissionState['assaultPhaseObjectiveSnapshot'],
+): MissionState {
+  return {
+    ...missionState,
+    assaultPhaseObjectiveSnapshot: snapshot,
   };
 }
 

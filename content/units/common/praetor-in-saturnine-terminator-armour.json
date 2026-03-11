@@ -8,6 +8,11 @@
   "modelDefinitions": [
     {
       "name": "Saturnine Praetor",
+      "modelType": "Infantry",
+      "modelSubTypes": [
+        "Command",
+        "Heavy"
+      ],
       "baseSizeMM": 50,
       "countInBase": 1,
       "isAdditionalModelType": false,

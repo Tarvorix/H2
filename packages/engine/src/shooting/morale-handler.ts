@@ -43,6 +43,41 @@ const DEFAULT_LEADERSHIP = 7;
 /** Default Cool value when not specified on the unit profile */
 const DEFAULT_COOL = 7;
 
+function isIgnoredByFlameStatusImmunity(
+  state: GameState,
+  unit: ReturnType<typeof findUnit>,
+  check: PendingMoraleCheck,
+): boolean {
+  if (!unit || !check.weaponTraits || check.weaponTraits.length === 0) {
+    return false;
+  }
+
+  const unitLegion = getUnitLegion(state, check.unitId);
+  if (!unitLegion) {
+    return false;
+  }
+
+  const effects = getTacticaEffectsForLegion(unitLegion);
+  const tacticaResult = applyLegionTactica(unitLegion, PipelineHook.OnCasualty, {
+    state,
+    unit,
+    effects,
+    hook: PipelineHook.OnCasualty,
+    isAttacker: false,
+    weaponTraits: check.weaponTraits,
+    entireUnitHasTactica: true,
+  } as any);
+
+  const immunityTrait = tacticaResult.panicImmunityFromTrait;
+  if (!immunityTrait) {
+    return false;
+  }
+
+  return check.weaponTraits.some(
+    (trait) => trait.toLowerCase() === immunityTrait.toLowerCase(),
+  );
+}
+
 // ─── Result Type ────────────────────────────────────────────────────────────
 
 /**
@@ -125,6 +160,10 @@ export function resolveShootingMorale(
       continue;
     }
 
+    if (isIgnoredByFlameStatusImmunity(currentState, unit, check)) {
+      continue;
+    }
+
     // Use real Leadership from the first alive model's profile
     const aliveModels = getAliveModels(unit);
     const refModel = aliveModels[0];
@@ -199,11 +238,6 @@ export function resolveShootingMorale(
     }
   }
 
-  // TODO: Salamanders Flame immunity — the Salamanders tactica grants panic immunity
-  // from weapons with the Flame trait (panicImmunityFromTrait). This requires tracking
-  // which weapon caused the casualties, which is not currently available in the morale
-  // handler. Implement when weapon trait tracking is added to the casualty pipeline.
-
   // ─── Phase 2: Resolve Status Checks ────────────────────────────────────
   // Skip status checks for units that are already Routed
 
@@ -216,6 +250,10 @@ export function resolveShootingMorale(
     // Verify the unit still exists
     const unit = findUnit(currentState, check.unitId);
     if (!unit) {
+      continue;
+    }
+
+    if (isIgnoredByFlameStatusImmunity(currentState, unit, check)) {
       continue;
     }
 

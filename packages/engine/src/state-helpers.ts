@@ -135,7 +135,61 @@ export function setPhaseState(
   phase: Phase,
   subPhase: SubPhase,
 ): GameState {
-  return { ...state, currentPhase: phase, currentSubPhase: subPhase };
+  return {
+    ...state,
+    currentPhase: phase,
+    currentSubPhase: subPhase,
+    dangerousTerrainTestedModelIds:
+      phase === state.currentPhase
+        ? state.dangerousTerrainTestedModelIds
+        : undefined,
+  };
+}
+
+export function expireModifiersForTransition(
+  state: GameState,
+  nextPhase: Phase,
+  nextSubPhase: SubPhase,
+): GameState {
+  const leavingSubPhase = nextSubPhase !== state.currentSubPhase;
+  const leavingPhase = nextPhase !== state.currentPhase;
+
+  if (!leavingSubPhase && !leavingPhase) {
+    return state;
+  }
+
+  const armies = state.armies.map((army) => ({
+    ...army,
+    units: army.units.map((unit) => ({
+      ...unit,
+      modifiers: unit.modifiers.filter((modifier) => {
+        if (modifier.expiresAt.type === 'endOfSubPhase' && leavingSubPhase && modifier.expiresAt.subPhase === state.currentSubPhase) {
+          return false;
+        }
+        if (modifier.expiresAt.type === 'endOfPhase' && leavingPhase && modifier.expiresAt.phase === state.currentPhase) {
+          return false;
+        }
+        return true;
+      }),
+      models: unit.models.map((model) => ({
+        ...model,
+        modifiers: model.modifiers.filter((modifier) => {
+          if (modifier.expiresAt.type === 'endOfSubPhase' && leavingSubPhase && modifier.expiresAt.subPhase === state.currentSubPhase) {
+            return false;
+          }
+          if (modifier.expiresAt.type === 'endOfPhase' && leavingPhase && modifier.expiresAt.phase === state.currentPhase) {
+            return false;
+          }
+          return true;
+        }),
+      })),
+    })),
+  })) as [ArmyState, ArmyState];
+
+  return {
+    ...state,
+    armies,
+  };
 }
 
 // ─── Status Helpers ──────────────────────────────────────────────────────────

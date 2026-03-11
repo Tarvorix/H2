@@ -8,6 +8,11 @@
   "modelDefinitions": [
     {
       "name": "Corswain",
+      "modelType": "Infantry",
+      "modelSubTypes": [
+        "Unique",
+        "Command"
+      ],
       "baseSizeMM": 32,
       "countInBase": 1,
       "isAdditionalModelType": true,

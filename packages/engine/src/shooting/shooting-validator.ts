@@ -196,7 +196,13 @@ export function validateAttackerEligibility(
   }
 
   // Must not have Rushed this turn
-  if (!options.ignoreRushedRestriction && attackerUnit.movementState === UnitMovementState.Rushed) {
+  if (
+    !options.ignoreRushedRestriction
+    && (
+      attackerUnit.movementState === UnitMovementState.Rushed
+      || attackerUnit.movementState === UnitMovementState.RushDeclared
+    )
+  ) {
     errors.push({
       code: 'ATTACKER_RUSHED',
       message: 'Unit that Rushed this turn cannot shoot',
@@ -279,7 +285,7 @@ export function filterModelsWithLOS(
   attackerModels: ModelState[],
   targetModels: ModelState[],
   terrain: TerrainPiece[],
-  vehicleHulls: RectHull[],
+  vehicleHulls: ReadonlyArray<ModelShape>,
 ): string[] {
   const modelsWithLOS: string[] = [];
 

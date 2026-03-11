@@ -8,6 +8,10 @@
   "modelDefinitions": [
     {
       "name": "Typhon",
+      "modelType": "Vehicle",
+      "modelSubTypes": [
+        "SuperHeavy"
+      ],
       "baseSizeMM": 32,
       "countInBase": 1,
       "isAdditionalModelType": true,

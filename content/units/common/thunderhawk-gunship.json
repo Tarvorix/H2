@@ -8,6 +8,12 @@
   "modelDefinitions": [
     {
       "name": "Thunderhawk",
+      "modelType": "Vehicle",
+      "modelSubTypes": [
+        "Transport",
+        "SuperHeavy",
+        "Flyer"
+      ],
       "baseSizeMM": 32,
       "countInBase": 1,
       "isAdditionalModelType": true,
@@ -61,17 +67,9 @@
   ],
   "accessPoints": [
     {
-      "name": "- If this Model does not have a base",
-      "relativePosition": {
-        "x": 0,
-        "y": 0
-      }
-    },
-    {
-      "name": "it is considered to have Access Points on all Facings.",
-      "relativePosition": {
-        "x": 2,
-        "y": 0
+      "label": "- If this Model does not have a base, it is considered to have Access Points on all Facings.",
+      "geometry": {
+        "kind": "base-edge-or-all-facings"
       }
     }
   ]

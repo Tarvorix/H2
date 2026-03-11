@@ -8,8 +8,10 @@
 
 import type { GameState, Position } from '@hh/types';
 import { LegionFaction, UnitMovementState, TacticalStatus } from '@hh/types';
-import { vec2Distance, createCircleBase, checkCoherency, STANDARD_COHERENCY_RANGE } from '@hh/geometry';
+import type { ModelShape } from '@hh/geometry';
+import { createCircleBase, checkCoherency, STANDARD_COHERENCY_RANGE, areInBaseContact } from '@hh/geometry';
 import { canProfileEmbarkOnTransport } from '@hh/data';
+import { getModelShapeAtPosition } from '../model-shapes';
 import type { CommandResult, GameEvent, DiceProvider } from '../types';
 import type { EmbarkEvent, DisembarkEvent, EmergencyDisembarkEvent, CoolCheckEvent, StatusAppliedEvent } from '../types';
 import {
@@ -26,7 +28,11 @@ import {
   findUnitPlayerIndex,
   getAliveModels,
 } from '../game-queries';
-import { getModelCool, lookupUnitProfile } from '../profile-lookup';
+import { getModelCool, getModelMovement, lookupUnitProfile } from '../profile-lookup';
+import {
+  getEmergencyDisembarkAnchorShape,
+  getTransportAccessDistanceAtPosition,
+} from './transport-access';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -41,8 +47,7 @@ export const DEFAULT_COOL = 7;
 /**
  * Handle a unit embarking onto a transport.
  *
- * All models must be within 2" of the transport's access point (simplified:
- * within 2" of the transport unit's first model position).
+ * All models must be within 2" of a valid transport access point or facing.
  *
  * Reference: HH_Rules_Battle.md — "Embark"
  */
@@ -82,29 +87,12 @@ export function handleEmbark(
     return { state, events: [], errors: [{ code: 'ALREADY_EMBARKED', message: 'Unit is already embarked on a transport' }], accepted: false };
   }
 
-  // Get transport position (first alive model position)
+  // Get transport anchor model (first alive model)
   const transportModels = getAliveModels(transport);
   if (transportModels.length === 0) {
     return { state, events: [], errors: [{ code: 'TRANSPORT_DESTROYED', message: 'Transport has no alive models' }], accepted: false };
   }
-  const transportPos = transportModels[0].position;
-
-  // Check all alive models are within ACCESS_POINT_RANGE of transport
-  const aliveModels = getAliveModels(unit);
-  for (const model of aliveModels) {
-    const dist = vec2Distance(model.position, transportPos);
-    if (dist > ACCESS_POINT_RANGE + 0.01) {
-      errors.push({
-        code: 'MODEL_TOO_FAR',
-        message: `Model ${model.id} is ${dist.toFixed(2)}" from transport (max ${ACCESS_POINT_RANGE}")`,
-        context: { modelId: model.id, distance: dist },
-      });
-    }
-  }
-
-  if (errors.length > 0) {
-    return { state, events: [], errors, accepted: false };
-  }
+  const transportModel = transportModels[0];
 
   const unitProfile = lookupUnitProfile(unit.profileId);
   const transportProfile = lookupUnitProfile(transport.profileId);
@@ -120,6 +108,35 @@ export function handleEmbark(
     };
   }
 
+  // Check all alive models are within ACCESS_POINT_RANGE of a valid access region
+  const aliveModels = getAliveModels(unit);
+  for (const model of aliveModels) {
+    const dist = getTransportAccessDistanceAtPosition(
+      model,
+      model.position,
+      transportModel,
+      transportProfile,
+    );
+    if (dist === null) {
+      errors.push({
+        code: 'NO_ACCESS_POINTS',
+        message: `Transport ${transport.id} has no usable access geometry`,
+      });
+      continue;
+    }
+
+    if (dist > ACCESS_POINT_RANGE + 0.01) {
+      errors.push({
+        code: 'MODEL_TOO_FAR',
+        message: `Model ${model.id} is ${dist.toFixed(2)}" from a valid transport access point (max ${ACCESS_POINT_RANGE}")`,
+        context: { modelId: model.id, distance: dist },
+      });
+    }
+  }
+
+  if (errors.length > 0) {
+    return { state, events: [], errors, accepted: false };
+  }
   const army = state.armies[unitPlayer ?? 0];
   const embarkedUnits = army.units.filter(
     (candidate) => candidate.id !== unitId && candidate.embarkedOnId === transportId,
@@ -190,8 +207,9 @@ export function handleEmbark(
 /**
  * Handle a unit disembarking from a transport.
  *
- * Models are placed within 2" of the transport's position.
- * Must end in coherency. Unit counts as having moved.
+ * Final model positions must be reachable from a legal access-point placement
+ * using each model's Movement characteristic. The unit must end in coherency
+ * and counts as having moved.
  *
  * Reference: HH_Rules_Battle.md — "Disembark"
  */
@@ -213,7 +231,7 @@ export function handleDisembark(
     return { state, events: [], errors: [{ code: 'NOT_EMBARKED', message: 'Unit is not embarked on a transport' }], accepted: false };
   }
 
-  // Get transport position
+  // Get transport anchor model and profile
   const transport = findUnit(state, unit.embarkedOnId);
   if (!transport) {
     return { state, events: [], errors: [{ code: 'TRANSPORT_NOT_FOUND', message: 'Transport not found' }], accepted: false };
@@ -222,16 +240,48 @@ export function handleDisembark(
   if (transportModels.length === 0) {
     return { state, events: [], errors: [{ code: 'TRANSPORT_DESTROYED', message: 'Transport has no alive models' }], accepted: false };
   }
-  const transportPos = transportModels[0].position;
+  const transportModel = transportModels[0];
+  const transportProfile = lookupUnitProfile(transport.profileId);
+  if (!transportProfile) {
+    return {
+      state,
+      events: [],
+      errors: [{ code: 'PROFILE_NOT_FOUND', message: 'Transport profile could not be resolved' }],
+      accepted: false,
+    };
+  }
 
-  // Validate all placed positions are within 2" of transport
+  // Validate all placed positions are reachable from a legal access point
   for (const mp of modelPositions) {
-    const dist = vec2Distance(mp.position, transportPos);
-    if (dist > ACCESS_POINT_RANGE + 0.01) {
+    const model = unit.models.find((candidate) => candidate.id === mp.modelId);
+    if (!model || model.isDestroyed) {
+      errors.push({
+        code: 'MODEL_NOT_FOUND',
+        message: `Model ${mp.modelId} is not available to disembark`,
+      });
+      continue;
+    }
+
+    const dist = getTransportAccessDistanceAtPosition(
+      model,
+      mp.position,
+      transportModel,
+      transportProfile,
+    );
+    if (dist === null) {
+      errors.push({
+        code: 'NO_ACCESS_POINTS',
+        message: `Transport ${transport.id} has no usable access geometry`,
+      });
+      continue;
+    }
+
+    const moveAllowance = getModelMovement(model.unitProfileId, model.profileModelName);
+    if (dist > moveAllowance + 0.01) {
       errors.push({
         code: 'PLACEMENT_TOO_FAR',
-        message: `Model ${mp.modelId} placed ${dist.toFixed(2)}" from transport (max ${ACCESS_POINT_RANGE}")`,
-        context: { modelId: mp.modelId, distance: dist },
+        message: `Model ${mp.modelId} ends ${dist.toFixed(2)}" from the nearest legal access placement (max ${moveAllowance}")`,
+        context: { modelId: mp.modelId, distance: dist, moveAllowance },
       });
     }
   }
@@ -284,7 +334,8 @@ export function handleDisembark(
 /**
  * Handle emergency disembark (e.g., when transport is destroyed).
  *
- * Models placed in base contact with hull.
+ * Models are placed in base contact with the transport's hull/base or, after
+ * the first model, in base contact with already placed models from the same unit.
  * Cool Check: roll 2d6 <= CL. Fail = unit gains Pinned.
  *
  * Reference: HH_Rules_Battle.md — "Emergency Disembark"
@@ -296,6 +347,7 @@ export function handleEmergencyDisembark(
   dice: DiceProvider,
 ): CommandResult {
   const events: GameEvent[] = [];
+  const errors: CommandResult['errors'] = [];
 
   // Validate unit exists and is embarked
   const unit = findUnit(state, unitId);
@@ -307,6 +359,62 @@ export function handleEmergencyDisembark(
   }
 
   const transportId = unit.embarkedOnId;
+  const transport = findUnit(state, transportId);
+  if (!transport) {
+    return { state, events: [], errors: [{ code: 'TRANSPORT_NOT_FOUND', message: 'Transport not found' }], accepted: false };
+  }
+  const transportModels = getAliveModels(transport);
+  if (transportModels.length === 0) {
+    return { state, events: [], errors: [{ code: 'TRANSPORT_DESTROYED', message: 'Transport has no alive models' }], accepted: false };
+  }
+  const transportModel = transportModels[0];
+  const transportProfile = lookupUnitProfile(transport.profileId);
+  if (!transportProfile) {
+    return {
+      state,
+      events: [],
+      errors: [{ code: 'PROFILE_NOT_FOUND', message: 'Transport profile could not be resolved' }],
+      accepted: false,
+    };
+  }
+
+  const transportAnchorShape = getEmergencyDisembarkAnchorShape(
+    transportModel,
+    transportProfile,
+  );
+  const placedShapes: ModelShape[] = [];
+  for (const [index, mp] of modelPositions.entries()) {
+    const model = unit.models.find((candidate) => candidate.id === mp.modelId);
+    if (!model || model.isDestroyed) {
+      errors.push({
+        code: 'MODEL_NOT_FOUND',
+        message: `Model ${mp.modelId} is not available to emergency disembark`,
+      });
+      continue;
+    }
+
+    const placedShape = getModelShapeAtPosition(model, mp.position);
+    const touchingTransport = areInBaseContact(placedShape, transportAnchorShape);
+    const touchingPlacedModel = placedShapes.some((existingShape) =>
+      areInBaseContact(placedShape, existingShape),
+    );
+
+    if (!touchingTransport && (index === 0 || !touchingPlacedModel)) {
+      errors.push({
+        code: 'INVALID_EMERGENCY_DISEMBARK_PLACEMENT',
+        message: index === 0
+          ? `First model ${mp.modelId} must be placed in base contact with the transport hull/base`
+          : `Model ${mp.modelId} must be placed in base contact with the transport hull/base or an already placed model`,
+      });
+      continue;
+    }
+
+    placedShapes.push(placedShape);
+  }
+
+  if (errors.length > 0) {
+    return { state, events: [], errors, accepted: false };
+  }
 
   // Place models at provided positions
   let newState = state;

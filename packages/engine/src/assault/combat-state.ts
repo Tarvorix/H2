@@ -10,14 +10,17 @@ import {
   getUnitMajorityToughness,
 } from '../game-queries';
 import {
-  getModelAttacks,
-  getModelInitiative,
   getModelSave,
-  getModelStrength,
-  getModelWS,
 } from '../profile-lookup';
 import type { CombatState, InitiativeStep, MeleeStrikeGroup } from './assault-types';
 import { determineCombats } from './fight-handler';
+import {
+  getCurrentModelAttacks,
+  getCurrentModelInitiative,
+  getCurrentModelStrength,
+  getCurrentModelWS,
+} from '../runtime-characteristics';
+import { getModelPsychicMeleeWeapon, getPsychicWeaponStrengthModifier } from '../psychic/psychic-runtime';
 
 interface ResolvedMeleeWeaponProfile {
   id: string;
@@ -28,6 +31,7 @@ interface ResolvedMeleeWeaponProfile {
   ap: number | null;
   damage: number;
   specialRules: { name: string; value?: string }[];
+  isPsychicWeapon: boolean;
 }
 
 function createCombatKey(combat: Pick<CombatState, 'activePlayerUnitIds' | 'reactivePlayerUnitIds'>): string {
@@ -44,6 +48,7 @@ function createFallbackWeapon(): ResolvedMeleeWeaponProfile {
     ap: null,
     damage: 1,
     specialRules: [],
+    isPsychicWeapon: false,
   };
 }
 
@@ -97,26 +102,43 @@ function resolveMeleeWeaponProfile(
     ? [declaredWeaponId, ...model.equippedWargear.filter((weaponId) => weaponId !== declaredWeaponId)]
     : [...model.equippedWargear];
 
-  const meleeWeapons = candidateIds
-    .map((weaponId) => {
-      const weapon = findWeapon(weaponId) ?? findLegionWeapon(weaponId);
-      if (!weapon || !isMeleeWeapon(weapon)) {
-        return null;
-      }
+  const meleeWeapons: ResolvedMeleeWeaponProfile[] = [];
+  for (const weaponId of candidateIds) {
+    const weapon = findWeapon(weaponId) ?? findLegionWeapon(weaponId);
+    if (!weapon || !isMeleeWeapon(weapon)) {
+      continue;
+    }
 
-      return {
-        id: weapon.id,
-        name: weapon.name,
-        initiativeModifier: weapon.initiativeModifier,
-        attacksModifier: weapon.attacksModifier,
-        strengthModifier: weapon.strengthModifier,
-        ap: weapon.ap,
-        damage: weapon.damage,
-        specialRules: [...weapon.specialRules],
-      } satisfies ResolvedMeleeWeaponProfile;
-    })
-    .filter((weapon): weapon is ResolvedMeleeWeaponProfile => weapon !== null)
-    .sort((left, right) => scoreWeapon(right) - scoreWeapon(left));
+    meleeWeapons.push({
+      id: weapon.id,
+      name: weapon.name,
+      initiativeModifier: weapon.initiativeModifier,
+      attacksModifier: weapon.attacksModifier,
+      strengthModifier: weapon.strengthModifier,
+      ap: weapon.ap,
+      damage: weapon.damage,
+      specialRules: [...weapon.specialRules],
+      isPsychicWeapon: false,
+    });
+  }
+  meleeWeapons.sort((left, right) => scoreWeapon(right) - scoreWeapon(left));
+
+  if (declaredWeaponId) {
+    const psychicWeapon = getModelPsychicMeleeWeapon(model, declaredWeaponId);
+    if (psychicWeapon) {
+      meleeWeapons.unshift({
+        id: psychicWeapon.id,
+        name: psychicWeapon.name,
+        initiativeModifier: psychicWeapon.initiativeModifier,
+        attacksModifier: psychicWeapon.attacksModifier,
+        strengthModifier: psychicWeapon.strengthModifier,
+        ap: psychicWeapon.ap,
+        damage: psychicWeapon.damage,
+        specialRules: [...psychicWeapon.specialRules],
+        isPsychicWeapon: true,
+      });
+    }
+  }
 
   if (declaredWeaponId) {
     const declared = meleeWeapons.find((weapon) => weapon.id === declaredWeaponId);
@@ -199,25 +221,25 @@ function buildStrikeGroupsForCombat(
         const initiativeValue = Math.max(
           1,
           resolveStatModifier(
-            getModelInitiative(attackerModel.unitProfileId, attackerModel.profileModelName),
+            getCurrentModelInitiative(attackerUnit, attackerModel),
             weapon.initiativeModifier,
           ),
         );
         const totalAttacks = Math.max(
           1,
           resolveStatModifier(
-            getModelAttacks(attackerModel.unitProfileId, attackerModel.profileModelName),
+            getCurrentModelAttacks(attackerUnit, attackerModel),
             weapon.attacksModifier,
           ),
         );
         const weaponStrength = Math.max(
           1,
           resolveStatModifier(
-            getModelStrength(attackerModel.unitProfileId, attackerModel.profileModelName),
+            getCurrentModelStrength(attackerUnit, attackerModel),
             weapon.strengthModifier,
           ),
-        );
-        const weaponSkill = getModelWS(attackerModel.unitProfileId, attackerModel.profileModelName);
+        ) + (weapon.isPsychicWeapon ? getPsychicWeaponStrengthModifier(state, attackerUnit.id) : 0);
+        const weaponSkill = getCurrentModelWS(attackerUnit, attackerModel);
         const key = [
           initiativeValue,
           targetUnitId,

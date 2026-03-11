@@ -8,6 +8,12 @@
   "modelDefinitions": [
     {
       "name": "Chosen Champion with Jump Pack",
+      "modelType": "Infantry",
+      "modelSubTypes": [
+        "Champion",
+        "Antigrav",
+        "Sergeant"
+      ],
       "baseSizeMM": 32,
       "countInBase": 1,
       "isAdditionalModelType": false,
@@ -31,6 +37,10 @@
     },
     {
       "name": "Chosen with Jump Pack",
+      "modelType": "Infantry",
+      "modelSubTypes": [
+        "Antigrav"
+      ],
       "baseSizeMM": 32,
       "countInBase": 4,
       "isAdditionalModelType": false,
@@ -208,6 +218,7 @@
   ],
   "unitType": "Infantry",
   "unitSubTypes": [
+    "Champion",
     "Antigrav",
     "Sergeant"
   ]

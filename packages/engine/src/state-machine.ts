@@ -15,7 +15,7 @@
 import type { GameState } from '@hh/types';
 import { Phase, SubPhase, UnitMovementState } from '@hh/types';
 import type { PhaseState, GameEvent } from './types';
-import { setPhaseState } from './state-helpers';
+import { expireModifiersForTransition, setPhaseState } from './state-helpers';
 
 // ─── Player Turn Sequence ────────────────────────────────────────────────────
 
@@ -99,8 +99,10 @@ export function advanceSubPhase(state: GameState): { state: GameState; events: G
     toSubPhase: next.subPhase,
   });
 
+  const expiredState = expireModifiersForTransition(state, next.phase, next.subPhase);
+
   return {
-    state: setPhaseState(state, next.phase, next.subPhase),
+    state: setPhaseState(expiredState, next.phase, next.subPhase),
     events,
   };
 }

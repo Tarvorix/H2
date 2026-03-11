@@ -42,13 +42,14 @@
  * Reference: HH_Legiones_Astartes.md — all 18 legion sections, "Advanced Reaction" subsections
  */
 
-import type { Position, ModelState } from '@hh/types';
+import type { Position, ModelState, SpecialRuleRef } from '@hh/types';
 import { TacticalStatus, Phase } from '@hh/types';
 import type { DiceProvider, GameEvent } from '../../types';
 import type { AdvancedReactionContext, AdvancedReactionResult } from '../advanced-reaction-registry';
 import { registerAdvancedReaction } from '../advanced-reaction-registry';
 import { findUnit, getAliveModels, getDistanceBetween, getClosestModelDistance, getMajorityWS } from '../../game-queries';
 import { updateUnitInGameState, updateModelInUnit, moveModel, applyWoundsToModel, addStatus, lockUnitsInCombat } from '../../state-helpers';
+import { executeOutOfPhaseShootingAttack } from '../../shooting/out-of-phase-shooting';
 
 // ─── Geometry Helpers ────────────────────────────────────────────────────────
 
@@ -95,6 +96,28 @@ function findNearestModel(position: Position, models: ModelState[]): ModelState 
     }
   }
   return nearest;
+}
+
+function increaseOverloadRule(specialRules: SpecialRuleRef[]): SpecialRuleRef[] {
+  let foundOverload = false;
+  const updated = specialRules.map((rule) => {
+    if (rule.name.toLowerCase() !== 'overload') {
+      return rule;
+    }
+
+    foundOverload = true;
+    const currentValue = Number.parseInt(rule.value ?? '0', 10);
+    return {
+      ...rule,
+      value: String(Number.isFinite(currentValue) ? currentValue + 1 : 1),
+    };
+  });
+
+  if (foundOverload) {
+    return updated;
+  }
+
+  return [...updated, { name: 'Overload', value: '1' }];
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -441,90 +464,25 @@ function handleSpiteOfTheGorgon(
     return { state, events: [], success: false };
   }
 
-  const reactorAlive = getAliveModels(reactingUnit);
-  if (reactorAlive.length === 0) {
+  if (getAliveModels(reactingUnit).length === 0) {
     return { state, events: [], success: false };
   }
 
   let currentState = state;
-  const events: GameEvent[] = [];
-
-  // Default characteristics for Legiones Astartes infantry
-  const hitTargetNumber = 4; // BS4 → hit on 4+ (at full BS, not snap shot)
-  const woundTargetNumber = 4; // S4 vs T4 → wound on 4+
-  const shotsPerModel = 2; // 1 base + 1 from Firepower bonus
-  const damagePerWound = 1;
-
-  let totalHits = 0;
-  let totalWounds = 0;
-
-  for (const _shooter of reactorAlive) {
-    // Roll 2 shots per model (1 base + 1 FP bonus)
-    for (let shot = 0; shot < shotsPerModel; shot++) {
-      // Hit test: roll d6, hit on hitTargetNumber+
-      const hitRoll = dice.rollD6();
-      if (hitRoll < hitTargetNumber) {
-        continue; // Miss
-      }
-      totalHits++;
-
-      // Wound test: roll d6, wound on woundTargetNumber+
-      const woundRoll = dice.rollD6();
-      if (woundRoll < woundTargetNumber) {
-        continue; // Failed to wound
-      }
-      totalWounds++;
-
-      // Apply damage to a random alive model in the charging unit
-      const currentChargerUnit = findUnit(currentState, triggerSourceUnitId);
-      if (!currentChargerUnit) break;
-
-      const currentChargerAlive = getAliveModels(currentChargerUnit);
-      if (currentChargerAlive.length === 0) break;
-
-      // Select random alive model in charger unit
-      const randomIndex = Math.floor(Math.abs(dice.rollD6() - 1) * currentChargerAlive.length / 6);
-      const clampedIndex = Math.min(randomIndex, currentChargerAlive.length - 1);
-      const targetModel = currentChargerAlive[clampedIndex];
-
-      currentState = updateUnitInGameState(currentState, triggerSourceUnitId, unit =>
-        updateModelInUnit(unit, targetModel.id, m => applyWoundsToModel(m, damagePerWound)),
-      );
-
-      // Emit damage event
-      const updatedChargerUnit = findUnit(currentState, triggerSourceUnitId);
-      const updatedTargetModel = updatedChargerUnit?.models.find(m => m.id === targetModel.id);
-
-      events.push({
-        type: 'damageApplied',
-        modelId: targetModel.id,
-        unitId: triggerSourceUnitId,
-        woundsLost: damagePerWound,
-        remainingWounds: updatedTargetModel?.currentWounds ?? 0,
-        destroyed: updatedTargetModel?.isDestroyed ?? true,
-        damageSource: 'Spite of the Gorgon',
-      });
-
-      if (updatedTargetModel?.isDestroyed) {
-        events.push({
-          type: 'casualtyRemoved',
-          modelId: targetModel.id,
-          unitId: triggerSourceUnitId,
-        });
-      }
-    }
-  }
-
-  // Emit fireGroupResolved summary event
-  events.push({
-    type: 'fireGroupResolved',
-    fireGroupIndex: 0,
-    weaponName: 'Spite of the Gorgon (Reaction)',
-    totalHits,
-    totalWounds,
-    totalPenetrating: 0,
-    totalGlancing: 0,
+  const attack = executeOutOfPhaseShootingAttack(state, reactingUnitId, triggerSourceUnitId, dice, {
+    forceNoSnapShots: true,
+    suppressMoraleAndStatusChecks: true,
+    weaponProfileModifier: (weaponProfile) => ({
+      ...weaponProfile,
+      firepower: weaponProfile.firepower + 1,
+      specialRules: increaseOverloadRule(weaponProfile.specialRules),
+    }),
   });
+  const events: GameEvent[] = [...attack.events];
+
+  if (attack.accepted) {
+    currentState = attack.state;
+  }
 
   // Add NoVolleyAttacks modifier to prevent volley attacks from the reacting unit
   const updatedReactorUnit = findUnit(currentState, reactingUnitId);
@@ -552,7 +510,7 @@ function handleSpiteOfTheGorgon(
   return {
     state: currentState,
     events,
-    success: true,
+    success: attack.accepted,
   };
 }
 

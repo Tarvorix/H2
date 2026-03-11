@@ -8,6 +8,7 @@
   "modelDefinitions": [
     {
       "name": "Kratos",
+      "modelType": "Vehicle",
       "baseSizeMM": 32,
       "countInBase": 1,
       "isAdditionalModelType": true,

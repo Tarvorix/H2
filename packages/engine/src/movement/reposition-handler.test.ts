@@ -283,7 +283,7 @@ describe('handleRepositionReaction', () => {
     const activeUnit = createUnit('active-u1', [createModel('a-m0', 30, 24)]);
     const reactiveUnit = createUnit('reactive-u1', [
       createModel('r-m0', 36, 24),
-      createModel('r-m1', 37, 24),
+      createModel('r-m1', 39, 24),
     ]);
 
     const state = createGameState({
@@ -297,14 +297,84 @@ describe('handleRepositionReaction', () => {
     const dice = new FixedDiceProvider([]);
     const result = handleRepositionReaction(state, 'reactive-u1', [
       { modelId: 'r-m0', position: { x: 38, y: 24 } }, // 2" move
-      { modelId: 'r-m1', position: { x: 39, y: 24 } }, // 2" move
+      { modelId: 'r-m1', position: { x: 41, y: 24 } }, // 2" move
     ], dice);
 
     expect(result.accepted).toBe(true);
 
     const movedUnit = result.state.armies[1].units[0];
     expect(movedUnit.models[0].position).toEqual({ x: 38, y: 24 });
-    expect(movedUnit.models[1].position).toEqual({ x: 39, y: 24 });
+    expect(movedUnit.models[1].position).toEqual({ x: 41, y: 24 });
+  });
+
+  it('should reduce available reposition distance when ending in difficult terrain', () => {
+    const activeUnit = createUnit('active-u1', [createModel('a-m0', 30, 24)]);
+    const reactiveUnit = createUnit('reactive-u1', [createModel('r-m0', 36, 24)]);
+    const terrain: TerrainPiece[] = [{
+      id: 'mud',
+      name: 'Mud',
+      type: TerrainType.Difficult,
+      isDifficult: true,
+      isDangerous: false,
+      shape: {
+        kind: 'rectangle',
+        topLeft: { x: 38, y: 22 },
+        width: 4,
+        height: 4,
+      },
+    }];
+
+    const state = createGameState({
+      activePlayerIndex: 0,
+      terrain,
+      armies: [
+        createArmy(0, [activeUnit]),
+        createArmy(1, [reactiveUnit]),
+      ],
+    });
+
+    const result = handleRepositionReaction(state, 'reactive-u1', [
+      { modelId: 'r-m0', position: { x: 40, y: 24 } },
+    ], new FixedDiceProvider([]));
+
+    expect(result.accepted).toBe(false);
+    expect(result.errors.some(e => e.code === 'EXCEEDS_INITIATIVE')).toBe(true);
+  });
+
+  it('should resolve dangerous terrain tests during reposition moves', () => {
+    const activeUnit = createUnit('active-u1', [createModel('a-m0', 30, 24)]);
+    const reactiveUnit = createUnit('reactive-u1', [createModel('r-m0', 36, 24)]);
+    const terrain: TerrainPiece[] = [{
+      id: 'minefield',
+      name: 'Minefield',
+      type: TerrainType.Dangerous,
+      isDifficult: true,
+      isDangerous: true,
+      shape: {
+        kind: 'rectangle',
+        topLeft: { x: 37, y: 22 },
+        width: 3,
+        height: 4,
+      },
+    }];
+
+    const state = createGameState({
+      activePlayerIndex: 0,
+      terrain,
+      armies: [
+        createArmy(0, [activeUnit]),
+        createArmy(1, [reactiveUnit]),
+      ],
+    });
+
+    const result = handleRepositionReaction(state, 'reactive-u1', [
+      { modelId: 'r-m0', position: { x: 38, y: 24 } },
+    ], new FixedDiceProvider([1]));
+
+    expect(result.accepted).toBe(true);
+    expect(result.events.some(e => e.type === 'dangerousTerrainTest')).toBe(true);
+    expect(result.events.some(e => e.type === 'damageApplied')).toBe(true);
+    expect(result.state.armies[1].units[0].models[0].isDestroyed).toBe(true);
   });
 
   it('should mark unit as having reacted', () => {

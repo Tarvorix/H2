@@ -8,6 +8,10 @@
   "modelDefinitions": [
     {
       "name": "Herald",
+      "modelType": "Infantry",
+      "modelSubTypes": [
+        "Command"
+      ],
       "baseSizeMM": 32,
       "countInBase": 1,
       "isAdditionalModelType": true,

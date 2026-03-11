@@ -174,6 +174,23 @@ describe('generateMovementCommand — Move sub-phase', () => {
     expect(pos.y).toBeGreaterThanOrEqual(0.5);
     expect(pos.y).toBeLessThanOrEqual(47.5);
   });
+
+  it('continues a declared rush with a rush moveUnit command', () => {
+    const m1 = createModel({ id: 'model-1', position: { x: 10, y: 10 } });
+    const unit = createUnit({ id: 'unit-1', models: [m1], movementState: UnitMovementState.RushDeclared });
+    const state = createGameState({ currentSubPhase: SubPhase.Move });
+    state.armies[0] = createArmy({ playerIndex: 0, units: [unit] });
+
+    const ctx = createContext();
+    const result = generateMovementCommand(state, 0, ctx, 'basic');
+
+    expect(result).not.toBeNull();
+    expect(result).toMatchObject({
+      type: 'moveUnit',
+      unitId: 'unit-1',
+      isRush: true,
+    });
+  });
 });
 
 // ─── Reserves Sub-Phase Tests ──────────────────────────────────────────────

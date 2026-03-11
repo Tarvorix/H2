@@ -18,14 +18,14 @@ import {
   LegionFaction,
 } from '@hh/types';
 import type { ModelShape } from '@hh/geometry';
-import { distanceShapes } from '@hh/geometry';
+import { distanceShapes, hasLOS } from '@hh/geometry';
 import {
   unitProfileHasSpecialRule,
   isVehicleUnitState,
-  getModelToughness,
-  getModelWS,
 } from './profile-lookup';
+import { hasActiveCharacteristicModifier } from './characteristic-modifiers';
 import { getModelShape as getRuntimeModelShape } from './model-shapes';
+import { getCurrentModelToughness, getCurrentModelWS } from './runtime-characteristics';
 
 // ─── Army Queries ────────────────────────────────────────────────────────────
 
@@ -149,6 +149,8 @@ export function canUnitMove(unit: UnitState): boolean {
   if (unit.movementState === UnitMovementState.EnteredFromReserves) return false;
   if (!unit.isDeployed) return false;
   if (unit.embarkedOnId !== null) return false;
+  if (hasActiveCharacteristicModifier(unit, undefined, 'NoMove', (modifier) => modifier.value > 0)) return false;
+  if (unit.models.some((model) => hasActiveCharacteristicModifier(unit, model, 'NoMove', (modifier) => modifier.value > 0))) return false;
   return true;
 }
 
@@ -159,6 +161,8 @@ export function canUnitRush(unit: UnitState): boolean {
   if (!canUnitMove(unit)) return false;
   // Cannot rush if already moved or rushed
   if (unit.movementState !== UnitMovementState.Stationary) return false;
+  if (hasActiveCharacteristicModifier(unit, undefined, 'NoRush', (modifier) => modifier.value > 0)) return false;
+  if (unit.models.some((model) => hasActiveCharacteristicModifier(unit, model, 'NoRush', (modifier) => modifier.value > 0))) return false;
   // Cannot rush during reactions
   return true;
 }
@@ -277,6 +281,31 @@ export function getArmyModelShapes(army: ArmyState): ModelShape[] {
   return shapes;
 }
 
+export function getInterveningVehicleShapes(
+  state: GameState,
+  excludedUnitIds: ReadonlySet<string>,
+): ModelShape[] {
+  const blockingShapes: ModelShape[] = [];
+
+  for (const army of state.armies) {
+    for (const unit of army.units) {
+      if (excludedUnitIds.has(unit.id) || !unit.isDeployed || unit.embarkedOnId !== null) {
+        continue;
+      }
+      if (!isVehicleUnitState(unit)) {
+        continue;
+      }
+
+      for (const model of unit.models) {
+        if (model.isDestroyed) continue;
+        blockingShapes.push(getModelShape(model));
+      }
+    }
+  }
+
+  return blockingShapes;
+}
+
 // ─── Routed Units ────────────────────────────────────────────────────────────
 
 /**
@@ -330,7 +359,10 @@ export function canUnitShoot(unit: UnitState): boolean {
   // Must not have already made a normal shooting attack this turn
   if (unit.hasShotThisTurn === true) return false;
   // Must not have rushed
-  if (unit.movementState === UnitMovementState.Rushed) return false;
+  if (
+    unit.movementState === UnitMovementState.Rushed
+    || unit.movementState === UnitMovementState.RushDeclared
+  ) return false;
   // Must not be locked in combat
   if (unit.isLockedInCombat) return false;
   // Must have alive models
@@ -350,7 +382,7 @@ export function getUnitMajorityToughness(unit: UnitState): number {
   // Count toughness values across alive models using profile data
   const toughnessCounts = new Map<number, number>();
   for (const model of aliveModels) {
-    const t = getModelToughness(model.unitProfileId, model.profileModelName);
+    const t = getCurrentModelToughness(unit, model);
     toughnessCounts.set(t, (toughnessCounts.get(t) ?? 0) + 1);
   }
 
@@ -408,7 +440,10 @@ export function canUnitCharge(unit: UnitState): boolean {
   // Must not be embarked
   if (unit.embarkedOnId !== null) return false;
   // Must not have Rushed this turn
-  if (unit.movementState === UnitMovementState.Rushed) return false;
+  if (
+    unit.movementState === UnitMovementState.Rushed
+    || unit.movementState === UnitMovementState.RushDeclared
+  ) return false;
   // Must not be locked in combat already
   if (unit.isLockedInCombat) return false;
   // Must not have Pinned or Routed statuses
@@ -554,7 +589,7 @@ export function getMajorityWS(unit: UnitState): number {
   // Count WS values across alive models using profile data
   const wsCounts = new Map<number, number>();
   for (const model of aliveModels) {
-    const ws = getModelWS(model.unitProfileId, model.profileModelName);
+    const ws = getCurrentModelWS(unit, model);
     wsCounts.set(ws, (wsCounts.get(ws) ?? 0) + 1);
   }
 
@@ -638,9 +673,6 @@ export function getClosestModelDistance(
 
 /**
  * Check if any model in a unit has LOS to any model in a target unit.
- * For now, this is a simplified check — all alive models on the battlefield
- * are assumed to have LOS unless blocked by terrain.
- * TODO: Full LOS implementation with terrain blocking
  */
 export function hasLOSToUnit(
   state: GameState,
@@ -656,15 +688,23 @@ export function hasLOSToUnit(
   const aliveTargets = getAliveModels(target);
   if (aliveAttackers.length === 0 || aliveTargets.length === 0) return false;
 
-  // Simplified: assume LOS exists if both units are deployed with alive models
-  // Full terrain-based LOS would check for blocking terrain
-  return true;
+  const excludedUnitIds = new Set<string>([unitId, targetUnitId]);
+  const blockingVehicleShapes = getInterveningVehicleShapes(state, excludedUnitIds);
+
+  for (const attacker of aliveAttackers) {
+    const attackerShape = getModelShape(attacker);
+    for (const targetModel of aliveTargets) {
+      if (hasLOS(attackerShape, getModelShape(targetModel), state.terrain, blockingVehicleShapes)) {
+        return true;
+      }
+    }
+  }
+
+  return false;
 }
 
 /**
  * Get models in a unit that have LOS to any model in the target unit.
- * Simplified for now — returns all alive models.
- * TODO: Full LOS implementation with terrain blocking
  */
 export function getModelsWithLOSToUnit(
   state: GameState,
@@ -678,9 +718,17 @@ export function getModelsWithLOSToUnit(
 
   const aliveTargets = getAliveModels(target);
   if (aliveTargets.length === 0) return [];
+  const blockingVehicleShapes = getInterveningVehicleShapes(
+    state,
+    new Set<string>([unitId, targetUnitId]),
+  );
 
-  // Simplified: all alive models have LOS
-  return getAliveModels(unit);
+  return getAliveModels(unit).filter((attacker) => {
+    const attackerShape = getModelShape(attacker);
+    return aliveTargets.some((targetModel) =>
+      hasLOS(attackerShape, getModelShape(targetModel), state.terrain, blockingVehicleShapes),
+    );
+  });
 }
 
 // ─── Legion Queries ──────────────────────────────────────────────────────────

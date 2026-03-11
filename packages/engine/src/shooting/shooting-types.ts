@@ -79,6 +79,16 @@ export interface ResolvedWeaponProfile {
   traits: string[];
 }
 
+export interface WeaponProfileModifierContext {
+  modelId: string;
+  weaponId: string;
+}
+
+export type ResolvedWeaponProfileModifier = (
+  weaponProfile: ResolvedWeaponProfile,
+  context: WeaponProfileModifierContext,
+) => ResolvedWeaponProfile;
+
 /**
  * A fire group — attacks grouped by weapon name, profile, and BS.
  * Reference: HH_Rules_Battle.md Step 4
@@ -292,6 +302,8 @@ export interface PendingMoraleCheck {
   modifier: number;
   /** Source description (e.g., "Pinning (3)" from Heavy Bolter) */
   source: string;
+  /** Weapon traits that caused this check, if it came from a weapon rule. */
+  weaponTraits?: string[];
 }
 
 export type MoraleCheckType =

@@ -8,6 +8,7 @@
   "modelDefinitions": [
     {
       "name": "Tarantula Sentry Gun",
+      "modelType": "Vehicle",
       "baseSizeMM": 32,
       "countInBase": 2,
       "isAdditionalModelType": true,

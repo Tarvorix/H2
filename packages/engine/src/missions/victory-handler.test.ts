@@ -29,6 +29,7 @@ import {
   applyCounterOffensive,
   handleSeizeTheInitiative,
 } from './victory-handler';
+import { resolveObjectiveControlForScoring } from './objective-queries';
 
 // ─── Test Helpers ────────────────────────────────────────────────────────────
 
@@ -114,6 +115,8 @@ function makeMissionState(overrides: Partial<MissionState> = {}): MissionState {
     },
     scoringHistory: [],
     vpAtTurnStart: [],
+    vanguardBonusHistory: [],
+    assaultPhaseObjectiveSnapshot: null,
     ...overrides,
   };
 }
@@ -413,13 +416,104 @@ describe('handleVictorySubPhase', () => {
     );
     const dice = makeDice([]);
     const result = handleVictorySubPhase(state, dice);
-    // Player 0 should score 3 VP for controlling the center objective
-    expect(result.state.armies[0].victoryPoints).toBe(3);
+    // Tactical Squads have Line (2), so a 3VP objective scores as 5VP
+    expect(result.state.armies[0].victoryPoints).toBe(5);
     // Check that objective scored event was emitted
     const scoredEvents = result.events.filter(
       (e) => (e as unknown as { type: string }).type === 'objectiveScored',
     );
     expect(scoredEvents.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('caps Support Unit(X) scoring to the rule value', () => {
+    const model = makeModel('m1', {
+      profileModelName: 'Exodus',
+      unitProfileId: 'exodus',
+      position: { x: 36, y: 24 },
+    });
+    const state = makeState(
+      [makeUnit('u1', [model], { profileId: 'exodus' })],
+      [makeUnit('u2', [makeModel('m2', { position: { x: 60, y: 40 } })])],
+      { activePlayerIndex: 0 },
+    );
+
+    const result = handleVictorySubPhase(state, makeDice([]));
+    expect(result.state.armies[0].victoryPoints).toBe(1);
+  });
+
+  it('caps Vanguard(X) units to 1 VP when controlling an objective', () => {
+    const state = makeState(
+      [
+        makeUnit('u1', [
+          makeModel('m1', {
+            profileModelName: 'Assault Sergeant',
+            unitProfileId: 'assault-squad',
+            position: { x: 36, y: 24 },
+          }),
+          makeModel('m2', {
+            profileModelName: 'Assault Legionary',
+            unitProfileId: 'assault-squad',
+            position: { x: 36.5, y: 24 },
+          }),
+          makeModel('m3', {
+            profileModelName: 'Assault Legionary',
+            unitProfileId: 'assault-squad',
+            position: { x: 37, y: 24 },
+          }),
+        ], { profileId: 'assault-squad' }),
+      ],
+      [makeUnit('u2', [makeModel('m4', { position: { x: 60, y: 40 } })])],
+      { activePlayerIndex: 0 },
+    );
+
+    const result = handleVictorySubPhase(state, makeDice([]));
+    expect(result.state.armies[0].victoryPoints).toBe(1);
+  });
+
+  it('does not let one unit score two objectives in the same Victory sub-phase', () => {
+    const p0Unit = makeUnit('u0', [
+      makeModel('m1', { position: { x: 36, y: 24 } }),
+      makeModel('m2', { position: { x: 37, y: 24 } }),
+    ]);
+    const p1Unit = makeUnit('u1', [
+      makeModel('m3', { position: { x: 60, y: 40 } }),
+    ]);
+    const state = makeState([p0Unit], [p1Unit], {
+      missionState: makeMissionState({
+        objectives: [
+          {
+            id: 'obj-1',
+            position: { x: 36, y: 24 },
+            vpValue: 3,
+            currentVpValue: 3,
+            isRemoved: false,
+            label: 'Center',
+          },
+          {
+            id: 'obj-2',
+            position: { x: 38, y: 24 },
+            vpValue: 1,
+            currentVpValue: 1,
+            isRemoved: false,
+            label: 'Flank',
+          },
+        ],
+      }),
+    });
+
+    const resolution = resolveObjectiveControlForScoring(state, 0);
+    expect(resolution.playerAssignments[0]).toEqual({
+      'obj-1': 'u0',
+      'obj-2': null,
+    });
+    expect(resolution.objectiveResults['obj-1'].controllerPlayerIndex).toBe(0);
+    expect(resolution.objectiveResults['obj-2'].controllerPlayerIndex).toBeNull();
+
+    const result = handleVictorySubPhase(state, makeDice([]));
+    expect(result.accepted).toBe(true);
+    expect(result.state.armies[0].victoryPoints).toBe(5);
+    expect(result.state.missionState!.scoringHistory).toHaveLength(1);
+    expect(result.state.missionState!.scoringHistory[0].objectiveId).toBe('obj-1');
   });
 
   it('does not score objectives for the non-active player', () => {
@@ -598,6 +692,6 @@ describe('handleVictorySubPhase', () => {
     const result = handleVictorySubPhase(state, dice);
     expect(result.state.missionState!.scoringHistory.length).toBeGreaterThanOrEqual(1);
     expect(result.state.missionState!.scoringHistory[0].playerIndex).toBe(0);
-    expect(result.state.missionState!.scoringHistory[0].vpScored).toBe(3);
+    expect(result.state.missionState!.scoringHistory[0].vpScored).toBe(5);
   });
 });

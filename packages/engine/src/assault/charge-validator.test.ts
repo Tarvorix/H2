@@ -21,6 +21,8 @@ import {
   MAX_CHARGE_RANGE,
 } from './charge-validator';
 
+const TACTICAL_BASE_DIAMETER_INCHES = 32 / 25.4;
+
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
 function createModel(id: string, x = 0, y = 0, destroyed = false): ModelState {
@@ -269,7 +271,7 @@ describe('validateChargeTarget', () => {
     const result = validateChargeTarget(state, 'unit-0', 'unit-1');
     expect(result.valid).toBe(true);
     expect(result.errors).toHaveLength(0);
-    expect(result.closestDistance).toBe(8); // 18 - 10 = 8"
+    expect(result.closestDistance).toBeCloseTo(8 - TACTICAL_BASE_DIAMETER_INCHES, 6);
     expect(result.modelsWithLOS.length).toBeGreaterThan(0);
   });
 
@@ -353,11 +355,11 @@ describe('validateChargeTarget', () => {
 
   it('should fail if target is out of charge range (> 12")', () => {
     const state = createGameState();
-    // Place target at x=23 (13" away from x=10)
+    // Place target just beyond a 12" base-to-base charge.
     state.armies[1].units[0] = createUnit('unit-1', {
       models: [
-        createModel('u1-m0', 23, 10),
-        createModel('u1-m1', 23, 11),
+        createModel('u1-m0', 10 + MAX_CHARGE_RANGE + TACTICAL_BASE_DIAMETER_INCHES + 0.1, 10),
+        createModel('u1-m1', 10 + MAX_CHARGE_RANGE + TACTICAL_BASE_DIAMETER_INCHES + 0.1, 11),
       ],
     });
     const result = validateChargeTarget(state, 'unit-0', 'unit-1');
@@ -367,16 +369,16 @@ describe('validateChargeTarget', () => {
 
   it('should pass if target is exactly at 12" range', () => {
     const state = createGameState();
-    // Place target at x=22 (12" away from x=10)
+    // Place target at exactly 12" base-to-base.
     state.armies[1].units[0] = createUnit('unit-1', {
       models: [
-        createModel('u1-m0', 22, 10),
-        createModel('u1-m1', 22, 11),
+        createModel('u1-m0', 10 + MAX_CHARGE_RANGE + TACTICAL_BASE_DIAMETER_INCHES, 10),
+        createModel('u1-m1', 10 + MAX_CHARGE_RANGE + TACTICAL_BASE_DIAMETER_INCHES, 11),
       ],
     });
     const result = validateChargeTarget(state, 'unit-0', 'unit-1');
     expect(result.valid).toBe(true);
-    expect(result.closestDistance).toBe(12);
+    expect(result.closestDistance).toBeCloseTo(12, 6);
   });
 
   it('should report disordered if charging unit has a status', () => {
@@ -412,21 +414,21 @@ describe('validateChargeTarget', () => {
     const state = createGameState();
     const result = validateChargeTarget(state, 'unit-0', 'unit-1');
     expect(result.valid).toBe(true);
-    expect(result.closestDistance).toBe(8);
+    expect(result.closestDistance).toBeCloseTo(8 - TACTICAL_BASE_DIAMETER_INCHES, 6);
   });
 
   it('should pass for a charge at 1" range', () => {
     const state = createGameState();
-    // Place target very close
+    // Place target at exactly 1" base-to-base.
     state.armies[1].units[0] = createUnit('unit-1', {
       models: [
-        createModel('u1-m0', 11, 10),
-        createModel('u1-m1', 11, 11),
+        createModel('u1-m0', 10 + 1 + TACTICAL_BASE_DIAMETER_INCHES, 10),
+        createModel('u1-m1', 10 + 1 + TACTICAL_BASE_DIAMETER_INCHES, 11),
       ],
     });
     const result = validateChargeTarget(state, 'unit-0', 'unit-1');
     expect(result.valid).toBe(true);
-    expect(result.closestDistance).toBe(1);
+    expect(result.closestDistance).toBeCloseTo(1, 6);
   });
 });
 

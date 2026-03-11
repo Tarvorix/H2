@@ -8,6 +8,12 @@
   "modelDefinitions": [
     {
       "name": "Alexis Polux",
+      "modelType": "Infantry",
+      "modelSubTypes": [
+        "Unique",
+        "Command",
+        "Heavy"
+      ],
       "baseSizeMM": 32,
       "countInBase": 1,
       "isAdditionalModelType": true,

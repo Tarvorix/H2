@@ -8,6 +8,10 @@
   "modelDefinitions": [
     {
       "name": "Saboteur",
+      "modelType": "Infantry",
+      "modelSubTypes": [
+        "Skirmish"
+      ],
       "baseSizeMM": 32,
       "countInBase": 1,
       "isAdditionalModelType": true,

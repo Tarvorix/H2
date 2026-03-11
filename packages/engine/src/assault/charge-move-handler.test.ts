@@ -5,6 +5,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
+import { checkCoherency, STANDARD_COHERENCY_RANGE } from '@hh/geometry';
 import {
   Phase,
   SubPhase,
@@ -15,6 +16,7 @@ import {
 } from '@hh/types';
 import type { GameState, ArmyState, UnitState, ModelState } from '@hh/types';
 import type { DiceProvider } from '../types';
+import { getModelShapeAtPosition } from '../model-shapes';
 import {
   resolveChargeRoll,
   resolveChargeMove,
@@ -265,6 +267,28 @@ describe('resolveChargeMove — successful charges', () => {
 
     // Model should have moved toward the target
     expect(movedModel.position.x).toBeGreaterThan(10);
+  });
+
+  it('should keep remaining charging models coherent when the first charger surges ahead', () => {
+    const state = createGameState();
+    state.armies[0].units[0] = createUnit('unit-0', {
+      models: [
+        createModel('u0-m0', 0, 0),
+        createModel('u0-m1', 0, 3),
+        createModel('u0-m2', 0, 6),
+      ],
+    });
+    state.armies[1].units[0] = createUnit('unit-1', {
+      models: [createModel('u1-m0', 7, 0)],
+    });
+
+    const dice = createDiceProvider([6, 5]);
+    const result = resolveChargeMove(state, 'unit-0', 'unit-1', dice, 6);
+    const updatedUnit = result.state.armies[0].units.find(u => u.id === 'unit-0')!;
+    const shapes = updatedUnit.models.map((model) => getModelShapeAtPosition(model, model.position));
+
+    expect(result.chargeSucceeded).toBe(true);
+    expect(checkCoherency(shapes, STANDARD_COHERENCY_RANGE).isCoherent).toBe(true);
   });
 
   it('should succeed when charge roll equals distance exactly', () => {

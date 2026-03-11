@@ -95,6 +95,11 @@ const shootingWeaponSelectionSchema = z.object({
   profileName: idSchema.optional(),
 });
 
+const declaredPsychicPowerSchema = z.object({
+  powerId: idSchema,
+  focusModelId: idSchema,
+});
+
 const blastPlacementSchema = z.object({
   sourceModelIds: z.array(idSchema).min(1),
   position: positionSchema,
@@ -124,6 +129,7 @@ const gameCommandSchema = z.discriminatedUnion('type', [
     weaponSelections: z.array(shootingWeaponSelectionSchema),
     blastPlacements: z.array(blastPlacementSchema).optional(),
     templatePlacements: z.array(templatePlacementSchema).optional(),
+    psychicPower: declaredPsychicPowerSchema.optional(),
   }),
   z.object({
     type: z.literal('resolveShootingCasualties'),
@@ -132,6 +138,13 @@ const gameCommandSchema = z.discriminatedUnion('type', [
     type: z.literal('declareCharge'),
     chargingUnitId: idSchema,
     targetUnitId: idSchema,
+    psychicPower: declaredPsychicPowerSchema.optional(),
+  }),
+  z.object({
+    type: z.literal('manifestPsychicPower'),
+    powerId: idSchema,
+    focusModelId: idSchema,
+    targetUnitId: idSchema.optional(),
   }),
   z.object({
     type: z.literal('declareChallenge'),
@@ -147,6 +160,7 @@ const gameCommandSchema = z.discriminatedUnion('type', [
     type: z.literal('selectReaction'),
     unitId: idSchema,
     reactionType: idSchema,
+    modelPositions: z.array(modelPositionSchema).optional(),
   }),
   z.object({
     type: z.literal('declineReaction'),

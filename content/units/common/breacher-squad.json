@@ -8,6 +8,11 @@
   "modelDefinitions": [
     {
       "name": "Breacher Sergeant",
+      "modelType": "Infantry",
+      "modelSubTypes": [
+        "Sergeant",
+        "Heavy"
+      ],
       "baseSizeMM": 32,
       "countInBase": 1,
       "isAdditionalModelType": false,
@@ -31,6 +36,10 @@
     },
     {
       "name": "Breacher Legionary",
+      "modelType": "Infantry",
+      "modelSubTypes": [
+        "Heavy"
+      ],
       "baseSizeMM": 32,
       "countInBase": 9,
       "isAdditionalModelType": false,

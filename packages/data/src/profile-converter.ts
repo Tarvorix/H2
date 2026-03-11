@@ -14,6 +14,7 @@ import type {
   RangedWeaponInline,
   MeleeWeaponInline,
   AccessPoint,
+  AccessFacing,
 } from '@hh/types';
 import type { SpecialRuleRef } from '@hh/types';
 import { ModelType, ModelSubType } from '@hh/types';
@@ -46,6 +47,7 @@ const MODEL_SUBTYPE_MAP: Record<string, ModelSubType> = {
   'heavy': ModelSubType.Heavy,
   'skirmish': ModelSubType.Skirmish,
   'command': ModelSubType.Command,
+  'champion': ModelSubType.Champion,
   'sergeant': ModelSubType.Sergeant,
   'unique': ModelSubType.Unique,
   'light': ModelSubType.Light,
@@ -339,23 +341,124 @@ function parseStatModifier(val: string): number | string | { op: string; value: 
 function parseAccessPoints(text: string): AccessPoint[] | undefined {
   if (!text || text.trim() === '') return undefined;
 
-  const points: AccessPoint[] = [];
-  // Simple parsing: split by comma or numbered items
-  const parts = text.split(/,\s*/);
-  let xOffset = 0;
-  for (const part of parts) {
-    const trimmed = part.trim();
-    if (!trimmed) continue;
-    points.push({
-      name: trimmed,
-      relativePosition: { x: xOffset, y: 0 },
-    });
-    xOffset += 2; // Spread access points along the hull
+  const normalized = text
+    .replace(/\s+/g, ' ')
+    .trim();
+  const lower = normalized.toLowerCase();
+
+  const facingsEntry = (
+    label: string,
+    facings: AccessFacing[],
+  ): AccessPoint => ({
+    label,
+    geometry: { kind: 'facings', facings },
+  });
+
+  if (lower.includes('does not have a base') && lower.includes('access points on all facings')) {
+    return [{
+      label: normalized,
+      geometry: { kind: 'base-edge-or-all-facings' },
+    }];
   }
-  return points.length > 0 ? points : undefined;
+
+  if (lower.includes('access points on all facings')) {
+    return [{
+      label: normalized,
+      geometry: { kind: 'all-facings' },
+    }];
+  }
+
+  if (lower.includes('both side facings and the rear facing')) {
+    return [facingsEntry(normalized, ['left', 'right', 'rear'])];
+  }
+
+  if (lower.includes('both side facings and the front facing')) {
+    return [facingsEntry(normalized, ['left', 'right', 'front'])];
+  }
+
+  if (lower.includes('both side facings')) {
+    return [facingsEntry(normalized, ['left', 'right'])];
+  }
+
+  if (lower.includes('one access point on the rear facing and one access point on the front facing')) {
+    return [
+      facingsEntry('Rear Access Point', ['rear']),
+      facingsEntry('Front Access Point', ['front']),
+    ];
+  }
+
+  if (lower.includes('access points on the rear facing')) {
+    return [facingsEntry(normalized, ['rear'])];
+  }
+
+  if (lower.includes('access points on the front facing')) {
+    return [facingsEntry(normalized, ['front'])];
+  }
+
+  if (lower.includes('side (left) access point')) {
+    return [facingsEntry(normalized, ['left'])];
+  }
+
+  if (lower.includes('side (right) access point')) {
+    return [facingsEntry(normalized, ['right'])];
+  }
+
+  throw new Error(`Unrecognized access points text: "${normalized}"`);
 }
 
 // ─── Model Definition Building ──────────────────────────────────────────────
+
+function findTypeEntryMatch(
+  modelName: string,
+  typeEntries: ParsedTypeEntry[],
+): ParsedTypeEntry | undefined {
+  const normalize = (value: string): string =>
+    value
+      .toLowerCase()
+      .replace(/\blegion\b/g, '')
+      .replace(/[^a-z0-9]+/g, ' ')
+      .trim();
+  const singularize = (value: string): string =>
+    value.replace(/ies$/, 'y').replace(/s$/, '');
+  const lower = normalize(modelName);
+  const singular = singularize(lower);
+
+  return typeEntries.find((entry) => {
+    const entryName = normalize(entry.modelName);
+    if (!entryName) {
+      return true;
+    }
+
+    if (entryName === lower) {
+      return true;
+    }
+
+    return singularize(entryName) === singular;
+  });
+}
+
+function resolveModelTypeEntry(
+  modelName: string,
+  typeEntries: ParsedTypeEntry[],
+): ModelType | undefined {
+  const entry = findTypeEntryMatch(modelName, typeEntries);
+  if (!entry) return undefined;
+  return MODEL_TYPE_MAP[entry.primaryType.toLowerCase()];
+}
+
+function resolveModelSubTypesEntry(
+  modelName: string,
+  typeEntries: ParsedTypeEntry[],
+): ModelSubType[] | undefined {
+  const entry = findTypeEntryMatch(modelName, typeEntries);
+  if (!entry) return undefined;
+
+  const mapped = entry.subTypes
+    .map(st => MODEL_SUBTYPE_MAP[st.toLowerCase()])
+    .filter((subType): subType is ModelSubType => subType !== undefined);
+
+  return mapped.length > 0 ? mapped : undefined;
+}
 
 function buildModelDefinitions(parsed: ParsedUnit): ModelDefinition[] {
   const definitions: ModelDefinition[] = [];
@@ -371,6 +474,8 @@ function buildModelDefinitions(parsed: ParsedUnit): ModelDefinition[] {
 
     // Determine if this model is the leader
     const isLeader = determineIsLeader(modelStats.name, parsed.typeEntries, compositionModels);
+    const modelType = resolveModelTypeEntry(modelStats.name, parsed.typeEntries);
+    const modelSubTypes = resolveModelSubTypesEntry(modelStats.name, parsed.typeEntries);
 
     // Determine if this is the additional model type
     const isAdditionalModelType = determineIsAdditionalType(modelStats.name, parsed.additional, compositionModels);
@@ -383,15 +488,15 @@ function buildModelDefinitions(parsed: ParsedUnit): ModelDefinition[] {
     const defaultWargear = modelWargear ? resolveWargearIds(modelWargear) : undefined;
 
     // Model-specific special rules from type entries
-    const modelTypeEntry = parsed.typeEntries.find(te =>
-      te.modelName.toLowerCase() === modelStats.name.toLowerCase()
-    );
+    const modelTypeEntry = findTypeEntryMatch(modelStats.name, parsed.typeEntries);
     const modelSpecialRules = modelTypeEntry?.subTypes
       .filter(st => st.toLowerCase().includes('psyker'))
       .map(st => parseSpecialRuleRef(st));
 
     definitions.push({
       name: modelStats.name,
+      modelType,
+      modelSubTypes,
       baseSizeMM: modelStats.baseSizeMM || 32,
       countInBase,
       isAdditionalModelType,
@@ -408,6 +513,8 @@ function buildModelDefinitions(parsed: ParsedUnit): ModelDefinition[] {
     for (const compModel of compositionModels) {
       definitions.push({
         name: compModel.name,
+        modelType: resolveModelTypeEntry(compModel.name, parsed.typeEntries),
+        modelSubTypes: resolveModelSubTypesEntry(compModel.name, parsed.typeEntries),
         baseSizeMM: 32,
         countInBase: compModel.count,
         isAdditionalModelType: compositionModels.length > 1 && compModel === compositionModels[compositionModels.length - 1],
@@ -466,16 +573,14 @@ function determineIsLeader(
   compositionModels: { name: string; count: number }[],
 ): boolean {
   const lower = modelName.toLowerCase();
+  const exactTypeEntry = findTypeEntryMatch(modelName, typeEntries);
 
-  // Check type entries for Sergeant/Command sub-types
-  for (const entry of typeEntries) {
-    if (entry.modelName.toLowerCase() === lower || !entry.modelName) {
-      const hasLeaderSubType = entry.subTypes.some(st => {
-        const stLower = st.toLowerCase();
-        return stLower === 'sergeant' || stLower === 'command' || stLower === 'unique';
-      });
-      if (hasLeaderSubType) return true;
-    }
+  // If a matching type entry exists, trust its declared sub-types.
+  if (exactTypeEntry) {
+    return exactTypeEntry.subTypes.some(st => {
+      const stLower = st.toLowerCase();
+      return stLower === 'sergeant' || stLower === 'command' || stLower === 'champion' || stLower === 'unique';
+    });
   }
 
   // Check common leader name patterns
@@ -493,7 +598,9 @@ function determineIsLeader(
   // Single model in first composition slot with more models after
   if (compositionModels.length > 1) {
     const first = compositionModels[0];
-    if (first.count === 1 && first.name.toLowerCase().includes(lower.replace('legion ', ''))) {
+    const normalizedModel = lower.replace(/^legion\s+/, '');
+    const normalizedFirst = first.name.toLowerCase().replace(/^legion\s+/, '');
+    if (first.count === 1 && normalizedFirst === normalizedModel) {
       return true;
     }
   }

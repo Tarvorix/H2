@@ -8,6 +8,7 @@
   "modelDefinitions": [
     {
       "name": "Apothecary",
+      "modelType": "Infantry",
       "baseSizeMM": 32,
       "countInBase": 1,
       "isAdditionalModelType": true,

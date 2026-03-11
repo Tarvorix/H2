@@ -8,6 +8,11 @@
   "modelDefinitions": [
     {
       "name": "Tartaros Chosen Champion",
+      "modelType": "Infantry",
+      "modelSubTypes": [
+        "Champion",
+        "Sergeant"
+      ],
       "baseSizeMM": 40,
       "countInBase": 1,
       "isAdditionalModelType": false,
@@ -31,6 +36,7 @@
     },
     {
       "name": "Tartaros Chosen",
+      "modelType": "Infantry",
       "baseSizeMM": 40,
       "countInBase": 2,
       "isAdditionalModelType": true,
@@ -140,6 +146,7 @@
   ],
   "unitType": "Infantry",
   "unitSubTypes": [
+    "Champion",
     "Sergeant"
   ]
 }

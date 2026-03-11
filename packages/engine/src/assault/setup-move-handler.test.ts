@@ -5,6 +5,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
+import { checkCoherency, STANDARD_COHERENCY_RANGE } from '@hh/geometry';
 import {
   Phase,
   SubPhase,
@@ -13,6 +14,7 @@ import {
   LegionFaction,
 } from '@hh/types';
 import type { GameState, ArmyState, UnitState, ModelState, Position } from '@hh/types';
+import { getModelShapeAtPosition } from '../model-shapes';
 import {
   resolveSetupMove,
   moveToward,
@@ -233,6 +235,26 @@ describe('resolveSetupMove', () => {
     expect(result.events.length).toBeGreaterThan(0);
     const firstEvent = result.events[0] as { modelId: string };
     expect(firstEvent.modelId).toBe('u0-m1');
+  });
+
+  it('should keep remaining models coherent when a full straight advance would string the unit out', () => {
+    const state = createGameState();
+    state.armies[0].units[0] = createUnit('unit-0', {
+      models: [
+        createModel('u0-m0', 0, 0),
+        createModel('u0-m1', 0, 3),
+        createModel('u0-m2', 0, 6),
+      ],
+    });
+    state.armies[1].units[0] = createUnit('unit-1', {
+      models: [createModel('u1-m0', 10, 0)],
+    });
+
+    const result = resolveSetupMove(state, 'unit-0', 'unit-1', false, 10, 10);
+    const updatedUnit = result.state.armies[0].units.find(u => u.id === 'unit-0')!;
+    const shapes = updatedUnit.models.map((model) => getModelShapeAtPosition(model, model.position));
+
+    expect(checkCoherency(shapes, STANDARD_COHERENCY_RANGE).isCoherent).toBe(true);
   });
 
   it('should use custom initiative and movement values', () => {

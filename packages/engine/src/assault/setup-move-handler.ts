@@ -13,9 +13,11 @@
  */
 
 import type { GameState, ModelState, Position } from '@hh/types';
+import { checkCoherency, STANDARD_COHERENCY_RANGE } from '@hh/geometry';
 import { PipelineHook } from '@hh/types';
 import { getTacticaEffectsForLegion } from '@hh/data';
 import type { GameEvent } from '../types';
+import { getModelShapeAtPosition } from '../model-shapes';
 import {
   findUnit,
   getAliveModels,
@@ -29,6 +31,11 @@ import {
 } from '../state-helpers';
 import { calculateSetupMoveDistance } from './assault-types';
 import { applyLegionTactica } from '../legion';
+import {
+  getUnitSetupMoveInitiative,
+  getUnitSetupMoveMovement,
+  unitHasAnyHeavyModel,
+} from './unit-characteristics';
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -93,8 +100,8 @@ export function resolveSetupMove(
   chargingUnitId: string,
   targetUnitId: string,
   isDisordered: boolean,
-  initiative: number = DEFAULT_INITIATIVE,
-  movement: number = DEFAULT_MOVEMENT,
+  initiative?: number,
+  movement?: number,
 ): SetupMoveResult {
   const events: GameEvent[] = [];
 
@@ -109,8 +116,20 @@ export function resolveSetupMove(
     };
   }
 
+  const chargingUnit = findUnit(state, chargingUnitId);
+  const targetUnit = findUnit(state, targetUnitId);
+
+  const setupInitiative = initiative ?? (chargingUnit
+    ? getUnitSetupMoveInitiative(chargingUnit)
+    : DEFAULT_INITIATIVE);
+  const setupMovement = movement ?? (chargingUnit
+    ? getUnitSetupMoveMovement(chargingUnit)
+    : DEFAULT_MOVEMENT);
+
   // Step 2: Calculate set-up move distance, applying legion tactica bonus (e.g., Space Wolves +2")
-  let setupMoveDistance = calculateSetupMoveDistance(initiative, movement);
+  let setupMoveDistance = chargingUnit && unitHasAnyHeavyModel(chargingUnit)
+    ? calculateSetupMoveDistance(0, setupMovement)
+    : calculateSetupMoveDistance(setupInitiative, setupMovement);
 
   const chargerLegion = getUnitLegion(state, chargingUnitId);
   if (chargerLegion) {
@@ -135,9 +154,6 @@ export function resolveSetupMove(
       }
     }
   }
-
-  const chargingUnit = findUnit(state, chargingUnitId);
-  const targetUnit = findUnit(state, targetUnitId);
 
   if (!chargingUnit || !targetUnit) {
     return {
@@ -192,15 +208,49 @@ export function resolveSetupMove(
     chargeComplete = true;
   }
 
-  // Step 6: Move remaining models toward the target (simplified — move toward closest target)
+  const plannedPositions = new Map<string, Position>(
+    aliveChargers.map((charger) => {
+      if (charger.id === initialMoverId) {
+        return [charger.id, newPos] as const;
+      }
+
+      const nearestTarget = findClosestModel(charger, aliveTargets);
+      return [
+        charger.id,
+        nearestTarget
+          ? moveToward(charger.position, nearestTarget.position, setupMoveDistance)
+          : charger.position,
+      ] as const;
+    }),
+  );
+
+  // Step 6: Move remaining models toward the closest target while preserving
+  // final coherency against the predicted end positions for the charging unit.
   if (!chargeComplete) {
-    for (const charger of aliveChargers) {
-      if (charger.id === initialMoverId) continue;
+    const remainingChargers = aliveChargers
+      .filter((charger) => charger.id !== initialMoverId)
+      .sort((left, right) => {
+        const leftTarget = findClosestModel(left, aliveTargets);
+        const rightTarget = findClosestModel(right, aliveTargets);
+        const leftDistance = leftTarget ? getDistanceBetween(left.position, leftTarget.position) : Infinity;
+        const rightDistance = rightTarget ? getDistanceBetween(right.position, rightTarget.position) : Infinity;
+        return leftDistance - rightDistance;
+      });
+
+    for (const charger of remainingChargers) {
+      const chargerStartPosition = charger.position;
 
       const nearestTarget = findClosestModel(charger, aliveTargets);
       if (!nearestTarget) continue;
 
-      const chargerNewPos = moveToward(charger.position, nearestTarget.position, setupMoveDistance);
+      const chargerNewPos = findBestCoherentAdvancePosition(
+        aliveChargers,
+        charger,
+        plannedPositions,
+        nearestTarget.position,
+        setupMoveDistance,
+      );
+      plannedPositions.set(charger.id, chargerNewPos);
 
       newState = updateUnitInGameState(newState, chargingUnitId, unit =>
         updateModelInUnit(unit, charger.id, model => moveModel(model, chargerNewPos)),
@@ -211,7 +261,7 @@ export function resolveSetupMove(
         chargingUnitId,
         targetUnitId,
         modelId: charger.id,
-        from: charger.position,
+        from: chargerStartPosition,
         to: chargerNewPos,
         distance: setupMoveDistance,
       } as GameEvent);
@@ -279,6 +329,52 @@ function findClosestModel(
   }
 
   return closest;
+}
+
+function findBestCoherentAdvancePosition(
+  chargers: ModelState[],
+  movingCharger: ModelState,
+  plannedPositions: Map<string, Position>,
+  targetPosition: Position,
+  maxDistance: number,
+): Position {
+  const startPosition = movingCharger.position;
+  const desiredPosition = moveToward(startPosition, targetPosition, maxDistance);
+  if (positionsMaintainCoherency(chargers, movingCharger, plannedPositions, desiredPosition)) {
+    return desiredPosition;
+  }
+
+  const dx = desiredPosition.x - startPosition.x;
+  const dy = desiredPosition.y - startPosition.y;
+  for (let step = 19; step >= 0; step -= 1) {
+    const ratio = step / 20;
+    const candidate: Position = {
+      x: startPosition.x + dx * ratio,
+      y: startPosition.y + dy * ratio,
+    };
+    if (positionsMaintainCoherency(chargers, movingCharger, plannedPositions, candidate)) {
+      return candidate;
+    }
+  }
+
+  return startPosition;
+}
+
+function positionsMaintainCoherency(
+  chargers: ModelState[],
+  movingCharger: ModelState,
+  plannedPositions: Map<string, Position>,
+  candidatePosition: Position,
+): boolean {
+  const shapes = chargers.map((charger) =>
+    getModelShapeAtPosition(
+      charger,
+      charger.id === movingCharger.id
+        ? candidatePosition
+        : (plannedPositions.get(charger.id) ?? charger.position),
+    ),
+  );
+  return checkCoherency(shapes, STANDARD_COHERENCY_RANGE).isCoherent;
 }
 
 /**

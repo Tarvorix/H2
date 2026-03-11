@@ -8,6 +8,11 @@
   "modelDefinitions": [
     {
       "name": "Rampager Champion",
+      "modelType": "Infantry",
+      "modelSubTypes": [
+        "Champion",
+        "Sergeant"
+      ],
       "baseSizeMM": 32,
       "countInBase": 1,
       "isAdditionalModelType": false,
@@ -31,6 +36,7 @@
     },
     {
       "name": "Rampager",
+      "modelType": "Infantry",
       "baseSizeMM": 32,
       "countInBase": 1,
       "isAdditionalModelType": false,
@@ -136,6 +142,7 @@
   ],
   "unitType": "Infantry",
   "unitSubTypes": [
+    "Champion",
     "Sergeant"
   ]
 }

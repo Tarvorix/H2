@@ -8,6 +8,10 @@
   "modelDefinitions": [
     {
       "name": "Moritat",
+      "modelType": "Infantry",
+      "modelSubTypes": [
+        "Antigrav"
+      ],
       "baseSizeMM": 32,
       "countInBase": 1,
       "isAdditionalModelType": true,

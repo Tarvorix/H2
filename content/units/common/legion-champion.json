@@ -8,6 +8,10 @@
   "modelDefinitions": [
     {
       "name": "Legion Champion",
+      "modelType": "Infantry",
+      "modelSubTypes": [
+        "Command"
+      ],
       "baseSizeMM": 32,
       "countInBase": 1,
       "isAdditionalModelType": true,

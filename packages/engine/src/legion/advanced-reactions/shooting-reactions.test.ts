@@ -411,11 +411,9 @@ describe('Shooting-Phase Advanced Reactions', () => {
       expect(result.success).toBe(false);
     });
 
-    it('should perform shooting attack with hit on 4+ and wound on 4+', () => {
-      // 1 model, +1 FP = 2 shots
-      // Shot 1: hit roll 4 (hit), Shot 2: hit roll 3 (miss)
-      // 1 hit => wound roll 5 (wound)
-      // 1 wound => damage applied, pick target: roll 1
+    it('should perform shooting attack with hit on 3+ and wound on 4+', () => {
+      // 1 model with a bolter (FP2) and +1 FP from Bitter Fury = 3 shots.
+      // Hit rolls [3, 2, 2] => 1 hit, wound roll [5] => 1 wound.
       const reactingUnit = makeUnit('react-1', [
         makeModel('r1', { x: 0, y: 0 }),
       ]);
@@ -424,8 +422,7 @@ describe('Shooting-Phase Advanced Reactions', () => {
       ]);
       const state = makeGameState([enemyUnit], [reactingUnit]);
       const context = makeContext(state, REACTION_ID, 'react-1', 'enemy-1');
-      // 2 shots: hit rolls [4, 3] => 1 hit; wound roll [5] => 1 wound; target roll [1]
-      const dice = new FixedDiceProvider([4, 3, 5, 1]);
+      const dice = new FixedDiceProvider([3, 2, 2, 5]);
       const result = invokeHandler(REACTION_ID, context, dice);
 
       expect(result.success).toBe(true);
@@ -435,9 +432,9 @@ describe('Shooting-Phase Advanced Reactions', () => {
       expect(targetModel.isDestroyed).toBe(true);
     });
 
-    it('should add +1 FP modifier (2 shots per model instead of 1)', () => {
-      // 1 model with +1 FP = 2 shots total
-      // Both miss (roll 1, 2)
+    it('should add +1 FP modifier to the real weapon profile', () => {
+      // 1 bolter model becomes FP3 for this reaction and all three shots miss
+      // without triggering Overload misfires.
       const reactingUnit = makeUnit('react-1', [
         makeModel('r1', { x: 0, y: 0 }),
       ]);
@@ -446,8 +443,7 @@ describe('Shooting-Phase Advanced Reactions', () => {
       ]);
       const state = makeGameState([enemyUnit], [reactingUnit]);
       const context = makeContext(state, REACTION_ID, 'react-1', 'enemy-1');
-      // 2 shots per model (1 + 1 FP bonus): rolls [1, 2] => 0 hits
-      const dice = new FixedDiceProvider([1, 2]);
+      const dice = new FixedDiceProvider([2, 2, 2]);
       const result = invokeHandler(REACTION_ID, context, dice);
 
       expect(result.success).toBe(true);
@@ -457,7 +453,7 @@ describe('Shooting-Phase Advanced Reactions', () => {
     });
 
     it('should emit fireGroupResolved with correct stats', () => {
-      // 1 model, 2 shots: both hit (5, 6), then wound (4, 4) => 2 wounds
+      // 1 model, 3 shots: hit rolls [5, 6, 2] => 2 hits, wound rolls [4, 4] => 2 wounds
       const reactingUnit = makeUnit('react-1', [
         makeModel('r1', { x: 0, y: 0 }),
       ]);
@@ -467,19 +463,18 @@ describe('Shooting-Phase Advanced Reactions', () => {
       ]);
       const state = makeGameState([enemyUnit], [reactingUnit]);
       const context = makeContext(state, REACTION_ID, 'react-1', 'enemy-1');
-      // 2 shots: hit [5, 6] => 2 hits; wound [4, 4] => 2 wounds; target picks [1, 1]
-      const dice = new FixedDiceProvider([5, 6, 4, 4, 1, 1]);
+      const dice = new FixedDiceProvider([5, 6, 2, 4, 4]);
       const result = invokeHandler(REACTION_ID, context, dice);
 
       const fgEvent = result.events.find(e => e.type === 'fireGroupResolved');
       expect(fgEvent).toBeDefined();
       expect(fgEvent!.totalHits).toBe(2);
       expect(fgEvent!.totalWounds).toBe(2);
-      expect(fgEvent!.weaponName).toBe('Bitter Fury (Return Fire)');
+      expect(fgEvent!.weaponName).toBe('Bolter');
     });
 
     it('should apply damage to target unit models', () => {
-      // 1 model, 2 shots: both hit (4, 5), both wound (4, 5) => 2 wounds
+      // 1 model, 3 shots: all hit, all wound, but only two targets exist to allocate wounds to
       const reactingUnit = makeUnit('react-1', [
         makeModel('r1', { x: 0, y: 0 }),
       ]);
@@ -489,8 +484,7 @@ describe('Shooting-Phase Advanced Reactions', () => {
       ]);
       const state = makeGameState([enemyUnit], [reactingUnit]);
       const context = makeContext(state, REACTION_ID, 'react-1', 'enemy-1');
-      // 2 shots: hit [4, 5] => 2 hits; wound [4, 5] => 2 wounds; target picks [1, 1]
-      const dice = new FixedDiceProvider([4, 5, 4, 5, 1, 1]);
+      const dice = new FixedDiceProvider([4, 5, 6, 4, 5, 6]);
       const result = invokeHandler(REACTION_ID, context, dice);
 
       expect(result.success).toBe(true);
@@ -499,8 +493,8 @@ describe('Shooting-Phase Advanced Reactions', () => {
     });
 
     it('should handle multiple shooters', () => {
-      // 3 models, +1 FP = 2 shots each = 6 shots total
-      // All miss (rolls of 1)
+      // 3 bolter models, +1 FP = 3 shots each = 9 shots total.
+      // All miss on rolls of 2 while avoiding Overload misfires.
       const reactingUnit = makeUnit('react-1', [
         makeModel('r1', { x: 0, y: 0 }),
         makeModel('r2', { x: 1, y: 0 }),
@@ -511,8 +505,7 @@ describe('Shooting-Phase Advanced Reactions', () => {
       ]);
       const state = makeGameState([enemyUnit], [reactingUnit]);
       const context = makeContext(state, REACTION_ID, 'react-1', 'enemy-1');
-      // 6 shots total (3 models * 2 shots each): all miss
-      const dice = new FixedDiceProvider([1, 1, 1, 1, 1, 1]);
+      const dice = new FixedDiceProvider([2, 2, 2, 2, 2, 2, 2, 2, 2]);
       const result = invokeHandler(REACTION_ID, context, dice);
 
       expect(result.success).toBe(true);
@@ -546,8 +539,8 @@ describe('Shooting-Phase Advanced Reactions', () => {
     });
 
     it('should perform shooting at the ATTACKER (trigger source)', () => {
-      // 1 model, no FP bonus = 1 shot
-      // Hit roll 5 (hit), wound roll 4 (wound), target pick roll 1
+      // 1 bolter model, no FP bonus = 2 shots.
+      // Hit rolls [5, 2] => 1 hit, wound [4] => 1 wound.
       const reactingUnit = makeUnit('react-1', [
         makeModel('r1', { x: 0, y: 0 }),
       ]);
@@ -556,8 +549,7 @@ describe('Shooting-Phase Advanced Reactions', () => {
       ]);
       const state = makeGameState([attackerUnit], [reactingUnit]);
       const context = makeContext(state, REACTION_ID, 'react-1', 'attacker-1');
-      // 1 shot: hit [5] => hit; wound [4] => wound; target [1]
-      const dice = new FixedDiceProvider([5, 4, 1]);
+      const dice = new FixedDiceProvider([5, 2, 4]);
       const result = invokeHandler(REACTION_ID, context, dice);
 
       expect(result.success).toBe(true);
@@ -568,7 +560,7 @@ describe('Shooting-Phase Advanced Reactions', () => {
     });
 
     it('should have hit/wound mechanics work correctly', () => {
-      // 1 model, 1 shot: hit roll 4 (hit), wound roll 3 (miss)
+      // 1 model, 2 shots: hit rolls [4, 1] => 1 hit, wound [3] => fail
       const reactingUnit = makeUnit('react-1', [
         makeModel('r1', { x: 0, y: 0 }),
       ]);
@@ -577,8 +569,7 @@ describe('Shooting-Phase Advanced Reactions', () => {
       ]);
       const state = makeGameState([attackerUnit], [reactingUnit]);
       const context = makeContext(state, REACTION_ID, 'react-1', 'attacker-1');
-      // 1 shot: hit [4] => hit; wound [3] => miss (need 4+)
-      const dice = new FixedDiceProvider([4, 3]);
+      const dice = new FixedDiceProvider([4, 1, 3]);
       const result = invokeHandler(REACTION_ID, context, dice);
 
       expect(result.success).toBe(true);
@@ -598,17 +589,17 @@ describe('Shooting-Phase Advanced Reactions', () => {
       ]);
       const state = makeGameState([attackerUnit], [reactingUnit]);
       const context = makeContext(state, REACTION_ID, 'react-1', 'attacker-1');
-      // 1 shot: miss
-      const dice = new FixedDiceProvider([2]);
+      // 2 shots: both miss
+      const dice = new FixedDiceProvider([2, 1]);
       const result = invokeHandler(REACTION_ID, context, dice);
 
       const fgEvent = result.events.find(e => e.type === 'fireGroupResolved');
       expect(fgEvent).toBeDefined();
-      expect(fgEvent!.weaponName).toBe('Retribution Strike (Return Fire)');
+      expect(fgEvent!.weaponName).toBe('Bolter');
     });
 
     it('should apply damage to attacker models', () => {
-      // 2 models in reacting unit => 2 shots, both hit and wound
+      // 2 models in reacting unit => 4 bolter shots, with two hits and two wounds
       const reactingUnit = makeUnit('react-1', [
         makeModel('r1', { x: 0, y: 0 }),
         makeModel('r2', { x: 1, y: 0 }),
@@ -619,8 +610,7 @@ describe('Shooting-Phase Advanced Reactions', () => {
       ]);
       const state = makeGameState([attackerUnit], [reactingUnit]);
       const context = makeContext(state, REACTION_ID, 'react-1', 'attacker-1');
-      // 2 shots: hit [6, 5] => 2 hits; wound [4, 5] => 2 wounds; target picks [1, 1]
-      const dice = new FixedDiceProvider([6, 5, 4, 5, 1, 1]);
+      const dice = new FixedDiceProvider([6, 5, 2, 1, 4, 5]);
       const result = invokeHandler(REACTION_ID, context, dice);
 
       const damageEvents = result.events.filter(e => e.type === 'damageApplied');
@@ -641,7 +631,7 @@ describe('Shooting-Phase Advanced Reactions', () => {
       const state = makeGameState([attackerUnit], [reactingUnit]);
       const context = makeContext(state, REACTION_ID, 'react-1', 'attacker-1');
       // 1 shot: hit [1] => miss
-      const dice = new FixedDiceProvider([1]);
+      const dice = new FixedDiceProvider([1, 2]);
       const result = invokeHandler(REACTION_ID, context, dice);
 
       expect(result.success).toBe(true);
@@ -1401,7 +1391,8 @@ describe('Shooting-Phase Advanced Reactions', () => {
     });
 
     it('should still apply EternalWarrior when counter-charge fails', () => {
-      // Models 12" apart. Charge roll: 2d6 => 1, 2 => max=2 < 12 => fail
+      // Model centres are 12" apart, but the engine uses base-aware closest distance.
+      // With 32mm bases, the live required charge distance is about 10.74".
       const reactingUnit = makeUnit('react-1', [
         makeModel('r1', { x: 0, y: 0 }),
       ]);
@@ -1425,7 +1416,7 @@ describe('Shooting-Phase Advanced Reactions', () => {
       const failedEvent = result.events.find(e => e.type === 'chargeFailed');
       expect(failedEvent).toBeDefined();
       expect(failedEvent!.chargeRoll).toBe(2);
-      expect(failedEvent!.distanceNeeded).toBeCloseTo(12, 1);
+      expect(failedEvent!.distanceNeeded).toBeCloseTo(10.74, 2);
 
       // No chargeMove events on failure
       const chargeMoveEvents = result.events.filter(e => e.type === 'chargeMove');

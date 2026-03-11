@@ -8,6 +8,10 @@
   "modelDefinitions": [
     {
       "name": "Cerberus",
+      "modelType": "Vehicle",
+      "modelSubTypes": [
+        "SuperHeavy"
+      ],
       "baseSizeMM": 32,
       "countInBase": 1,
       "isAdditionalModelType": true,

@@ -19,7 +19,11 @@ import type {
   WindowOfOpportunityEvent,
   SuddenDeathEvent,
 } from '../types';
-import { getObjectiveController } from './objective-queries';
+import { findUnit } from '../game-queries';
+import {
+  getObjectiveScoringValueForUnit,
+  resolveObjectiveControlForScoring,
+} from './objective-queries';
 import {
   recordObjectiveScored,
   applyWindowOfOpportunity,
@@ -66,13 +70,18 @@ export function handleVictorySubPhase(
   // ─── Step 1: Score Primary Objectives ────────────────────────────────
   const activePlayerIndex = state.activePlayerIndex;
   let vpScored = 0;
+  const objectiveResolution = resolveObjectiveControlForScoring(newState, activePlayerIndex);
 
   for (const objective of missionState.objectives) {
     if (objective.isRemoved) continue;
 
-    const control = getObjectiveController(newState, objective);
+    const control = objectiveResolution.objectiveResults[objective.id];
+    if (!control) continue;
     if (control.controllerPlayerIndex === activePlayerIndex) {
-      const vp = objective.currentVpValue;
+      const controllingUnit = control.controllingUnitId
+        ? (findUnit(newState, control.controllingUnitId) ?? null)
+        : null;
+      const vp = getObjectiveScoringValueForUnit(controllingUnit, objective);
       vpScored += vp;
 
       // Record scoring

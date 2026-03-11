@@ -8,6 +8,10 @@
   "modelDefinitions": [
     {
       "name": "Xiphon",
+      "modelType": "Vehicle",
+      "modelSubTypes": [
+        "Flyer"
+      ],
       "baseSizeMM": 32,
       "countInBase": 1,
       "isAdditionalModelType": true,

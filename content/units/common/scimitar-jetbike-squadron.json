@@ -8,6 +8,11 @@
   "modelDefinitions": [
     {
       "name": "Scimitar Sergeant",
+      "modelType": "Cavalry",
+      "modelSubTypes": [
+        "Sergeant",
+        "Antigrav"
+      ],
       "baseSizeMM": 60,
       "countInBase": 1,
       "isAdditionalModelType": false,
@@ -31,6 +36,10 @@
     },
     {
       "name": "Scimitar Hunter",
+      "modelType": "Cavalry",
+      "modelSubTypes": [
+        "Antigrav"
+      ],
       "baseSizeMM": 60,
       "countInBase": 2,
       "isAdditionalModelType": true,

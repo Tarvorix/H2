@@ -85,6 +85,10 @@ export interface UnitProfile {
 export interface ModelDefinition {
   /** Display name for this model type (e.g., "Space Marine Legionary", "Legion Sergeant") */
   name: string;
+  /** Primary type for this model, if the datasheet provides a model-level entry. */
+  modelType?: ModelType;
+  /** Sub-types for this model, if the datasheet provides model-level entries. */
+  modelSubTypes?: ModelSubType[];
   /** Base size in mm (e.g., 25, 32, 40, 60) */
   baseSizeMM: number;
   /** How many of this model type are in the base unit (before adding extras) */
@@ -150,14 +154,38 @@ export interface UnitTrait {
   value: string;
 }
 
+export type AccessFacing = 'front' | 'rear' | 'left' | 'right';
+
+export type AccessPointGeometry =
+  | {
+      /** One or more vehicle facings count as access points. */
+      kind: 'facings';
+      facings: AccessFacing[];
+    }
+  | {
+      /** Every facing on the hull counts as an access point. */
+      kind: 'all-facings';
+    }
+  | {
+      /** The full edge of the model's base counts as an access point. */
+      kind: 'base-edge';
+    }
+  | {
+      /**
+       * If the model has a base, use the full base edge; otherwise treat all
+       * hull facings as access points.
+       */
+      kind: 'base-edge-or-all-facings';
+    };
+
 /**
- * An access point on a transport vehicle.
+ * A parsed access-point rule on a transport.
  */
 export interface AccessPoint {
-  /** Descriptive name (e.g., "Front ramp", "Side hatch") */
-  name: string;
-  /** Position relative to vehicle center, in inches */
-  relativePosition: { x: number; y: number };
+  /** Original datasheet line for traceability. */
+  label: string;
+  /** Structured geometry used by the runtime. */
+  geometry: AccessPointGeometry;
 }
 
 /**

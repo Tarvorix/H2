@@ -46,7 +46,7 @@ function makeModel(id: string, overrides: Partial<ModelState> = {}): ModelState 
     currentWounds: 1,
     isDestroyed: false,
     modifiers: [],
-    equippedWargear: ['boltgun'],
+    equippedWargear: ['bolter'],
     isWarlord: false,
     ...overrides,
   };
@@ -517,8 +517,8 @@ describe('Movement-Phase Advanced Reactions', () => {
       expect(result.events).toHaveLength(0);
     });
 
-    it('should hit on a roll of 4+ (BS 4 threshold)', () => {
-      // Single shooter, dice: [4] for hit, [4] for wound
+    it('should hit on a roll of 3+ (BS 4 threshold)', () => {
+      // Single shooter with a bolter (FP2): hit rolls [3, 2] => 1 hit, wound [4] => 1 wound
       const reactingUnit = makeUnit('if-unit', [
         makeModel('m1', { position: { x: 0, y: 0 } }),
       ]);
@@ -530,8 +530,7 @@ describe('Movement-Phase Advanced Reactions', () => {
       const state = makeGameState(activeArmy, reactiveArmy);
       const handler = getAdvancedReactionHandler(reactionId)!;
       const context = makeContext(state, reactionId, 'if-unit', 'enemy-unit');
-      // Roll 4 to hit (passes), roll 4 to wound (passes)
-      const dice = new FixedDiceProvider([4, 4]);
+      const dice = new FixedDiceProvider([3, 2, 4]);
 
       const result = handler(context, dice);
 
@@ -542,8 +541,8 @@ describe('Movement-Phase Advanced Reactions', () => {
       expect(fireGroupEvent.totalHits).toBe(1);
     });
 
-    it('should miss on a hit roll of 3 (below BS 4 threshold)', () => {
-      // Single shooter, dice: [3] for hit — miss, no wound roll
+    it('should miss on hit rolls below the BS 4 threshold)', () => {
+      // Single shooter with a bolter (FP2): both hit rolls miss
       const reactingUnit = makeUnit('if-unit', [
         makeModel('m1', { position: { x: 0, y: 0 } }),
       ]);
@@ -555,8 +554,7 @@ describe('Movement-Phase Advanced Reactions', () => {
       const state = makeGameState(activeArmy, reactiveArmy);
       const handler = getAdvancedReactionHandler(reactionId)!;
       const context = makeContext(state, reactionId, 'if-unit', 'enemy-unit');
-      // Roll 3 to hit — miss
-      const dice = new FixedDiceProvider([3]);
+      const dice = new FixedDiceProvider([2, 1]);
 
       const result = handler(context, dice);
 
@@ -571,7 +569,7 @@ describe('Movement-Phase Advanced Reactions', () => {
     });
 
     it('should wound on a wound roll of 4+ (S4 vs T4)', () => {
-      // Single shooter: hit roll 4 (hit), wound roll 4 (wound)
+      // Single shooter with a bolter (FP2): hit rolls [3, 2] => 1 hit, wound [4] => 1 wound
       const reactingUnit = makeUnit('if-unit', [
         makeModel('m1', { position: { x: 0, y: 0 } }),
       ]);
@@ -583,7 +581,7 @@ describe('Movement-Phase Advanced Reactions', () => {
       const state = makeGameState(activeArmy, reactiveArmy);
       const handler = getAdvancedReactionHandler(reactionId)!;
       const context = makeContext(state, reactionId, 'if-unit', 'enemy-unit');
-      const dice = new FixedDiceProvider([4, 4]);
+      const dice = new FixedDiceProvider([3, 2, 4]);
 
       const result = handler(context, dice);
 
@@ -594,7 +592,7 @@ describe('Movement-Phase Advanced Reactions', () => {
     });
 
     it('should fail to wound on a wound roll of 3 (below S4 vs T4 threshold)', () => {
-      // Single shooter: hit roll 4 (hit), wound roll 3 (fail)
+      // Single shooter with a bolter (FP2): hit rolls [3, 2] => 1 hit, wound [3] => fail
       const reactingUnit = makeUnit('if-unit', [
         makeModel('m1', { position: { x: 0, y: 0 } }),
       ]);
@@ -606,8 +604,7 @@ describe('Movement-Phase Advanced Reactions', () => {
       const state = makeGameState(activeArmy, reactiveArmy);
       const handler = getAdvancedReactionHandler(reactionId)!;
       const context = makeContext(state, reactionId, 'if-unit', 'enemy-unit');
-      // Roll 4 to hit (passes), roll 3 to wound (fails)
-      const dice = new FixedDiceProvider([4, 3]);
+      const dice = new FixedDiceProvider([3, 2, 3]);
 
       const result = handler(context, dice);
 
@@ -621,7 +618,7 @@ describe('Movement-Phase Advanced Reactions', () => {
     });
 
     it('should apply damage to the first alive model in the target unit', () => {
-      // Single shooter: hit roll 4, wound roll 4 — applies 1 damage to first alive target
+      // Single shooter with a bolter (FP2): hit rolls [3, 2] => 1 hit, wound [4] => 1 damage
       const reactingUnit = makeUnit('if-unit', [
         makeModel('m1', { position: { x: 0, y: 0 } }),
       ]);
@@ -634,7 +631,7 @@ describe('Movement-Phase Advanced Reactions', () => {
       const state = makeGameState(activeArmy, reactiveArmy);
       const handler = getAdvancedReactionHandler(reactionId)!;
       const context = makeContext(state, reactionId, 'if-unit', 'enemy-unit');
-      const dice = new FixedDiceProvider([4, 4]);
+      const dice = new FixedDiceProvider([3, 2, 4]);
 
       const result = handler(context, dice);
 
@@ -667,7 +664,7 @@ describe('Movement-Phase Advanced Reactions', () => {
       const state = makeGameState(activeArmy, reactiveArmy);
       const handler = getAdvancedReactionHandler(reactionId)!;
       const context = makeContext(state, reactionId, 'if-unit', 'enemy-unit');
-      const dice = new FixedDiceProvider([4, 4]);
+      const dice = new FixedDiceProvider([3, 2, 4]);
 
       const result = handler(context, dice);
 
@@ -678,7 +675,7 @@ describe('Movement-Phase Advanced Reactions', () => {
       expect(damageEvent.modelId).toBe('e1');
       expect(damageEvent.unitId).toBe('enemy-unit');
       expect(damageEvent.woundsLost).toBe(1);
-      expect(damageEvent.damageSource).toBe('Bastion of Fire');
+      expect(damageEvent.damageSource).toBe('Shooting from Bolter');
     });
 
     it('should emit a casualtyRemoved event when a model is destroyed', () => {
@@ -694,7 +691,7 @@ describe('Movement-Phase Advanced Reactions', () => {
       const state = makeGameState(activeArmy, reactiveArmy);
       const handler = getAdvancedReactionHandler(reactionId)!;
       const context = makeContext(state, reactionId, 'if-unit', 'enemy-unit');
-      const dice = new FixedDiceProvider([4, 4]);
+      const dice = new FixedDiceProvider([3, 2, 4]);
 
       const result = handler(context, dice);
 
@@ -719,8 +716,7 @@ describe('Movement-Phase Advanced Reactions', () => {
     });
 
     it('should emit a fireGroupResolved summary event with correct totalHits and totalWounds', () => {
-      // 2 shooters: first hits and wounds, second misses
-      // Dice: [4, 4, 2] — shooter1 hits(4) wounds(4), shooter2 misses(2)
+      // 2 shooters with bolters (FP2 each): one hit across four hit rolls, then one wound
       const reactingUnit = makeUnit('if-unit', [
         makeModel('m1', { position: { x: 0, y: 0 } }),
         makeModel('m2', { position: { x: 1, y: 0 } }),
@@ -733,8 +729,7 @@ describe('Movement-Phase Advanced Reactions', () => {
       const state = makeGameState(activeArmy, reactiveArmy);
       const handler = getAdvancedReactionHandler(reactionId)!;
       const context = makeContext(state, reactionId, 'if-unit', 'enemy-unit');
-      // Shooter 1: hit(4), wound(4); Shooter 2: miss(2)
-      const dice = new FixedDiceProvider([4, 4, 2]);
+      const dice = new FixedDiceProvider([3, 2, 2, 1, 4]);
 
       const result = handler(context, dice);
 
@@ -744,18 +739,16 @@ describe('Movement-Phase Advanced Reactions', () => {
       expect(fireGroupEvent.type).toBe('fireGroupResolved');
       expect(fireGroupEvent.totalHits).toBe(1);
       expect(fireGroupEvent.totalWounds).toBe(1);
-      expect(fireGroupEvent.weaponName).toBe('Bastion of Fire (Reaction)');
+      expect(fireGroupEvent.weaponName).toBe('Bolter');
       expect(fireGroupEvent.fireGroupIndex).toBe(0);
       expect(fireGroupEvent.totalPenetrating).toBe(0);
       expect(fireGroupEvent.totalGlancing).toBe(0);
     });
 
     it('should handle multiple shooters firing independently with a dice sequence', () => {
-      // 3 shooters firing at 2 enemy models with 1 wound each
-      // Dice: [6, 5, 4, 4, 5, 6]
-      // Shooter 1: hit(6), wound(5) -> wound on e1, e1 destroyed
-      // Shooter 2: hit(4), wound(4) -> wound on e2, e2 destroyed
-      // Shooter 3: hit(5), wound(6) -> no alive targets left, wound counted but damage applied breaks
+      // 3 shooters with bolters (FP2 each) firing at 2 enemy models with 1 wound each
+      // Hit rolls: [6, 4, 5, 1, 1, 1] => 3 hits. Wound rolls: [5, 4, 6] => 3 wounds.
+      // Two wounds are allocated, the third is recorded but has no remaining target.
       const reactingUnit = makeUnit('if-unit', [
         makeModel('m1', { position: { x: 0, y: 0 } }),
         makeModel('m2', { position: { x: 1, y: 0 } }),
@@ -770,10 +763,7 @@ describe('Movement-Phase Advanced Reactions', () => {
       const state = makeGameState(activeArmy, reactiveArmy);
       const handler = getAdvancedReactionHandler(reactionId)!;
       const context = makeContext(state, reactionId, 'if-unit', 'enemy-unit');
-      // Shooter 1: hit(6), wound(5) — hits and wounds e1 (destroyed)
-      // Shooter 2: hit(4), wound(4) — hits and wounds e2 (destroyed)
-      // Shooter 3: hit(5), wound(6) — hits and wounds, but no alive targets left -> break
-      const dice = new FixedDiceProvider([6, 5, 4, 4, 5, 6]);
+      const dice = new FixedDiceProvider([6, 4, 5, 1, 1, 1, 5, 4, 6]);
 
       const result = handler(context, dice);
 
@@ -782,16 +772,9 @@ describe('Movement-Phase Advanced Reactions', () => {
       // Check the fireGroupResolved event
       const fireGroupEvent = result.events.find(e => e.type === 'fireGroupResolved') as any;
       expect(fireGroupEvent).toBeDefined();
-      // All 3 shooters hit
+      // Three of the six bolter shots hit
       expect(fireGroupEvent.totalHits).toBe(3);
-      // First two wounds apply, third wounds but no target so it still increments
-      // then breaks. Let's trace the code:
-      // Shooter 1: hitRoll=6>=4 (hit), totalHits=1, woundRoll=5>=4 (wound), totalWounds=1, apply to e1
-      // Shooter 2: hitRoll=4>=4 (hit), totalHits=2, woundRoll=4>=4 (wound), totalWounds=2, apply to e2
-      // Shooter 3: hitRoll=5>=4 (hit), totalHits=3, woundRoll=6>=4 (wound), totalWounds=3,
-      //   but aliveTargets.length===0 -> break
-      // Actually, totalWounds increments BEFORE the alive check, so totalWounds=3
-      // but the break happens after the totalWounds++ and before applying damage
+      // The third wound is still counted even though no target remains for allocation.
       expect(fireGroupEvent.totalWounds).toBe(3);
 
       // Two models should be destroyed

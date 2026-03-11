@@ -8,6 +8,10 @@
   "modelDefinitions": [
     {
       "name": "Legionary",
+      "modelType": "Infantry",
+      "modelSubTypes": [
+        "Sergeant"
+      ],
       "baseSizeMM": 32,
       "countInBase": 1,
       "isAdditionalModelType": false,
@@ -38,6 +42,7 @@
     },
     {
       "name": "Rapier Carrier",
+      "modelType": "Infantry",
       "baseSizeMM": 32,
       "countInBase": 1,
       "isAdditionalModelType": true,

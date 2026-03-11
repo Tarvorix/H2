@@ -8,6 +8,10 @@
   "modelDefinitions": [
     {
       "name": "Exodus",
+      "modelType": "Infantry",
+      "modelSubTypes": [
+        "Light"
+      ],
       "baseSizeMM": 32,
       "countInBase": 1,
       "isAdditionalModelType": true,

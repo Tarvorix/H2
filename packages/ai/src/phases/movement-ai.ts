@@ -6,10 +6,17 @@
  */
 
 import type { GameState, GameCommand, Position, UnitState, ModelState } from '@hh/types';
-import { SubPhase } from '@hh/types';
+import { SubPhase, UnitMovementState } from '@hh/types';
 import { getAliveModels } from '@hh/engine';
 import type { AITurnContext, StrategyMode } from '../types';
-import { getMovableUnits, getReservesUnits, getModelMovementCharacteristic, getUnitCentroid, getEnemyDeployedUnits } from '../helpers/unit-queries';
+import {
+  getMovableUnits,
+  getReservesUnits,
+  getModelInitiativeCharacteristic,
+  getModelMovementCharacteristic,
+  getUnitCentroid,
+  getEnemyDeployedUnits,
+} from '../helpers/unit-queries';
 import {
   calculateRandomMovePosition,
   calculateDirectionalMovePosition,
@@ -167,7 +174,8 @@ function buildUnitTranslationCommand(
   const originCentroid = getUnitCentroid(unit);
   if (!originCentroid) return null;
 
-  const maxMove = getUnitMaxSafeTranslation(aliveModels);
+  const isRush = unit.movementState === UnitMovementState.RushDeclared;
+  const maxMove = getUnitMaxSafeTranslation(aliveModels, isRush);
   let targetCentroid: Position;
 
   if (strategy === 'basic') {
@@ -197,12 +205,14 @@ function buildUnitTranslationCommand(
     type: 'moveUnit',
     unitId: unit.id,
     modelPositions,
+    ...(isRush ? { isRush: true } : {}),
   };
 }
 
-function getUnitMaxSafeTranslation(models: ModelState[]): number {
+function getUnitMaxSafeTranslation(models: ModelState[], isRush: boolean = false): number {
   return models.reduce((minValue, model) => {
-    const movement = getModelMovementCharacteristic(model);
+    const movement = getModelMovementCharacteristic(model)
+      + (isRush ? getModelInitiativeCharacteristic(model) : 0);
     return Math.min(minValue, movement);
   }, Number.POSITIVE_INFINITY);
 }

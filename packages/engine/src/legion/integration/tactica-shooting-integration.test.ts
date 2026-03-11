@@ -881,7 +881,7 @@ describe('Shooting Tactica Integration Tests', () => {
       expect(result1.hitModifier).toBe(1);
     });
 
-    it('should return empty results after clearing without re-registering', () => {
+    it('should lazily re-register tacticas after a clear when apply is invoked again', () => {
       clearLegionTacticaRegistry();
 
       const ifEffects = getLegionTacticaEffects('imperial-fists-tactica');
@@ -894,7 +894,7 @@ describe('Shooting Tactica Integration Tests', () => {
       });
 
       const result = applyLegionTactica(LegionFaction.ImperialFists, PipelineHook.PreHit, ctx);
-      expect(result).toEqual({});
+      expect(result.hitModifier).toBe(1);
     });
   });
 

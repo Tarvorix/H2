@@ -331,4 +331,10 @@ describe('getAvailableGambits', () => {
       expect(gambits).toContain(g);
     }
   });
+
+  it('should exclude psychic-only gambits from the universal core list', () => {
+    const gambits = getAvailableGambits();
+    expect(gambits).not.toContain('every-strike-foreseen');
+    expect(getGambitEffect('every-strike-foreseen')).not.toBeNull();
+  });
 });

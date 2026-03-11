@@ -37,6 +37,16 @@ export interface CasualtyRemovalResult {
   pendingMoraleChecks: PendingMoraleCheck[];
 }
 
+export interface CasualtyRemovalOptions {
+  /**
+   * Emit casualty events even when the model is already marked destroyed in the
+   * provided state. Runtime shooting resolution uses this when damage
+   * application has already reduced the model to 0 wounds earlier in the same
+   * attack, but step 11 still needs to remove the casualty formally.
+   */
+  emitEventsForAlreadyDestroyedModels?: boolean;
+}
+
 // ─── Main Casualty Removal ─────────────────────────────────────────────────
 
 /**
@@ -57,6 +67,7 @@ export function removeCasualties(
   state: GameState,
   casualtyModelIds: string[],
   unitSizesAtStart: Record<string, number>,
+  options: CasualtyRemovalOptions = {},
 ): CasualtyRemovalResult {
   const events: GameEvent[] = [];
   const destroyedUnitIds: string[] = [];
@@ -67,6 +78,7 @@ export function removeCasualties(
 
   // Track which units we've already checked for destruction to avoid duplicate events
   const checkedUnitsForDestruction = new Set<string>();
+  const appliedCasualtyModelIds: string[] = [];
 
   for (const modelId of uniqueModelIds) {
     // Find the model and its parent unit in the current state
@@ -77,20 +89,24 @@ export function removeCasualties(
     }
 
     const { unit } = found;
+    const modelAlreadyDestroyed = found.model.isDestroyed;
 
-    // Skip if model is already destroyed (idempotent)
-    if (found.model.isDestroyed) {
+    if (modelAlreadyDestroyed && options.emitEventsForAlreadyDestroyedModels !== true) {
       continue;
     }
 
-    // 1. Mark the model as destroyed
-    currentState = updateUnitInGameState(currentState, unit.id, (u) =>
-      updateModelInUnit(u, modelId, (m) => ({
-        ...m,
-        currentWounds: 0,
-        isDestroyed: true,
-      })),
-    );
+    appliedCasualtyModelIds.push(modelId);
+
+    if (!modelAlreadyDestroyed) {
+      // 1. Mark the model as destroyed if the damage step has not already done so.
+      currentState = updateUnitInGameState(currentState, unit.id, (u) =>
+        updateModelInUnit(u, modelId, (m) => ({
+          ...m,
+          currentWounds: 0,
+          isDestroyed: true,
+        })),
+      );
+    }
 
     // 2. Emit CasualtyRemovedEvent
     const casualtyEvent: CasualtyRemovedEvent = {
@@ -123,7 +139,7 @@ export function removeCasualties(
   }
 
   // Count casualties per unit for morale check calculation
-  const casualtiesPerUnit = countCasualtiesPerUnit(state, uniqueModelIds);
+  const casualtiesPerUnit = countCasualtiesPerUnit(state, appliedCasualtyModelIds);
 
   // Determine pending morale checks
   // Units that were completely destroyed do NOT need morale checks

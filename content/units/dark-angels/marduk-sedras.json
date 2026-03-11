@@ -8,6 +8,12 @@
   "modelDefinitions": [
     {
       "name": "Marduk Sedras",
+      "modelType": "Infantry",
+      "modelSubTypes": [
+        "Unique",
+        "Command",
+        "Heavy"
+      ],
       "baseSizeMM": 40,
       "countInBase": 1,
       "isAdditionalModelType": true,

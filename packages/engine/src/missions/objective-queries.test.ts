@@ -27,6 +27,7 @@ import {
   calculateTacticalStrength,
   getObjectiveController,
   getControlledObjectives,
+  getObjectiveScoringValueForUnit,
   OBJECTIVE_CONTROL_RANGE,
 } from './objective-queries';
 
@@ -111,6 +112,8 @@ function makeMissionState(objectives: ObjectiveMarker[]): MissionState {
     },
     scoringHistory: [],
     vpAtTurnStart: [],
+    vanguardBonusHistory: [],
+    assaultPhaseObjectiveSnapshot: null,
   };
 }
 
@@ -188,6 +191,17 @@ describe('canModelHoldObjective', () => {
     const unit = makeUnit('u1', [model], { isInReserves: true });
     expect(canModelHoldObjective(model, unit)).toBe(false);
   });
+
+  it('returns false for a vehicle without Line', () => {
+    const model = makeModel('m1', 10, 10, {
+      profileModelName: 'Vindicator',
+      unitProfileId: 'vindicator-siege-tank',
+    });
+    const unit = makeUnit('u1', [model], {
+      profileId: 'vindicator-siege-tank',
+    });
+    expect(canModelHoldObjective(model, unit)).toBe(false);
+  });
 });
 
 // ─── getModelsWithinObjectiveRange ───────────────────────────────────────────
@@ -252,7 +266,7 @@ describe('calculateTacticalStrength', () => {
     const state = makeState([unit], []);
     const obj = makeObjective('obj1', 10, 10);
 
-    expect(calculateTacticalStrength(state, obj, 0)).toBe(3);
+    expect(calculateTacticalStrength(state, obj, 0)).toBe(9);
   });
 
   it('excludes models in units with statuses', () => {
@@ -272,6 +286,19 @@ describe('calculateTacticalStrength', () => {
 
     expect(calculateTacticalStrength(state, obj, 0)).toBe(0);
   });
+
+  it('adds Line(X) to model tactical strength', () => {
+    const models = [
+      makeModel('m1', 10, 10),
+      makeModel('m2', 11, 10),
+      makeModel('m3', 12, 10),
+    ];
+    const unit = makeUnit('u1', models, { profileId: 'tactical-squad' });
+    const state = makeState([unit], []);
+    const obj = makeObjective('obj1', 10, 10);
+
+    expect(calculateTacticalStrength(state, obj, 0)).toBe(9);
+  });
 });
 
 // ─── getObjectiveController ──────────────────────────────────────────────────
@@ -289,8 +316,8 @@ describe('getObjectiveController', () => {
     const result = getObjectiveController(state, obj);
     expect(result.controllerPlayerIndex).toBe(0);
     expect(result.isContested).toBe(false);
-    expect(result.player0Strength).toBe(2);
-    expect(result.player1Strength).toBe(1);
+    expect(result.player0Strength).toBe(6);
+    expect(result.player1Strength).toBe(3);
   });
 
   it('contested when equal non-zero strength', () => {
@@ -317,6 +344,79 @@ describe('getObjectiveController', () => {
     const result = getObjectiveController(state, obj);
     expect(result.controllerPlayerIndex).toBeNull();
     expect(result.isContested).toBe(false);
+  });
+
+  it('uses the strongest single unit instead of summing multiple friendly units', () => {
+    const state = makeState(
+      [
+        makeUnit('u0a', [makeModel('m1', 10, 10)]),
+        makeUnit('u0b', [makeModel('m2', 11, 10)]),
+      ],
+      [
+        makeUnit('u1', [
+          makeModel('m3', 10, 10),
+          makeModel('m4', 10.5, 10),
+        ]),
+      ],
+    );
+    const obj = makeObjective('obj1', 10, 10);
+
+    const result = getObjectiveController(state, obj);
+    expect(result.controllerPlayerIndex).toBe(1);
+    expect(result.controllingUnitId).toBe('u1');
+    expect(result.player0Strength).toBe(3);
+    expect(result.player1Strength).toBe(6);
+  });
+});
+
+describe('getObjectiveScoringValueForUnit', () => {
+  it('adds the Line(X) bonus when the controlling unit has majority Line', () => {
+    const unit = makeUnit('u1', [
+      makeModel('m1', 10, 10),
+      makeModel('m2', 11, 10),
+      makeModel('m3', 12, 10),
+    ], {
+      profileId: 'tactical-squad',
+    });
+    const objective = makeObjective('obj1', 10, 10, 3);
+
+    expect(getObjectiveScoringValueForUnit(unit, objective)).toBe(5);
+  });
+
+  it('applies Support Unit(X) as a hard scoring cap', () => {
+    const unit = makeUnit('u1', [
+      makeModel('m1', 10, 10, {
+        profileModelName: 'Exodus',
+        unitProfileId: 'exodus',
+      }),
+    ], {
+      profileId: 'exodus',
+    });
+    const objective = makeObjective('obj1', 10, 10, 3);
+
+    expect(getObjectiveScoringValueForUnit(unit, objective)).toBe(1);
+  });
+
+  it('caps Vanguard(X) units to 1 VP for controlling an objective', () => {
+    const unit = makeUnit('u1', [
+      makeModel('m1', 10, 10, {
+        profileModelName: 'Assault Sergeant',
+        unitProfileId: 'assault-squad',
+      }),
+      makeModel('m2', 11, 10, {
+        profileModelName: 'Assault Legionary',
+        unitProfileId: 'assault-squad',
+      }),
+      makeModel('m3', 12, 10, {
+        profileModelName: 'Assault Legionary',
+        unitProfileId: 'assault-squad',
+      }),
+    ], {
+      profileId: 'assault-squad',
+    });
+    const objective = makeObjective('obj1', 10, 10, 3);
+
+    expect(getObjectiveScoringValueForUnit(unit, objective)).toBe(1);
   });
 });
 
@@ -352,6 +452,24 @@ describe('getControlledObjectives', () => {
     const state = makeState([makeUnit('u0', [p0Model])], [], mission);
 
     expect(getControlledObjectives(state, 0)).toHaveLength(0);
+  });
+
+  it('does not let a single unit control two objectives in the same Victory sub-phase', () => {
+    const obj1 = makeObjective('obj1', 10, 10, 3);
+    const obj2 = makeObjective('obj2', 13, 10, 1);
+    const mission = makeMissionState([obj1, obj2]);
+    const state = makeState(
+      [makeUnit('u0', [
+        makeModel('m1', 11, 10),
+        makeModel('m2', 11.5, 10),
+      ])],
+      [],
+      mission,
+    );
+
+    const controlled = getControlledObjectives(state, 0);
+    expect(controlled).toHaveLength(1);
+    expect(controlled[0].id).toBe('obj1');
   });
 });
 

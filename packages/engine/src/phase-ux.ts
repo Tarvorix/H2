@@ -63,6 +63,7 @@ function getTacticalActionsForCurrentSubPhase(state: GameState): string[] {
         actions.add('moveModel');
         actions.add('embark');
       }
+      actions.add('manifestPsychicPower');
       if (aliveUnits.some(canUnitRush)) {
         actions.add('rushUnit');
       }
@@ -82,6 +83,9 @@ function getTacticalActionsForCurrentSubPhase(state: GameState): string[] {
       if (!aliveUnits.some(canUnitShoot)) return [];
       return filterValidCommands(valid, ['declareShooting']);
     }
+
+    case SubPhase.StartEffects:
+      return filterValidCommands(valid, ['manifestPsychicPower']);
 
     case SubPhase.Charge: {
       if (!aliveUnits.some(canUnitCharge)) return [];

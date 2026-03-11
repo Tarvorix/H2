@@ -23,7 +23,6 @@ import {
   resolvePanicCheck,
   checkMassacre,
   resolveCombatResolution,
-  DEFAULT_LEADERSHIP,
 } from './resolution-handler';
 import type { CombatState, ChallengeState } from './assault-types';
 
@@ -488,23 +487,35 @@ describe('resolvePanicCheck', () => {
     expect(result.events).toHaveLength(0);
   });
 
-  it('uses default leadership when not specified', () => {
-    // Default leadership is 8, CRP diff 1 => target = 7
-    // Roll 2d6: 3+4 = 7, which is <= 7 => pass
-    const dice = createDiceProvider([3, 4]);
+  it('uses the losing side unit leadership when not specified', () => {
+    // Lone tactical legionary is Ld 7, CRP diff 1 => target = 6.
+    // Roll 2d6: 3+3 = 6, which is <= 6 => pass.
+    const dice = createDiceProvider([3, 3]);
     const unitA = createUnit('unit-a', [createModel('a1', { x: 0, y: 0 })]);
     const unitB = createUnit('unit-b', [createModel('b1', { x: 5, y: 0 })]);
     const state = createGameState([createArmy(0, [unitA]), createArmy(1, [unitB])]);
     const combat = createCombatState();
 
-    expect(DEFAULT_LEADERSHIP).toBe(8);
-
-    // Call without explicit leadership (uses default)
     const result = resolvePanicCheck(state, combat, 1, 1, dice);
 
-    expect(result.targetNumber).toBe(7); // 8 - 1
+    expect(result.targetNumber).toBe(6);
     expect(result.passed).toBe(true);
-    expect(result.roll).toBe(7);
+    expect(result.roll).toBe(6);
+  });
+
+  it('skips the panic check when no losing unit can be resolved', () => {
+    const dice = createDiceProvider([3, 4]);
+    const unitA = createUnit('unit-a', [createModel('a1', { x: 0, y: 0 })]);
+    const state = createGameState([createArmy(0, [unitA]), createArmy(1, [])]);
+    const combat = createCombatState({
+      reactivePlayerUnitIds: ['missing-unit'],
+    });
+
+    const result = resolvePanicCheck(state, combat, 1, 1, dice);
+
+    expect(result.skipped).toBe(true);
+    expect(result.targetNumber).toBe(0);
+    expect(result.roll).toBe(0);
   });
 
   it('target number never goes below 2', () => {
@@ -778,7 +789,7 @@ describe('resolveCombatResolution', () => {
     // Panic check should have been run for loser (player 1)
     expect(result.panicCheckResult).not.toBeNull();
     expect(result.panicCheckResult!.roll).toBe(10); // 5+5
-    expect(result.panicCheckResult!.targetNumber).toBe(5); // 8 - 3 = 5
+    expect(result.panicCheckResult!.targetNumber).toBe(4); // 7 - 3 = 4
     expect(result.panicCheckResult!.passed).toBe(false); // 10 > 5
 
     expect(result.isMassacre).toBe(false);

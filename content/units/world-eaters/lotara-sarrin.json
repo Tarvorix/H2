@@ -8,6 +8,11 @@
   "modelDefinitions": [
     {
       "name": "Lotara Sarrin",
+      "modelType": "Infantry",
+      "modelSubTypes": [
+        "Unique",
+        "Sergeant"
+      ],
       "baseSizeMM": 28,
       "countInBase": 1,
       "isAdditionalModelType": true,

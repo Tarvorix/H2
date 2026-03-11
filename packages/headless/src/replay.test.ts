@@ -209,10 +209,10 @@ describe('headless replay artifacts', () => {
       .map(([, hash]) => hash);
 
     expect(turnHashes).toEqual([
-      '768af6454553933f',
-      'b30646eb9910fda7',
-      '71fec2f6295b6158',
-      'cad7028161cd038b',
+      '04ef05820a8bf443',
+      '69129b001d59f88e',
+      '7187ca8ad1dd85d2',
+      '4490e4d35ce73b22',
     ]);
     expect(artifact.finalStateHash).toBe(hashGameState(finalState));
   });
@@ -257,7 +257,7 @@ describe('headless replay artifacts', () => {
     ).length;
 
     expect(strategicCommandCount).toBeGreaterThan(0);
-    expect(signature).toBe('0:endSubPhase|0:endSubPhase|0:moveModel|0:moveModel|0:moveModel|0:moveModel|0:moveModel|0:moveModel|0:moveModel|0:moveModel|0:moveModel|0:moveModel|0:endSubPhase|0:endSubPhase|0:endSubPhase|0:endSubPhase|0:endSubPhase|0:endSubPhase|0:endSubPhase|0:endSubPhase|0:endSubPhase|0:endSubPhase|0:endSubPhase|1:endSubPhase|1:endSubPhase|1:moveModel|1:moveModel|1:moveModel|1:moveModel|1:moveModel|1:moveModel|1:moveModel|1:moveModel|1:moveModel|1:moveModel|1:endSubPhase|1:endSubPhase|1:endSubPhase|1:endSubPhase|1:endSubPhase');
-    expect(runResult.finalStateHash).toBe('5267e59c79cc8dad');
+    expect(signature).toBe('0:endSubPhase|0:endSubPhase|0:moveUnit|0:endSubPhase|0:endSubPhase|0:endSubPhase|0:endSubPhase|0:endSubPhase|0:endSubPhase|0:endSubPhase|0:endSubPhase|0:endSubPhase|0:endSubPhase|0:endSubPhase|1:endSubPhase|1:endSubPhase|1:moveUnit|1:endSubPhase|1:endSubPhase|1:endSubPhase|1:endSubPhase|1:endSubPhase|1:endSubPhase|1:endSubPhase|1:endSubPhase|1:endSubPhase|1:endSubPhase|1:endSubPhase|0:endSubPhase|0:endSubPhase|0:moveUnit|0:endSubPhase|0:endSubPhase|0:endSubPhase|0:endSubPhase|0:endSubPhase|0:endSubPhase|0:endSubPhase|0:endSubPhase|0:endSubPhase');
+    expect(runResult.finalStateHash).toBe('0516bff2f8f3c46a');
   });
 });

@@ -8,6 +8,10 @@
   "modelDefinitions": [
     {
       "name": "Tartaros Terminator Sergeant",
+      "modelType": "Infantry",
+      "modelSubTypes": [
+        "Sergeant"
+      ],
       "baseSizeMM": 40,
       "countInBase": 1,
       "isAdditionalModelType": false,
@@ -31,6 +35,7 @@
     },
     {
       "name": "Tartaros Terminator",
+      "modelType": "Infantry",
       "baseSizeMM": 40,
       "countInBase": 1,
       "isAdditionalModelType": true,

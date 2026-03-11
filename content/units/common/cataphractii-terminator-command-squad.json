@@ -8,6 +8,12 @@
   "modelDefinitions": [
     {
       "name": "Cataphractii Chosen Champion",
+      "modelType": "Infantry",
+      "modelSubTypes": [
+        "Champion",
+        "Sergeant",
+        "Heavy"
+      ],
       "baseSizeMM": 40,
       "countInBase": 1,
       "isAdditionalModelType": false,
@@ -31,6 +37,10 @@
     },
     {
       "name": "Cataphractii Chosen",
+      "modelType": "Infantry",
+      "modelSubTypes": [
+        "Heavy"
+      ],
       "baseSizeMM": 40,
       "countInBase": 2,
       "isAdditionalModelType": true,
@@ -143,6 +153,7 @@
   ],
   "unitType": "Infantry",
   "unitSubTypes": [
+    "Champion",
     "Sergeant",
     "Heavy"
   ]

@@ -12,6 +12,7 @@
 
 import type { GameState, LegionTacticaState } from '@hh/types';
 import type { CommandResult, DiceProvider } from '../types';
+import { expirePsychicEffectsAtTurnStart } from '../psychic/psychic-runtime';
 
 /**
  * Process the Start Phase effects.
@@ -25,20 +26,22 @@ export function handleStartPhase(
   state: GameState,
   _dice: DiceProvider,
 ): CommandResult {
+  const psychicExpiredState = expirePsychicEffectsAtTurnStart(state);
+
   // Reset per-turn legion tactica state for the active player
-  const playerIndex = state.activePlayerIndex;
+  const playerIndex = psychicExpiredState.activePlayerIndex;
   const resetState: LegionTacticaState = {
     reactionDiscountUsedThisTurn: false,
     movementBonusActiveThisTurn: false,
     perTurnFlags: {},
   };
 
-  const newLegionTacticaState = [...state.legionTacticaState] as [LegionTacticaState, LegionTacticaState];
+  const newLegionTacticaState = [...psychicExpiredState.legionTacticaState] as [LegionTacticaState, LegionTacticaState];
   newLegionTacticaState[playerIndex] = resetState;
 
   return {
     state: {
-      ...state,
+      ...psychicExpiredState,
       legionTacticaState: newLegionTacticaState,
     },
     events: [],

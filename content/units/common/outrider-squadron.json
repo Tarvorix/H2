@@ -8,6 +8,10 @@
   "modelDefinitions": [
     {
       "name": "Outrider Sergeant",
+      "modelType": "Cavalry",
+      "modelSubTypes": [
+        "Sergeant"
+      ],
       "baseSizeMM": 32,
       "countInBase": 1,
       "isAdditionalModelType": false,
@@ -31,6 +35,7 @@
     },
     {
       "name": "Outrider",
+      "modelType": "Cavalry",
       "baseSizeMM": 32,
       "countInBase": 1,
       "isAdditionalModelType": true,

@@ -18,6 +18,7 @@ import { findUnit, getAliveModels, getDistanceBetween, isModelInBaseContact } fr
 import { updateUnitInGameState, updateModelInUnit, moveModel } from '../state-helpers';
 import type { CombatState } from './assault-types';
 import { moveToward } from './setup-move-handler';
+import { getModelInitiative } from '../profile-lookup';
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -210,12 +211,16 @@ export function resolveFinalPileIn(
   );
 
   for (const { modelId, unitId } of activeModelsNeedingPileIn) {
+    const unit = findUnit(currentState, unitId);
+    const model = unit?.models.find((candidate) => candidate.id === modelId);
     const result = resolvePileIn(
       currentState,
       modelId,
       unitId,
       combatState,
-      DEFAULT_PILE_IN_INITIATIVE,
+      model
+        ? getModelInitiative(model.unitProfileId, model.profileModelName)
+        : DEFAULT_PILE_IN_INITIATIVE,
     );
 
     currentState = result.state;
@@ -231,12 +236,16 @@ export function resolveFinalPileIn(
   );
 
   for (const { modelId, unitId } of reactiveModelsNeedingPileIn) {
+    const unit = findUnit(currentState, unitId);
+    const model = unit?.models.find((candidate) => candidate.id === modelId);
     const result = resolvePileIn(
       currentState,
       modelId,
       unitId,
       combatState,
-      DEFAULT_PILE_IN_INITIATIVE,
+      model
+        ? getModelInitiative(model.unitProfileId, model.profileModelName)
+        : DEFAULT_PILE_IN_INITIATIVE,
     );
 
     currentState = result.state;

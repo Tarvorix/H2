@@ -55,6 +55,8 @@ function makeMissionState(overrides: Partial<MissionState> = {}): MissionState {
     },
     scoringHistory: [],
     vpAtTurnStart: [],
+    vanguardBonusHistory: [],
+    assaultPhaseObjectiveSnapshot: null,
     ...overrides,
   };
 }
@@ -71,7 +73,7 @@ describe('initializeMissionState', () => {
 
   it('generates fixed objectives from mission definition', () => {
     const state = initializeMissionState(HEART_OF_BATTLE, SEARCH_AND_DESTROY);
-    expect(state.objectives).toHaveLength(3);
+    expect(state.objectives).toHaveLength(1);
     expect(state.objectives[0].vpValue).toBe(3);
     expect(state.objectives[0].currentVpValue).toBe(3);
     expect(state.objectives[0].isRemoved).toBe(false);

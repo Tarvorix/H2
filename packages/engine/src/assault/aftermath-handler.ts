@@ -12,14 +12,22 @@
  * - Consolidate: Free move after combat (winner only, all enemies fleeing)
  */
 
-import type { GameState, Position } from '@hh/types';
-import { AftermathOption, TacticalStatus } from '@hh/types';
+import { checkCoherency, STANDARD_COHERENCY_RANGE } from '@hh/geometry';
+import type { GameState, ModelState, Position, UnitState } from '@hh/types';
+import { AftermathOption, ModelType, TacticalStatus } from '@hh/types';
 import type { DiceProvider, GameEvent } from '../types';
 import {
   findUnit,
   getAliveModels,
   getDistanceBetween,
+  getUnitModelShapes,
 } from '../game-queries';
+import {
+  getModelInitiative,
+  getModelMovement,
+  getModelType,
+} from '../profile-lookup';
+import { executeOutOfPhaseShootingAttack } from '../shooting/out-of-phase-shooting';
 import {
   updateUnitInGameState,
   updateModelInUnit,
@@ -93,6 +101,10 @@ export function getAvailableAftermathOptions(
   const unit = findUnit(state, unitId);
   if (!unit) return [];
 
+  if (unitIncludesVehicleModel(unit)) {
+    return [AftermathOption.Hold];
+  }
+
   const isRouted = unit.statuses.includes(TacticalStatus.Routed);
 
   // Routed units must Fall Back
@@ -141,8 +153,8 @@ export function resolveAftermathOption(
   option: AftermathOption,
   combatState: CombatState,
   dice: DiceProvider,
-  initiative: number = DEFAULT_INITIATIVE,
-  movement: number = DEFAULT_MOVEMENT,
+  initiative?: number,
+  movement?: number,
 ): AftermathSelectionResult {
   const events: GameEvent[] = [];
 
@@ -157,7 +169,7 @@ export function resolveAftermathOption(
       return resolveHold(state, unitId, combatState, initiative, events);
 
     case AftermathOption.Disengage:
-      return resolveDisengage(state, unitId, combatState, movement, events);
+      return resolveDisengage(state, unitId, combatState, movement, initiative, events);
 
     case AftermathOption.FallBack:
       return resolveFallBack(state, unitId, dice, initiative, events);
@@ -190,7 +202,7 @@ function resolveHold(
   state: GameState,
   unitId: string,
   combatState: CombatState,
-  initiative: number,
+  initiativeOverride: number | undefined,
   events: GameEvent[],
 ): AftermathSelectionResult {
   const unit = findUnit(state, unitId);
@@ -215,7 +227,8 @@ function resolveHold(
     const closestEnemy = findClosestPosition(model.position, enemyModels.map(m => m.position));
     if (!closestEnemy) continue;
 
-    const newPos = moveToward(model.position, closestEnemy, initiative);
+    const initiativeValue = getModelAftermathInitiative(model, initiativeOverride);
+    const newPos = moveToward(model.position, closestEnemy, initiativeValue);
     if (newPos.x !== model.position.x || newPos.y !== model.position.y) {
       newState = updateUnitInGameState(newState, unitId, u =>
         updateModelInUnit(u, model.id, m => moveModel(m, newPos)),
@@ -273,7 +286,8 @@ function resolveDisengage(
   state: GameState,
   unitId: string,
   combatState: CombatState,
-  movement: number,
+  movementOverride: number | undefined,
+  initiativeOverride: number | undefined,
   events: GameEvent[],
 ): AftermathSelectionResult {
   const unit = findUnit(state, unitId);
@@ -304,44 +318,49 @@ function resolveDisengage(
     };
   }
 
-  // Calculate center of enemy forces
-  const enemyCenter = calculateCenter(enemyModels.map(m => m.position));
-
-  // Move each model away from enemy center, up to movement distance
   const aliveModels = getAliveModels(unit);
+  const battlefield = getBattlefieldDimensions(state);
+  const plannedMoves = new Map<string, Position>();
+
   for (const model of aliveModels) {
-    const awayDir = getDirectionAway(model.position, enemyCenter);
-    const targetPos: Position = {
-      x: model.position.x + awayDir.x * movement,
-      y: model.position.y + awayDir.y * movement,
-    };
+    const movementValue = getModelAftermathMovement(model, movementOverride);
+    const disengagePosition = findDisengageDestination(
+      model,
+      enemyModels,
+      movementValue,
+      battlefield,
+    );
 
-    // Clamp to board
-    const clampedPos = clampToBoard(targetPos);
-    const newPos = moveToward(model.position, clampedPos, movement);
-
-    // Ensure >2" from all enemies
-    let finalPos = newPos;
-    for (const enemy of enemyModels) {
-      const dist = getDistanceBetween(finalPos, enemy.position);
-      if (dist <= 2) {
-        // Extend move away from this enemy
-        const awayFromEnemy = getDirectionAway(finalPos, enemy.position);
-        const extensionNeeded = 2.1 - dist;
-        finalPos = {
-          x: finalPos.x + awayFromEnemy.x * extensionNeeded,
-          y: finalPos.y + awayFromEnemy.y * extensionNeeded,
-        };
-        finalPos = clampToBoard(finalPos);
-      }
+    if (!disengagePosition) {
+      return resolveHold(state, unitId, combatState, initiativeOverride, events);
     }
 
-    if (finalPos.x !== model.position.x || finalPos.y !== model.position.y) {
-      newState = updateUnitInGameState(newState, unitId, u =>
-        updateModelInUnit(u, model.id, m => moveModel(m, finalPos)),
-      );
+    plannedMoves.set(model.id, disengagePosition);
+    if (disengagePosition.x !== model.position.x || disengagePosition.y !== model.position.y) {
+      modelMoves.push({ modelId: model.id, from: model.position, to: disengagePosition });
+    }
+  }
 
-      modelMoves.push({ modelId: model.id, from: model.position, to: finalPos });
+  newState = applyModelMoves(newState, unitId, plannedMoves);
+
+  const updatedUnit = findUnit(newState, unitId);
+  const coherent = updatedUnit
+    ? checkCoherency(getUnitModelShapes(updatedUnit), STANDARD_COHERENCY_RANGE).isCoherent
+    : true;
+  const inBaseContact = updatedUnit
+    ? getAliveModels(updatedUnit).some((model) =>
+      enemyModels.some((enemy) => getDistanceBetween(model.position, enemy.position) <= 1),
+    )
+    : false;
+
+  let routedApplied = false;
+  const statusChanges: { unitId: string; status: TacticalStatus; applied: boolean }[] = [];
+  if (!coherent || inBaseContact) {
+    const routedState = applyRoutedStatus(newState, unitId);
+    newState = routedState.state;
+    routedApplied = routedState.applied;
+    if (routedApplied) {
+      statusChanges.push({ unitId, status: TacticalStatus.Routed, applied: true });
     }
   }
 
@@ -362,8 +381,8 @@ function resolveDisengage(
     result: {
       modelMoves,
       stillLockedInCombat: false,
-      routedApplied: false,
-      statusChanges: [],
+      routedApplied,
+      statusChanges,
       pursueCaught: false,
       pursueRoll: 0,
     },
@@ -381,7 +400,7 @@ function resolveFallBack(
   state: GameState,
   unitId: string,
   dice: DiceProvider,
-  initiative: number,
+  initiativeOverride: number | undefined,
   events: GameEvent[],
 ): AftermathSelectionResult {
   const unit = findUnit(state, unitId);
@@ -394,23 +413,24 @@ function resolveFallBack(
   const statusChanges: { unitId: string; status: TacticalStatus; applied: boolean }[] = [];
 
   // Apply Routed if not already
-  if (!unit.statuses.includes(TacticalStatus.Routed)) {
-    newState = updateUnitInGameState(newState, unitId, u =>
-      addStatus(u, TacticalStatus.Routed),
-    );
-    routedApplied = true;
+  const routedState = applyRoutedStatus(newState, unitId);
+  newState = routedState.state;
+  routedApplied = routedState.applied;
+  if (routedApplied) {
     statusChanges.push({ unitId, status: TacticalStatus.Routed, applied: true });
   }
 
   // Fall back distance: I + d6"
   const d6 = dice.rollD6();
-  const fallBackDistance = initiative + d6;
 
   // Move toward nearest board edge
   const modelMoves: { modelId: string; from: Position; to: Position }[] = [];
   const aliveModels = getAliveModels(unit);
+  let farthestFallBackDistance = 0;
   for (const model of aliveModels) {
-    const edgeTarget = getNearestBoardEdge(model.position);
+    const fallBackDistance = getModelAftermathInitiative(model, initiativeOverride) + d6;
+    farthestFallBackDistance = Math.max(farthestFallBackDistance, fallBackDistance);
+    const edgeTarget = getNearestBoardEdge(model.position, state);
     const newPos = moveToward(model.position, edgeTarget, fallBackDistance);
 
     if (newPos.x !== model.position.x || newPos.y !== model.position.y) {
@@ -428,7 +448,7 @@ function resolveFallBack(
   events.push({
     type: 'assaultFallBack',
     unitId,
-    distance: fallBackDistance,
+    distance: farthestFallBackDistance,
     modelMoves,
   } as GameEvent);
 
@@ -458,7 +478,7 @@ function resolvePursue(
   unitId: string,
   combatState: CombatState,
   dice: DiceProvider,
-  initiative: number,
+  initiativeOverride: number | undefined,
   events: GameEvent[],
 ): AftermathSelectionResult {
   const unit = findUnit(state, unitId);
@@ -468,7 +488,6 @@ function resolvePursue(
 
   // Roll pursue distance
   const pursueRoll = dice.rollD6();
-  const pursueDistance = initiative + pursueRoll;
 
   const modelMoves: { modelId: string; from: Position; to: Position }[] = [];
   let newState = state;
@@ -487,6 +506,7 @@ function resolvePursue(
     const closestEnemy = findClosestPosition(model.position, enemyModels.map(m => m.position));
     if (!closestEnemy) continue;
 
+    const pursueDistance = getModelAftermathInitiative(model, initiativeOverride) + pursueRoll;
     const newPos = moveToward(model.position, closestEnemy, pursueDistance);
 
     if (newPos.x !== model.position.x || newPos.y !== model.position.y) {
@@ -535,7 +555,7 @@ function resolvePursue(
     type: 'pursueRoll',
     unitId,
     roll: pursueRoll,
-    pursueDistance,
+    pursueDistance: getMaximumAftermathInitiative(unit, initiativeOverride) + pursueRoll,
     caughtEnemy: pursueCaught,
   } as GameEvent);
 
@@ -558,7 +578,6 @@ function resolvePursue(
 /**
  * Gun Down: Volley-style shooting at one fleeing enemy unit.
  * Assault-trait weapons only. Winner only.
- * Simplified: each alive model makes one attack roll (snap shot style).
  */
 function resolveGunDown(
   state: GameState,
@@ -572,12 +591,17 @@ function resolveGunDown(
     return { state, events, result: createEmptyResult() };
   }
 
-  let newState = state;
+  let newState = unlockFromCombat(state, unitId);
 
-  // Get fleeing enemy units
+  // Get fleeing enemy units, preferring Routed units that actually fell back.
   const enemyUnitIds = getEnemyUnitIds(combatState, unitId);
+  const preferredTargetIds = [
+    ...enemyUnitIds.filter((enemyId) => findUnit(newState, enemyId)?.statuses.includes(TacticalStatus.Routed)),
+    ...enemyUnitIds,
+  ];
+
   let targetUnitId: string | null = null;
-  for (const enemyId of enemyUnitIds) {
+  for (const enemyId of preferredTargetIds) {
     const enemyUnit = findUnit(newState, enemyId);
     if (enemyUnit && getAliveModels(enemyUnit).length > 0) {
       targetUnitId = enemyId;
@@ -595,48 +619,25 @@ function resolveGunDown(
     };
   }
 
-  // Simplified gun down: each model rolls to hit at 6+ (snap shot)
-  // then wound on 4+ (S4 vs T4 default)
-  const aliveShooters = getAliveModels(unit);
-  let hits = 0;
-  let wounds = 0;
-  const casualties: string[] = [];
+  const attack = executeOutOfPhaseShootingAttack(newState, unitId, targetUnitId, dice, {
+    forceSnapShots: true,
+    weaponFilter: ({ weaponProfile }) =>
+      weaponProfile.traits.some((trait) => trait.toLowerCase() === 'assault'),
+  });
+  newState = attack.state;
 
-  for (const _shooter of aliveShooters) {
-    const hitRoll = dice.rollD6();
-    if (hitRoll >= 6) {
-      hits++;
-      const woundRoll = dice.rollD6();
-      if (woundRoll >= 4) {
-        wounds++;
-      }
-    }
-  }
+  const hits = attack.events
+    .filter((event): event is Extract<GameEvent, { type: 'fireGroupResolved' }> => event.type === 'fireGroupResolved')
+    .reduce((total, event) => total + event.totalHits, 0);
+  const wounds = attack.events
+    .filter((event): event is Extract<GameEvent, { type: 'fireGroupResolved' }> => event.type === 'fireGroupResolved')
+    .reduce((total, event) => total + event.totalWounds + event.totalPenetrating + event.totalGlancing, 0);
+  const casualties = attack.events
+    .filter((event): event is Extract<GameEvent, { type: 'casualtyRemoved' }> =>
+      event.type === 'casualtyRemoved' && event.unitId === targetUnitId)
+    .map((event) => event.modelId);
 
-  // Apply wounds to target unit
-  if (wounds > 0) {
-    const targetUnit = findUnit(newState, targetUnitId);
-    if (targetUnit) {
-      const targetAlive = getAliveModels(targetUnit);
-      let woundsRemaining = wounds;
-      for (const target of targetAlive) {
-        if (woundsRemaining <= 0) break;
-        // Each wound kills a 1W model
-        newState = updateUnitInGameState(newState, targetUnitId, u =>
-          updateModelInUnit(u, target.id, m => ({
-            ...m,
-            currentWounds: Math.max(0, m.currentWounds - 1),
-            isDestroyed: m.currentWounds - 1 <= 0,
-          })),
-        );
-        casualties.push(target.id);
-        woundsRemaining--;
-      }
-    }
-  }
-
-  // Unlock from combat
-  newState = unlockFromCombat(newState, unitId);
+  events.push(...attack.events);
 
   events.push({
     type: 'gunDown',
@@ -673,7 +674,7 @@ function resolveConsolidate(
   unitId: string,
   combatState: CombatState,
   _dice: DiceProvider,
-  initiative: number,
+  initiativeOverride: number | undefined,
   events: GameEvent[],
 ): AftermathSelectionResult {
   const unit = findUnit(state, unitId);
@@ -691,28 +692,30 @@ function resolveConsolidate(
   // Move each model up to initiative distance
   // Direction: away from enemies (if any), or toward center of board
   const aliveModels = getAliveModels(unit);
+  const battlefield = getBattlefieldDimensions(state);
 
   for (const model of aliveModels) {
     let targetPos: Position;
+    const initiativeValue = getModelAftermathInitiative(model, initiativeOverride);
 
     if (enemyModels.length > 0) {
       // Move away from enemies
       const enemyCenter = calculateCenter(enemyModels.map(m => m.position));
       const awayDir = getDirectionAway(model.position, enemyCenter);
       targetPos = {
-        x: model.position.x + awayDir.x * initiative,
-        y: model.position.y + awayDir.y * initiative,
+        x: model.position.x + awayDir.x * initiativeValue,
+        y: model.position.y + awayDir.y * initiativeValue,
       };
     } else {
       // No enemies — move toward board center
       targetPos = {
-        x: BOARD_WIDTH / 2,
-        y: BOARD_HEIGHT / 2,
+        x: battlefield.width / 2,
+        y: battlefield.height / 2,
       };
     }
 
-    targetPos = clampToBoard(targetPos);
-    const newPos = moveToward(model.position, targetPos, initiative);
+    targetPos = clampToBoard(targetPos, state);
+    const newPos = moveToward(model.position, targetPos, initiativeValue);
 
     // Ensure >2" from all enemies
     let finalPos = newPos;
@@ -725,7 +728,7 @@ function resolveConsolidate(
           x: finalPos.x + awayFromEnemy.x * extensionNeeded,
           y: finalPos.y + awayFromEnemy.y * extensionNeeded,
         };
-        finalPos = clampToBoard(finalPos);
+        finalPos = clampToBoard(finalPos, state);
       }
     }
 
@@ -855,10 +858,11 @@ function getDirectionAway(from: Position, target: Position): Position {
 /**
  * Clamp a position to be within the board boundaries.
  */
-function clampToBoard(pos: Position): Position {
+function clampToBoard(pos: Position, state: GameState): Position {
+  const battlefield = getBattlefieldDimensions(state);
   return {
-    x: Math.max(0, Math.min(BOARD_WIDTH, pos.x)),
-    y: Math.max(0, Math.min(BOARD_HEIGHT, pos.y)),
+    x: Math.max(0, Math.min(battlefield.width, pos.x)),
+    y: Math.max(0, Math.min(battlefield.height, pos.y)),
   };
 }
 
@@ -866,16 +870,174 @@ function clampToBoard(pos: Position): Position {
  * Get the nearest board edge position for a model.
  * Returns a position on the nearest edge.
  */
-function getNearestBoardEdge(pos: Position): Position {
+function getNearestBoardEdge(pos: Position, state: GameState): Position {
+  const battlefield = getBattlefieldDimensions(state);
   const distToLeft = pos.x;
-  const distToRight = BOARD_WIDTH - pos.x;
+  const distToRight = battlefield.width - pos.x;
   const distToBottom = pos.y;
-  const distToTop = BOARD_HEIGHT - pos.y;
+  const distToTop = battlefield.height - pos.y;
 
   const minDist = Math.min(distToLeft, distToRight, distToBottom, distToTop);
 
   if (minDist === distToBottom) return { x: pos.x, y: 0 };
-  if (minDist === distToTop) return { x: pos.x, y: BOARD_HEIGHT };
+  if (minDist === distToTop) return { x: pos.x, y: battlefield.height };
   if (minDist === distToLeft) return { x: 0, y: pos.y };
-  return { x: BOARD_WIDTH, y: pos.y };
+  return { x: battlefield.width, y: pos.y };
+}
+
+function getBattlefieldDimensions(state: GameState): { width: number; height: number } {
+  return {
+    width: state.battlefield?.width ?? BOARD_WIDTH,
+    height: state.battlefield?.height ?? BOARD_HEIGHT,
+  };
+}
+
+function unitIncludesVehicleModel(unit: UnitState): boolean {
+  return getAliveModels(unit).some((model) =>
+    getModelType(model.unitProfileId, model.profileModelName) === ModelType.Vehicle,
+  );
+}
+
+function getModelAftermathInitiative(model: ModelState, initiativeOverride?: number): number {
+  return initiativeOverride ?? getModelInitiative(model.unitProfileId, model.profileModelName);
+}
+
+function getMaximumAftermathInitiative(unit: UnitState, initiativeOverride?: number): number {
+  const aliveModels = getAliveModels(unit);
+  if (aliveModels.length === 0) {
+    return initiativeOverride ?? DEFAULT_INITIATIVE;
+  }
+
+  return Math.max(
+    ...aliveModels.map((model) => getModelAftermathInitiative(model, initiativeOverride)),
+  );
+}
+
+function getModelAftermathMovement(model: ModelState, movementOverride?: number): number {
+  return movementOverride ?? getModelMovement(model.unitProfileId, model.profileModelName);
+}
+
+function applyRoutedStatus(
+  state: GameState,
+  unitId: string,
+): { state: GameState; applied: boolean } {
+  const unit = findUnit(state, unitId);
+  if (!unit || unit.statuses.includes(TacticalStatus.Routed)) {
+    return { state, applied: false };
+  }
+
+  return {
+    state: updateUnitInGameState(state, unitId, (currentUnit) =>
+      addStatus(currentUnit, TacticalStatus.Routed),
+    ),
+    applied: true,
+  };
+}
+
+function applyModelMoves(
+  state: GameState,
+  unitId: string,
+  moves: Map<string, Position>,
+): GameState {
+  let nextState = state;
+  for (const [modelId, position] of moves.entries()) {
+    nextState = updateUnitInGameState(nextState, unitId, (unit) =>
+      updateModelInUnit(unit, modelId, (model) => moveModel(model, position)),
+    );
+  }
+  return nextState;
+}
+
+function getMinimumEnemyDistance(
+  position: Position,
+  enemyModels: { id: string; position: Position }[],
+): number {
+  if (enemyModels.length === 0) {
+    return Number.POSITIVE_INFINITY;
+  }
+
+  let minimumDistance = Number.POSITIVE_INFINITY;
+  for (const enemyModel of enemyModels) {
+    minimumDistance = Math.min(minimumDistance, getDistanceBetween(position, enemyModel.position));
+  }
+  return minimumDistance;
+}
+
+function getDistanceSamples(maxDistance: number): number[] {
+  if (maxDistance <= 0) {
+    return [0];
+  }
+
+  return [...new Set([
+    maxDistance,
+    maxDistance * 0.75,
+    maxDistance * 0.5,
+    maxDistance * 0.25,
+    Math.min(maxDistance, 2.1),
+  ])].filter((distance) => distance > 0);
+}
+
+function pushAwayFromEnemyModels(
+  position: Position,
+  enemyModels: { id: string; position: Position }[],
+  state: GameState,
+): Position {
+  let adjustedPosition = position;
+  for (const enemyModel of enemyModels) {
+    const distance = getDistanceBetween(adjustedPosition, enemyModel.position);
+    if (distance <= 2) {
+      const away = getDirectionAway(adjustedPosition, enemyModel.position);
+      const extension = 2.1 - distance;
+      adjustedPosition = clampToBoard({
+        x: adjustedPosition.x + away.x * extension,
+        y: adjustedPosition.y + away.y * extension,
+      }, state);
+    }
+  }
+  return adjustedPosition;
+}
+
+function findDisengageDestination(
+  model: ModelState,
+  enemyModels: { id: string; position: Position }[],
+  movementValue: number,
+  battlefield: { width: number; height: number },
+): Position | null {
+  if (enemyModels.length === 0) {
+    return model.position;
+  }
+
+  const syntheticState = {
+    battlefield,
+  } as GameState;
+  const currentDistance = getMinimumEnemyDistance(model.position, enemyModels);
+  const enemyCenter = calculateCenter(enemyModels.map((enemyModel) => enemyModel.position));
+  const preferredAngle = Math.atan2(
+    model.position.y - enemyCenter.y,
+    model.position.x - enemyCenter.x,
+  );
+
+  let bestPosition: Position | null = null;
+  let bestDistance = currentDistance;
+
+  for (let step = 0; step < 24; step += 1) {
+    const angle = preferredAngle + ((Math.PI * 2) / 24) * step;
+    const direction = { x: Math.cos(angle), y: Math.sin(angle) };
+
+    for (const distance of getDistanceSamples(movementValue)) {
+      const candidate = clampToBoard({
+        x: model.position.x + direction.x * distance,
+        y: model.position.y + direction.y * distance,
+      }, syntheticState);
+      const adjustedCandidate = pushAwayFromEnemyModels(candidate, enemyModels, syntheticState);
+      const candidateDistance = getMinimumEnemyDistance(adjustedCandidate, enemyModels);
+
+      if (candidateDistance > bestDistance + 0.01) {
+        bestDistance = candidateDistance;
+        bestPosition = adjustedCandidate;
+      }
+    }
+  }
+
+  return bestPosition;
 }

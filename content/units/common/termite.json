@@ -8,6 +8,10 @@
   "modelDefinitions": [
     {
       "name": "Termite",
+      "modelType": "Vehicle",
+      "modelSubTypes": [
+        "Transport"
+      ],
       "baseSizeMM": 32,
       "countInBase": 1,
       "isAdditionalModelType": true,
@@ -90,10 +94,13 @@
   ],
   "accessPoints": [
     {
-      "name": "- This Model has Access Points on both Side Facings.",
-      "relativePosition": {
-        "x": 0,
-        "y": 0
+      "label": "- This Model has Access Points on both Side Facings.",
+      "geometry": {
+        "kind": "facings",
+        "facings": [
+          "left",
+          "right"
+        ]
       }
     }
   ]

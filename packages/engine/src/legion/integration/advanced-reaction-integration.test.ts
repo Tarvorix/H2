@@ -57,7 +57,7 @@ function makeModel(id: string, x: number, y: number, overrides: Partial<ModelSta
     currentWounds: 1,
     isDestroyed: false,
     modifiers: [],
-    equippedWargear: ['boltgun'],
+    equippedWargear: ['bolter'],
     isWarlord: false,
     ...overrides,
   };
@@ -604,8 +604,8 @@ describe('Advanced Reaction System — Integration Tests', () => {
           ]),
         ],
       });
-      // Roll 4 to hit (passes at BS4), roll 4 to wound (passes at S4 vs T4)
-      const dice = new FixedDiceProvider([4, 4]);
+      // One bolter model fires FP2: hit rolls [3, 2] => 1 hit, wound [4] => 1 wound
+      const dice = new FixedDiceProvider([3, 2, 4]);
 
       const result = resolveAdvancedReaction(state, 'if-bastion-of-fire', 'reactive-u1', 'active-u1', dice);
 

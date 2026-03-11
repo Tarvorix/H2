@@ -1,6 +1,217 @@
 # HHv2 TODO
 
-Last Updated: 2026-03-10
+Last Updated: 2026-03-11
+
+## Execution Plan (Full Rules-Critical Engine Accuracy Pass - 2026-03-11)
+- Audit scope for this pass:
+  - Current local workspace only. No GitHub comparison, no fallback to older remote state.
+  - Primary rules sources: `HH_Principles.md`, `HH_Rules_Battle.md`, `HH_Armoury.md`, `HH_Legiones_Astartes.md`, `HH_Battle_AOD.md`, `HH_Core.md`, `HH_Tables.md`, `HH_v2_units.md`, and `legiones_astartes_clean.md` when a profile/type/subtype lookup is required.
+- Active execution order:
+  - 1. Replace all remaining simplified out-of-phase shooting paths with shared helpers built on `handleShootingAttack(...)`.
+  - 2. Land `Overload(X)` in the shared shooting pipeline so Bitter Fury, Spite of the Gorgon, and overloaded weapons stop bypassing live rules.
+  - 3. Replace transport access-point placeholder parsing/runtime checks with facing-aware access geometry.
+  - 4. Replace challenge and assault fallback heuristics with profile-backed stat/type/rule checks.
+  - 5. Wire psychic runtime into the live phase engine.
+  - 6. Add focused regressions for each audited gap and rerun the targeted/full verification suites.
+- [x] Replace the simplified unit-level LOS queries with the real geometry LOS pipeline, including terrain blocking and intervening vehicle hulls.
+- [x] Replace the simplified volley / charge-reaction shooting shortcuts with a shared out-of-phase shooting executor so volleys, Overwatch-adjacent reactions, movement/shooting/assault advanced reactions, and Return Fire all resolve through the live hit/wound/save/damage path with the correct rule restrictions.
+- [x] Add full `Overload(X)` support to the shared shooting pipeline, including pre-modifier misfire generation, template misfires from Firepower dice, deferred misfire-group resolution after triggered reactions, and self-allocation / lowest-AV vehicle resolution.
+- [x] Replace dangerous-terrain direct wounds with rules-accurate damage resolution, including invulnerable-save handling and vehicle Hull Point loss behavior.
+- [x] Replace simplified transport embark/disembark access-point parsing and runtime checks with real facing-aware access geometry, including transport-bay special rules and emergency-disembark placement constraints.
+- [x] Replace challenge eligibility name heuristics with profile-backed type / subtype / rule checks so challenge declaration and disgrace targeting match the rules text.
+- [x] Implement the missing psychic runtime path so psychic weapons, powers, reactions, and gambits defined in local data are actually executable in the phase engine.
+- [x] Re-audit the remaining charge/setup/fight handlers for any live ordering or geometry shortcuts, rerun focused/full verification, and only then do a second code-vs-rules sweep for residual gameplay mismatches.
+- Progress:
+  - Audit refresh on 2026-03-11 identified these live rules gaps at the start of the pass:
+    - `packages/engine/src/assault/volley-attack-handler.ts` still only emits summary volley events and does not resolve real attacks.
+    - `packages/engine/src/legion/advanced-reactions/shooting-reactions.ts`, `packages/engine/src/legion/advanced-reactions/movement-reactions.ts`, and `packages/engine/src/legion/advanced-reactions/assault-reactions.ts` still resolve several live advanced reactions with invented default statlines, default movement values, or other simplified mini-engines instead of the shared rules pipeline.
+    - `packages/engine/src/movement/embark-disembark-handler.ts`, `packages/types/src/units.ts`, and `packages/data/src/profile-converter.ts` still model transport access points as free-text plus placeholder offsets, not real facing-aware geometry.
+    - `packages/engine/src/assault/challenge-handler.ts` still uses name heuristics such as `"sergeant"` / `"captain"` instead of profile type/subtype/rule eligibility for challenge participation.
+    - `packages/engine/src/phases/start-phase.ts` and the rest of the local engine runtime do not yet execute the psychic powers / reactions / gambits already defined in `packages/data/src/psychic-disciplines.ts`.
+  - Completed the LOS replacement in the live query/shooting path:
+    - `packages/geometry/src/line-of-sight.ts` now blocks LOS with intervening vehicle circles as well as hull rectangles.
+    - `packages/engine/src/game-queries.ts` now uses real geometry LOS for `hasLOSToUnit()` and `getModelsWithLOSToUnit()`, including terrain blocking and intervening vehicle shapes.
+    - `packages/engine/src/phases/shooting-phase.ts` now passes actual intervening vehicle blockers into the shooting LOS filter.
+    - `packages/engine/src/assault/state-helpers-queries.test.ts` now covers heavy-terrain blocking, intervening-vehicle blocking, and mixed-visibility model filtering, and the old closest-distance expectation was corrected to the base-aware query already used by the live engine.
+  - Focused LOS verification passed:
+    - `pnpm test -- packages/engine/src/assault/state-helpers-queries.test.ts packages/engine/src/shooting/shooting-validator.test.ts`
+  - New rules-critical finding from the docs audit:
+    - `Overload(X)` is still not implemented anywhere in the live shooting pipeline, despite being required by multiple weapons and by advanced reactions such as `Bitter Fury` and `Spite of the Gorgon`.
+  - Shared out-of-phase shooting now replaces the previous placeholder resolution paths for:
+    - `packages/engine/src/assault/volley-attack-handler.ts`
+    - Overwatch / Return Fire in `packages/engine/src/command-processor.ts`
+    - `Bastion of Fire`, `Bitter Fury`, `Retribution Strike`, and `Spite of the Gorgon`
+  - Final deterministic replay verification update:
+    - `packages/headless/src/replay.test.ts` golden hashes/signature were refreshed to the new stable local outputs after the rules-accurate movement, assault, mission, and psychic runtime changes altered deterministic command selection and turn-state hashes.
+    - New replay turn hashes:
+      - `04ef05820a8bf443`
+      - `69129b001d59f88e`
+      - `7187ca8ad1dd85d2`
+      - `4490e4d35ce73b22`
+    - New AI signature baseline starts with unit-level movement commands (`moveUnit`) rather than the previous per-model movement signature, and the current stable AI final-state hash is `0516bff2f8f3c46a`.
+  - Final verification for the 2026-03-11 audit pass completed cleanly:
+    - `pnpm build`
+    - `pnpm test -- packages/headless/src/replay.test.ts`
+    - `pnpm test`
+  - Psychic runtime wiring completed:
+    - `packages/engine/src/psychic/power-handler.ts`
+      - `resolveDeclaredShootingPsychicPower(...)` now records `Foresight’s Blessing` as an `endOfShootingAttack` psychic effect with pass/fail metadata so paused attacks can resume without re-manifesting or losing the granted `Precision (5+)` state.
+      - added `unitCanDeclarePsychicReaction(...)` so shooting/charge handlers can offer `Force Barrier` and `Resurrection` only when a unit really has a legal focus, allotment, and remaining psychic reaction usage.
+      - corrected the `Resurrection` availability gate so the offer can be created from the real pre-step-11 state (`REMOVING_CASUALTIES`) and then resolved from the paused `AWAITING_RESURRECTION` state.
+    - `packages/engine/src/phases/shooting-phase.ts`
+      - live shooting now offers `Force Barrier` at the start of step 3, resolves declared `Foresight’s Blessing` before fire-group formation, and persists declared psychic power state through paused reactions.
+      - step 11 casualty removal / vehicle damage / morale finalization is now deferred behind an exported helper so `Resurrection` can pause the attack before casualties are removed, then resume the real step 11 path afterward.
+    - `packages/engine/src/phases/assault-phase.ts`
+      - charge declarations now execute `Biomantic Rage` after setup move and before the volley/Overwatch window, and charge step 4 can now offer `Force Barrier` against the charging unit before volley attacks resolve.
+    - `packages/engine/src/command-processor.ts` and `packages/engine/src/phase-ux.ts`
+      - added live `manifestPsychicPower` routing/availability during `Start/StartEffects` and `Movement/Move`.
+      - psychic reactions (`Force Barrier`, `Resurrection`) now resolve through the same pending-reaction router as core and advanced reactions.
+      - resumed shooting/charge declarations now preserve `declaredPsychicPower`, concrete wargear option adds/removes now update equipped gear instead of only recording a marker, and `declareWeapons` now accepts real psychic melee weapons granted by disciplines.
+    - cleanup tied to the same pass:
+      - `packages/engine/src/assault/combat-state.ts` no longer rejects psychic melee declarations because of the old typed-null melee-weapon resolver shape.
+  - Rush command-path repair progress:
+    - `packages/types/src/game-state.ts` now includes `UnitMovementState.RushDeclared` so `rushUnit` can represent a real pre-move declaration instead of a terminal state.
+    - `packages/engine/src/movement/move-handler.ts` now lets legacy sequential `moveModel` rush movement resolve with `M + I`, while `handleRushUnit(...)` records the declaration as `RushDeclared` and the actual move consumes it into `Rushed`.
+    - `packages/engine/src/command-processor.test.ts` and `packages/engine/src/movement/move-handler.test.ts` now cover both the declaration step and the follow-up rush movement path.
+    - `packages/ai/src/engine/candidate-generator.ts` now emits full rush macros (`rushUnit` + `moveUnit { isRush: true }`) instead of a dead-end declaration, and `packages/ai/src/phases/movement-ai.ts` can continue an already-declared rush with a live rush move.
+    - Focused AI regression fixtures were corrected to keep both armies present while validating rush moves through the real move validator.
+  - Resolution audit follow-up:
+    - `packages/engine/src/assault/resolution-handler.ts` panic-check leadership selection no longer floors to a hardcoded `8`; it now uses the best real losing-side leadership and only falls back if no losing unit can be resolved at all.
+    - `packages/engine/src/assault/resolution-handler.test.ts` now covers both the real unit-led leadership path and the true missing-unit fallback path.
+    - Verification passed:
+      - `pnpm --filter @hh/engine typecheck`
+      - `pnpm test -- packages/engine/src/assault/resolution-handler.test.ts packages/engine/src/assault/assault-integration.test.ts packages/engine/src/command-processor.test.ts`
+  - Audit cleanup:
+    - stale “simplified” comments in the advanced reaction and setup-move handlers were updated to match the live shared-pipeline/coherency implementations so the local repo now reflects the real rules path instead of the old placeholder description.
+  - Full-suite follow-up:
+    - `packages/engine/src/shooting/casualty-removal.ts` now ignores already-destroyed models completely during step-11 casualty removal, so it no longer emits duplicate `casualtyRemoved` events or incorrectly counts those models toward panic-threshold morale checks.
+    - runtime shooting finalization now passes an explicit casualty-removal option when a model has already been reduced to `0` wounds earlier in the same attack, preserving required `casualtyRemoved` events for Bastion of Fire, Gun Down, Overload misfires, and the main shooting pipeline while still skipping pre-existing dead models.
+      - `packages/engine/src/phases/assault-phase.ts`, `packages/engine/src/psychic/power-handler.ts`, and `packages/engine/src/psychic/psychic-runtime.ts` had the follow-on signature / unused-parameter issues from the psychic wiring corrected before verification.
+    - focused regression coverage added:
+      - `packages/engine/src/command-processor.test.ts` now covers start-phase `Tranquillity`, move-phase `Mind-burst`, psychic shooting weapons, `Force Barrier`, `Resurrection`, and psychic melee weapon declaration through the live command router.
+      - `packages/engine/src/assault/challenge-strike-handler.test.ts` now covers forced hit-target overrides used by `Every Strike Foreseen`.
+    - follow-up fix from the focused tests:
+      - `packages/engine/src/shooting/out-of-phase-shooting.ts` now restores any pre-existing paused `shootingAttackState` after temporary Overwatch / Return Fire style attacks, so reaction shooting no longer wipes the original parent attack window.
+  - `Overload(X)` is now wired into the live shooting pipeline:
+    - Raw hit rolls at or below `X` now create deferred misfire groups for normal ranged attacks.
+    - Template weapons now roll their Firepower dice for misfires after hit determination.
+    - Vehicle misfires now resolve against the firing vehicle's lowest Armour Value.
+    - Shooting attacks paused by a pending Return Fire window now carry misfire groups on `shootingAttackState` and resolve them only after that reaction window is closed.
+  - Transport access geometry replacement completed in the live data/runtime path:
+    - `packages/types/src/units.ts` now defines structured access-point geometry instead of placeholder relative offsets.
+    - `packages/data/src/profile-converter.ts` now parses the exact local datasheet access-point phrase set into typed facings / all-facing / base-edge fallback rules and fails loudly on unknown access text.
+    - `packages/data/src/unit-parser.ts` now preserves `No official base size` as `0` so hull-facing access is no longer conflated with a fake 32mm base.
+    - `packages/engine/src/movement/transport-access.ts` now resolves access regions against the existing hull/base geometry for embark, disembark, and emergency-disembark validation.
+    - `packages/engine/src/movement/embark-disembark-handler.ts` now measures embark against real access facings, validates disembark final positions by reachable distance from a legal access placement using each model's Movement characteristic, and rejects arbitrary emergency-disembark placements that do not contact the transport or previously placed models.
+    - `packages/engine/src/movement/embark-disembark-handler.test.ts` and `packages/engine/src/command-processor.test.ts` were updated so the focused transport regressions use rules-legal Rhino/Mastodon/flyer-base placements and real Rhino transport fixtures rather than the removed center-proxy assumptions.
+  - Challenge/assault fallback replacement is now using live profile metadata instead of blocked name heuristics:
+    - `packages/types/src/enums.ts` now includes a `Champion` subtype so challenge legality can match the rules text instead of treating champions as a string search.
+    - `packages/types/src/units.ts`, `packages/data/src/profile-converter.ts`, and `packages/engine/src/profile-lookup.ts` now preserve and expose per-model type/subtype data from parsed datasheets, which is required for Paragon / Command / Champion challenge eligibility and later combat-resolution majority weighting.
+    - `packages/data/src/generated/unit-profiles.ts` and `packages/data/src/generated/mvp-unit-profiles.ts` have been regenerated from the local datasheet parser/converter so the live runtime profile registry now carries the new per-model type/subtype fields.
+    - `packages/data/src/profile-converter.ts` no longer lets mixed-unit regular models inherit leader/champion metadata from similarly named leader entries.
+    - `packages/engine/src/assault/challenge-handler.ts` now computes challenge eligibility from profile type/subtype plus explicit local challenge rules, enforces mandatory challengers/acceptors for Sigismund / Legion Champions / Fulgrim Transfigured / Rylanor, applies Sigismund's alternate challenged-model CRP compensation, and rejects illegal declines when a combat contains a model that must accept.
+    - `packages/engine/src/assault/unit-characteristics.ts`, `packages/engine/src/assault/setup-move-handler.ts`, `packages/engine/src/assault/charge-move-handler.ts`, `packages/engine/src/assault/pile-in-handler.ts`, and `packages/engine/src/assault/resolution-handler.ts` now source Cool, Leadership, Movement, Initiative, and Walker/Paragon combat-control weighting from live profiles instead of Space Marine fallback assumptions.
+  - Focused challenge/assault verification passed after the profile-backed replacement work:
+    - `pnpm test -- packages/engine/src/assault/challenge-handler.test.ts`
+    - `pnpm test -- packages/engine/src/assault/assault-integration.test.ts`
+    - `pnpm test -- packages/engine/src/assault/resolution-handler.test.ts packages/engine/src/assault/setup-move-handler.test.ts packages/engine/src/assault/charge-move-handler.test.ts packages/engine/src/assault/pile-in-handler.test.ts`
+  - Completed assault-runtime aftermath fixes:
+    - `packages/engine/src/assault/aftermath-handler.ts` has now been moved onto live profile-backed aftermath movement:
+      - Hold / Fall Back / Pursue / Consolidate now use per-model Initiative.
+      - Disengage now uses per-model Movement, falls back to Hold if a model cannot increase distance from the combat, and applies Routed if the final disengage position breaks coherency or remains in base contact.
+      - Gun Down now unlocks the firing unit, uses the shared out-of-phase shooting executor with snap shots plus assault-trait-only weapon filtering, and emits results from the real shooting pipeline instead of a bespoke hit/wound stub.
+      - Aftermath option availability now also enforces the explicit `HH_Principles.md` restriction that units including Vehicle models may only choose Hold.
+  - Focused aftermath verification passed after the live aftermath rewrite:
+    - `pnpm --filter @hh/engine typecheck`
+    - `pnpm test -- packages/engine/src/assault/aftermath-handler.test.ts packages/engine/src/assault/assault-integration.test.ts`
+  - Shooting casualty cleanup has been corrected so Step 11 now emits `casualtyRemoved` for models already marked destroyed during damage application instead of silently skipping them.
+  - Targeted reaction tests were realigned to the actual local weapon/rules data rather than the removed placeholder assumptions:
+    - Local reaction fixtures now use the real `bolter` weapon ID instead of the non-data `boltgun` synonym.
+    - The focused advanced-reaction assertions now account for real weapon Firepower values, the live ballistic-skill hit table, and base-aware distance checks instead of the old placeholder assumptions.
+  - Dangerous terrain runtime now matches the rules text and the focused movement/state suite is green:
+    - `pnpm test -- packages/engine/src/movement/move-handler.test.ts packages/engine/src/state-machine.test.ts`
+  - Earlier audit findings before the final rules fixes were:
+    - `packages/engine/src/assault/volley-attack-handler.ts` still resolves volley attacks as summary events only and does not use the full shooting pipeline.
+    - `packages/engine/src/legion/advanced-reactions/shooting-reactions.ts`, `packages/engine/src/legion/advanced-reactions/movement-reactions.ts`, and `packages/engine/src/legion/advanced-reactions/assault-reactions.ts` still contain simplified shooting implementations for live advanced reactions such as `Bastion of Fire`, `Bitter Fury`, and `Spite of the Gorgon`.
+    - `packages/engine/src/movement/embark-disembark-handler.ts` still uses the first transport model position as a simplified access-point proxy instead of real facing/base access geometry.
+    - Several comments marked `stub` / `simplified` were re-audited and are only stale comments, not additional live gameplay mismatches:
+      - `packages/engine/src/phases/end-phase.ts`
+      - `packages/engine/src/state-machine.ts`
+  - Completed the Salamanders flame-immunity live-path fix and uncovered a separate legion-tactica initialization bug while doing it:
+    - `packages/engine/src/shooting/shooting-types.ts`, `packages/types/src/game-state.ts`, `packages/engine/src/phases/shooting-phase.ts`, and `packages/engine/src/command-processor.ts` now carry `weaponTraits` through pending morale checks so morale/status resolution knows when a check came from a Flame weapon.
+    - `packages/engine/src/shooting/morale-handler.ts` now skips Flame-weapon `Panic(X)` and other Flame-applied tactical status checks for Salamanders units using the existing `OnCasualty` tactica hook.
+    - `packages/engine/src/legion/legion-tactica-registry.ts` now lazily auto-registers the full legion tactica set when the live runtime first calls `applyLegionTactica(...)` with an empty registry, fixing the previously uninitialized legion-tactica path without breaking focused tests that intentionally register a partial registry.
+    - `packages/engine/src/legion/tacticas/passive-tacticas.ts` was hardened to tolerate missing `legionTacticaState` entries when evaluating the Ultramarines passive discount.
+    - `packages/engine/src/shooting/shooting-validator.ts` was fixed to import `RectHull`, restoring a clean engine build after the LOS audit changes.
+  - Verification passed for the Salamanders/tactica-runtime pass:
+    - `pnpm test -- packages/engine/src/shooting/morale-handler.test.ts packages/engine/src/shooting/shooting-integration.test.ts packages/engine/src/command-processor.test.ts packages/engine/src/legion/tacticas/passive-tacticas.test.ts`
+    - `pnpm --filter @hh/engine build`
+  - Psychic runtime wiring completed in the local engine/type surface:
+    - `packages/types/src/game-state.ts` now carries psychic usage/effect state plus a dedicated `manifestPsychicPower` command and declared-psychic-power attack metadata for charge/shooting flows.
+    - `packages/types/src/index.ts` now re-exports the psychic runtime types so engine/headless/MCP consumers can compile against the same command/state surface.
+    - `packages/engine/src/profile-lookup.ts` now exposes live Willpower lookups.
+    - `packages/engine/src/characteristic-modifiers.ts` now provides shared numeric modifier application for live model/unit characteristics.
+    - `packages/engine/src/psychic/psychic-runtime.ts` now resolves disciplines from selected local wargear options, exposes granted psychic weapons/powers/reactions/gambits, tracks per-turn psychic use, and tracks active psychic effects.
+    - `packages/engine/src/psychic/psychic-runtime.ts` now also applies the correct lowest-Willpower Resistance target selection when no Sergeant / Command / Paragon model is available, and exposes a highest-Willpower focus selector for reaction handling.
+    - `packages/engine/src/movement/rout-handler.ts` now exposes a reusable immediate fall-back mover so psychic and reaction-driven retreat effects can use the same terrain/edge movement logic as routed units.
+    - `packages/engine/src/runtime-characteristics.ts` now exposes modifier-aware live characteristic helpers for movement/assault runtime paths.
+    - `packages/engine/src/state-helpers.ts` and `packages/engine/src/state-machine.ts` now expire `endOfPhase` and `endOfSubPhase` modifiers when the live turn sequence advances instead of leaving those durations as inert metadata.
+    - `packages/engine/src/game-queries.ts`, `packages/engine/src/movement/move-handler.ts`, `packages/engine/src/assault/unit-characteristics.ts`, and `packages/engine/src/assault/combat-state.ts` are being shifted to modifier-aware live characteristic lookups so psychic/assault buffs affect real movement, majority WS/T, and melee strike-group construction.
+  - Reaction movement command path was hardened against the remaining live shortcuts found in the audit:
+    - `packages/types/src/game-state.ts` and `packages/mcp-server/src/register-tools.ts` now allow `selectReaction` to carry explicit model destinations.
+    - `packages/engine/src/command-processor.ts` now feeds core `Reposition` through those supplied destinations instead of forcing a hidden 0" no-op, and White Scars `Chasing the Wind` now resolves through the live `handleMoveUnit(...)` path with terrain, dangerous terrain, and coherency validation.
+    - `packages/engine/src/movement/move-handler.ts` now accepts an explicit acting-player override so the same live movement executor can be reused for reaction movement without a separate placeholder implementation.
+    - `packages/engine/src/legion/advanced-reactions/movement-reactions.ts` now uses the shared movement pipeline for autogenerated White Scars moves when the generated path is legal, while retaining a deterministic fallback for direct registry calls that lack explicit player-chosen destinations.
+    - `packages/engine/src/movement/reposition-handler.ts` now validates reposition destinations with the real terrain/exclusion/base-overlap checks and resolves dangerous terrain damage during the reaction move, rather than bypassing those rules in a bespoke validator.
+    - focused regressions added in `packages/engine/src/movement/reposition-handler.test.ts` for difficult-terrain range reduction and dangerous-terrain damage during Reposition.
+  - Charge-movement ordering/coherency audit follow-up:
+    - `packages/engine/src/assault/setup-move-handler.ts` and `packages/engine/src/assault/charge-move-handler.ts` now build predicted final positions for remaining chargers and back off each move only as much as needed to preserve final coherency, instead of always taking the old straight-line nearest-target shortcut.
+    - focused regressions added in `packages/engine/src/assault/setup-move-handler.test.ts` and `packages/engine/src/assault/charge-move-handler.test.ts`.
+
+## Execution Plan (Mission Objective Control + Scoring Rules Fix - 2026-03-10)
+- [x] Re-audit mission objective control and scoring against `HH_Battle_AOD.md` and `HH_Armoury.md` before making any more NNUE/training assumptions.
+- [x] Replace the simplified primary-objective scoring path with rules-accurate control/scoring logic for `Line(X)`, `Support Unit(X)`, `Vanguard(X)`, and strongest-unit contested control.
+- [x] Enforce the one-unit-per-objective / one-objective-per-unit declaration constraint during scoring resolution instead of scoring every objective independently.
+- [x] Add the missing Vanguard bonus VP runtime hooks for shooting destruction and assault fallback/massacre, with once-per-objective-per-player-turn tracking.
+- [x] Rebuild and verify the corrected mission path through focused tests, workspace build, and a self-play smoke run.
+- Progress:
+  - Confirmed the old scoring path was materially simplified:
+    - objective control compared player-wide summed strength instead of the single strongest contesting unit
+    - vehicles/cavalry/automata without `Line` could still hold objectives
+    - primary scoring ignored `Line(X)` VP bonus and the `Support Unit(X)` / `Vanguard(X)` scoring caps
+    - the Victory handler scored each objective independently, so one unit could effectively score multiple objectives in the same Victory sub-phase
+    - Vanguard bonus VP for destroying/falling back objective units was not implemented in the live runtime
+  - Implemented rules-accurate objective queries and scoring:
+    - `packages/engine/src/missions/objective-queries.ts`
+      - unit-level tactical strength now uses eligible models only, with `Line(X)` added per model
+      - holder eligibility now rejects `Vehicle`, `Cavalry`, and `Automata` unless the model has `Line`
+      - objective scoring now applies majority `Line(X)` bonus, `Support Unit(X)` hard cap, and `Vanguard(X)` 1-VP control cap
+      - added resolved scoring-time objective assignment so a unit can only claim one objective and an objective can only be claimed by one unit per player
+    - `packages/engine/src/missions/victory-handler.ts`
+      - primary objective scoring now uses the resolved assignment/control state instead of the old independent-per-objective shortcut
+    - `packages/types/src/mission-types.ts`
+      - added `vanguardBonusHistory` and `assaultPhaseObjectiveSnapshot` to mission runtime state
+    - `packages/engine/src/missions/vanguard-bonus.ts`
+      - added once-per-objective-per-player-turn Vanguard bonus tracking
+      - added shooting bonus for destroying the declared controlling/contesting unit
+      - added assault bonus for objective-adjacent units that fall back or are massacred after a combat involving a qualifying Vanguard unit
+    - `packages/engine/src/command-processor.ts`
+      - records the start-of-Assault objective snapshot on entry to the Charge sub-phase
+    - `packages/engine/src/phases/shooting-phase.ts`
+      - applies Vanguard destruction bonus after casualty removal
+    - `packages/engine/src/phases/assault-phase.ts`
+      - applies Vanguard bonus after massacres and aftermath fall backs
+  - Added/updated regression coverage:
+    - `packages/engine/src/missions/objective-queries.test.ts`
+    - `packages/engine/src/missions/victory-handler.test.ts`
+    - `packages/engine/src/missions/vanguard-bonus.test.ts`
+    - mission-state / secondary-objective helpers updated for the expanded mission runtime state
+  - Verification passed:
+    - `pnpm test -- packages/engine/src/missions/objective-queries.test.ts packages/engine/src/missions/victory-handler.test.ts packages/engine/src/missions/mission-state.test.ts packages/engine/src/missions/secondary-objectives.test.ts packages/engine/src/missions/vanguard-bonus.test.ts`
+    - `pnpm build`
+    - `pnpm nnue:selfplay --matches 1 --time-budget-ms 50 --max-commands 300 --shard-size 1000000 --out-dir tmp/mission-rules-smoke/selfplay`
+  - Smoke artifact:
+    - `tmp/mission-rules-smoke/selfplay/manifest.json` shows `1/1 game-over`, `0` abnormal terminations, `243` samples.
 
 ## Execution Plan (Embark Fixture Red Test Fix - 2026-03-10)
 - [x] Inspect the failing embark integration test and confirm whether the failure is in the engine logic or the test fixture.
@@ -308,6 +519,30 @@ Last Updated: 2026-03-10
   - UI production bundling completed successfully under Vite.
   - Notable non-failing output:
     - Vite emitted chunk-size warnings for the production UI bundle (`engine-ai.worker` and main `index` bundle), but the build still completed cleanly.
+
+## Audit Plan (Gameplay Gate Victory Validation - 2026-03-10)
+- [x] Trace gameplay gate result classification from `nnue:gate` through the headless match result surface.
+- [x] Trace mission scoring and winner determination through the engine rules implementation.
+- [x] Record whether gameplay gate win/loss outcomes are using the real mission winner path.
+- Progress:
+  - Confirmed `tools/nnue/gate-gameplay-model.mjs` delegates match classification to `runGateMatches(...)`, which in turn classifies `game-over` results strictly from `result.finalState.winnerPlayerIndex`.
+  - Confirmed `packages/headless/src/index.ts` returns `terminatedReason: 'game-over'` only when the live game state has already reached `state.isGameOver === true`.
+  - Confirmed the engine mission winner is set in `packages/engine/src/missions/victory-handler.ts` from final victory-point totals after primary scoring, secondaries, Sudden Death bonus handling, and Counter Offensive.
+  - Important correction at the time of this audit:
+    - gameplay gate win/loss/draw was already using the real engine winner path
+    - but the underlying mission control/scoring implementation was not yet fully rules-complete
+  - Specific simplifications that existed before the completed mission rules fix:
+    - `packages/engine/src/missions/objective-queries.ts` calculates tactical strength as `+1` per eligible model only and does not currently apply `Line(X)` / `Support Unit(X)` / `Vanguard(X)` objective-control modifiers
+    - `packages/engine/src/missions/victory-handler.ts` scores primary objectives as `objective.currentVpValue` only and does not currently add `Line(X)` bonus VP or apply objective-scoring caps/modifiers from those special rules
+  - Conclusion at that point:
+    - gate results were authoritative relative to the then-current engine implementation
+    - that mission-rules gap was later addressed by the completed `Mission Objective Control + Scoring Rules Fix` section above
+
+## Implementation Plan (Mission Objective Rules Accuracy Fix - 2026-03-10)
+- [x] Audit the local rules docs and the current objective-control / primary-scoring engine code to pin down the exact `Line`, `Support Unit`, `Vanguard`, and eligibility behavior we need to implement.
+- [x] Implement rules-accurate objective control and primary-objective scoring in the engine so gate/self-play results use the real mission logic.
+- [x] Add focused regression tests for objective eligibility, tactical strength, and primary scoring with `Line`, `Support Unit`, and `Vanguard`.
+- [x] Rebuild and verify the affected engine/headless/runtime path before any further training runs.
 
 ## Implementation Plan (Search Candidate Generation + Root Ordering Pass - 2026-03-09)
 - [x] Diversify movement candidate generation so root actions include tactically distinct lanes instead of only the top few destinations from one generic score.

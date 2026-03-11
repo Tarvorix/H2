@@ -239,6 +239,38 @@ export interface FirstStrikeTracking {
 }
 
 /**
+ * Records a Vanguard(X) bonus claim for a specific objective.
+ * Used to enforce the once-per-objective-per-player-turn restriction.
+ */
+export interface VanguardObjectiveBonusEntry {
+  /** Battle turn in which the bonus was scored */
+  battleTurn: number;
+  /** Player index that scored the bonus */
+  playerIndex: number;
+  /** Objective that generated the bonus */
+  objectiveId: string;
+  /** Unit that generated the scoring trigger */
+  sourceUnitId: string;
+  /** Bonus VP awarded */
+  vpScored: number;
+  /** Trigger source */
+  trigger: 'shooting-destruction' | 'assault-fallback' | 'assault-massacre';
+}
+
+/**
+ * Snapshot of which units were within 3" of each objective at the start of the
+ * current Assault phase. Required for Vanguard(X) combat scoring.
+ */
+export interface AssaultPhaseObjectiveSnapshot {
+  /** Battle turn in which the snapshot was recorded */
+  battleTurn: number;
+  /** Active player when the Assault phase began */
+  activePlayerIndex: number;
+  /** Objective -> unit IDs that had at least one model within 3" at phase start */
+  unitIdsByObjectiveId: Record<string, string[]>;
+}
+
+/**
  * The complete runtime state of a mission in progress.
  * Stored in GameState.missionState.
  */
@@ -261,4 +293,8 @@ export interface MissionState {
   scoringHistory: ObjectiveScoringEntry[];
   /** VP totals at the start of each Battle Turn (for Counter Offensive check) */
   vpAtTurnStart: [number, number][];
+  /** Vanguard(X) objective-bonus claims already scored this battle */
+  vanguardBonusHistory: VanguardObjectiveBonusEntry[];
+  /** Start-of-Assault objective proximity snapshot for Vanguard(X) combat scoring */
+  assaultPhaseObjectiveSnapshot: AssaultPhaseObjectiveSnapshot | null;
 }

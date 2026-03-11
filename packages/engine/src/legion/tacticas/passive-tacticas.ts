@@ -103,7 +103,7 @@ function ultramarinesPassive(context: MoraleTacticaContext): LegionTacticaResult
   );
   if (playerIndex === -1) return {};
 
-  const tacticaState = context.state.legionTacticaState[playerIndex];
+  const tacticaState = context.state.legionTacticaState?.[playerIndex];
   if (tacticaState && tacticaState.reactionDiscountUsedThisTurn) return {};
 
   return { reactionCostReduction: effect.value ?? 1 };

@@ -15,7 +15,7 @@ import type {
   UnitState,
   ModelState,
 } from '@hh/types';
-import { ModelType } from '@hh/types';
+import { ModelType, ModelSubType } from '@hh/types';
 import type { SpecialRuleRef } from '@hh/types';
 import { getProfileById } from '@hh/data';
 
@@ -179,6 +179,39 @@ export function getModelStateBaseSizeMM(model: ModelState): number {
   return getModelBaseSizeMM(model.unitProfileId, model.profileModelName);
 }
 
+/**
+ * Get the model type for a specific model definition.
+ */
+export function getModelType(
+  profileId: string,
+  modelName: string,
+): ModelType | undefined {
+  const modelDef = lookupModelDefinition(profileId, modelName);
+  return modelDef?.modelType;
+}
+
+/**
+ * Get the model sub-types for a specific model definition.
+ */
+export function getModelSubTypes(
+  profileId: string,
+  modelName: string,
+): ModelSubType[] {
+  const modelDef = lookupModelDefinition(profileId, modelName);
+  return modelDef?.modelSubTypes ?? [];
+}
+
+/**
+ * Check whether a model definition has a specific subtype.
+ */
+export function modelHasSubType(
+  profileId: string,
+  modelName: string,
+  subType: ModelSubType,
+): boolean {
+  return getModelSubTypes(profileId, modelName).includes(subType);
+}
+
 // ─── Stat Helpers ───────────────────────────────────────────────────────────
 
 /**
@@ -305,6 +338,17 @@ export function getModelCool(profileId: string, modelName: string): number {
   if (!chars) return 7;
   if (isVehicleCharacteristics(chars)) return 0;
   return chars.CL;
+}
+
+/**
+ * Get the Willpower characteristic for a model.
+ * Returns 7 as default if not found.
+ */
+export function getModelWillpower(profileId: string, modelName: string): number {
+  const chars = getModelCharacteristics(profileId, modelName);
+  if (!chars) return 7;
+  if (isVehicleCharacteristics(chars)) return 0;
+  return chars.WP;
 }
 
 /**

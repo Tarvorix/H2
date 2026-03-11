@@ -8,6 +8,11 @@
   "modelDefinitions": [
     {
       "name": "Veteran Champion",
+      "modelType": "Infantry",
+      "modelSubTypes": [
+        "Champion",
+        "Sergeant"
+      ],
       "baseSizeMM": 32,
       "countInBase": 1,
       "isAdditionalModelType": false,
@@ -31,6 +36,7 @@
     },
     {
       "name": "Veteran",
+      "modelType": "Infantry",
       "baseSizeMM": 32,
       "countInBase": 4,
       "isAdditionalModelType": true,
@@ -243,6 +249,7 @@
   ],
   "unitType": "Infantry",
   "unitSubTypes": [
+    "Champion",
     "Sergeant"
   ]
 }

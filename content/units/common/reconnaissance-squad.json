@@ -8,6 +8,11 @@
   "modelDefinitions": [
     {
       "name": "Recon Sergeant",
+      "modelType": "Infantry",
+      "modelSubTypes": [
+        "Sergeant",
+        "Skirmish"
+      ],
       "baseSizeMM": 32,
       "countInBase": 1,
       "isAdditionalModelType": false,
@@ -31,6 +36,10 @@
     },
     {
       "name": "Recon Legionary",
+      "modelType": "Infantry",
+      "modelSubTypes": [
+        "Skirmish"
+      ],
       "baseSizeMM": 32,
       "countInBase": 4,
       "isAdditionalModelType": false,

@@ -503,15 +503,15 @@ describe('Assault-Phase Advanced Reactions', () => {
       expect(result.success).toBe(false);
     });
 
-    it('fires 2 shots per model (1 base + 1 FP bonus)', () => {
-      // 1 shooter model, 2 shots: both miss (roll 1, 1, 1, 1)
+    it('adds +1 FP to the reacting unit weapon profile', () => {
+      // 1 bolter model becomes FP3 for this reaction and all three shots miss
+      // without triggering Overload misfires.
       const reactorUnit = makeUnit('reactor-u1', [makeModel('m1', { x: 10, y: 10 })]);
       const chargerUnit = makeUnit('charger-u1', [makeModel('cm1', { x: 15, y: 10 })]);
       const state = makeGameState([chargerUnit], [reactorUnit]);
       const ctx = makeContext(state, REACTION_ID, 'reactor-u1', 'charger-u1');
       const handler = getAdvancedReactionHandler(REACTION_ID)!;
-      // 2 shots: hit roll miss (1), hit roll miss (1)
-      const dice = new FixedDiceProvider([1, 1]);
+      const dice = new FixedDiceProvider([2, 2, 2]);
 
       const result = handler(ctx, dice);
 
@@ -522,14 +522,13 @@ describe('Assault-Phase Advanced Reactions', () => {
     });
 
     it('hit on 4+ applies wound on 4+', () => {
-      // 1 shooter, shot 1: hit (4), wound (4), allocate to target (roll for random: 1), shot 2: miss (2)
+      // 1 bolter shooter at FP3: hit rolls [4, 2, 2] => 1 hit, wound [4] => 1 wound.
       const reactorUnit = makeUnit('reactor-u1', [makeModel('m1', { x: 10, y: 10 })]);
       const chargerUnit = makeUnit('charger-u1', [makeModel('cm1', { x: 15, y: 10 })]);
       const state = makeGameState([chargerUnit], [reactorUnit]);
       const ctx = makeContext(state, REACTION_ID, 'reactor-u1', 'charger-u1');
       const handler = getAdvancedReactionHandler(REACTION_ID)!;
-      // shot 1: hit(4), wound(4), random target select(1), shot 2: miss(2)
-      const dice = new FixedDiceProvider([4, 4, 1, 2]);
+      const dice = new FixedDiceProvider([4, 2, 2, 4]);
 
       const result = handler(ctx, dice);
 
@@ -540,13 +539,13 @@ describe('Assault-Phase Advanced Reactions', () => {
     });
 
     it('applies damage to charger unit models', () => {
-      // 1 shooter, shot 1: hit (5), wound (5), random (1), shot 2: miss (1)
+      // 1 bolter shooter at FP3: hit rolls [5, 2, 2] => 1 hit, wound [5] => 1 wound.
       const reactorUnit = makeUnit('reactor-u1', [makeModel('m1', { x: 10, y: 10 })]);
       const chargerUnit = makeUnit('charger-u1', [makeModel('cm1', { x: 15, y: 10 })]);
       const state = makeGameState([chargerUnit], [reactorUnit]);
       const ctx = makeContext(state, REACTION_ID, 'reactor-u1', 'charger-u1');
       const handler = getAdvancedReactionHandler(REACTION_ID)!;
-      const dice = new FixedDiceProvider([5, 5, 1, 1]);
+      const dice = new FixedDiceProvider([5, 2, 2, 5]);
 
       const result = handler(ctx, dice);
 
@@ -554,7 +553,7 @@ describe('Assault-Phase Advanced Reactions', () => {
       expect(damageEvents.length).toBeGreaterThan(0);
       const dmgEvent = damageEvents[0] as any;
       expect(dmgEvent.unitId).toBe('charger-u1');
-      expect(dmgEvent.damageSource).toBe('Spite of the Gorgon');
+      expect(dmgEvent.damageSource).toBe('Shooting from Bolter');
     });
 
     it('adds NoVolleyAttacks modifier to reactor models', () => {
@@ -563,7 +562,7 @@ describe('Assault-Phase Advanced Reactions', () => {
       const state = makeGameState([chargerUnit], [reactorUnit]);
       const ctx = makeContext(state, REACTION_ID, 'reactor-u1', 'charger-u1');
       const handler = getAdvancedReactionHandler(REACTION_ID)!;
-      const dice = new FixedDiceProvider([1, 1]); // All misses
+      const dice = new FixedDiceProvider([2, 2, 2]); // All misses, no Overload misfires
 
       const result = handler(ctx, dice);
 
@@ -579,13 +578,13 @@ describe('Assault-Phase Advanced Reactions', () => {
       const state = makeGameState([chargerUnit], [reactorUnit]);
       const ctx = makeContext(state, REACTION_ID, 'reactor-u1', 'charger-u1');
       const handler = getAdvancedReactionHandler(REACTION_ID)!;
-      const dice = new FixedDiceProvider([1, 1]);
+      const dice = new FixedDiceProvider([2, 2, 2]);
 
       const result = handler(ctx, dice);
 
       const fgEvent = result.events.find(e => e.type === 'fireGroupResolved') as any;
       expect(fgEvent).toBeDefined();
-      expect(fgEvent.weaponName).toBe('Spite of the Gorgon (Reaction)');
+      expect(fgEvent.weaponName).toBe('Bolter');
     });
   });
 

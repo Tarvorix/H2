@@ -11,11 +11,13 @@
 
 import type { GameState, Position } from '@hh/types';
 import { TacticalStatus, Phase } from '@hh/types';
+import type { SpecialRuleRef } from '@hh/types';
 import type { DiceProvider, GameEvent } from '../../types';
 import type { AdvancedReactionContext, AdvancedReactionResult } from '../advanced-reaction-registry';
 import { registerAdvancedReaction } from '../advanced-reaction-registry';
 import { findUnit, getAliveModels, getDistanceBetween, getClosestModelDistance } from '../../game-queries';
 import { updateUnitInGameState, updateModelInUnit, moveModel, applyWoundsToModel, addStatus, removeStatus } from '../../state-helpers';
+import { executeOutOfPhaseShootingAttack } from '../../shooting/out-of-phase-shooting';
 
 // ─── Geometry Helpers ────────────────────────────────────────────────────────
 
@@ -85,102 +87,6 @@ function findNearestModelPosition(state: GameState, targetUnitId: string, from: 
   return nearest;
 }
 
-// ─── Shooting Attack Helper ─────────────────────────────────────────────────
-
-/**
- * Perform a simplified shooting attack from one unit to another.
- * For each alive model in the attacker unit:
- *   - Roll to hit: d6, hits on 4+ (BS4 default)
- *   - Each model fires 1 + fpBonus shots
- * For each hit:
- *   - Roll to wound: d6, wounds on 4+ (S4 vs T4 default)
- * For each wound:
- *   - Apply 1 damage to a random alive model in the target unit
- *
- * @param state - Current game state
- * @param attackerUnitId - ID of the unit performing the shooting
- * @param targetUnitId - ID of the unit being shot at
- * @param dice - Dice provider
- * @param fpBonus - Additional firepower per model (default 0)
- * @returns Updated state, events, and hit/wound totals
- */
-function performSimplifiedShootingAttack(
-  state: GameState,
-  attackerUnitId: string,
-  targetUnitId: string,
-  dice: DiceProvider,
-  fpBonus: number = 0,
-): { state: GameState; events: GameEvent[]; totalHits: number; totalWounds: number } {
-  const attackerUnit = findUnit(state, attackerUnitId);
-  const targetUnit = findUnit(state, targetUnitId);
-  if (!attackerUnit || !targetUnit) {
-    return { state, events: [], totalHits: 0, totalWounds: 0 };
-  }
-
-  const attackerAlive = getAliveModels(attackerUnit);
-  if (attackerAlive.length === 0) {
-    return { state, events: [], totalHits: 0, totalWounds: 0 };
-  }
-
-  const BS_TARGET = 4; // Default BS4 — hit on 4+
-  const WOUND_TARGET = 4; // Default S4 vs T4 — wound on 4+
-  const SHOTS_PER_MODEL = 1 + fpBonus;
-
-  let totalHits = 0;
-  let totalWounds = 0;
-  let currentState = state;
-  const events: GameEvent[] = [];
-
-  // Roll hits for all models
-  for (const _model of attackerAlive) {
-    for (let shot = 0; shot < SHOTS_PER_MODEL; shot++) {
-      const hitRoll = dice.rollD6();
-      if (hitRoll >= BS_TARGET) {
-        totalHits++;
-      }
-    }
-  }
-
-  // Roll wounds for each hit
-  for (let i = 0; i < totalHits; i++) {
-    const woundRoll = dice.rollD6();
-    if (woundRoll >= WOUND_TARGET) {
-      totalWounds++;
-    }
-  }
-
-  // Apply wounds to random alive models in the target unit
-  for (let w = 0; w < totalWounds; w++) {
-    const currentTargetUnit = findUnit(currentState, targetUnitId);
-    if (!currentTargetUnit) break;
-    const currentAlive = getAliveModels(currentTargetUnit);
-    if (currentAlive.length === 0) break;
-
-    // Pick a random alive model in the target unit
-    const randomIndex = Math.floor(Math.abs(dice.rollD6() - 1) * currentAlive.length / 6);
-    const targetIndex = Math.min(randomIndex, currentAlive.length - 1);
-    const targetModel = currentAlive[targetIndex];
-
-    const woundedModel = applyWoundsToModel(targetModel, 1);
-
-    currentState = updateUnitInGameState(currentState, targetUnitId, unit =>
-      updateModelInUnit(unit, targetModel.id, () => woundedModel),
-    );
-
-    events.push({
-      type: 'damageApplied',
-      modelId: targetModel.id,
-      unitId: targetUnitId,
-      woundsLost: 1,
-      remainingWounds: woundedModel.currentWounds,
-      destroyed: woundedModel.isDestroyed,
-      damageSource: 'advancedReactionShooting',
-    });
-  }
-
-  return { state: currentState, events, totalHits, totalWounds };
-}
-
 // ─── Failure Result Helper ──────────────────────────────────────────────────
 
 /**
@@ -188,6 +94,28 @@ function performSimplifiedShootingAttack(
  */
 function failResult(state: GameState): AdvancedReactionResult {
   return { state, events: [], success: false };
+}
+
+function increaseOverloadRule(specialRules: SpecialRuleRef[]): SpecialRuleRef[] {
+  let foundOverload = false;
+  const updated = specialRules.map((rule) => {
+    if (rule.name.toLowerCase() !== 'overload') {
+      return rule;
+    }
+
+    foundOverload = true;
+    const currentValue = Number.parseInt(rule.value ?? '0', 10);
+    return {
+      ...rule,
+      value: String(Number.isFinite(currentValue) ? currentValue + 1 : 1),
+    };
+  });
+
+  if (foundOverload) {
+    return updated;
+  }
+
+  return [...updated, { name: 'Overload', value: '1' }];
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -355,10 +283,7 @@ function handleWrathOfAngels(
 //
 // Effects:
 // - The reacting unit makes a return fire shooting attack with +1 FP and
-//   Overload(1) (simplified: +1 shot per model from Firepower +1)
-// - For each alive model, roll to hit (d6, 4+), with +1 shot per model
-// - For each hit, roll to wound (d6, 4+)
-// - For each wound, apply 1 damage to a random alive model in the trigger unit
+//   Overload(1), resolved through the shared out-of-phase shooting pipeline
 // - Models at 0 wounds can also participate (per rules text)
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -379,28 +304,20 @@ function handleBitterFury(
   const aliveModels = getAliveModels(reactingUnit);
   if (aliveModels.length === 0) return failResult(state);
 
-  const FP_BONUS = 1; // +1 Firepower from Bitter Fury
-  const result = performSimplifiedShootingAttack(
-    state,
-    reactingUnitId,
-    triggerSourceUnitId,
-    dice,
-    FP_BONUS,
-  );
-
-  const events: GameEvent[] = [...result.events];
-
-  events.push({
-    type: 'fireGroupResolved',
-    fireGroupIndex: 0,
-    weaponName: 'Bitter Fury (Return Fire)',
-    totalHits: result.totalHits,
-    totalWounds: result.totalWounds,
-    totalPenetrating: 0,
-    totalGlancing: 0,
+  const result = executeOutOfPhaseShootingAttack(state, reactingUnitId, triggerSourceUnitId, dice, {
+    suppressMoraleAndStatusChecks: true,
+    weaponProfileModifier: (weaponProfile) => ({
+      ...weaponProfile,
+      firepower: weaponProfile.firepower + 1,
+      specialRules: increaseOverloadRule(weaponProfile.specialRules),
+    }),
   });
 
-  return { state: result.state, events, success: true };
+  return {
+    state: result.accepted ? result.state : state,
+    events: result.events,
+    success: result.accepted,
+  };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -425,28 +342,15 @@ function handleRetributionStrike(
   const aliveModels = getAliveModels(reactingUnit);
   if (aliveModels.length === 0) return failResult(state);
 
-  const FP_BONUS = 0; // No FP bonus for Retribution Strike
-  const result = performSimplifiedShootingAttack(
-    state,
-    reactingUnitId,
-    triggerSourceUnitId,
-    dice,
-    FP_BONUS,
-  );
-
-  const events: GameEvent[] = [...result.events];
-
-  events.push({
-    type: 'fireGroupResolved',
-    fireGroupIndex: 0,
-    weaponName: 'Retribution Strike (Return Fire)',
-    totalHits: result.totalHits,
-    totalWounds: result.totalWounds,
-    totalPenetrating: 0,
-    totalGlancing: 0,
+  const result = executeOutOfPhaseShootingAttack(state, reactingUnitId, triggerSourceUnitId, dice, {
+    suppressMoraleAndStatusChecks: true,
   });
 
-  return { state: result.state, events, success: true };
+  return {
+    state: result.accepted ? result.state : state,
+    events: result.events,
+    success: result.accepted,
+  };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

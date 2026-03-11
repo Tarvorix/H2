@@ -8,6 +8,10 @@
   "modelDefinitions": [
     {
       "name": "Deathwing Oathbearer",
+      "modelType": "Infantry",
+      "modelSubTypes": [
+        "Sergeant"
+      ],
       "baseSizeMM": 32,
       "countInBase": 1,
       "isAdditionalModelType": false,
@@ -31,6 +35,7 @@
     },
     {
       "name": "Deathwing Companion",
+      "modelType": "Infantry",
       "baseSizeMM": 32,
       "countInBase": 4,
       "isAdditionalModelType": true,

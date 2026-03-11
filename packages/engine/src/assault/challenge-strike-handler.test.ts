@@ -175,6 +175,29 @@ function createDiceProvider(values: number[]): DiceProvider {
 // ─── resolveChallengeStrike ────────────────────────────────────────────────
 
 describe('resolveChallengeStrike', () => {
+  it('should honor forced hit targets for psychic challenge gambits', () => {
+    const state = createChallengeGameState();
+    const challenge = createChallengeState();
+    const dice = createDiceProvider([
+      2, 4, 1, // Challenger: forced 2+ hit, wound 4+, failed save
+      1, 1,    // Challenged misses both return attacks
+    ]);
+
+    const result = resolveChallengeStrike(
+      state, challenge, dice,
+      4, 6,  // WS would normally make this harder than 2+
+      4, 4,
+      2, 2,
+      4, 4,
+      3, 3,
+      null,
+      1,
+      { challengerHitTargetOverride: 2 },
+    );
+
+    expect(result.challengeState.challengerWoundsInflicted).toBeGreaterThan(0);
+  });
+
   it('should have challenger attack first when they have advantage', () => {
     const state = createChallengeGameState();
     const challenge = createChallengeState({

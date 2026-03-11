@@ -51,34 +51,47 @@ function createDiceProvider(rolls: number[]): DiceProvider {
 
 // ─── Fixtures ───────────────────────────────────────────────────────────────
 
-function createModel(id: string, pos: Position, wounds: number = 1, destroyed: boolean = false): ModelState {
+function createModel(
+  id: string,
+  pos: Position,
+  wounds: number = 1,
+  destroyed: boolean = false,
+  overrides: Partial<ModelState> = {},
+): ModelState {
   return {
     id,
-    profileModelName: 'Legionary',
-    unitProfileId: 'tactical',
+    profileModelName: overrides.profileModelName ?? 'Legionary',
+    unitProfileId: overrides.unitProfileId ?? 'tactical-squad',
     position: pos,
     currentWounds: wounds,
     isDestroyed: destroyed,
     modifiers: [],
-    equippedWargear: [],
-    isWarlord: false,
+    equippedWargear: overrides.equippedWargear ?? [],
+    isWarlord: overrides.isWarlord ?? false,
+    rotationRadians: overrides.rotationRadians,
   };
 }
 
-function createUnit(id: string, models: ModelState[], statuses: TacticalStatus[] = []): UnitState {
+function createUnit(
+  id: string,
+  models: ModelState[],
+  statuses: TacticalStatus[] = [],
+  overrides: Partial<UnitState> = {},
+): UnitState {
   return {
     id,
-    profileId: 'tactical',
+    profileId: overrides.profileId ?? 'tactical-squad',
     models,
     statuses,
     movementState: UnitMovementState.Stationary,
     embarkedOnId: null,
     isDeployed: true,
     isInReserves: false,
-    isLockedInCombat: true,
-    engagedWithUnitIds: [],
-    hasReactedThisTurn: false,
-    modifiers: [],
+    isLockedInCombat: overrides.isLockedInCombat ?? true,
+    engagedWithUnitIds: overrides.engagedWithUnitIds ?? [],
+    hasReactedThisTurn: overrides.hasReactedThisTurn ?? false,
+    modifiers: overrides.modifiers ?? [],
+    originLegion: overrides.originLegion,
   };
 }
 
@@ -111,6 +124,7 @@ function createGameState(armies: [ArmyState, ArmyState]): GameState {
     currentPhase: Phase.Assault,
     currentSubPhase: SubPhase.Resolution,
     awaitingReaction: false,
+    advancedReactionsUsed: [],
     isGameOver: false,
     winnerPlayerIndex: null,
     log: [],
@@ -142,26 +156,56 @@ function createCombatState(overrides: Partial<CombatState> = {}): CombatState {
  * Unit A (army 0) and Unit B (army 1) with configurable positions and statuses.
  */
 function buildCombatScenario(opts: {
-  unitAModels: { id: string; pos: Position; wounds?: number; destroyed?: boolean }[];
-  unitBModels: { id: string; pos: Position; wounds?: number; destroyed?: boolean }[];
+  unitAModels: Array<{
+    id: string;
+    pos: Position;
+    wounds?: number;
+    destroyed?: boolean;
+    profileModelName?: string;
+    unitProfileId?: string;
+    equippedWargear?: string[];
+  }>;
+  unitBModels: Array<{
+    id: string;
+    pos: Position;
+    wounds?: number;
+    destroyed?: boolean;
+    profileModelName?: string;
+    unitProfileId?: string;
+    equippedWargear?: string[];
+  }>;
   unitAStatuses?: TacticalStatus[];
   unitBStatuses?: TacticalStatus[];
   unitAEngaged?: string[];
   unitBEngaged?: string[];
+  unitAProfileId?: string;
+  unitBProfileId?: string;
 }): GameState {
   const modelsA = opts.unitAModels.map(m =>
-    createModel(m.id, m.pos, m.wounds ?? 1, m.destroyed ?? false),
+    createModel(m.id, m.pos, m.wounds ?? 1, m.destroyed ?? false, {
+      profileModelName: m.profileModelName,
+      unitProfileId: m.unitProfileId ?? opts.unitAProfileId,
+      equippedWargear: m.equippedWargear,
+    }),
   );
   const modelsB = opts.unitBModels.map(m =>
-    createModel(m.id, m.pos, m.wounds ?? 1, m.destroyed ?? false),
+    createModel(m.id, m.pos, m.wounds ?? 1, m.destroyed ?? false, {
+      profileModelName: m.profileModelName,
+      unitProfileId: m.unitProfileId ?? opts.unitBProfileId,
+      equippedWargear: m.equippedWargear,
+    }),
   );
 
   const unitA = {
-    ...createUnit('unit-a', modelsA, opts.unitAStatuses ?? []),
+    ...createUnit('unit-a', modelsA, opts.unitAStatuses ?? [], {
+      profileId: opts.unitAProfileId,
+    }),
     engagedWithUnitIds: opts.unitAEngaged ?? ['unit-b'],
   };
   const unitB = {
-    ...createUnit('unit-b', modelsB, opts.unitBStatuses ?? []),
+    ...createUnit('unit-b', modelsB, opts.unitBStatuses ?? [], {
+      profileId: opts.unitBProfileId,
+    }),
     engagedWithUnitIds: opts.unitBEngaged ?? ['unit-a'],
   };
 
@@ -284,6 +328,20 @@ describe('getAvailableAftermathOptions', () => {
 
     const options = getAvailableAftermathOptions(
       state, 'unit-a', false, false, false, false,
+    );
+
+    expect(options).toEqual([AftermathOption.Hold]);
+  });
+
+  it('units that include Vehicle models may only Hold', () => {
+    const state = buildCombatScenario({
+      unitAModels: [{ id: 'a1', pos: { x: 10, y: 10 }, profileModelName: 'Rhino' }],
+      unitBModels: [{ id: 'b1', pos: { x: 12, y: 10 } }],
+      unitAProfileId: 'rhino',
+    });
+
+    const options = getAvailableAftermathOptions(
+      state, 'unit-a', false, true, false, false,
     );
 
     expect(options).toEqual([AftermathOption.Hold]);
@@ -776,21 +834,21 @@ describe('resolveAftermathOption — Pursue', () => {
 });
 
 describe('resolveAftermathOption — Gun Down', () => {
-  it('hits on 6+ (snap shot)', () => {
-    // 3 shooters: rolls of 5, 6, 3. Only roll of 6 hits.
+  it('uses the live snap shot table for gun down attacks', () => {
     const state = buildCombatScenario({
       unitAModels: [
-        { id: 'a1', pos: { x: 10, y: 10 } },
-        { id: 'a2', pos: { x: 10, y: 11 } },
-        { id: 'a3', pos: { x: 10, y: 12 } },
+        { id: 'a1', pos: { x: 10, y: 10 }, profileModelName: 'Assault Sergeant' },
+        { id: 'a2', pos: { x: 10, y: 11 }, profileModelName: 'Assault Legionary' },
+        { id: 'a3', pos: { x: 10, y: 12 }, profileModelName: 'Assault Legionary' },
       ],
       unitBModels: [
-        { id: 'b1', pos: { x: 15, y: 10 } },
-        { id: 'b2', pos: { x: 15, y: 11 } },
+        { id: 'b1', pos: { x: 15, y: 10 }, profileModelName: 'Sergeant' },
+        { id: 'b2', pos: { x: 15, y: 11 }, profileModelName: 'Legionary' },
       ],
+      unitAProfileId: 'assault-squad',
+      unitBProfileId: 'tactical-squad',
     });
     const combat = createCombatState();
-    // Hit rolls: 5 (miss), 6 (hit), 3 (miss); wound roll for the hit: 4 (wound)
     const dice = createDiceProvider([5, 6, 4, 3]);
 
     const result = resolveAftermathOption(
@@ -799,17 +857,18 @@ describe('resolveAftermathOption — Gun Down', () => {
 
     const gunDownEvent = result.events.find(e => e.type === 'gunDown');
     expect(gunDownEvent).toBeDefined();
-    expect((gunDownEvent as any).hits).toBe(1);
+    expect((gunDownEvent as any).hits).toBe(2);
   });
 
-  it('wounds on 4+', () => {
-    // 1 shooter: rolls 6 to hit, then 3 to wound (fail)
+  it('uses the selected assault weapon profile for wound resolution', () => {
     const state = buildCombatScenario({
-      unitAModels: [{ id: 'a1', pos: { x: 10, y: 10 } }],
-      unitBModels: [{ id: 'b1', pos: { x: 15, y: 10 } }],
+      unitAModels: [{ id: 'a1', pos: { x: 10, y: 10 }, profileModelName: 'Assault Sergeant' }],
+      unitBModels: [{ id: 'b1', pos: { x: 15, y: 10 }, profileModelName: 'Sergeant' }],
+      unitAProfileId: 'assault-squad',
+      unitBProfileId: 'tactical-squad',
     });
     const combat = createCombatState();
-    const dice = createDiceProvider([6, 3]); // hit=6 (hit), wound=3 (fail)
+    const dice = createDiceProvider([6, 1]);
 
     const result = resolveAftermathOption(
       state, 'unit-a', AftermathOption.GunDown, combat, dice,
@@ -821,16 +880,17 @@ describe('resolveAftermathOption — Gun Down', () => {
   });
 
   it('applies casualties to target unit', () => {
-    // 1 shooter: rolls 6 to hit, 4 to wound
     const state = buildCombatScenario({
-      unitAModels: [{ id: 'a1', pos: { x: 10, y: 10 } }],
+      unitAModels: [{ id: 'a1', pos: { x: 10, y: 10 }, profileModelName: 'Assault Sergeant' }],
       unitBModels: [
-        { id: 'b1', pos: { x: 15, y: 10 } },
-        { id: 'b2', pos: { x: 15, y: 11 } },
+        { id: 'b1', pos: { x: 15, y: 10 }, profileModelName: 'Sergeant' },
+        { id: 'b2', pos: { x: 15, y: 11 }, profileModelName: 'Legionary' },
       ],
+      unitAProfileId: 'assault-squad',
+      unitBProfileId: 'tactical-squad',
     });
     const combat = createCombatState();
-    const dice = createDiceProvider([6, 4]); // hit=6, wound=4
+    const dice = createDiceProvider([6, 4, 1]);
 
     const result = resolveAftermathOption(
       state, 'unit-a', AftermathOption.GunDown, combat, dice,

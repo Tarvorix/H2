@@ -8,6 +8,11 @@
   "modelDefinitions": [
     {
       "name": "Harrower",
+      "modelType": "Infantry",
+      "modelSubTypes": [
+        "Sergeant",
+        "Heavy"
+      ],
       "baseSizeMM": 40,
       "countInBase": 1,
       "isAdditionalModelType": false,
@@ -31,6 +36,10 @@
     },
     {
       "name": "Lernaean",
+      "modelType": "Infantry",
+      "modelSubTypes": [
+        "Heavy"
+      ],
       "baseSizeMM": 40,
       "countInBase": 4,
       "isAdditionalModelType": true,

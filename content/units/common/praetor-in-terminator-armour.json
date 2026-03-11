@@ -8,6 +8,11 @@
   "modelDefinitions": [
     {
       "name": "Cataphractii Praetor",
+      "modelType": "Infantry",
+      "modelSubTypes": [
+        "Command",
+        "Heavy"
+      ],
       "baseSizeMM": 40,
       "countInBase": 1,
       "isAdditionalModelType": false,
@@ -31,6 +36,10 @@
     },
     {
       "name": "Tartaros Praetor",
+      "modelType": "Infantry",
+      "modelSubTypes": [
+        "Command"
+      ],
       "baseSizeMM": 40,
       "countInBase": 1,
       "isAdditionalModelType": true,

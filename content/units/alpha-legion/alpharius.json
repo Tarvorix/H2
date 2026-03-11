@@ -8,6 +8,11 @@
   "modelDefinitions": [
     {
       "name": "Alpharius",
+      "modelType": "Paragon",
+      "modelSubTypes": [
+        "Unique",
+        "Light"
+      ],
       "baseSizeMM": 40,
       "countInBase": 1,
       "isAdditionalModelType": true,

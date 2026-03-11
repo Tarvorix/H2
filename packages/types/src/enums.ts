@@ -34,6 +34,8 @@ export enum ModelSubType {
   Skirmish = 'Skirmish',
   /** Command — HQ-type model */
   Command = 'Command',
+  /** Champion — duellist/Challenge specialist */
+  Champion = 'Champion',
   /** Sergeant — squad leader model */
   Sergeant = 'Sergeant',
   /** Unique — one per army */

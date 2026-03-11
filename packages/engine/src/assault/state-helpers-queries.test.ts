@@ -12,6 +12,7 @@ import {
   TacticalStatus,
   Allegiance,
   LegionFaction,
+  TerrainType,
 } from '@hh/types';
 import type {
   GameState,
@@ -884,7 +885,7 @@ describe('Assault Game Queries', () => {
       });
 
       const dist = getClosestModelDistance(state, 'u-a', 'u-b');
-      expect(dist).toBe(2); // a-m1 at x=5 and b-m1 at x=3 => distance = 2
+      expect(dist).toBeCloseTo(0.7401574803149606);
     });
 
     it('returns Infinity when a unit is not found', () => {
@@ -908,7 +909,7 @@ describe('Assault Game Queries', () => {
   // ── hasLOSToUnit ───────────────────────────────────────────────────────
 
   describe('hasLOSToUnit', () => {
-    it('returns true when both units are deployed with alive models', () => {
+    it('returns true when an attacker has an unblocked ray to the target unit', () => {
       const unitA = createUnit('u-a', [createModel('a-m0', 0, 0)]);
       const unitB = createUnit('u-b', [createModel('b-m0', 10, 10)]);
       const state = createGameState({
@@ -925,6 +926,47 @@ describe('Assault Game Queries', () => {
       const unitB = createUnit('u-b', [createModel('b-m0', 10, 10)]);
       const state = createGameState({
         armies: [createArmy(0, [unitA]), createArmy(1, [unitB])],
+      });
+
+      expect(hasLOSToUnit(state, 'u-a', 'u-b')).toBe(false);
+    });
+
+    it('returns false when heavy terrain blocks every ray', () => {
+      const unitA = createUnit('u-a', [createModel('a-m0', 0, 0)]);
+      const unitB = createUnit('u-b', [createModel('b-m0', 10, 0)]);
+      const state = createGameState({
+        terrain: [
+          {
+            id: 'heavy-1',
+            name: 'Heavy Area',
+            type: TerrainType.HeavyArea,
+            shape: { kind: 'rectangle', topLeft: { x: 4, y: -2 }, width: 2, height: 4 },
+            isDifficult: false,
+            isDangerous: false,
+          },
+        ],
+        armies: [createArmy(0, [unitA]), createArmy(1, [unitB])],
+      });
+
+      expect(hasLOSToUnit(state, 'u-a', 'u-b')).toBe(false);
+    });
+
+    it('returns false when an intervening vehicle blocks every ray', () => {
+      const unitA = createUnit('u-a', [createModel('a-m0', 0, 0)]);
+      const unitB = createUnit('u-b', [createModel('b-m0', 10, 0)]);
+      const vehicleBlocker = createUnit(
+        'vehicle-blocker',
+        [
+          createModel('vehicle-m0', 5, 0, {
+            unitProfileId: 'rhino',
+            profileModelName: 'Rhino',
+            rotationRadians: 0,
+          }),
+        ],
+        { profileId: 'rhino' },
+      );
+      const state = createGameState({
+        armies: [createArmy(0, [unitA]), createArmy(1, [unitB, vehicleBlocker])],
       });
 
       expect(hasLOSToUnit(state, 'u-a', 'u-b')).toBe(false);
@@ -963,20 +1005,30 @@ describe('Assault Game Queries', () => {
   // ── getModelsWithLOSToUnit ─────────────────────────────────────────────
 
   describe('getModelsWithLOSToUnit', () => {
-    it('returns all alive models in the source unit (simplified LOS)', () => {
+    it('returns only alive source models that actually have LOS', () => {
       const unitA = createUnit('u-a', [
         createModel('a-m0', 0, 0),
-        createModel('a-m1', 1, 0),
+        createModel('a-m1', 0, 6),
         createModel('a-m2', 2, 0, { isDestroyed: true }),
       ]);
-      const unitB = createUnit('u-b', [createModel('b-m0', 10, 10)]);
+      const unitB = createUnit('u-b', [createModel('b-m0', 10, 0)]);
       const state = createGameState({
+        terrain: [
+          {
+            id: 'heavy-1',
+            name: 'Heavy Area',
+            type: TerrainType.HeavyArea,
+            shape: { kind: 'rectangle', topLeft: { x: 4, y: -2 }, width: 2, height: 4 },
+            isDifficult: false,
+            isDangerous: false,
+          },
+        ],
         armies: [createArmy(0, [unitA]), createArmy(1, [unitB])],
       });
 
       const result = getModelsWithLOSToUnit(state, 'u-a', 'u-b');
-      expect(result).toHaveLength(2);
-      expect(result.map(m => m.id)).toContain('a-m0');
+      expect(result).toHaveLength(1);
+      expect(result.map(m => m.id)).not.toContain('a-m0');
       expect(result.map(m => m.id)).toContain('a-m1');
     });
 

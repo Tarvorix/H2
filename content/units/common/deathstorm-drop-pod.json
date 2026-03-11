@@ -8,6 +8,7 @@
   "modelDefinitions": [
     {
       "name": "Deathstorm Drop Pod",
+      "modelType": "Vehicle",
       "baseSizeMM": 32,
       "countInBase": 1,
       "isAdditionalModelType": true,

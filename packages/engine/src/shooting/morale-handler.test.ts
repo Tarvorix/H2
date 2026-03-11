@@ -70,12 +70,16 @@ function createUnit(id: string, overrides: Partial<UnitState> = {}): UnitState {
   };
 }
 
-function createArmy(playerIndex: number, units: UnitState[]): ArmyState {
+function createArmy(
+  playerIndex: number,
+  units: UnitState[],
+  faction: LegionFaction = LegionFaction.Ultramarines,
+): ArmyState {
   return {
     id: `army-${playerIndex}`,
     playerIndex,
     playerName: `Player ${playerIndex + 1}`,
-    faction: LegionFaction.Ultramarines,
+    faction,
     allegiance: Allegiance.Loyalist,
     units,
     totalPoints: 1000,
@@ -122,6 +126,7 @@ function createGameState(overrides: Partial<GameState> = {}): GameState {
     currentPhase: Phase.Shooting,
     currentSubPhase: SubPhase.ShootingMorale,
     awaitingReaction: false,
+    legionTacticaState: [{}, {}] as any,
     isGameOver: false,
     winnerPlayerIndex: null,
     log: [],
@@ -384,6 +389,92 @@ describe('resolveShootingMorale', () => {
     expect(panicEvents[0].passed).toBe(false);
     expect(panicEvents[0].roll).toBe(8);
     expect(panicEvents[0].target).toBe(7);
+  });
+
+  it('Salamanders ignore Panic(X) checks from Flame weapons', () => {
+    const state = createGameState({
+      armies: [
+        createArmy(0, [
+          createUnit('attacker', {
+            models: [createModel('atk-m0', 10, 24), createModel('atk-m1', 12, 24)],
+          }),
+        ]),
+        createArmy(1, [
+          createUnit('target', {
+            models: [
+              createModel('tgt-m0', 36, 24),
+              createModel('tgt-m1', 38, 24),
+            ],
+          }),
+        ], LegionFaction.Salamanders),
+      ],
+    });
+
+    const pendingChecks: PendingMoraleCheck[] = [
+      {
+        unitId: 'target',
+        checkType: 'panicRule',
+        modifier: 2,
+        source: 'Panic (2) from Forge-crafted Flamer',
+        weaponTraits: ['Flame'],
+      },
+    ];
+
+    const result = resolveShootingMorale(
+      state,
+      pendingChecks,
+      { target: 2 },
+      new Map<string, number>(),
+      new FixedDiceProvider([6, 6]),
+    );
+
+    expect(result.routedUnitIds).toHaveLength(0);
+    expect(result.state.armies[1].units[0].statuses).not.toContain(TacticalStatus.Routed);
+    const statusEvents = result.events.filter(e => e.type === 'statusCheck') as StatusCheckEvent[];
+    expect(statusEvents).toHaveLength(0);
+  });
+
+  it('Salamanders ignore flame-based tactical status checks', () => {
+    const state = createGameState({
+      armies: [
+        createArmy(0, [
+          createUnit('attacker', {
+            models: [createModel('atk-m0', 10, 24), createModel('atk-m1', 12, 24)],
+          }),
+        ]),
+        createArmy(1, [
+          createUnit('target', {
+            models: [
+              createModel('tgt-m0', 36, 24),
+              createModel('tgt-m1', 38, 24),
+            ],
+          }),
+        ], LegionFaction.Salamanders),
+      ],
+    });
+
+    const pendingChecks: PendingMoraleCheck[] = [
+      {
+        unitId: 'target',
+        checkType: 'suppressive',
+        modifier: 2,
+        source: 'Suppressive (2) from Flame weapon',
+        weaponTraits: ['Flame'],
+      },
+    ];
+
+    const result = resolveShootingMorale(
+      state,
+      pendingChecks,
+      { target: 2 },
+      new Map<string, number>(),
+      new FixedDiceProvider([6, 6]),
+    );
+
+    expect(result.suppressedUnitIds).toHaveLength(0);
+    expect(result.state.armies[1].units[0].statuses).not.toContain(TacticalStatus.Suppressed);
+    const statusEvents = result.events.filter(e => e.type === 'statusCheck') as StatusCheckEvent[];
+    expect(statusEvents).toHaveLength(0);
   });
 
   // ── Test 3: PanicRule(2) check with modifier ───────────────────────────

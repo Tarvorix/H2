@@ -8,6 +8,11 @@
   "modelDefinitions": [
     {
       "name": "Veteran Assault Sergeant",
+      "modelType": "Infantry",
+      "modelSubTypes": [
+        "Sergeant",
+        "Antigrav"
+      ],
       "baseSizeMM": 32,
       "countInBase": 1,
       "isAdditionalModelType": false,
@@ -31,6 +36,10 @@
     },
     {
       "name": "Assault Veteran",
+      "modelType": "Infantry",
+      "modelSubTypes": [
+        "Antigrav"
+      ],
       "baseSizeMM": 32,
       "countInBase": 4,
       "isAdditionalModelType": true,

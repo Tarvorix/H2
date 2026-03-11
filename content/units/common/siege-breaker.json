@@ -8,6 +8,11 @@
   "modelDefinitions": [
     {
       "name": "Siege Breaker",
+      "modelType": "Infantry",
+      "modelSubTypes": [
+        "Command",
+        "Heavy"
+      ],
       "baseSizeMM": 32,
       "countInBase": 1,
       "isAdditionalModelType": true,

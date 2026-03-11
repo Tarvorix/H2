@@ -22,7 +22,7 @@ import {
 // ─── Gambit Effects Lookup ──────────────────────────────────────────────────
 
 /**
- * Complete lookup table for all 9 Challenge Gambits and their mechanical effects.
+ * Complete lookup table for the 9 universal Challenge Gambits.
  * Reference: HH_Rules_Battle.md — Challenge Sub-Phase (Face-Off step)
  */
 export const GAMBIT_EFFECTS: Record<string, GambitEffect> = {
@@ -216,6 +216,38 @@ export const GAMBIT_EFFECTS: Record<string, GambitEffect> = {
   },
 };
 
+/**
+ * Additional non-core gambits that are granted by other rules sources, such as
+ * psychic disciplines. These are legal selections only when the enabling rule
+ * has already granted them to the model.
+ */
+const EXTRA_GAMBIT_EFFECTS: Record<string, GambitEffect> = {
+  'every-strike-foreseen': {
+    name: 'every-strike-foreseen',
+    extraFocusDie: false,
+    discardDie: null,
+    wsModifier: 0,
+    fixedAttacks: 0,
+    bonusAttacksRoll: null,
+    bonusAttackFixedDamage: null,
+    strengthModifier: 0,
+    damageModifier: 0,
+    blocksOutsideSupportFocus: false,
+    outsideSupportToAttacks: false,
+    firstChooserOnly: false,
+    blocksOpponentGambit: false,
+    allowsWithdraw: false,
+    grantsNextRoundAdvantage: false,
+    missesGrantFocusBonus: false,
+    swapStatsWithEnemy: false,
+    crpBonusPerSelection: 0,
+  },
+};
+
+function getBaseGambitEffect(gambitName: string): GambitEffect | null {
+  return GAMBIT_EFFECTS[gambitName] ?? EXTRA_GAMBIT_EFFECTS[gambitName] ?? null;
+}
+
 // ─── Select Gambit ──────────────────────────────────────────────────────────
 
 /**
@@ -234,8 +266,8 @@ export function selectGambit(
 ): { challengeState: ChallengeState; events: GameEvent[] } {
   const events: GameEvent[] = [];
 
-  // Check core gambits first, then legion gambits
-  const gambitEffect = GAMBIT_EFFECTS[gambit] ?? getLegionGambitEffect(gambit);
+  // Check universal/extra gambits first, then legion gambits.
+  const gambitEffect = getBaseGambitEffect(gambit) ?? getLegionGambitEffect(gambit);
   if (!gambitEffect) {
     return { challengeState, events };
   }
@@ -397,7 +429,7 @@ function rollFocusDice(dice: DiceProvider, gambitName: string | null): number {
   }
 
   // Check core gambit effects first, then legion gambit effects
-  const gambit = gambitName ? (GAMBIT_EFFECTS[gambitName] ?? getLegionGambitEffect(gambitName)) : null;
+  const gambit = gambitName ? (getBaseGambitEffect(gambitName) ?? getLegionGambitEffect(gambitName)) : null;
 
   if (gambit?.extraFocusDie) {
     // Roll 2 dice
@@ -425,7 +457,7 @@ function rollFocusDice(dice: DiceProvider, gambitName: string | null): number {
  * @returns The gambit effect, or null if not found
  */
 export function getGambitEffect(gambitName: string): GambitEffect | null {
-  return GAMBIT_EFFECTS[gambitName] ?? getLegionGambitEffect(gambitName) ?? null;
+  return getBaseGambitEffect(gambitName) ?? getLegionGambitEffect(gambitName) ?? null;
 }
 
 /**

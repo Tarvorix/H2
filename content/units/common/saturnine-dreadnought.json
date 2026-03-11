@@ -8,6 +8,10 @@
   "modelDefinitions": [
     {
       "name": "Saturnine Dreadnought",
+      "modelType": "Walker",
+      "modelSubTypes": [
+        "Heavy"
+      ],
       "baseSizeMM": 100,
       "countInBase": 1,
       "isAdditionalModelType": true,

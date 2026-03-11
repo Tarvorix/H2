@@ -408,9 +408,9 @@ describe('handleMoveModel', () => {
     expect(result.errors[0].code).toBe('UNIT_CANNOT_MOVE');
   });
 
-  // ── Unit Already Rushed Cannot Make Normal Moves ────────────────────
+  // ── Legacy Rush Flow Continues Through moveModel ────────────────────
 
-  it('should reject normal move for a unit that already rushed', () => {
+  it('should allow sequential moveModel rush movement after a rush declaration', () => {
     state = createGameState({
       armies: [
         createArmy(0, [
@@ -427,10 +427,17 @@ describe('handleMoveModel', () => {
       ],
     });
 
-    const result = handleMoveModel(state, 'u1-m0', { x: 15, y: 24 }, dice);
+    const firstMove = handleMoveModel(state, 'u1-m0', { x: 20, y: 24 }, dice);
 
-    expect(result.accepted).toBe(false);
-    expect(result.errors[0].code).toBe('UNIT_ALREADY_RUSHED');
+    expect(firstMove.accepted).toBe(true);
+    expect(firstMove.state.armies[0].units[0].movementState).toBe(UnitMovementState.Rushed);
+    expect(firstMove.state.armies[0].units[0].models[0].position).toEqual({ x: 20, y: 24 });
+
+    const secondMove = handleMoveModel(firstMove.state, 'u1-m1', { x: 22, y: 24 }, dice);
+
+    expect(secondMove.accepted).toBe(true);
+    expect(secondMove.state.armies[0].units[0].movementState).toBe(UnitMovementState.Rushed);
+    expect(secondMove.state.armies[0].units[0].models[1].position).toEqual({ x: 22, y: 24 });
   });
 
   // ── Multiple Model Moves Within Same Unit ───────────────────────────
@@ -714,14 +721,14 @@ describe('handleRushUnit', () => {
     dice = new FixedDiceProvider([]);
   });
 
-  it('should set unit movement state to Rushed', () => {
+  it('should set unit movement state to RushDeclared', () => {
     const result = handleRushUnit(state, 'u1', dice);
 
     expect(result.accepted).toBe(true);
     expect(result.errors).toHaveLength(0);
 
     const unit = result.state.armies[0].units[0];
-    expect(unit.movementState).toBe(UnitMovementState.Rushed);
+    expect(unit.movementState).toBe(UnitMovementState.RushDeclared);
   });
 
   it('should emit unitRushed event with correct rush distance', () => {
@@ -828,7 +835,7 @@ describe('handleRushUnit', () => {
     // Original state unchanged
     expect(state.armies[0].units[0].movementState).toBe(originalMovementState);
     // New state updated
-    expect(result.state.armies[0].units[0].movementState).toBe(UnitMovementState.Rushed);
+    expect(result.state.armies[0].units[0].movementState).toBe(UnitMovementState.RushDeclared);
   });
 
   it('should reject rush for a unit locked in combat', () => {

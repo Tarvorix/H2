@@ -104,6 +104,8 @@ function makeMissionState(overrides: Partial<MissionState> = {}): MissionState {
     },
     scoringHistory: [],
     vpAtTurnStart: [],
+    vanguardBonusHistory: [],
+    assaultPhaseObjectiveSnapshot: null,
     ...overrides,
   };
 }

@@ -55,6 +55,12 @@ import {
 } from '../game-queries';
 import { getModelInitiative } from '../profile-lookup';
 import { getModelShapeAtPosition } from '../model-shapes';
+import { validateModelMove } from './movement-validator';
+import {
+  handleDangerousTerrainTest,
+  hasDangerousTerrainInteraction,
+  resolveDangerousTerrainOutcome,
+} from './move-handler';
 
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -177,7 +183,7 @@ export function handleRepositionReaction(
   state: GameState,
   reactingUnitId: string,
   modelMoves: Array<{ modelId: string; position: Position }>,
-  _dice: DiceProvider,
+  dice: DiceProvider,
 ): CommandResult {
   const events: GameEvent[] = [];
   const errors: ValidationError[] = [];
@@ -253,6 +259,14 @@ export function handleRepositionReaction(
 
   // Record model moves for the event
   const modelMoveRecords: { modelId: string; from: Position; to: Position }[] = [];
+  const finalPositions = new Map<string, Position>(
+    aliveModels.map((model) => [model.id, model.position]),
+  );
+  for (const move of modelMoves) {
+    if (aliveModelIds.has(move.modelId)) {
+      finalPositions.set(move.modelId, move.position);
+    }
+  }
 
   for (const move of modelMoves) {
     if (!aliveModelIds.has(move.modelId)) {
@@ -268,38 +282,38 @@ export function handleRepositionReaction(
     const model = aliveModels.find(m => m.id === move.modelId);
     if (!model) continue;
 
-    // Check move distance against this model's Initiative
     const modelInit = getModelInitiative(model.unitProfileId, model.profileModelName);
-    const moveDist = vec2Distance(model.position, move.position);
-    if (moveDist > modelInit + 0.01) {
-      errors.push({
+
+    const friendlyShapes = aliveModels
+      .filter((other) => other.id !== move.modelId)
+      .map((other) =>
+        getModelShapeAtPosition(other, finalPositions.get(other.id) ?? other.position),
+      );
+
+    const moveErrors = validateModelMove(
+      model,
+      move.position,
+      modelInit,
+      state.terrain,
+      enemyShapes,
+      friendlyShapes,
+      state.battlefield.width,
+      state.battlefield.height,
+    ).map((error) => {
+      if (error.code !== 'EXCEEDS_MOVEMENT') {
+        return error;
+      }
+
+      const moveDist = vec2Distance(model.position, move.position);
+      return {
+        ...error,
         code: 'EXCEEDS_INITIATIVE',
         message: `Model "${move.modelId}" move of ${moveDist.toFixed(2)}" exceeds Initiative of ${modelInit}"`,
         context: { modelId: move.modelId, distance: moveDist, maxDistance: modelInit },
-      });
-    }
-
-    // Check battlefield bounds
-    if (
-      move.position.x < 0 ||
-      move.position.y < 0 ||
-      move.position.x > state.battlefield.width ||
-      move.position.y > state.battlefield.height
-    ) {
-      errors.push({
-        code: 'OUT_OF_BOUNDS',
-        message: `Position for model "${move.modelId}" is outside the battlefield`,
-        context: { modelId: move.modelId, position: move.position },
-      });
-    }
-
-    // Check enemy exclusion zone (cannot end within 1" of enemy)
-    if (isInExclusionZone(move.position, enemyShapes)) {
-      errors.push({
-        code: 'IN_EXCLUSION_ZONE',
-        message: `Model "${move.modelId}" cannot end within 1" of an enemy model`,
-        context: { modelId: move.modelId, position: move.position },
-      });
+      };
+    });
+    if (moveErrors.length > 0) {
+      errors.push(...moveErrors);
     }
 
     modelMoveRecords.push({
@@ -311,17 +325,6 @@ export function handleRepositionReaction(
 
   // Check coherency after all moves
   if (modelMoves.length > 0 && aliveModels.length > 1) {
-    // Build the final positions map
-    const finalPositions = new Map<string, Position>();
-    for (const model of aliveModels) {
-      finalPositions.set(model.id, model.position);
-    }
-    for (const move of modelMoves) {
-      if (aliveModelIds.has(move.modelId)) {
-        finalPositions.set(move.modelId, move.position);
-      }
-    }
-
     const shapes = aliveModels.map((model) =>
       getModelShapeAtPosition(
         model,
@@ -349,6 +352,34 @@ export function handleRepositionReaction(
     newState = updateUnitInGameState(newState, reactingUnitId, (u) =>
       updateModelInUnit(u, move.modelId, (m) => moveModel(m, move.position)),
     );
+
+    const movedModel = aliveModels.find((model) => model.id === move.modelId);
+    if (
+      movedModel &&
+      !(newState.dangerousTerrainTestedModelIds?.includes(move.modelId) ?? false) &&
+      hasDangerousTerrainInteraction(movedModel.position, move.position, state.terrain)
+    ) {
+      const dangerousResult = handleDangerousTerrainTest(move.modelId, reactingUnitId, dice);
+      events.push(dangerousResult.event);
+      newState = {
+        ...newState,
+        dangerousTerrainTestedModelIds: [
+          ...(newState.dangerousTerrainTestedModelIds ?? []),
+          move.modelId,
+        ],
+      };
+
+      if (!dangerousResult.passed) {
+        const dangerousOutcome = resolveDangerousTerrainOutcome(
+          newState,
+          reactingUnitId,
+          move.modelId,
+          dice,
+        );
+        newState = dangerousOutcome.state;
+        events.push(...dangerousOutcome.events);
+      }
+    }
   }
 
   // ── Step 4: Mark unit as reacted and moved ──────────────────────────
@@ -377,7 +408,3 @@ export function handleRepositionReaction(
 
   return { state: newState, events, errors: [], accepted: true };
 }
-
-// ─── isInExclusionZone (imported from geometry, re-exported for convenience) ─
-
-import { isInExclusionZone } from '@hh/geometry';

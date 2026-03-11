@@ -14,9 +14,16 @@
  * DeclineReactionCommand are accepted.
  */
 
-import type { GameState, GameCommand, Position, DeclareShootingCommand, DeclareChargeCommand, DeclareChallengeCommand, SelectGambitCommand, AcceptChallengeCommand, DeclineChallengeCommand, SelectAftermathCommand, ResolveFightCommand, SelectTargetModelCommand, PlaceBlastMarkerCommand, PlaceTerrainCommand, RemoveTerrainCommand, SelectWargearOptionCommand, DeclareWeaponsCommand } from '@hh/types';
+import type { GameState, GameCommand, Position, DeclareShootingCommand, DeclareChargeCommand, DeclareChallengeCommand, SelectGambitCommand, AcceptChallengeCommand, DeclineChallengeCommand, SelectAftermathCommand, ResolveFightCommand, SelectTargetModelCommand, PlaceBlastMarkerCommand, PlaceTerrainCommand, RemoveTerrainCommand, SelectWargearOptionCommand, DeclareWeaponsCommand, ManifestPsychicPowerCommand } from '@hh/types';
 import { Phase, SubPhase, CoreReaction } from '@hh/types';
-import type { CommandResult, DiceProvider, GameEvent } from './types';
+import { findAdvancedReaction, findLegionWeapon, findWeapon, getDisciplineIds } from '@hh/data';
+import type {
+  CommandResult,
+  DiceProvider,
+  GameEvent,
+  AdvancedReactionDeclaredEvent,
+  AdvancedReactionResolvedEvent,
+} from './types';
 import {
   advanceSubPhase,
   advancePhase,
@@ -26,6 +33,8 @@ import {
   clearAssaultAttackState,
   clearShootingAttackState,
   setAssaultAttackState,
+  updateArmyByIndex,
+  updateUnitInGameState,
 } from './state-helpers';
 import {
   resolveAdvancedReaction,
@@ -41,11 +50,16 @@ import { handleEmbark, handleDisembark } from './movement/embark-disembark-handl
 import { checkRepositionTrigger, handleRepositionReaction } from './movement/reposition-handler';
 
 // Shooting handlers
-import { handleShootingAttack, handleShootingMorale } from './phases/shooting-phase';
+import {
+  finalizePendingShootingAttackStepEleven,
+  handleShootingAttack,
+  handleShootingMorale,
+} from './phases/shooting-phase';
 import { countCasualtiesPerUnit } from './shooting/casualty-removal';
 import type { PendingMoraleCheck } from './shooting/shooting-types';
-import { resolveWeaponAssignment } from './shooting/weapon-declaration';
-import { isDefensiveWeapon, markUnitReacted } from './shooting/return-fire-handler';
+import { markUnitReacted } from './shooting/return-fire-handler';
+import { executeOutOfPhaseShootingAttack } from './shooting/out-of-phase-shooting';
+import { resolveDeferredMisfiresFromAttackState } from './shooting/overload-misfire';
 
 // Assault handlers
 import {
@@ -66,16 +80,29 @@ import { syncActiveCombats } from './assault/combat-state';
 // Phase lifecycle handlers
 import { handleStartPhase } from './phases/start-phase';
 import { handleEndEffects, handleStatusCleanup, handleVictoryCheck } from './phases/end-phase';
+import { recordAssaultPhaseObjectiveSnapshot } from './missions/vanguard-bonus';
+import {
+  handleManifestPsychicPower,
+  hasAvailableManifestPsychicPower,
+  resolvePsychicReaction,
+} from './psychic/power-handler';
+import { getModelPsychicMeleeWeapon } from './psychic/psychic-runtime';
 import {
   findUnit,
-  getAliveModels,
-  getClosestModelDistance,
-  getModelsWithLOSToUnit,
   isVehicleUnit,
   findUnitPlayerIndex,
 } from './game-queries';
+import { lookupUnitProfile } from './profile-lookup';
 
 let advancedReactionHandlersInitialized = false;
+const PSYCHIC_DISCIPLINE_IDS = new Set(getDisciplineIds());
+
+type SelectReactionCommandWithMove = {
+  type: 'selectReaction';
+  unitId: string;
+  reactionType: string;
+  modelPositions?: { modelId: string; position: Position }[];
+};
 
 function ensureAdvancedReactionHandlersRegistered(): void {
   if (advancedReactionHandlersInitialized) return;
@@ -141,6 +168,9 @@ export function processCommand(
 
     case 'disembark':
       return processDisembark(state, command, dice);
+
+    case 'manifestPsychicPower':
+      return processManifestPsychicPower(state, command, dice);
 
     case 'endSubPhase':
       return processEndSubPhase(state, dice);
@@ -339,6 +369,14 @@ function processDisembark(
   return handleDisembark(state, command.unitId, command.modelPositions, dice);
 }
 
+function processManifestPsychicPower(
+  state: GameState,
+  command: ManifestPsychicPowerCommand,
+  dice: DiceProvider,
+): CommandResult {
+  return handleManifestPsychicPower(state, command, dice);
+}
+
 // ─── Shooting Phase Commands ─────────────────────────────────────────────────
 
 /**
@@ -384,6 +422,7 @@ function processResolveShootingCasualties(
     checkType: check.checkType,
     modifier: check.modifier,
     source: check.source,
+    weaponTraits: check.weaponTraits ? [...check.weaponTraits] : undefined,
   }));
 
   // Count casualties per unit
@@ -536,6 +575,13 @@ function autoProcessSubPhase(
 function prepareEnteredSubPhase(state: GameState): { state: GameState; events: GameEvent[] } {
   if (state.currentPhase !== Phase.Assault) {
     return { state, events: [] };
+  }
+
+  if (state.currentSubPhase === SubPhase.Charge) {
+    return {
+      state: recordAssaultPhaseObjectiveSnapshot(state),
+      events: [],
+    };
   }
 
   if (
@@ -695,53 +741,6 @@ function resumeChargeAfterOverwatchDecision(
 }
 
 /**
- * Build a deterministic default weapon selection set for reaction shooting.
- *
- * Rules alignment:
- * - Only weapons in range can be selected.
- * - Vehicle units can only fire Defensive weapons during Return Fire.
- * - Models without LOS are excluded.
- */
-function buildReactionWeaponSelections(
-  state: GameState,
-  reactingUnitId: string,
-  targetUnitId: string,
-): Array<{ modelId: string; weaponId: string; profileName?: string }> {
-  const reactingUnit = findUnit(state, reactingUnitId);
-  if (!reactingUnit) return [];
-
-  const targetDistance = getClosestModelDistance(state, reactingUnitId, targetUnitId);
-  if (!Number.isFinite(targetDistance)) return [];
-
-  const modelsWithLOS = new Set(
-    getModelsWithLOSToUnit(state, reactingUnitId, targetUnitId).map((model) => model.id),
-  );
-  const defensiveOnly = isVehicleUnit(reactingUnit);
-  const weaponSelections: Array<{ modelId: string; weaponId: string; profileName?: string }> = [];
-
-  for (const model of getAliveModels(reactingUnit)) {
-    if (!modelsWithLOS.has(model.id)) continue;
-
-    for (const weaponId of model.equippedWargear) {
-      const weaponProfile = resolveWeaponAssignment(
-        { modelId: model.id, weaponId },
-        reactingUnit,
-      );
-      if (!weaponProfile) continue;
-      if (defensiveOnly && !isDefensiveWeapon(weaponProfile.rangedStrength, weaponProfile.traits)) {
-        continue;
-      }
-      if (!weaponProfile.hasTemplate && targetDistance > weaponProfile.range) continue;
-
-      weaponSelections.push({ modelId: model.id, weaponId });
-      break;
-    }
-  }
-
-  return weaponSelections;
-}
-
-/**
  * Once Return Fire is accepted/declined, the original shooting attack leaves
  * the reaction gate and can proceed to morale resolution.
  */
@@ -759,7 +758,7 @@ function finalizePendingReturnFireAttackState(state: GameState): GameState {
     shootingAttackState: {
       ...state.shootingAttackState,
       returnFireResolved: true,
-      currentStep: 'COMPLETE',
+      currentStep: 'REMOVING_CASUALTIES',
     },
   };
 }
@@ -772,34 +771,22 @@ function executeOverwatchReaction(
 ): { state: GameState; events: GameEvent[]; chargerWipedOut: boolean } {
   let currentState = setAwaitingReaction(state, false);
   const events: GameEvent[] = [];
-  const weaponSelections = buildReactionWeaponSelections(currentState, reactingUnitId, chargingUnitId);
-
-  if (weaponSelections.length > 0) {
-    const overwatchCommand: DeclareShootingCommand = {
-      type: 'declareShooting',
-      attackingUnitId: reactingUnitId,
-      targetUnitId: chargingUnitId,
-      weaponSelections,
-    };
-
-    const overwatchAttack = handleShootingAttack(currentState, overwatchCommand, dice, {
-      allowOutOfPhaseAttack: true,
-      allowNonActiveAttacker: true,
-      ignoreRushedRestriction: true,
-      ignoreHasShotRestriction: true,
-      countsAsStationary: true,
+  const overwatchAttack = executeOutOfPhaseShootingAttack(
+    currentState,
+    reactingUnitId,
+    chargingUnitId,
+    dice,
+    {
       forceNoSnapShots: true,
       allowReturnFireTrigger: false,
       suppressMoraleAndStatusChecks: true,
       blockShroudedDamageMitigation: true,
-      persistShootingAttackState: false,
-      consumeShootingAction: false,
-    });
+    },
+  );
 
-    if (overwatchAttack.accepted) {
-      currentState = overwatchAttack.state;
-      events.push(...overwatchAttack.events);
-    }
+  if (overwatchAttack.accepted) {
+    currentState = overwatchAttack.state;
+    events.push(...overwatchAttack.events);
   }
 
   const resolved = resolveOverwatch(currentState, reactingUnitId, chargingUnitId);
@@ -938,6 +925,7 @@ function resumePendingActionAfterAdvancedReaction(
       })),
       blastPlacements: pendingAttack.blastPlacements,
       templatePlacements: pendingAttack.templatePlacements,
+      psychicPower: pendingAttack.declaredPsychicPower,
     };
 
     const resumed = handleShootingAttack(
@@ -962,6 +950,7 @@ function resumePendingActionAfterAdvancedReaction(
       type: 'declareCharge',
       chargingUnitId: pendingCharge.chargingUnitId,
       targetUnitId: pendingCharge.targetUnitId,
+      psychicPower: pendingCharge.declaredPsychicPower,
     };
 
     const resumed = handleCharge(
@@ -1022,7 +1011,7 @@ function resumePendingActionAfterAdvancedReaction(
  */
 function processSelectReaction(
   state: GameState,
-  command: { type: 'selectReaction'; unitId: string; reactionType: string },
+  command: SelectReactionCommandWithMove,
   dice: DiceProvider,
 ): CommandResult {
   if (!state.pendingReaction) {
@@ -1036,9 +1025,12 @@ function processSelectReaction(
 
   // Handle Reposition reaction
   if (state.pendingReaction.reactionType === CoreReaction.Reposition) {
-    // Current command shape does not include model destinations, so execute a
-    // legal 0" reposition (up to Initiative allows remaining stationary).
-    const repositionResult = handleRepositionReaction(state, command.unitId, [], dice);
+    const repositionResult = handleRepositionReaction(
+      state,
+      command.unitId,
+      command.modelPositions ?? [],
+      dice,
+    );
     if (!repositionResult.accepted) {
       return repositionResult;
     }
@@ -1052,6 +1044,10 @@ function processSelectReaction(
     };
   }
 
+  if (state.pendingReaction.reactionType === 'ws-chasing-wind') {
+    return processChasingTheWindReaction(state, command, dice);
+  }
+
   // Handle Return Fire reaction
   if (state.pendingReaction.reactionType === CoreReaction.ReturnFire) {
     const targetUnitId = state.pendingReaction.triggerSourceUnitId;
@@ -1061,39 +1057,47 @@ function processSelectReaction(
 
     let newState = setAwaitingReaction(state, false);
     const events: GameEvent[] = [];
-    const weaponSelections = buildReactionWeaponSelections(newState, command.unitId, targetUnitId);
-
-    if (weaponSelections.length > 0) {
-      const returnFireCommand: DeclareShootingCommand = {
-        type: 'declareShooting',
-        attackingUnitId: command.unitId,
-        targetUnitId,
-        weaponSelections,
-      };
-
-      const returnFireAttack = handleShootingAttack(newState, returnFireCommand, dice, {
-        allowNonActiveAttacker: true,
-        ignoreRushedRestriction: true,
-        ignoreHasShotRestriction: true,
+    const reactingUnit = findUnit(newState, command.unitId);
+    const returnFireAttack = executeOutOfPhaseShootingAttack(
+      newState,
+      command.unitId,
+      targetUnitId,
+      dice,
+      {
         countsAsStationary: true,
+        defensiveWeaponsOnly: reactingUnit ? isVehicleUnit(reactingUnit) : false,
         allowReturnFireTrigger: false,
         suppressMoraleAndStatusChecks: true,
-        persistShootingAttackState: false,
-        consumeShootingAction: false,
-      });
+      },
+    );
 
-      if (returnFireAttack.accepted) {
-        newState = returnFireAttack.state;
-        events.push(...returnFireAttack.events);
-      }
+    if (returnFireAttack.accepted) {
+      newState = returnFireAttack.state;
+      events.push(...returnFireAttack.events);
     }
+
+    const deferredMisfires = resolveDeferredMisfiresFromAttackState(newState, dice);
+    if (!deferredMisfires.accepted) {
+      return deferredMisfires;
+    }
+    newState = deferredMisfires.state;
+    events.push(...deferredMisfires.events);
 
     // Declared reactions consume allotment even when no weapons can be brought to bear.
     newState = markUnitReacted(newState, command.unitId);
     newState = finalizePendingReturnFireAttackState(newState);
     newState = setAwaitingReaction(newState, false);
+    const finalized = finalizePendingShootingAttackStepEleven(newState, dice);
+    if (!finalized.accepted) {
+      return finalized;
+    }
 
-    return { state: newState, events, errors: [], accepted: true };
+    return {
+      state: finalized.state,
+      events: [...events, ...finalized.events],
+      errors: [],
+      accepted: true,
+    };
   }
 
   // Handle Overwatch reaction
@@ -1118,6 +1122,46 @@ function processSelectReaction(
     };
   }
 
+  if (
+    state.pendingReaction.reactionType === 'force-barrier' ||
+    state.pendingReaction.reactionType === 'resurrection'
+  ) {
+    const psychicReaction = resolvePsychicReaction(
+      state,
+      command.unitId,
+      state.pendingReaction.reactionType,
+      dice,
+    );
+    if (!psychicReaction.accepted) {
+      return psychicReaction;
+    }
+
+    const postReactionState = setAwaitingReaction(psychicReaction.state, false);
+    if (state.pendingReaction.reactionType === 'resurrection') {
+      const finalized = finalizePendingShootingAttackStepEleven(
+        postReactionState,
+        dice,
+        { skipResurrectionOffer: true },
+      );
+      if (!finalized.accepted) {
+        return finalized;
+      }
+
+      return {
+        state: finalized.state,
+        events: [...psychicReaction.events, ...finalized.events],
+        errors: [],
+        accepted: true,
+      };
+    }
+
+    return resumePendingActionAfterAdvancedReaction(
+      postReactionState,
+      dice,
+      psychicReaction.events,
+    );
+  }
+
   // Handle Advanced Reactions (legion-specific)
   if (state.pendingReaction.isAdvancedReaction) {
     const reactionId = state.pendingReaction.reactionType as string;
@@ -1139,6 +1183,93 @@ function processSelectReaction(
   }
 
   return reject(state, 'UNSUPPORTED_REACTION', `Reaction type "${state.pendingReaction.reactionType}" is not yet supported.`);
+}
+
+function processChasingTheWindReaction(
+  state: GameState,
+  command: SelectReactionCommandWithMove,
+  dice: DiceProvider,
+): CommandResult {
+  const reactionId = state.pendingReaction?.reactionType as string | undefined;
+  const triggerSourceUnitId = state.pendingReaction?.triggerSourceUnitId;
+  if (!reactionId || !triggerSourceUnitId) {
+    return reject(state, 'UNKNOWN_REACTION', 'Unable to resolve Chasing the Wind reaction context.');
+  }
+
+  const definition = findAdvancedReaction(reactionId);
+  if (!definition) {
+    return reject(state, 'UNKNOWN_REACTION', `Unknown advanced reaction: ${reactionId}`);
+  }
+
+  if (!command.modelPositions) {
+    return reject(
+      state,
+      'MODEL_POSITIONS_REQUIRED',
+      'Chasing the Wind requires explicit model destinations so the reaction move uses the live movement rules.',
+    );
+  }
+
+  const playerIndex = findUnitPlayerIndex(state, command.unitId);
+  if (playerIndex === undefined) {
+    return reject(state, 'UNIT_NOT_FOUND', `Reacting unit not found: ${command.unitId}`);
+  }
+
+  const moveResult = handleMoveUnit(
+    state,
+    command.unitId,
+    command.modelPositions,
+    dice,
+    { expectedPlayerIndex: playerIndex },
+  );
+  if (!moveResult.accepted) {
+    return moveResult;
+  }
+
+  const declaredEvent: AdvancedReactionDeclaredEvent = {
+    type: 'advancedReactionDeclared',
+    reactionId,
+    reactionName: definition.name,
+    reactingUnitId: command.unitId,
+    triggerSourceUnitId,
+    playerIndex,
+  };
+  const resolvedEvent: AdvancedReactionResolvedEvent = {
+    type: 'advancedReactionResolved',
+    reactionId,
+    reactionName: definition.name,
+    reactingUnitId: command.unitId,
+    triggerSourceUnitId,
+    success: true,
+    effectsSummary: definition.effects,
+  };
+
+  let newState = moveResult.state;
+  newState = {
+    ...newState,
+    advancedReactionsUsed: [
+      ...newState.advancedReactionsUsed,
+      {
+        reactionId,
+        playerIndex,
+        battleTurn: newState.currentBattleTurn,
+      },
+    ],
+  };
+  newState = updateArmyByIndex(newState, playerIndex, (army) => ({
+    ...army,
+    reactionAllotmentRemaining: Math.max(0, army.reactionAllotmentRemaining - definition.cost),
+  }));
+  newState = updateUnitInGameState(newState, command.unitId, (unit) => ({
+    ...unit,
+    hasReactedThisTurn: true,
+  }));
+  newState = setAwaitingReaction(newState, false);
+
+  return resumePendingActionAfterAdvancedReaction(
+    newState,
+    dice,
+    [declaredEvent, ...moveResult.events, resolvedEvent],
+  );
 }
 
 /**
@@ -1172,8 +1303,52 @@ function processDeclineReaction(state: GameState, dice: DiceProvider): CommandRe
   }
 
   let newState = setAwaitingReaction(state, false);
+  const events: GameEvent[] = [];
   if (state.pendingReaction.reactionType === CoreReaction.ReturnFire) {
+    const deferredMisfires = resolveDeferredMisfiresFromAttackState(newState, dice);
+    if (!deferredMisfires.accepted) {
+      return deferredMisfires;
+    }
+    newState = deferredMisfires.state;
+    events.push(...deferredMisfires.events);
     newState = finalizePendingReturnFireAttackState(newState);
+
+    const finalized = finalizePendingShootingAttackStepEleven(newState, dice);
+    if (!finalized.accepted) {
+      return finalized;
+    }
+
+    return {
+      state: finalized.state,
+      events: [...events, ...finalized.events],
+      errors: [],
+      accepted: true,
+    };
+  }
+
+  if (
+    state.pendingReaction.reactionType === 'force-barrier' ||
+    state.pendingReaction.reactionType === 'resurrection'
+  ) {
+    if (state.pendingReaction.reactionType === 'resurrection') {
+      const finalized = finalizePendingShootingAttackStepEleven(
+        newState,
+        dice,
+        { skipResurrectionOffer: true },
+      );
+      if (!finalized.accepted) {
+        return finalized;
+      }
+
+      return {
+        state: finalized.state,
+        events: finalized.events,
+        errors: [],
+        accepted: true,
+      };
+    }
+
+    return resumePendingActionAfterAdvancedReaction(newState, dice);
   }
 
   if (state.pendingReaction.isAdvancedReaction) {
@@ -1182,7 +1357,7 @@ function processDeclineReaction(state: GameState, dice: DiceProvider): CommandRe
 
   return {
     state: newState,
-    events: [],
+    events,
     errors: [],
     accepted: true,
   };
@@ -1605,22 +1780,41 @@ function processSelectWargearOption(
     return reject(state, 'MODEL_DESTROYED', `Model "${command.modelId}" is destroyed`);
   }
 
-  // Validate option index (basic bounds check — the UI is responsible for passing valid indices
-  // from the unit profile's wargearOptions array)
-  if (command.optionIndex < 0) {
+  const profile = lookupUnitProfile(targetUnit.profileId);
+  const option = profile?.wargearOptions?.[command.optionIndex];
+  if (command.optionIndex < 0 || !option) {
     return reject(state, 'INVALID_OPTION', `Invalid wargear option index: ${command.optionIndex}`);
   }
 
-  // Apply the wargear option by storing the selected option index on the model's equipped wargear.
-  // The actual wargear swap (removes/adds) is data-driven from the UnitProfile.wargearOptions,
-  // which the UI resolves. Here we store the option index as a marker that the option was selected.
   const updatedModels = [...targetUnit.models];
   const updatedModel = { ...updatedModels[modelIndex] };
-  // Add the option marker to the equipped wargear list
   const wargearOptionMarker = `__wargear_option_${command.optionIndex}`;
-  if (!updatedModel.equippedWargear.includes(wargearOptionMarker)) {
-    updatedModel.equippedWargear = [...updatedModel.equippedWargear, wargearOptionMarker];
+
+  const isConcreteWargearId = (entry: string): boolean =>
+    PSYCHIC_DISCIPLINE_IDS.has(entry) ||
+    findWeapon(entry) !== undefined ||
+    findLegionWeapon(entry) !== undefined ||
+    (profile?.dedicatedWeapons?.some((weapon) => weapon.id === entry) ?? false);
+
+  const concreteRemoves = (option.removes ?? []).filter(isConcreteWargearId);
+  const concreteAdds = option.adds.filter(isConcreteWargearId);
+
+  let equippedWargear = updatedModel.equippedWargear.filter((entry) => entry !== wargearOptionMarker);
+  if (concreteRemoves.length > 0) {
+    const removeSet = new Set(concreteRemoves);
+    equippedWargear = equippedWargear.filter((entry) => !removeSet.has(entry));
   }
+
+  for (const addedWargear of concreteAdds) {
+    if (!equippedWargear.includes(addedWargear)) {
+      equippedWargear.push(addedWargear);
+    }
+  }
+
+  if (!equippedWargear.includes(wargearOptionMarker)) {
+    equippedWargear.push(wargearOptionMarker);
+  }
+  updatedModel.equippedWargear = equippedWargear;
   updatedModels[modelIndex] = updatedModel;
 
   const updatedUnits = [...state.armies[armyIndex].units];
@@ -1678,8 +1872,8 @@ function processDeclareWeapons(
           if (model.isDestroyed) {
             return reject(state, 'MODEL_DESTROYED', `Model "${selection.modelId}" is destroyed`);
           }
-          // Validate the weapon is in the model's equipped wargear
-          if (!model.equippedWargear.includes(selection.weaponId)) {
+          const hasPsychicMeleeWeapon = getModelPsychicMeleeWeapon(model, selection.weaponId) !== undefined;
+          if (!model.equippedWargear.includes(selection.weaponId) && !hasPsychicMeleeWeapon) {
             return reject(state, 'WEAPON_NOT_EQUIPPED', `Model "${selection.modelId}" does not have weapon "${selection.weaponId}" equipped`);
           }
           break;
@@ -1740,6 +1934,15 @@ export function getValidCommands(state: GameState): string[] {
   const validCommands: string[] = ['endSubPhase', 'endPhase', 'placeTerrain', 'removeTerrain', 'selectWargearOption'];
 
   switch (state.currentPhase) {
+    case Phase.Start:
+      if (
+        state.currentSubPhase === SubPhase.StartEffects &&
+        hasAvailableManifestPsychicPower(state)
+      ) {
+        validCommands.push('manifestPsychicPower');
+      }
+      break;
+
     case Phase.Movement:
       switch (state.currentSubPhase) {
         case SubPhase.Reserves:
@@ -1747,6 +1950,9 @@ export function getValidCommands(state: GameState): string[] {
           break;
         case SubPhase.Move:
           validCommands.push('moveModel', 'moveUnit', 'rushUnit', 'embark', 'disembark');
+          if (hasAvailableManifestPsychicPower(state)) {
+            validCommands.push('manifestPsychicPower');
+          }
           break;
         case SubPhase.Rout:
           // Rout is auto-processed, just endSubPhase

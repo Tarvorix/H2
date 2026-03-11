@@ -8,6 +8,7 @@
   "modelDefinitions": [
     {
       "name": "Sicaran",
+      "modelType": "Vehicle",
       "baseSizeMM": 32,
       "countInBase": 1,
       "isAdditionalModelType": true,

@@ -86,6 +86,7 @@ export function MovementStateBadge({ movementState }: { movementState: string })
   const colors: Record<string, string> = {
     Stationary: '#94a3b8',
     Moved: '#60a5fa',
+    RushDeclared: '#fb7185',
     Rushed: '#f87171',
     EnteredFromReserves: '#34d399',
     FellBack: '#ef4444',

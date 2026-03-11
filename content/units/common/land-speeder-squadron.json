@@ -8,6 +8,11 @@
   "modelDefinitions": [
     {
       "name": "Land Speeder",
+      "modelType": "Cavalry",
+      "modelSubTypes": [
+        "Skirmish",
+        "Antigrav"
+      ],
       "baseSizeMM": 60,
       "countInBase": 1,
       "isAdditionalModelType": true,

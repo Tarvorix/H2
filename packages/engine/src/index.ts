@@ -658,16 +658,25 @@ export {
   calculateTacticalStrength,
   getObjectiveController,
   getControlledObjectives,
+  getUnitObjectiveRuleSummary,
+  resolveObjectiveControlForScoring,
   // Mission State Helpers
   initializeMissionState,
   updateMissionState,
   recordObjectiveScored,
+  recordVanguardBonus,
+  hasVanguardBonusForObjective,
   applyWindowOfOpportunity,
   markSecondaryAchieved,
   recordTurnStartVP,
+  setAssaultPhaseObjectiveSnapshot,
   addObjective,
   markFirstTurnCompleted,
   markFirstStrikeAchieved,
+  captureAssaultPhaseObjectiveSnapshot,
+  recordAssaultPhaseObjectiveSnapshot,
+  awardVanguardBonusForDestroyedUnits,
+  awardVanguardBonusForCombatObjectiveUnits,
   // Secondary Objectives
   checkSlayTheWarlord,
   checkGiantKiller,
@@ -681,4 +690,4 @@ export {
   applyCounterOffensive,
   handleSeizeTheInitiative,
 } from './missions';
-export type { ObjectiveControlResult } from './missions';
+export type { ObjectiveControlResult, ObjectiveScoringResolution } from './missions';

@@ -19,6 +19,7 @@ import {
   hasLOSToUnit,
   getClosestModelDistance,
   getModelMovement,
+  getModelInitiative,
 } from '@hh/engine';
 
 // ─── Movement Queries ────────────────────────────────────────────────────────
@@ -36,7 +37,10 @@ export function getMovableUnits(
   return getDeployedUnits(army).filter(
     (unit) =>
       canUnitMove(unit) &&
-      unit.movementState === UnitMovementState.Stationary &&
+      (
+        unit.movementState === UnitMovementState.Stationary
+        || unit.movementState === UnitMovementState.RushDeclared
+      ) &&
       !actedIds.has(unit.id),
   );
 }
@@ -159,6 +163,13 @@ export function getUnitEquippedWeapons(unit: UnitState): Map<string, string[]> {
  */
 export function getModelMovementCharacteristic(model: ModelState): number {
   return getModelMovement(model.unitProfileId, model.profileModelName);
+}
+
+/**
+ * Get the initiative characteristic for a model from its profile.
+ */
+export function getModelInitiativeCharacteristic(model: ModelState): number {
+  return getModelInitiative(model.unitProfileId, model.profileModelName);
 }
 
 /**

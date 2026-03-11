@@ -24,6 +24,10 @@ import {
   addStatus,
 } from '../state-helpers';
 import type { CombatState } from './assault-types';
+import {
+  getUnitCombatControlValue,
+  getUnitPanicLeadership,
+} from './unit-characteristics';
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -381,12 +385,12 @@ export function resolvePanicCheck(
   losingPlayerIndex: number,
   crpDifference: number,
   dice: DiceProvider,
-  leadershipValue: number = DEFAULT_LEADERSHIP,
+  leadershipValue?: number,
 ): PanicCheckResult {
   const events: GameEvent[] = [];
 
   // Get the losing side's unit IDs
-  const losingUnitIds = getPlayerUnitIds(combatState, losingPlayerIndex);
+  const losingUnitIds = getPlayerUnitIds(state, combatState, losingPlayerIndex);
 
   // Check if all losing models are already Routed
   let allAlreadyRouted = true;
@@ -415,7 +419,8 @@ export function resolvePanicCheck(
   // Roll 2d6
   const [die1, die2] = dice.roll2D6();
   const roll = die1 + die2;
-  const targetNumber = Math.max(2, leadershipValue - crpDifference);
+  const effectiveLeadership = leadershipValue ?? getBestPanicLeadership(state, losingUnitIds);
+  const targetNumber = Math.max(2, effectiveLeadership - crpDifference);
   const passed = roll <= targetNumber;
 
   events.push({
@@ -541,7 +546,7 @@ export function resolveCombatResolution(
   state: GameState,
   combatState: CombatState,
   dice: DiceProvider,
-  leadershipValue: number = DEFAULT_LEADERSHIP,
+  leadershipValue?: number,
 ): CombatResolutionResult {
   const allEvents: GameEvent[] = [];
 
@@ -563,7 +568,7 @@ export function resolveCombatResolution(
     const winnerResult: CombatWinnerResult = {
       winnerPlayerIndex: massacreResult.winnerPlayerIndex,
       loserPlayerIndex: massacreResult.winnerPlayerIndex !== null
-        ? (massacreResult.winnerPlayerIndex === 0 ? 1 : 0)
+        ? getOpposingCombatPlayerIndex(newState, combatState, massacreResult.winnerPlayerIndex)
         : null,
       isDraw: massacreResult.winnerPlayerIndex === null,
       crpDifference: 0,
@@ -589,8 +594,8 @@ export function resolveCombatResolution(
   }
 
   // Step 3: Calculate CRP
-  const activeModelCount = countAliveModels(newState, combatState.activePlayerUnitIds);
-  const reactiveModelCount = countAliveModels(newState, combatState.reactivePlayerUnitIds);
+  const activeModelCount = countCombatControlValue(newState, combatState.activePlayerUnitIds);
+  const reactiveModelCount = countCombatControlValue(newState, combatState.reactivePlayerUnitIds);
   const crpResult = calculateCombatResolutionPoints(
     combatState,
     activeModelCount,
@@ -598,10 +603,8 @@ export function resolveCombatResolution(
   );
 
   // Step 4: Determine winner
-  const activePlayerIndex = findUnitPlayerIndex(
-    newState,
-    combatState.activePlayerUnitIds[0],
-  ) ?? 0;
+  const activePlayerIndex = getCombatSidePlayerIndex(newState, combatState, 'active')
+    ?? newState.activePlayerIndex;
   const winnerResult = determineWinner(
     crpResult.activePlayerCRP,
     crpResult.reactivePlayerCRP,
@@ -661,48 +664,15 @@ function countAliveModels(state: GameState, unitIds: string[]): number {
 /**
  * Get unit IDs for a specific player side in a combat.
  */
-function getPlayerUnitIds(combatState: CombatState, playerIndex: number): string[] {
-  // We determine which side by checking if the player is active or reactive
-  // The active player's units are in activePlayerUnitIds
-  // We need to check which player index corresponds to which side
-  // Since we don't store player indices directly, we use the convention:
-  // activePlayerUnitIds belongs to player index that is the active player
-  // For this function, if playerIndex matches the active player side, return active units
-  // We'll check both sides and return the matching one
-
-  // Simple approach: caller knows which index maps to which side
-  // Active player index 0 maps to activePlayerUnitIds, etc.
-  // But this is fragile. Instead, accept that the losingPlayerIndex is already
-  // determined by determineWinner which uses the activePlayerIndex convention.
-
-  // If the combat was set up with active player first, then:
-  // playerIndex === activePlayerIndex → activePlayerUnitIds
-  // playerIndex !== activePlayerIndex → reactivePlayerUnitIds
-  // Since we don't have the active player index stored, we use both sets.
-  // The caller (resolvePanicCheck) receives losingPlayerIndex from determineWinner
-  // which returns the actual game playerIndex. We need to map that to the combat side.
-
-  // For simplicity and correctness: return all units from both sides that belong
-  // to the specified player. This requires checking the game state.
-  // But we only have combatState here, not game state.
-
-  // Convention: determineWinner's activePlayerIndex parameter determines the mapping.
-  // If losingPlayerIndex === activePlayerIndex → return activePlayerUnitIds
-  // If losingPlayerIndex === reactivePlayerIndex → return reactivePlayerUnitIds
-  // Since the caller should know, we provide both and let them pick.
-
-  // Actually, let's simplify: we return all unit IDs and let the caller filter.
-  // OR: we store the player index mapping in combatState.
-  // The activePlayerUnitIds correspond to the game's active player.
-  // So if losingPlayerIndex === state.activePlayerIndex → activePlayerUnitIds
-  // Otherwise → reactivePlayerUnitIds
-
-  // Since we don't have state here, we'll use a simple convention:
-  // Even playerIndex (0) = active, Odd (1) = reactive
-  if (playerIndex === 0) {
-    return combatState.activePlayerUnitIds;
-  }
-  return combatState.reactivePlayerUnitIds;
+function getPlayerUnitIds(
+  state: GameState,
+  combatState: CombatState,
+  playerIndex: number,
+): string[] {
+  return [
+    ...combatState.activePlayerUnitIds,
+    ...combatState.reactivePlayerUnitIds,
+  ].filter((unitId) => findUnitPlayerIndex(state, unitId) === playerIndex);
 }
 
 /**
@@ -750,6 +720,68 @@ function getCoherencyPosition(from: Position, target: Position): Position {
     x: from.x + dx * ratio,
     y: from.y + dy * ratio,
   };
+}
+
+function countCombatControlValue(state: GameState, unitIds: string[]): number {
+  let total = 0;
+  for (const unitId of unitIds) {
+    const unit = findUnit(state, unitId);
+    if (unit) {
+      total += getUnitCombatControlValue(unit);
+    }
+  }
+  return total;
+}
+
+function getBestPanicLeadership(
+  state: GameState,
+  unitIds: string[],
+): number {
+  let bestLeadership: number | null = null;
+  for (const unitId of unitIds) {
+    const unit = findUnit(state, unitId);
+    if (!unit) {
+      continue;
+    }
+
+    bestLeadership = Math.max(bestLeadership ?? 0, getUnitPanicLeadership(unit));
+  }
+
+  return bestLeadership ?? DEFAULT_LEADERSHIP;
+}
+
+function getCombatSidePlayerIndex(
+  state: GameState,
+  combatState: CombatState,
+  side: 'active' | 'reactive',
+): number | null {
+  const unitIds = side === 'active'
+    ? combatState.activePlayerUnitIds
+    : combatState.reactivePlayerUnitIds;
+  for (const unitId of unitIds) {
+    const playerIndex = findUnitPlayerIndex(state, unitId);
+    if (playerIndex !== undefined) {
+      return playerIndex;
+    }
+  }
+  return null;
+}
+
+function getOpposingCombatPlayerIndex(
+  state: GameState,
+  combatState: CombatState,
+  playerIndex: number,
+): number | null {
+  const activePlayerIndex = getCombatSidePlayerIndex(state, combatState, 'active');
+  const reactivePlayerIndex = getCombatSidePlayerIndex(state, combatState, 'reactive');
+
+  if (activePlayerIndex === playerIndex) {
+    return reactivePlayerIndex;
+  }
+  if (reactivePlayerIndex === playerIndex) {
+    return activePlayerIndex;
+  }
+  return null;
 }
 
 /**

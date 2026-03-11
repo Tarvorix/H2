@@ -6,7 +6,7 @@
  * Reference: HH_Principles.md -- "Terrain", "1" Exclusion Zone", "Coherency"
  *
  * Supports both per-model moves and atomic full-unit moves. The unit tracks
- * whether it has moved (UnitMovementState.Moved) or rushed (UnitMovementState.Rushed).
+ * whether it has moved, declared a rush, or completed a rush this turn.
  *
  * Move flow:
  * 1. Validate model exists and belongs to active player
@@ -28,17 +28,33 @@ import {
   UnitMovementState,
   TacticalStatus,
   PipelineHook,
+  TerrainType,
 } from '@hh/types';
-import { vec2Distance, checkCoherency, STANDARD_COHERENCY_RANGE } from '@hh/geometry';
+import {
+  vec2Distance,
+  checkCoherency,
+  STANDARD_COHERENCY_RANGE,
+  pointInTerrainShape,
+  terrainChordLength,
+  EPSILON,
+} from '@hh/geometry';
 import { getTacticaEffectsForLegion } from '@hh/data';
 import type { CommandResult, GameEvent, DiceProvider } from '../types';
-import type { DangerousTerrainTestEvent, ModelMovedEvent, UnitRushedEvent, StatusAppliedEvent } from '../types';
+import type {
+  DangerousTerrainTestEvent,
+  ModelMovedEvent,
+  UnitRushedEvent,
+  StatusAppliedEvent,
+  SavingThrowRollEvent,
+  DamageAppliedEvent,
+} from '../types';
 import {
   updateUnitInGameState,
   updateModelInUnit,
   moveModel,
   setMovementState,
   addStatus,
+  applyWoundsToModel,
 } from '../state-helpers';
 import {
   findModel,
@@ -53,10 +69,14 @@ import {
 } from '../game-queries';
 import {
   validateModelMove,
-  isInDangerousTerrain,
 } from './movement-validator';
 import { applyLegionTactica } from '../legion';
-import { getModelMovement, getModelInitiative } from '../profile-lookup';
+import {
+  getModelInvulnSave,
+  getModelStateCharacteristics,
+  isVehicleCharacteristics,
+} from '../profile-lookup';
+import { getCurrentModelInitiative, getCurrentModelMovement } from '../runtime-characteristics';
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -84,6 +104,161 @@ const DANGEROUS_TERRAIN_FAIL_THRESHOLD = 1;
  */
 const DANGEROUS_TERRAIN_DAMAGE = 1;
 
+function chooseBestTargetNumber(values: Array<number | null | undefined>): number | null {
+  const validValues = values.filter(
+    (value): value is number => typeof value === 'number' && Number.isFinite(value) && value > 0,
+  );
+  if (validValues.length === 0) {
+    return null;
+  }
+  return Math.min(...validValues);
+}
+
+function getModifierThreshold(model: { modifiers: Array<{ characteristic: string; operation: string; value: number }> }, characteristic: string): number | null {
+  const matching = model.modifiers.filter(
+    (modifier) => modifier.characteristic.toLowerCase() === characteristic.toLowerCase(),
+  );
+  if (matching.length === 0) {
+    return null;
+  }
+
+  const setValues = matching
+    .filter((modifier) => modifier.operation === 'set')
+    .map((modifier) => modifier.value);
+  if (setValues.length > 0) {
+    return chooseBestTargetNumber(setValues);
+  }
+
+  return chooseBestTargetNumber(matching.map((modifier) => modifier.value));
+}
+
+function getEffectiveInvulnerableSave(model: { unitProfileId: string; profileModelName: string; modifiers: Array<{ characteristic: string; operation: string; value: number }> }): number | null {
+  return chooseBestTargetNumber([
+    getModelInvulnSave(model.unitProfileId, model.profileModelName),
+    getModifierThreshold(model, 'InvulnSave'),
+  ]);
+}
+
+export function hasDangerousTerrainInteraction(
+  startPosition: Position,
+  endPosition: Position,
+  terrain: GameState['terrain'],
+): boolean {
+  for (const piece of terrain) {
+    if (piece.type !== TerrainType.Dangerous && !piece.isDangerous) {
+      continue;
+    }
+
+    if (
+      pointInTerrainShape(startPosition, piece.shape) ||
+      pointInTerrainShape(endPosition, piece.shape) ||
+      terrainChordLength(startPosition, endPosition, piece) > EPSILON
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function hasTakenDangerousTerrainTestThisPhase(state: GameState, modelId: string): boolean {
+  return state.dangerousTerrainTestedModelIds?.includes(modelId) ?? false;
+}
+
+function markDangerousTerrainTestTaken(state: GameState, modelId: string): GameState {
+  if (hasTakenDangerousTerrainTestThisPhase(state, modelId)) {
+    return state;
+  }
+
+  return {
+    ...state,
+    dangerousTerrainTestedModelIds: [
+      ...(state.dangerousTerrainTestedModelIds ?? []),
+      modelId,
+    ],
+  };
+}
+
+export function resolveDangerousTerrainOutcome(
+  state: GameState,
+  unitId: string,
+  modelId: string,
+  dice: DiceProvider,
+): { state: GameState; events: GameEvent[] } {
+  const unit = findUnit(state, unitId);
+  const model = unit?.models.find((candidate) => candidate.id === modelId);
+  if (!unit || !model || model.isDestroyed) {
+    return { state, events: [] };
+  }
+
+  const characteristics = getModelStateCharacteristics(model);
+  const isVehicle = characteristics ? isVehicleCharacteristics(characteristics) : false;
+  const events: GameEvent[] = [];
+  let newState = state;
+
+  if (isVehicle) {
+    newState = updateUnitInGameState(newState, unitId, (u) =>
+      updateModelInUnit(u, modelId, (currentModel) =>
+        applyWoundsToModel(currentModel, DANGEROUS_TERRAIN_DAMAGE),
+      ),
+    );
+
+    const updatedModel = findUnit(newState, unitId)?.models.find((candidate) => candidate.id === modelId);
+    const damageEvent: DamageAppliedEvent = {
+      type: 'damageApplied',
+      modelId,
+      unitId,
+      woundsLost: DANGEROUS_TERRAIN_DAMAGE,
+      remainingWounds: updatedModel?.currentWounds ?? 0,
+      destroyed: updatedModel?.isDestroyed ?? false,
+      damageSource: 'dangerousTerrain',
+    };
+    events.push(damageEvent);
+
+    return { state: newState, events };
+  }
+
+  const invulnerableSave = getEffectiveInvulnerableSave(model);
+  if (invulnerableSave !== null) {
+    const saveRoll = dice.rollD6();
+    const passed = saveRoll >= invulnerableSave;
+    const saveEvent: SavingThrowRollEvent = {
+      type: 'savingThrowRoll',
+      modelId,
+      saveType: 'invulnerable',
+      roll: saveRoll,
+      targetNumber: invulnerableSave,
+      passed,
+      weaponAP: 2,
+    };
+    events.push(saveEvent);
+
+    if (passed) {
+      return { state: newState, events };
+    }
+  }
+
+  newState = updateUnitInGameState(newState, unitId, (u) =>
+    updateModelInUnit(u, modelId, (currentModel) =>
+      applyWoundsToModel(currentModel, DANGEROUS_TERRAIN_DAMAGE),
+    ),
+  );
+
+  const updatedModel = findUnit(newState, unitId)?.models.find((candidate) => candidate.id === modelId);
+  const damageEvent: DamageAppliedEvent = {
+    type: 'damageApplied',
+    modelId,
+    unitId,
+    woundsLost: DANGEROUS_TERRAIN_DAMAGE,
+    remainingWounds: updatedModel?.currentWounds ?? 0,
+    destroyed: updatedModel?.isDestroyed ?? false,
+    damageSource: 'dangerousTerrain',
+  };
+  events.push(damageEvent);
+
+  return { state: newState, events };
+}
+
 function getCannotRushReason(unit: UnitState): string {
   if (unit.statuses.includes(TacticalStatus.Pinned)) {
     return 'Unit is Pinned';
@@ -98,6 +273,9 @@ function getCannotRushReason(unit: UnitState): string {
     return 'Unit is embarked on a transport';
   }
   if (unit.movementState !== UnitMovementState.Stationary) {
+    if (unit.movementState === UnitMovementState.RushDeclared) {
+      return 'Unit has already declared a Rush this turn';
+    }
     return `Unit has already ${unit.movementState === UnitMovementState.Moved ? 'moved' : 'acted'} this turn`;
   }
   return 'Unknown';
@@ -176,25 +354,17 @@ export function handleMoveModel(
     };
   }
 
-  // A unit that has Rushed cannot make additional normal moves
-  if (unit.movementState === UnitMovementState.Rushed) {
-    return {
-      state,
-      events: [],
-      errors: [{
-        code: 'UNIT_ALREADY_RUSHED',
-        message: `Unit "${unitId}" has already rushed this turn and cannot make normal moves`,
-        context: { unitId },
-      }],
-      accepted: false,
-    };
-  }
-
   // ── Step 3: Determine effective movement and validate the move ────────
 
   // Calculate max move distance using the model's actual Movement characteristic.
-  // Apply legion tactica movement bonuses (e.g., White Scars +2M)
-  let maxMoveDistance = getModelMovement(model.unitProfileId, model.profileModelName);
+  // Apply legion tactica movement bonuses (e.g., White Scars +2M).
+  // Legacy rush flow resolves through moveModel after rushUnit, so both the
+  // declared and in-progress rushed states use M + I here.
+  const isRushMove =
+    unit.movementState === UnitMovementState.RushDeclared
+    || unit.movementState === UnitMovementState.Rushed;
+  let maxMoveDistance = getCurrentModelMovement(unit, model)
+    + (isRushMove ? getCurrentModelInitiative(unit, model) : 0);
 
   const unitLegion = getUnitLegion(state, unitId);
   if (unitLegion) {
@@ -260,24 +430,19 @@ export function handleMoveModel(
     }
   }
 
-  if (!ignoresDifficultTerrain && isInDangerousTerrain(targetPosition, state.terrain)) {
+  if (
+    !ignoresDifficultTerrain &&
+    !hasTakenDangerousTerrainTestThisPhase(state, modelId) &&
+    hasDangerousTerrainInteraction(model.position, targetPosition, state.terrain)
+  ) {
     const dangerousResult = handleDangerousTerrainTest(modelId, unitId, dice);
     events.push(dangerousResult.event);
+    newState = markDangerousTerrainTestTaken(newState, modelId);
 
     if (!dangerousResult.passed) {
-      // Model takes an AP2 D1 wound (simplified: reduce current wounds by 1)
-      // In a full implementation, this would go through the saving throw pipeline
-      // with only INV saves allowed. For now, we directly apply the wound.
-      newState = updateUnitInGameState(newState, unitId, (u) =>
-        updateModelInUnit(u, modelId, (m) => {
-          const newWounds = m.currentWounds - DANGEROUS_TERRAIN_DAMAGE;
-          return {
-            ...m,
-            currentWounds: newWounds,
-            isDestroyed: newWounds <= 0,
-          };
-        }),
-      );
+      const dangerousOutcome = resolveDangerousTerrainOutcome(newState, unitId, modelId, dice);
+      newState = dangerousOutcome.state;
+      events.push(...dangerousOutcome.events);
     }
   }
 
@@ -303,13 +468,19 @@ export function handleMoveModel(
 
   // ── Step 6: Track that the unit has moved ─────────────────────────────
 
-  // Only transition from Stationary to Moved. If already Moved (another model
-  // in the same unit was moved previously), keep it as Moved.
+  // A declared Rush is consumed by the move; otherwise transition from
+  // Stationary to Moved on the first model move.
   const currentUnit = findUnit(newState, unitId);
-  if (currentUnit && currentUnit.movementState === UnitMovementState.Stationary) {
-    newState = updateUnitInGameState(newState, unitId, (u) =>
-      setMovementState(u, UnitMovementState.Moved),
-    );
+  if (currentUnit) {
+    if (currentUnit.movementState === UnitMovementState.RushDeclared) {
+      newState = updateUnitInGameState(newState, unitId, (u) =>
+        setMovementState(u, UnitMovementState.Rushed),
+      );
+    } else if (currentUnit.movementState === UnitMovementState.Stationary) {
+      newState = updateUnitInGameState(newState, unitId, (u) =>
+        setMovementState(u, UnitMovementState.Moved),
+      );
+    }
   }
 
   // ── Step 7: Check coherency after move ────────────────────────────────
@@ -368,10 +539,11 @@ export function handleMoveUnit(
   unitId: string,
   modelPositions: { modelId: string; position: Position }[],
   dice: DiceProvider,
-  options: { isRush?: boolean } = {},
+  options: { isRush?: boolean; expectedPlayerIndex?: number } = {},
 ): CommandResult {
   const events: GameEvent[] = [];
   const isRush = options.isRush === true;
+  const expectedPlayerIndex = options.expectedPlayerIndex ?? state.activePlayerIndex;
 
   // ── Step 1: Find unit and validate ownership ─────────────────────────
 
@@ -390,14 +562,22 @@ export function handleMoveUnit(
   }
 
   const playerIndex = findUnitPlayerIndex(state, unitId);
-  if (playerIndex === undefined || playerIndex !== state.activePlayerIndex) {
+  if (playerIndex === undefined || playerIndex !== expectedPlayerIndex) {
+    const ownershipDescription = expectedPlayerIndex === state.activePlayerIndex
+      ? 'active player'
+      : 'acting player';
     return {
       state,
       events: [],
       errors: [{
         code: 'NOT_ACTIVE_PLAYER',
-        message: 'Unit does not belong to the active player',
-        context: { unitId, playerIndex, activePlayerIndex: state.activePlayerIndex },
+        message: `Unit does not belong to the ${ownershipDescription}`,
+        context: {
+          unitId,
+          playerIndex,
+          expectedPlayerIndex,
+          activePlayerIndex: state.activePlayerIndex,
+        },
       }],
       accepted: false,
     };
@@ -406,7 +586,8 @@ export function handleMoveUnit(
   // ── Step 2: Validate unit movement eligibility ───────────────────────
 
   if (isRush) {
-    if (!canUnitRush(unit)) {
+    const rushAlreadyDeclared = unit.movementState === UnitMovementState.RushDeclared;
+    if (!rushAlreadyDeclared && !canUnitRush(unit)) {
       const reason = getCannotRushReason(unit);
       return {
         state,
@@ -433,7 +614,10 @@ export function handleMoveUnit(
       };
     }
 
-    if (unit.movementState === UnitMovementState.Rushed) {
+    if (
+      unit.movementState === UnitMovementState.Rushed
+      || unit.movementState === UnitMovementState.RushDeclared
+    ) {
       return {
         state,
         events: [],
@@ -551,8 +735,8 @@ export function handleMoveUnit(
   for (const model of aliveModels) {
     const targetPosition = targetPositionByModelId.get(model.id)!;
     const maxMoveDistance =
-      getModelMovement(model.unitProfileId, model.profileModelName)
-      + (isRush ? getModelInitiative(model.unitProfileId, model.profileModelName) : 0)
+      getCurrentModelMovement(unit, model)
+      + (isRush ? getCurrentModelInitiative(unit, model) : 0)
       + movementBonus;
 
     const friendlyShapes = aliveModels
@@ -590,21 +774,19 @@ export function handleMoveUnit(
   for (const model of aliveModels) {
     const targetPosition = targetPositionByModelId.get(model.id)!;
 
-    if (!ignoresDifficultTerrain && isInDangerousTerrain(targetPosition, state.terrain)) {
+    if (
+      !ignoresDifficultTerrain &&
+      !hasTakenDangerousTerrainTestThisPhase(newState, model.id) &&
+      hasDangerousTerrainInteraction(model.position, targetPosition, state.terrain)
+    ) {
       const dangerousResult = handleDangerousTerrainTest(model.id, unitId, dice);
       events.push(dangerousResult.event);
+      newState = markDangerousTerrainTestTaken(newState, model.id);
 
       if (!dangerousResult.passed) {
-        newState = updateUnitInGameState(newState, unitId, (u) =>
-          updateModelInUnit(u, model.id, (m) => {
-            const newWounds = m.currentWounds - DANGEROUS_TERRAIN_DAMAGE;
-            return {
-              ...m,
-              currentWounds: newWounds,
-              isDestroyed: newWounds <= 0,
-            };
-          }),
-        );
+        const dangerousOutcome = resolveDangerousTerrainOutcome(newState, unitId, model.id, dice);
+        newState = dangerousOutcome.state;
+        events.push(...dangerousOutcome.events);
       }
     }
 
@@ -635,8 +817,8 @@ export function handleMoveUnit(
 
     const refModel = aliveModels[0];
     const rushDistance =
-      getModelMovement(refModel.unitProfileId, refModel.profileModelName)
-      + getModelInitiative(refModel.unitProfileId, refModel.profileModelName)
+      getCurrentModelMovement(unit, refModel)
+      + getCurrentModelInitiative(unit, refModel)
       + movementBonus;
 
     const rushedEvent: UnitRushedEvent = {
@@ -692,17 +874,12 @@ export function handleMoveUnit(
  * Handle declaring a Rush for a unit.
  *
  * A Rush allows the unit to move at M + I distance instead of just M, but the
- * unit is marked as Rushed and cannot shoot or charge for the rest of the turn.
+ * unit is then prevented from shooting or charging for the rest of the turn.
  *
- * This function only sets the unit's movement state to Rushed and records the
- * rush distance. The actual model-by-model movement is still done via
- * handleMoveModel, which will use the rush distance instead of normal M when
- * the unit's state is Rushed.
- *
- * Note: In the current implementation, handleMoveModel uses DEFAULT_MOVEMENT
- * for move validation. When a unit is rushing, the caller should use the rush
- * distance for validation. This is a simplification -- a full implementation
- * would check the unit's movement state and use the appropriate distance.
+ * This function records the rush declaration by setting the unit state to
+ * RushDeclared and emitting the rush distance. The subsequent movement can be
+ * resolved either via handleMoveModel (legacy sequential flow) or
+ * handleMoveUnit(..., { isRush: true }) (atomic flow).
  *
  * @param state - Current game state
  * @param unitId - ID of the unit to rush
@@ -786,12 +963,12 @@ export function handleRushUnit(
   // Use the first alive model's M + I for rush distance
   const aliveModels = unit.models.filter(m => !m.isDestroyed);
   const refModel = aliveModels[0];
-  const unitM = refModel ? getModelMovement(refModel.unitProfileId, refModel.profileModelName) : DEFAULT_MOVEMENT;
-  const unitI = refModel ? getModelInitiative(refModel.unitProfileId, refModel.profileModelName) : DEFAULT_INITIATIVE;
+  const unitM = refModel ? getCurrentModelMovement(unit, refModel) : DEFAULT_MOVEMENT;
+  const unitI = refModel ? getCurrentModelInitiative(unit, refModel) : DEFAULT_INITIATIVE;
   const rushDistance = unitM + unitI + rushMovementBonus;
 
   let newState = updateUnitInGameState(state, unitId, (u) =>
-    setMovementState(u, UnitMovementState.Rushed),
+    setMovementState(u, UnitMovementState.RushDeclared),
   );
 
   // Emit UnitRushed event
@@ -819,7 +996,7 @@ export function handleRushUnit(
  *
  * Reference: HH_Principles.md -- "Dangerous Terrain"
  * Roll a d6. On a roll of 1, the model suffers an AP2, D1 wound that can only
- * be negated by an Invulnerable Save (simplified: directly apply wound for now).
+ * be negated by an Invulnerable Save.
  *
  * @param modelId - ID of the model being tested
  * @param unitId - ID of the unit the model belongs to

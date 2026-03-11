@@ -171,6 +171,8 @@ export enum UnitMovementState {
   Stationary = 'Stationary',
   /** Made a normal move */
   Moved = 'Moved',
+  /** Declared a Rush but has not completed the move yet */
+  RushDeclared = 'RushDeclared',
   /** Made a Rush (double move) */
   Rushed = 'Rushed',
   /** Entered from reserves this turn */
@@ -303,6 +305,8 @@ export interface GameState {
   currentPhase: Phase;
   /** Current sub-phase */
   currentSubPhase: SubPhase;
+  /** Model IDs that have already taken a Dangerous Terrain test in the current phase. */
+  dangerousTerrainTestedModelIds?: string[];
   /** Whether the game is waiting for the reactive player to decide on a reaction */
   awaitingReaction: boolean;
   /** If awaiting a reaction, what type is being offered */
@@ -325,6 +329,8 @@ export interface GameState {
   advancedReactionsUsed: AdvancedReactionUsage[];
   /** Legion tactica state — per-army, per-turn tracking (index matches armies[]) */
   legionTacticaState: [LegionTacticaState, LegionTacticaState];
+  /** Psychic runtime state — usage tracking and ongoing psychic effects. */
+  psychicState?: PsychicState;
   /** Mission state — objectives, scoring, special rules (null if no mission selected) */
   missionState: MissionState | null;
 }
@@ -359,6 +365,8 @@ export interface AssaultAttackState {
   closestDistance: number;
   /** IDs of models with LOS to target */
   modelsWithLOS: string[];
+  /** Optional psychic power declared alongside this charge. */
+  declaredPsychicPower?: DeclaredPsychicPower;
 }
 
 /**
@@ -469,6 +477,8 @@ export interface ShootingAttackState {
 
   /** Pending morale checks to resolve after attack */
   pendingMoraleChecks: ShootingMoraleCheck[];
+  /** Deferred Overload misfire groups that resolve after triggered reactions finish. */
+  pendingMisfireGroups?: ShootingMisfireGroup[];
 
   /** Whether Return Fire has been offered/resolved */
   returnFireResolved: boolean;
@@ -482,6 +492,8 @@ export interface ShootingAttackState {
   blastPlacements?: BlastPlacement[];
   /** Pre-selected template placements carried through paused shooting declarations. */
   templatePlacements?: TemplatePlacement[];
+  /** Optional psychic power declared alongside this shooting attack. */
+  declaredPsychicPower?: DeclaredPsychicPower;
 
   /** Blast marker position (for Blast weapons) */
   blastMarkerPosition?: Position;
@@ -506,6 +518,7 @@ export type ShootingStepType =
   | 'RESOLVING_SAVES'
   | 'NEXT_FIRE_GROUP'
   | 'AWAITING_RETURN_FIRE'
+  | 'AWAITING_RESURRECTION'
   | 'REMOVING_CASUALTIES'
   | 'COMPLETE';
 
@@ -630,6 +643,22 @@ export interface ShootingMoraleCheck {
   checkType: 'panic' | 'pinning' | 'suppressive' | 'stun' | 'panicRule' | 'coherency';
   modifier: number;
   source: string;
+  weaponTraits?: string[];
+}
+
+export interface ShootingMisfireGroup {
+  sourceFireGroupIndex: number;
+  sourceModelId: string;
+  attackerUnitId: string;
+  weaponName: string;
+  misfireCount: number;
+  eligibleModelIds: string[];
+  weaponStrength: number;
+  weaponAP: number | null;
+  weaponDamage: number;
+  specialRules: { name: string; value?: string }[];
+  traits: string[];
+  fromTemplate: boolean;
 }
 
 /**
@@ -648,6 +677,39 @@ export interface PendingReaction {
   triggerDescription: string;
   /** The unit/action that triggered the reaction */
   triggerSourceUnitId: string;
+}
+
+export interface DeclaredPsychicPower {
+  powerId: string;
+  focusModelId: string;
+}
+
+export interface PsychicUsageRecord {
+  unitId: string;
+  kind: 'power' | 'reaction';
+  battleTurn: number;
+  turnOwnerPlayerIndex: number;
+}
+
+export interface PsychicEffectExpiry {
+  type: 'startOfPlayerTurn' | 'endOfShootingAttack';
+  playerIndex?: number;
+}
+
+export interface ActivePsychicEffect {
+  id: string;
+  sourcePowerId: string;
+  sourceUnitId: string;
+  focusModelId: string;
+  targetUnitId: string;
+  playerIndex: number;
+  expiry: PsychicEffectExpiry;
+  metadata?: Record<string, string | number | boolean>;
+}
+
+export interface PsychicState {
+  usages: PsychicUsageRecord[];
+  activeEffects: ActivePsychicEffect[];
 }
 
 /**
@@ -677,6 +739,7 @@ export interface TurnHistoryEntry {
 export type GameCommand =
   | MoveModelCommand
   | MoveUnitCommand
+  | ManifestPsychicPowerCommand
   | DeclareShootingCommand
   | ResolveShootingCasualtiesCommand
   | DeclareChargeCommand
@@ -720,6 +783,7 @@ export interface DeclareShootingCommand {
   type: 'declareShooting';
   attackingUnitId: string;
   targetUnitId: string;
+  psychicPower?: DeclaredPsychicPower;
   /** Weapon selections per model — which weapon each model will fire */
   weaponSelections: { modelId: string; weaponId: string; profileName?: string }[];
   /** Blast marker placements keyed by the contributing fire-group source models. */
@@ -735,6 +799,14 @@ export interface ResolveShootingCasualtiesCommand {
 export interface DeclareChargeCommand {
   type: 'declareCharge';
   chargingUnitId: string;
+  targetUnitId: string;
+  psychicPower?: DeclaredPsychicPower;
+}
+
+export interface ManifestPsychicPowerCommand {
+  type: 'manifestPsychicPower';
+  powerId: string;
+  focusModelId: string;
   targetUnitId: string;
 }
 
@@ -754,6 +826,7 @@ export interface SelectReactionCommand {
   type: 'selectReaction';
   unitId: string;
   reactionType: string;
+  modelPositions?: { modelId: string; position: Position }[];
 }
 
 export interface DeclineReactionCommand {

@@ -12,7 +12,8 @@
  * On failure: Unit does not move. Make Cool Check; if failed → Stunned.
  */
 
-import type { GameState, ModelState } from '@hh/types';
+import type { GameState, ModelState, Position } from '@hh/types';
+import { checkCoherency, STANDARD_COHERENCY_RANGE } from '@hh/geometry';
 import { TacticalStatus } from '@hh/types';
 import type { DiceProvider, GameEvent } from '../types';
 import {
@@ -27,7 +28,9 @@ import {
   lockUnitsInCombat,
   addStatus,
 } from '../state-helpers';
+import { getModelShapeAtPosition } from '../model-shapes';
 import { moveToward } from './setup-move-handler';
+import { getUnitCoolForStatusChecks } from './unit-characteristics';
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -118,9 +121,13 @@ export function resolveChargeMove(
   targetUnitId: string,
   dice: DiceProvider,
   closestDistance: number,
-  coolValue: number = DEFAULT_COOL,
+  coolValue?: number,
 ): ChargeMoveResult {
   const events: GameEvent[] = [];
+  const chargingUnit = findUnit(state, chargingUnitId);
+  const effectiveCoolValue = coolValue ?? (chargingUnit
+    ? getUnitCoolForStatusChecks(chargingUnit)
+    : DEFAULT_COOL);
 
   // Step 1: Roll 2d6, discard lowest
   const chargeRoll = resolveChargeRoll(dice);
@@ -150,13 +157,13 @@ export function resolveChargeMove(
     } as GameEvent);
 
     // Make Cool Check
-    const coolCheckResult = resolveCoolCheck(dice, coolValue);
+    const coolCheckResult = resolveCoolCheck(dice, effectiveCoolValue);
 
     events.push({
       type: 'coolCheck',
       unitId: chargingUnitId,
       roll: coolCheckResult.roll,
-      target: coolValue,
+      target: effectiveCoolValue,
       passed: coolCheckResult.passed,
     } as GameEvent);
 
@@ -238,6 +245,17 @@ function moveChargingModels(
   if (aliveChargers.length === 0 || aliveTargets.length === 0) return state;
 
   let newState = state;
+  const plannedPositions = new Map<string, Position>(
+    aliveChargers.map((charger) => {
+      const closestTarget = findClosestTarget(charger, aliveTargets);
+      return [
+        charger.id,
+        closestTarget
+          ? moveToward(charger.position, closestTarget.position, maxMoveDistance)
+          : charger.position,
+      ] as const;
+    }),
+  );
 
   // Sort chargers by distance to closest target (closest first)
   const sortedChargers = [...aliveChargers].sort((a, b) => {
@@ -246,12 +264,39 @@ function moveChargingModels(
     return distA - distB;
   });
 
-  // Move each charger toward the closest target model
-  for (const charger of sortedChargers) {
+  const [initialCharger, ...remainingChargers] = sortedChargers;
+  if (initialCharger) {
+    const initialTarget = findClosestTarget(initialCharger, aliveTargets);
+    if (initialTarget) {
+      const initialPosition = moveToward(initialCharger.position, initialTarget.position, maxMoveDistance);
+      plannedPositions.set(initialCharger.id, initialPosition);
+      newState = updateUnitInGameState(newState, chargingUnitId, unit =>
+        updateModelInUnit(unit, initialCharger.id, model => moveModel(model, initialPosition)),
+      );
+      events.push({
+        type: 'chargeMove' as const,
+        chargingUnitId,
+        targetUnitId,
+        modelId: initialCharger.id,
+        from: initialCharger.position,
+        to: initialPosition,
+      } as GameEvent);
+    }
+  }
+
+  for (const charger of remainingChargers) {
     const closestTarget = findClosestTarget(charger, aliveTargets);
     if (!closestTarget) continue;
 
-    const newPos = moveToward(charger.position, closestTarget.position, maxMoveDistance);
+    const fromPosition = plannedPositions.get(charger.id) ?? charger.position;
+    const newPos = findBestCoherentChargePosition(
+      aliveChargers,
+      charger,
+      plannedPositions,
+      closestTarget.position,
+      maxMoveDistance,
+    );
+    plannedPositions.set(charger.id, newPos);
 
     newState = updateUnitInGameState(newState, chargingUnitId, unit =>
       updateModelInUnit(unit, charger.id, model => moveModel(model, newPos)),
@@ -262,7 +307,7 @@ function moveChargingModels(
       chargingUnitId,
       targetUnitId,
       modelId: charger.id,
-      from: charger.position,
+      from: fromPosition,
       to: newPos,
     } as GameEvent);
   }
@@ -296,4 +341,50 @@ function findClosestTarget(charger: ModelState, targets: ModelState[]): ModelSta
     }
   }
   return closest;
+}
+
+function findBestCoherentChargePosition(
+  chargers: ModelState[],
+  movingCharger: ModelState,
+  plannedPositions: Map<string, Position>,
+  targetPosition: Position,
+  maxMoveDistance: number,
+): Position {
+  const startPosition = movingCharger.position;
+  const desiredPosition = moveToward(startPosition, targetPosition, maxMoveDistance);
+  if (chargePositionsMaintainCoherency(chargers, movingCharger, plannedPositions, desiredPosition)) {
+    return desiredPosition;
+  }
+
+  const dx = desiredPosition.x - startPosition.x;
+  const dy = desiredPosition.y - startPosition.y;
+  for (let step = 19; step >= 0; step -= 1) {
+    const ratio = step / 20;
+    const candidate: Position = {
+      x: startPosition.x + dx * ratio,
+      y: startPosition.y + dy * ratio,
+    };
+    if (chargePositionsMaintainCoherency(chargers, movingCharger, plannedPositions, candidate)) {
+      return candidate;
+    }
+  }
+
+  return startPosition;
+}
+
+function chargePositionsMaintainCoherency(
+  chargers: ModelState[],
+  movingCharger: ModelState,
+  plannedPositions: Map<string, Position>,
+  candidatePosition: Position,
+): boolean {
+  const shapes = chargers.map((charger) =>
+    getModelShapeAtPosition(
+      charger,
+      charger.id === movingCharger.id
+        ? candidatePosition
+        : (plannedPositions.get(charger.id) ?? charger.position),
+    ),
+  );
+  return checkCoherency(shapes, STANDARD_COHERENCY_RANGE).isCoherent;
 }

@@ -20,6 +20,7 @@ import type {
   RangedWeaponProfile,
   DedicatedWeapon,
   RangedWeaponInline,
+  GameState,
 } from '@hh/types';
 import { UnitMovementState, TacticalStatus } from '@hh/types';
 import { findWeapon, findLegionWeapon, isRangedWeapon } from '@hh/data';
@@ -27,6 +28,7 @@ import type { ValidationError } from '../types';
 import type { WeaponAssignment, ResolvedWeaponProfile } from './shooting-types';
 import { resolveWeaponFromData } from './shooting-types';
 import { lookupUnitProfile } from '../profile-lookup';
+import { getModelPsychicRangedWeapon, getPsychicWeaponStrengthModifier } from '../psychic/psychic-runtime';
 
 // ─── Validation Result ──────────────────────────────────────────────────────
 
@@ -180,21 +182,51 @@ function isDefensiveWeapon(weaponProfile: ResolvedWeaponProfile): boolean {
 export function resolveWeaponAssignment(
   assignment: WeaponAssignment,
   attackerUnit?: UnitState,
+  state?: GameState,
 ): ResolvedWeaponProfile | undefined {
-  const weapon = findWeapon(assignment.weaponId) ?? findLegionWeapon(assignment.weaponId);
+  const normalizedWeaponId = normalizeLegacyWeaponId(assignment.weaponId);
+  const weapon = findWeapon(normalizedWeaponId) ?? findLegionWeapon(normalizedWeaponId);
 
   if (weapon && isRangedWeapon(weapon)) {
     return resolveWeaponFromData(weapon as RangedWeaponProfile);
   }
 
   const dedicated = attackerUnit
-    ? resolveDedicatedRangedWeapon(attackerUnit, assignment.weaponId)
+    ? resolveDedicatedRangedWeapon(attackerUnit, normalizedWeaponId)
     : undefined;
   if (dedicated) {
     return resolveWeaponFromData(dedicated);
   }
 
+  if (attackerUnit) {
+    const model = attackerUnit.models.find((entry) => entry.id === assignment.modelId);
+    if (model) {
+      const psychicWeapon = getModelPsychicRangedWeapon(model, normalizedWeaponId);
+      if (psychicWeapon) {
+        return resolveWeaponFromData({
+          ...psychicWeapon,
+          rangedStrength: Math.max(
+            1,
+            psychicWeapon.rangedStrength + (state ? getPsychicWeaponStrengthModifier(state, attackerUnit.id) : 0),
+          ),
+        });
+      }
+    }
+  }
+
   return undefined;
+}
+
+function normalizeLegacyWeaponId(weaponId: string): string {
+  const normalized = normalizeWeaponToken(weaponId);
+
+  // Local fixtures and parsed prose sometimes use the common synonym "boltgun"
+  // while the rules/data registry keys the weapon as "bolter".
+  if (normalized === 'boltgun') {
+    return 'bolter';
+  }
+
+  return weaponId;
 }
 
 function resolveDedicatedRangedWeapon(

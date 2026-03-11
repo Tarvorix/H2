@@ -117,7 +117,10 @@ export function validateChargeEligibility(
   }
 
   // Must not have Rushed this turn
-  if (chargingUnit.movementState === UnitMovementState.Rushed) {
+  if (
+    chargingUnit.movementState === UnitMovementState.Rushed
+    || chargingUnit.movementState === UnitMovementState.RushDeclared
+  ) {
     errors.push({
       code: 'CHARGER_RUSHED',
       message: 'Unit that Rushed this turn cannot declare a charge',

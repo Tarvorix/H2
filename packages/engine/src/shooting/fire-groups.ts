@@ -15,13 +15,14 @@
  * after hit resolution.
  */
 
-import type { UnitState, SpecialRuleRef } from '@hh/types';
+import type { GameState, UnitState, SpecialRuleRef } from '@hh/types';
 import type {
   WeaponAssignment,
   FireGroup,
   FireGroupAttack,
   ResolvedWeaponProfile,
   HitResult,
+  ResolvedWeaponProfileModifier,
 } from './shooting-types';
 import { resolveWeaponAssignment, determineSnapShots } from './weapon-declaration';
 import { getModelBS as lookupModelBS } from '../profile-lookup';
@@ -158,6 +159,9 @@ export function formFireGroups(
   targetDistance: number,
   countsAsStationary: boolean = false,
   forceNoSnapShots: boolean = false,
+  forceSnapShots: boolean = false,
+  weaponProfileModifier?: ResolvedWeaponProfileModifier,
+  state?: GameState,
 ): FireGroup[] {
   // Map to accumulate attacks by group key
   const groupMap = new Map<string, {
@@ -173,11 +177,17 @@ export function formFireGroups(
 
   for (const assignment of assignments) {
     // Resolve the weapon profile
-    const weaponProfile = resolveWeaponAssignment(assignment, attackerUnit);
-    if (!weaponProfile) {
+    const baseWeaponProfile = resolveWeaponAssignment(assignment, attackerUnit, state);
+    if (!baseWeaponProfile) {
       // Skip invalid weapons — these should have been caught during validation
       continue;
     }
+    const weaponProfile = weaponProfileModifier
+      ? weaponProfileModifier(baseWeaponProfile, {
+          modelId: assignment.modelId,
+          weaponId: assignment.weaponId,
+        })
+      : baseWeaponProfile;
 
     // Check that model has LOS (skip if not — should have been validated)
     if (!modelsWithLOS.includes(assignment.modelId)) {
@@ -197,7 +207,7 @@ export function formFireGroups(
     const isSnapShot = determineSnapShots(
       attackerUnit,
       weaponProfile,
-      false,
+      forceSnapShots,
       countsAsStationary,
       forceNoSnapShots,
     );

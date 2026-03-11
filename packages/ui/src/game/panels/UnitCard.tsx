@@ -29,6 +29,7 @@ interface UnitCardProps {
 const MOVEMENT_LABELS: Record<UnitMovementState, string> = {
   [UnitMovementState.Stationary]: 'Stationary',
   [UnitMovementState.Moved]: 'Moved',
+  [UnitMovementState.RushDeclared]: 'Rush Declared',
   [UnitMovementState.Rushed]: 'Rushed',
   [UnitMovementState.EnteredFromReserves]: 'From Reserves',
   [UnitMovementState.FellBack]: 'Fell Back',

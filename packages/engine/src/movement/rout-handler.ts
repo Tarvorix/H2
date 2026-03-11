@@ -134,67 +134,9 @@ function processRoutedUnit(
   dice: DiceProvider,
 ): { state: GameState; events: GameEvent[] } {
   const events: GameEvent[] = [];
-  let newState = state;
-
-  // Roll 1d6 for fall-back distance
   const diceRoll = dice.rollD6();
-  // Use the first alive model's Initiative for fall-back distance
-  const refModel = getAliveModels(unit)[0];
-  const unitInitiative = refModel ? getModelInitiative(refModel.unitProfileId, refModel.profileModelName) : DEFAULT_INITIATIVE;
-  const fallBackDistance = computeFallBackDistance(unitInitiative, diceRoll);
-
-  // Move each alive model toward the nearest battlefield edge
-  const aliveModels = getAliveModels(unit);
-  const modelMoves: { modelId: string; from: Position; to: Position }[] = [];
-  let anyModelReachedEdge = false;
-
-  for (const model of aliveModels) {
-    const direction = computeFallBackDirection(
-      model.position,
-      state.battlefield.width,
-      state.battlefield.height,
-    );
-
-    // Apply terrain penalty to the fall-back distance
-    const proposedEnd: Position = vec2Add(
-      model.position,
-      vec2Scale(direction, fallBackDistance),
-    );
-    const terrainPenalty = computeTerrainPenalty(proposedEnd, state.terrain);
-    const effectiveDistance = Math.max(0, fallBackDistance - terrainPenalty);
-
-    // Compute final position
-    let newPosition: Position = vec2Add(
-      model.position,
-      vec2Scale(direction, effectiveDistance),
-    );
-
-    // Clamp to battlefield bounds
-    newPosition = clampToBattlefield(
-      newPosition,
-      state.battlefield.width,
-      state.battlefield.height,
-    );
-
-    // Check if model reached the edge
-    if (isAtBattlefieldEdge(newPosition, state.battlefield.width, state.battlefield.height)) {
-      anyModelReachedEdge = true;
-    }
-
-    modelMoves.push({
-      modelId: model.id,
-      from: model.position,
-      to: newPosition,
-    });
-
-    // Update model position
-    newState = updateUnitInGameState(newState, unit.id, (u) =>
-      updateModelInUnit(u, model.id, (m) => moveModel(m, newPosition)),
-    );
-  }
-
-  // Set unit movement state to FellBack
-  newState = updateUnitInGameState(newState, unit.id, (u) =>
+  const fallBackMove = resolveImmediateFallBackMove(state, unit.id, diceRoll);
+  let newState = updateUnitInGameState(fallBackMove.state, unit.id, (u) =>
     setMovementState(u, UnitMovementState.FellBack),
   );
 
@@ -203,13 +145,13 @@ function processRoutedUnit(
     type: 'routMove',
     unitId: unit.id,
     distanceRolled: diceRoll,
-    modelMoves,
-    reachedEdge: anyModelReachedEdge,
+    modelMoves: fallBackMove.modelMoves,
+    reachedEdge: fallBackMove.reachedEdge,
   };
   events.push(routEvent);
 
   // If any model reached the edge, take a Leadership Check
-  if (anyModelReachedEdge) {
+  if (fallBackMove.reachedEdge) {
     const ldResult = handleLeadershipCheck(newState, unit.id, dice);
     newState = ldResult.state;
     events.push(...ldResult.events);
@@ -360,6 +302,70 @@ export function computeFallBackDistance(
   diceRoll: number,
 ): number {
   return initiative + diceRoll;
+}
+
+export function resolveImmediateFallBackMove(
+  state: GameState,
+  unitId: string,
+  diceRoll: number,
+): { state: GameState; modelMoves: { modelId: string; from: Position; to: Position }[]; reachedEdge: boolean } {
+  const unit = findUnit(state, unitId);
+  if (!unit) {
+    return { state, modelMoves: [], reachedEdge: false };
+  }
+
+  let newState = state;
+  const refModel = getAliveModels(unit)[0];
+  const unitInitiative = refModel ? getModelInitiative(refModel.unitProfileId, refModel.profileModelName) : DEFAULT_INITIATIVE;
+  const fallBackDistance = computeFallBackDistance(unitInitiative, diceRoll);
+  const modelMoves: { modelId: string; from: Position; to: Position }[] = [];
+  let reachedEdge = false;
+
+  for (const model of getAliveModels(unit)) {
+    const direction = computeFallBackDirection(
+      model.position,
+      state.battlefield.width,
+      state.battlefield.height,
+    );
+
+    const proposedEnd: Position = vec2Add(
+      model.position,
+      vec2Scale(direction, fallBackDistance),
+    );
+    const terrainPenalty = computeTerrainPenalty(proposedEnd, state.terrain);
+    const effectiveDistance = Math.max(0, fallBackDistance - terrainPenalty);
+
+    let newPosition: Position = vec2Add(
+      model.position,
+      vec2Scale(direction, effectiveDistance),
+    );
+
+    newPosition = clampToBattlefield(
+      newPosition,
+      state.battlefield.width,
+      state.battlefield.height,
+    );
+
+    if (isAtBattlefieldEdge(newPosition, state.battlefield.width, state.battlefield.height)) {
+      reachedEdge = true;
+    }
+
+    modelMoves.push({
+      modelId: model.id,
+      from: model.position,
+      to: newPosition,
+    });
+
+    newState = updateUnitInGameState(newState, unit.id, (currentUnit) =>
+      updateModelInUnit(currentUnit, model.id, (currentModel) => moveModel(currentModel, newPosition)),
+    );
+  }
+
+  return {
+    state: newState,
+    modelMoves,
+    reachedEdge,
+  };
 }
 
 // ─── Helper Functions ───────────────────────────────────────────────────────

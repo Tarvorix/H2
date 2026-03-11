@@ -2,15 +2,16 @@
  * Challenge Handler
  * Implements Challenge declaration and response (Steps 1-2 of the Challenge Sub-Phase).
  * Reference: HH_Rules_Battle.md — Challenge Sub-Phase Steps 1-2
- *
- * Step 1: Declare Challenge — active player's eligible model issues a challenge
- * Step 2: Face-Off — opponent may accept or decline
- *   - If declined: apply Disgraced to one eligible enemy model (WS and LD halved)
- *   - If accepted: both models are removed from main combat for the challenge
  */
 
 import type { GameState, ModelState } from '@hh/types';
-import type { GameEvent, ChallengeDeclaredEvent, ChallengeDeclinedEvent, DisgracedAppliedEvent } from '../types';
+import { ModelSubType, ModelType, TacticalStatus } from '@hh/types';
+import type {
+  GameEvent,
+  ChallengeDeclaredEvent,
+  ChallengeDeclinedEvent,
+  DisgracedAppliedEvent,
+} from '../types';
 import {
   findUnit,
   findModel,
@@ -18,111 +19,71 @@ import {
   getAliveModels,
 } from '../game-queries';
 import { applyDisgraced } from '../state-helpers';
+import {
+  getModelType,
+  getModelWounds,
+  modelHasSubType,
+} from '../profile-lookup';
+import { syncActiveCombats } from './combat-state';
 import type { ChallengeState, CombatState } from './assault-types';
+import {
+  getMandatoryAcceptorPriority,
+  getMandatoryChallengerPriority,
+  modelHasExplicitChallengeEligibility,
+  modelHasTargetSelectionOverride,
+} from './challenge-rules';
+
+type CombatSide = 'active' | 'reactive';
+
+interface ChallengeEligibilitySnapshot {
+  leftEligibleByUnit: Map<string, ModelState[]>;
+  rightEligibleByUnit: Map<string, ModelState[]>;
+  leftEligibleModels: ModelState[];
+  rightEligibleModels: ModelState[];
+}
 
 // ─── Result Types ───────────────────────────────────────────────────────────
 
-/**
- * Result of checking challenge eligibility.
- */
 export interface ChallengeEligibilityResult {
-  /** Whether any eligible challengers exist */
   hasEligibleChallengers: boolean;
-  /** Model IDs eligible to issue a challenge */
   eligibleChallengerIds: string[];
 }
 
-/**
- * Result of declaring a challenge.
- */
 export interface ChallengeDeclareResult {
-  /** The updated game state */
   state: GameState;
-  /** Events generated */
   events: GameEvent[];
-  /** Whether the declaration was valid */
   valid: boolean;
-  /** Error message if invalid */
   error?: string;
 }
 
-/**
- * Result of accepting or declining a challenge.
- */
 export interface ChallengeResponseResult {
-  /** The updated game state */
   state: GameState;
-  /** Events generated */
   events: GameEvent[];
-  /** Whether the challenge was accepted */
+  valid: boolean;
   accepted: boolean;
-  /** The challenged model ID (if accepted) */
   challengedModelId?: string;
-  /** The disgraced model ID (if declined) */
   disgracedModelId?: string;
+  error?: string;
 }
 
-// ─── Get Eligible Challengers ───────────────────────────────────────────────
+// ─── Public Queries ─────────────────────────────────────────────────────────
 
-/**
- * Get models eligible to issue a challenge from a unit in combat.
- *
- * A model is eligible to challenge if:
- * - It is alive (not destroyed)
- * - It is a Paragon type, Command/Champion subtype, or has a challenge-enabling rule
- * - Its unit is locked in combat with an enemy unit that also has an eligible model
- * - It is not Routed
- *
- * For simplicity, all character-type models (warlords) and squad leaders
- * are considered eligible. In a full implementation, this would check
- * ModelType and ModelSubType from the unit profile.
- *
- * Reference: HH_Rules_Battle.md — Challenge Sub-Phase Step 1
- *
- * @param state - Current game state
- * @param unitId - The unit to check for eligible challengers
- * @returns ChallengeEligibilityResult with eligible model IDs
- */
 export function getEligibleChallengers(
   state: GameState,
   unitId: string,
 ): ChallengeEligibilityResult {
-  const unit = findUnit(state, unitId);
-  if (!unit) {
+  const preparedState = prepareChallengeState(state);
+  const unit = findUnit(preparedState, unitId);
+  if (!unit || !unit.isLockedInCombat || unit.statuses.includes(TacticalStatus.Routed)) {
     return { hasEligibleChallengers: false, eligibleChallengerIds: [] };
   }
 
-  // Unit must be locked in combat
-  if (!unit.isLockedInCombat) {
-    return { hasEligibleChallengers: false, eligibleChallengerIds: [] };
-  }
-
-  // Unit must not be Routed
-  if (unit.statuses.some(s => s === 'Routed')) {
-    return { hasEligibleChallengers: false, eligibleChallengerIds: [] };
-  }
-
-  const aliveModels = getAliveModels(unit);
-  if (aliveModels.length === 0) {
-    return { hasEligibleChallengers: false, eligibleChallengerIds: [] };
-  }
-
-  // For now, eligible challengers are:
-  // - Warlord models
-  // - Models whose profileModelName suggests they are characters
-  //   (contains 'Sergeant', 'Champion', 'Centurion', 'Praetor', 'Captain', etc.)
-  // In a full implementation, this would check the model's type and subtypes
-  // from the unit profile in the data package.
-  const eligibleIds: string[] = [];
-  for (const model of aliveModels) {
-    if (isEligibleChallenger(model)) {
-      eligibleIds.push(model.id);
-    }
-  }
-
-  // Per rules: the challenger declares, then opponent must accept or decline.
-  // So we only need the active player to have eligible challengers.
-  // If the enemy has no eligible challengers, they must decline and take Disgraced.
+  const snapshot = buildChallengeEligibilityForSides(
+    preparedState,
+    [unitId],
+    unit.engagedWithUnitIds,
+  );
+  const eligibleIds = (snapshot.leftEligibleByUnit.get(unitId) ?? []).map((model) => model.id);
 
   return {
     hasEligibleChallengers: eligibleIds.length > 0,
@@ -130,148 +91,139 @@ export function getEligibleChallengers(
   };
 }
 
-/**
- * Check if a model is eligible to issue or accept a challenge.
- * Characters (warlords, sergeants, champions, etc.) are eligible.
- */
-function isEligibleChallenger(model: ModelState): boolean {
-  // Warlord is always eligible
-  if (model.isWarlord) return true;
+export function getEligibleAcceptors(
+  state: GameState,
+  unitId: string,
+): string[] {
+  const preparedState = prepareChallengeState(state);
+  const unit = findUnit(preparedState, unitId);
+  if (!unit || !unit.isLockedInCombat || unit.statuses.includes(TacticalStatus.Routed)) {
+    return [];
+  }
 
-  // Check profile name for character-like models
-  const name = model.profileModelName.toLowerCase();
-  const characterNames = [
-    'sergeant', 'champion', 'centurion', 'praetor', 'captain',
-    'tribune', 'delegatus', 'consul', 'warden', 'herald',
-    'master', 'lord', 'primarch', 'commander', 'terminator sergeant',
-  ];
-
-  return characterNames.some(cn => name.includes(cn));
+  const snapshot = buildChallengeEligibilityForSides(
+    preparedState,
+    [unitId],
+    unit.engagedWithUnitIds,
+  );
+  return (snapshot.leftEligibleByUnit.get(unitId) ?? []).map((model) => model.id);
 }
 
 // ─── Declare Challenge ──────────────────────────────────────────────────────
 
-/**
- * Declare a challenge from one model to another.
- *
- * @param state - Current game state
- * @param challengerModelId - Model issuing the challenge
- * @param targetModelId - Model being challenged
- * @returns ChallengeDeclareResult with updated state and events
- */
 export function declareChallenge(
   state: GameState,
   challengerModelId: string,
   targetModelId: string,
 ): ChallengeDeclareResult {
+  const preparedState = prepareChallengeState(state);
   const events: GameEvent[] = [];
 
-  // Find the challenger
-  const challengerInfo = findModel(state, challengerModelId);
-  if (!challengerInfo) {
-    return {
-      state,
-      events,
-      valid: false,
-      error: `Challenger model '${challengerModelId}' not found`,
-    };
+  const challengerInfo = findModel(preparedState, challengerModelId);
+  if (!challengerInfo || challengerInfo.model.isDestroyed) {
+    return invalidDeclare(preparedState, events, `Challenger model '${challengerModelId}' not found`);
   }
 
-  // Find the target
-  const targetInfo = findModel(state, targetModelId);
-  if (!targetInfo) {
-    return {
-      state,
-      events,
-      valid: false,
-      error: `Target model '${targetModelId}' not found`,
-    };
+  const targetInfo = findModel(preparedState, targetModelId);
+  if (!targetInfo || targetInfo.model.isDestroyed) {
+    return invalidDeclare(preparedState, events, `Target model '${targetModelId}' not found`);
   }
 
-  // Validate challenger is eligible
-  if (!isEligibleChallenger(challengerInfo.model)) {
-    return {
-      state,
-      events,
-      valid: false,
-      error: `Model '${challengerModelId}' is not eligible to issue a challenge`,
-    };
+  const challengerPlayerIndex = findUnitPlayerIndex(preparedState, challengerInfo.unit.id);
+  if (challengerPlayerIndex !== preparedState.activePlayerIndex) {
+    return invalidDeclare(preparedState, events, 'Challenger must belong to the active player');
   }
 
-  // Validate the units are engaged with each other
-  const challengerUnit = challengerInfo.unit;
-  const targetUnit = targetInfo.unit;
-
-  if (!challengerUnit.engagedWithUnitIds.includes(targetUnit.id)) {
-    return {
-      state,
-      events,
-      valid: false,
-      error: 'Challenger and target units are not engaged in combat',
-    };
+  const combatInfo = findCombatByUnits(
+    preparedState,
+    challengerInfo.unit.id,
+    targetInfo.unit.id,
+  );
+  if (!combatInfo) {
+    return invalidDeclare(preparedState, events, 'Challenger and target units are not engaged in combat');
   }
 
-  // Validate challenger belongs to active player
-  const challengerPlayerIndex = findUnitPlayerIndex(state, challengerUnit.id);
-  if (challengerPlayerIndex !== state.activePlayerIndex) {
-    return {
-      state,
-      events,
-      valid: false,
-      error: 'Challenger must belong to the active player',
-    };
+  if (combatInfo.combat.challengeState) {
+    return invalidDeclare(preparedState, events, 'A challenge is already active in this combat');
   }
 
-  // Generate challenge declared event
+  const challengerSide = getCombatSideForUnit(combatInfo.combat, challengerInfo.unit.id);
+  const targetSide = getCombatSideForUnit(combatInfo.combat, targetInfo.unit.id);
+  if (challengerSide !== 'active' || targetSide !== 'reactive') {
+    return invalidDeclare(preparedState, events, 'Challenge must target an opposing unit in the active combat');
+  }
+
+  const eligibility = buildChallengeEligibilityForSides(
+    preparedState,
+    combatInfo.combat.activePlayerUnitIds,
+    combatInfo.combat.reactivePlayerUnitIds,
+  );
+  const activeEligibleModels = eligibility.leftEligibleModels;
+  const reactiveEligibleModels = eligibility.rightEligibleModels;
+
+  if (!activeEligibleModels.some((model) => model.id === challengerModelId)) {
+    return invalidDeclare(
+      preparedState,
+      events,
+      `Model '${challengerModelId}' is not eligible to issue a challenge`,
+    );
+  }
+
+  if (reactiveEligibleModels.length === 0) {
+    return invalidDeclare(preparedState, events, 'No opposing eligible models can take part in this challenge');
+  }
+
+  const mandatoryChallengerIds = getMandatoryModelIds(
+    activeEligibleModels,
+    (model) => getMandatoryChallengerPriority(model),
+  );
+  if (
+    mandatoryChallengerIds.length > 0 &&
+    !mandatoryChallengerIds.includes(challengerModelId)
+  ) {
+    return invalidDeclare(
+      preparedState,
+      events,
+      'Another model in this combat must be declared as the Challenger',
+    );
+  }
+
+  if (modelHasTargetSelectionOverride(challengerInfo.model)) {
+    const eligibleTargetIds = new Set(reactiveEligibleModels.map((model) => model.id));
+    if (!eligibleTargetIds.has(targetModelId)) {
+      return invalidDeclare(
+        preparedState,
+        events,
+        'Selected challenged model is not eligible to accept this challenge',
+      );
+    }
+  }
+
+  const challengedPlayerIndex = findUnitPlayerIndex(preparedState, targetInfo.unit.id);
+  if (challengedPlayerIndex === undefined) {
+    return invalidDeclare(
+      preparedState,
+      events,
+      `Could not determine the challenged player for unit '${targetInfo.unit.id}'`,
+    );
+  }
+
   const challengeEvent: ChallengeDeclaredEvent = {
     type: 'challengeDeclared',
     challengerModelId,
-    challengerUnitId: challengerUnit.id,
+    challengerUnitId: challengerInfo.unit.id,
     targetModelId,
-    targetUnitId: targetUnit.id,
-    challengerPlayerIndex: challengerPlayerIndex!,
+    targetUnitId: targetInfo.unit.id,
+    challengerPlayerIndex,
   };
   events.push(challengeEvent);
-
-  const activeCombats = (state.activeCombats ?? []) as CombatState[];
-  const combatIndex = activeCombats.findIndex((combat) =>
-    combat.activePlayerUnitIds.includes(challengerUnit.id) &&
-    combat.reactivePlayerUnitIds.includes(targetUnit.id),
-  );
-  if (combatIndex < 0) {
-    return {
-      state,
-      events,
-      valid: false,
-      error: 'No active combat context found for this challenge',
-    };
-  }
-
-  if (activeCombats[combatIndex].challengeState) {
-    return {
-      state,
-      events,
-      valid: false,
-      error: 'A challenge is already active in this combat',
-    };
-  }
-
-  const challengedPlayerIndex = findUnitPlayerIndex(state, targetUnit.id);
-  if (challengedPlayerIndex === undefined) {
-    return {
-      state,
-      events,
-      valid: false,
-      error: `Could not determine the challenged player for unit '${targetUnit.id}'`,
-    };
-  }
 
   const challengeState: ChallengeState = {
     challengerId: challengerModelId,
     challengedId: targetModelId,
-    challengerUnitId: challengerUnit.id,
-    challengedUnitId: targetUnit.id,
-    challengerPlayerIndex: challengerPlayerIndex!,
+    challengerUnitId: challengerInfo.unit.id,
+    challengedUnitId: targetInfo.unit.id,
+    challengerPlayerIndex,
     challengedPlayerIndex,
     currentStep: 'DECLARE',
     challengerGambit: null,
@@ -291,15 +243,15 @@ export function declareChallenge(
     withdrawChosen: {},
   };
 
-  const updatedCombats = [...activeCombats];
-  updatedCombats[combatIndex] = {
-    ...updatedCombats[combatIndex],
+  const updatedCombats = [...(preparedState.activeCombats ?? []) as CombatState[]];
+  updatedCombats[combatInfo.index] = {
+    ...updatedCombats[combatInfo.index],
     challengeState,
   };
 
   return {
     state: {
-      ...state,
+      ...preparedState,
       activeCombats: updatedCombats,
     },
     events,
@@ -309,71 +261,91 @@ export function declareChallenge(
 
 // ─── Accept Challenge ───────────────────────────────────────────────────────
 
-/**
- * Accept a challenge with a specific model.
- *
- * @param state - Current game state
- * @param challengedModelId - Model accepting the challenge
- * @param challengerModelId - Model that issued the challenge
- * @returns ChallengeResponseResult with updated state and events
- */
 export function acceptChallenge(
   state: GameState,
   challengedModelId: string,
   challengerModelId: string,
 ): ChallengeResponseResult {
+  const preparedState = prepareChallengeState(state);
   const events: GameEvent[] = [];
 
-  // Validate the challenged model exists
-  const challengedInfo = findModel(state, challengedModelId);
-  if (!challengedInfo) {
-    return {
-      state,
-      events,
-      accepted: false,
-    };
+  const challengedInfo = findModel(preparedState, challengedModelId);
+  const challengerInfo = findModel(preparedState, challengerModelId);
+  if (!challengedInfo || challengedInfo.model.isDestroyed || !challengerInfo) {
+    return invalidResponse(preparedState, events, 'Challenge acceptance is not valid');
   }
 
-  const activeCombats = (state.activeCombats ?? []) as CombatState[];
-  const combatIndex = activeCombats.findIndex((combat) =>
-    combat.challengeState?.challengerId === challengerModelId,
+  const combatInfo = findCombatByChallengerId(preparedState, challengerModelId);
+  if (!combatInfo || !combatInfo.combat.challengeState) {
+    return invalidResponse(preparedState, events, 'No active challenge is waiting for acceptance');
+  }
+
+  const challengerSide = getCombatSideForUnit(combatInfo.combat, challengerInfo.unit.id);
+  const challengedSide = getCombatSideForUnit(combatInfo.combat, challengedInfo.unit.id);
+  if (challengerSide === null || challengedSide === null || challengerSide === challengedSide) {
+    return invalidResponse(preparedState, events, 'Challenge acceptance is not valid');
+  }
+
+  const eligibility = buildChallengeEligibilityForSides(
+    preparedState,
+    combatInfo.combat.activePlayerUnitIds,
+    combatInfo.combat.reactivePlayerUnitIds,
   );
-  if (combatIndex < 0) {
-    return {
-      state,
-      events,
-      accepted: false,
-    };
+  const acceptingModels = challengedSide === 'active'
+    ? eligibility.leftEligibleModels
+    : eligibility.rightEligibleModels;
+  if (!acceptingModels.some((model) => model.id === challengedModelId)) {
+    return invalidResponse(preparedState, events, 'Selected model is not eligible to accept the challenge');
   }
 
-  const combat = activeCombats[combatIndex];
-  if (!combat.challengeState) {
-    return {
-      state,
-      events,
-      accepted: false,
-    };
+  const mandatoryAcceptorIds = getMandatoryModelIds(
+    acceptingModels,
+    (model) => getMandatoryAcceptorPriority(model, challengerInfo.model.unitProfileId),
+  );
+  if (
+    mandatoryAcceptorIds.length > 0 &&
+    !mandatoryAcceptorIds.includes(challengedModelId)
+  ) {
+    return invalidResponse(preparedState, events, 'Another model in this combat must accept the challenge');
+  }
+
+  let challengerCRP = combatInfo.combat.challengeState.challengerCRP;
+  const originallySelectedTargetId = combatInfo.combat.challengeState.challengedId;
+  if (
+    modelHasTargetSelectionOverride(challengerInfo.model) &&
+    originallySelectedTargetId !== challengedModelId
+  ) {
+    const originallySelectedTarget = findModel(preparedState, originallySelectedTargetId);
+    if (originallySelectedTarget && !originallySelectedTarget.model.isDestroyed) {
+      challengerCRP += getModelWounds(
+        originallySelectedTarget.model.unitProfileId,
+        originallySelectedTarget.model.profileModelName,
+      );
+    }
   }
 
   const updatedChallenge: ChallengeState = {
-    ...combat.challengeState,
+    ...combatInfo.combat.challengeState,
     challengedId: challengedModelId,
     challengedUnitId: challengedInfo.unit.id,
     challengedPlayerIndex: challengedInfo.army.playerIndex,
+    challengerCRP,
     currentStep: 'FACE_OFF',
   };
-  const updatedCombats = [...activeCombats];
-  updatedCombats[combatIndex] = {
-    ...combat,
+
+  const updatedCombats = [...(preparedState.activeCombats ?? []) as CombatState[]];
+  updatedCombats[combatInfo.index] = {
+    ...combatInfo.combat,
     challengeState: updatedChallenge,
   };
 
   return {
     state: {
-      ...state,
+      ...preparedState,
       activeCombats: updatedCombats,
     },
     events,
+    valid: true,
     accepted: true,
     challengedModelId,
   };
@@ -381,45 +353,71 @@ export function acceptChallenge(
 
 // ─── Decline Challenge ──────────────────────────────────────────────────────
 
-/**
- * Decline a challenge. Apply Disgraced to one eligible enemy model.
- * Disgraced halves WS and LD for the Assault Phase.
- *
- * Reference: HH_Rules_Battle.md — Challenge Sub-Phase Step 1 (Disgraced)
- *
- * @param state - Current game state
- * @param challengerModelId - Model that issued the challenge
- * @param targetUnitId - The unit that declined (to find a model to disgrace)
- * @returns ChallengeResponseResult with updated state and events
- */
 export function declineChallenge(
   state: GameState,
   challengerModelId: string,
   targetUnitId: string,
 ): ChallengeResponseResult {
+  const preparedState = prepareChallengeState(state);
   const events: GameEvent[] = [];
 
-  const targetUnit = findUnit(state, targetUnitId);
-  if (!targetUnit) {
-    return { state, events, accepted: false };
+  const targetUnit = findUnit(preparedState, targetUnitId);
+  const challengerInfo = findModel(preparedState, challengerModelId);
+  if (!targetUnit || !challengerInfo) {
+    return invalidResponse(preparedState, events, 'Challenge decline is not valid');
   }
 
-  // Find an eligible model to disgrace in the declining unit
-  const aliveModels = getAliveModels(targetUnit);
-  const eligibleForDisgrace = aliveModels.filter(m => isEligibleChallenger(m));
+  const combatInfo = findCombatByChallengerId(preparedState, challengerModelId);
+  if (!combatInfo || !combatInfo.combat.challengeState) {
+    return invalidResponse(preparedState, events, 'No active challenge is waiting for a response');
+  }
 
-  let newState = state;
+  const challengerSide = getCombatSideForUnit(combatInfo.combat, challengerInfo.unit.id);
+  const targetSide = getCombatSideForUnit(combatInfo.combat, targetUnitId);
+  if (challengerSide === null || targetSide === null || challengerSide === targetSide) {
+    return invalidResponse(preparedState, events, 'Challenge decline is not valid');
+  }
+
+  const eligibility = buildChallengeEligibilityForSides(
+    preparedState,
+    combatInfo.combat.activePlayerUnitIds,
+    combatInfo.combat.reactivePlayerUnitIds,
+  );
+  const decliningEligibleModels = targetSide === 'active'
+    ? eligibility.leftEligibleModels
+    : eligibility.rightEligibleModels;
+  const mandatoryAcceptorIds = getMandatoryModelIds(
+    decliningEligibleModels,
+    (model) => getMandatoryAcceptorPriority(model, challengerInfo.model.unitProfileId),
+  );
+  if (mandatoryAcceptorIds.length > 0) {
+    return invalidResponse(
+      preparedState,
+      events,
+      'This combat contains a model that must accept the challenge',
+    );
+  }
+
+  const orderedDisgraceCandidates = [
+    ...(targetSide === 'active'
+      ? (eligibility.leftEligibleByUnit.get(targetUnitId) ?? [])
+      : (eligibility.rightEligibleByUnit.get(targetUnitId) ?? [])),
+    ...decliningEligibleModels.filter((model) =>
+      !targetUnit.models.some((targetModel) => targetModel.id === model.id),
+    ),
+  ];
+
+  let newState = preparedState;
   let disgracedModelId: string | undefined;
 
-  if (eligibleForDisgrace.length > 0) {
-    // Disgrace the first eligible model
-    disgracedModelId = eligibleForDisgrace[0].id;
+  if (orderedDisgraceCandidates.length > 0) {
+    disgracedModelId = orderedDisgraceCandidates[0].id;
     newState = applyDisgraced(newState, disgracedModelId);
 
     const disgracedEvent: DisgracedAppliedEvent = {
       type: 'disgracedApplied',
       modelId: disgracedModelId,
-      unitId: targetUnitId,
+      unitId: findModel(newState, disgracedModelId)?.unit.id ?? targetUnitId,
     };
     events.push(disgracedEvent);
   }
@@ -432,49 +430,252 @@ export function declineChallenge(
   };
   events.push(declinedEvent);
 
-  const activeCombats = (newState.activeCombats ?? []) as CombatState[];
-  const combatIndex = activeCombats.findIndex((combat) =>
-    combat.challengeState?.challengerId === challengerModelId,
-  );
-  if (combatIndex >= 0) {
-    const updatedCombats = [...activeCombats];
-    updatedCombats[combatIndex] = {
-      ...updatedCombats[combatIndex],
-      challengeState: null,
-    };
-    newState = {
-      ...newState,
-      activeCombats: updatedCombats,
-    };
-  }
+  const updatedCombats = [...(newState.activeCombats ?? []) as CombatState[]];
+  updatedCombats[combatInfo.index] = {
+    ...combatInfo.combat,
+    challengeState: null,
+  };
 
   return {
-    state: newState,
+    state: {
+      ...newState,
+      activeCombats: updatedCombats,
+    },
     events,
+    valid: true,
     accepted: false,
     disgracedModelId,
   };
 }
 
-// ─── Get Eligible Acceptors ─────────────────────────────────────────────────
+// ─── Helper Functions ───────────────────────────────────────────────────────
 
-/**
- * Get models in a unit that are eligible to accept a challenge.
- * Same criteria as challengers.
- *
- * @param state - Current game state
- * @param unitId - The unit to check
- * @returns Array of eligible model IDs
- */
-export function getEligibleAcceptors(
+function prepareChallengeState(state: GameState): GameState {
+  return state.activeCombats && state.activeCombats.length > 0
+    ? state
+    : syncActiveCombats(state).state;
+}
+
+function invalidDeclare(
   state: GameState,
-  unitId: string,
-): string[] {
-  const unit = findUnit(state, unitId);
-  if (!unit) return [];
+  events: GameEvent[],
+  error: string,
+): ChallengeDeclareResult {
+  return {
+    state,
+    events,
+    valid: false,
+    error,
+  };
+}
 
-  const aliveModels = getAliveModels(unit);
-  return aliveModels
-    .filter(m => isEligibleChallenger(m))
-    .map(m => m.id);
+function invalidResponse(
+  state: GameState,
+  events: GameEvent[],
+  error: string,
+): ChallengeResponseResult {
+  return {
+    state,
+    events,
+    valid: false,
+    accepted: false,
+    error,
+  };
+}
+
+function findCombatByUnits(
+  state: GameState,
+  firstUnitId: string,
+  secondUnitId: string,
+): { combat: CombatState; index: number } | null {
+  const combats = (state.activeCombats ?? []) as CombatState[];
+  const index = combats.findIndex((combat) => {
+    const firstSide = getCombatSideForUnit(combat, firstUnitId);
+    const secondSide = getCombatSideForUnit(combat, secondUnitId);
+    return firstSide !== null && secondSide !== null && firstSide !== secondSide;
+  });
+
+  if (index < 0) {
+    return null;
+  }
+
+  return {
+    combat: combats[index],
+    index,
+  };
+}
+
+function findCombatByChallengerId(
+  state: GameState,
+  challengerModelId: string,
+): { combat: CombatState; index: number } | null {
+  const combats = (state.activeCombats ?? []) as CombatState[];
+  const index = combats.findIndex((combat) =>
+    combat.challengeState?.challengerId === challengerModelId,
+  );
+  if (index < 0) {
+    return null;
+  }
+
+  return {
+    combat: combats[index],
+    index,
+  };
+}
+
+function getCombatSideForUnit(
+  combat: CombatState,
+  unitId: string,
+): CombatSide | null {
+  if (combat.activePlayerUnitIds.includes(unitId)) {
+    return 'active';
+  }
+  if (combat.reactivePlayerUnitIds.includes(unitId)) {
+    return 'reactive';
+  }
+  return null;
+}
+
+function buildChallengeEligibilityForSides(
+  state: GameState,
+  leftUnitIds: string[],
+  rightUnitIds: string[],
+): ChallengeEligibilitySnapshot {
+  const leftEnemyProfiles = collectAliveEnemyProfileIds(state, rightUnitIds);
+  const rightEnemyProfiles = collectAliveEnemyProfileIds(state, leftUnitIds);
+
+  const leftCandidates = buildChallengeCandidatesByUnit(state, leftUnitIds, leftEnemyProfiles);
+  const rightCandidates = buildChallengeCandidatesByUnit(state, rightUnitIds, rightEnemyProfiles);
+
+  const leftEligibleByUnit = filterChallengeCandidatesByEngagement(
+    state,
+    leftCandidates,
+    rightCandidates,
+  );
+  const rightEligibleByUnit = filterChallengeCandidatesByEngagement(
+    state,
+    rightCandidates,
+    leftCandidates,
+  );
+
+  return {
+    leftEligibleByUnit,
+    rightEligibleByUnit,
+    leftEligibleModels: flattenModelMap(leftEligibleByUnit),
+    rightEligibleModels: flattenModelMap(rightEligibleByUnit),
+  };
+}
+
+function collectAliveEnemyProfileIds(
+  state: GameState,
+  unitIds: string[],
+): Set<string> {
+  const ids = new Set<string>();
+  for (const unitId of unitIds) {
+    const unit = findUnit(state, unitId);
+    if (!unit) continue;
+    for (const model of getAliveModels(unit)) {
+      ids.add(model.unitProfileId);
+    }
+  }
+  return ids;
+}
+
+function buildChallengeCandidatesByUnit(
+  state: GameState,
+  unitIds: string[],
+  enemyProfileIds: Set<string>,
+): Map<string, ModelState[]> {
+  const candidatesByUnit = new Map<string, ModelState[]>();
+
+  for (const unitId of unitIds) {
+    const unit = findUnit(state, unitId);
+    if (!unit || unit.statuses.includes(TacticalStatus.Routed)) {
+      candidatesByUnit.set(unitId, []);
+      continue;
+    }
+
+    const candidates = getAliveModels(unit).filter((model) =>
+      isModelIntrinsicallyEligible(model, enemyProfileIds),
+    );
+    candidatesByUnit.set(unitId, candidates);
+  }
+
+  return candidatesByUnit;
+}
+
+function filterChallengeCandidatesByEngagement(
+  state: GameState,
+  candidatesByUnit: Map<string, ModelState[]>,
+  enemyCandidatesByUnit: Map<string, ModelState[]>,
+): Map<string, ModelState[]> {
+  const eligibleByUnit = new Map<string, ModelState[]>();
+
+  for (const [unitId, candidates] of candidatesByUnit.entries()) {
+    const unit = findUnit(state, unitId);
+    if (!unit || candidates.length === 0) {
+      eligibleByUnit.set(unitId, []);
+      continue;
+    }
+
+    const hasEligibleEngagedEnemy = unit.engagedWithUnitIds.some((enemyUnitId) =>
+      (enemyCandidatesByUnit.get(enemyUnitId)?.length ?? 0) > 0,
+    );
+    eligibleByUnit.set(unitId, hasEligibleEngagedEnemy ? candidates : []);
+  }
+
+  return eligibleByUnit;
+}
+
+function flattenModelMap(
+  modelMap: Map<string, ModelState[]>,
+): ModelState[] {
+  return Array.from(modelMap.values()).flat();
+}
+
+function isModelIntrinsicallyEligible(
+  model: ModelState,
+  enemyProfileIds: Set<string>,
+): boolean {
+  const modelType = getModelType(model.unitProfileId, model.profileModelName);
+  if (modelType === ModelType.Paragon) {
+    return true;
+  }
+
+  if (
+    modelHasSubType(model.unitProfileId, model.profileModelName, ModelSubType.Command) ||
+    modelHasSubType(model.unitProfileId, model.profileModelName, ModelSubType.Champion)
+  ) {
+    return true;
+  }
+
+  return modelHasExplicitChallengeEligibility(model, enemyProfileIds);
+}
+
+function getMandatoryModelIds(
+  models: ModelState[],
+  getPriority: (model: ModelState) => number | null,
+): string[] {
+  let bestPriority = 0;
+  const mandatoryIds: string[] = [];
+
+  for (const model of models) {
+    const priority = getPriority(model);
+    if (priority === null || priority <= 0) {
+      continue;
+    }
+
+    if (priority > bestPriority) {
+      bestPriority = priority;
+      mandatoryIds.length = 0;
+      mandatoryIds.push(model.id);
+      continue;
+    }
+
+    if (priority === bestPriority) {
+      mandatoryIds.push(model.id);
+    }
+  }
+
+  return mandatoryIds;
 }

@@ -8,6 +8,10 @@
   "modelDefinitions": [
     {
       "name": "Optae",
+      "modelType": "Infantry",
+      "modelSubTypes": [
+        "Command"
+      ],
       "baseSizeMM": 32,
       "countInBase": 1,
       "isAdditionalModelType": true,
@@ -31,6 +35,11 @@
     },
     {
       "name": "Optae with Jump Pack",
+      "modelType": "Infantry",
+      "modelSubTypes": [
+        "Command",
+        "Antigrav"
+      ],
       "baseSizeMM": 32,
       "countInBase": 1,
       "isAdditionalModelType": true,

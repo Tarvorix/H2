@@ -8,6 +8,7 @@
   "modelDefinitions": [
     {
       "name": "Contemptor Dreadnought",
+      "modelType": "Walker",
       "baseSizeMM": 60,
       "countInBase": 1,
       "isAdditionalModelType": true,

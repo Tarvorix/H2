@@ -8,6 +8,11 @@
   "modelDefinitions": [
     {
       "name": "Cataphractii Terminator Sergeant",
+      "modelType": "Infantry",
+      "modelSubTypes": [
+        "Sergeant",
+        "Heavy"
+      ],
       "baseSizeMM": 40,
       "countInBase": 1,
       "isAdditionalModelType": false,
@@ -31,6 +36,10 @@
     },
     {
       "name": "Cataphractii Terminator",
+      "modelType": "Infantry",
+      "modelSubTypes": [
+        "Heavy"
+      ],
       "baseSizeMM": 40,
       "countInBase": 1,
       "isAdditionalModelType": true,

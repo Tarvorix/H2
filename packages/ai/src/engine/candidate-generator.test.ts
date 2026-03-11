@@ -14,7 +14,7 @@ import type {
   PendingReaction,
   UnitState,
 } from '@hh/types';
-import { FixedDiceProvider, handleMoveUnit } from '@hh/engine';
+import { FixedDiceProvider, handleMoveUnit, processCommand } from '@hh/engine';
 import type { SearchConfig } from '../types';
 import { generateMacroActions } from './candidate-generator';
 
@@ -135,6 +135,7 @@ function expectAllMoveActionsAccepted(state: GameState, playerIndex: number): vo
       command.unitId,
       command.modelPositions,
       new FixedDiceProvider(Array.from({ length: 128 }, () => 6)),
+      command.isRush === true ? { isRush: true } : undefined,
     );
     expect(result.accepted, action.id).toBe(true);
     expect(command.modelPositions.every((entry) => entry.position.x >= 0 && entry.position.y >= 0)).toBe(true);
@@ -448,5 +449,102 @@ describe('generateMacroActions', () => {
     expect(actions.find((action) => action.id === 'reaction:decline')?.orderingScore).toBeLessThan(
       actions[0]?.orderingScore ?? 0,
     );
+  });
+
+  it('emits a full rush macro with declaration and rush move resolution', () => {
+    const state = createGameState({
+      armies: [
+        createArmy({
+          playerIndex: 0,
+          units: [createUnit({
+            id: 'p0-unit-1',
+            models: [
+              createModel({ id: 'p0-m1', position: { x: 12, y: 12 } }),
+              createModel({ id: 'p0-m2', position: { x: 15, y: 12 } }),
+            ],
+          })],
+        }),
+        createArmy({
+          playerIndex: 1,
+          playerName: 'Player 2',
+          faction: LegionFaction.WorldEaters,
+          allegiance: Allegiance.Traitor,
+          units: [
+            createUnit({
+              id: 'p1-unit-1',
+              models: [createModel({ id: 'p1-m1', position: { x: 36, y: 12 } })],
+            }),
+          ],
+        }),
+      ],
+    });
+
+    const actions = generateMacroActions(
+      { state, actedUnitIds: new Set() },
+      0,
+      createSearchConfig(),
+    );
+    const rushAction = actions.find((action) => action.commands[0]?.type === 'rushUnit');
+
+    expect(rushAction).toBeDefined();
+    expect(rushAction?.commands).toHaveLength(2);
+    expect(rushAction?.commands[1]).toMatchObject({
+      type: 'moveUnit',
+      unitId: 'p0-unit-1',
+      isRush: true,
+    });
+
+    let currentState = state;
+    const dice = new FixedDiceProvider(Array.from({ length: 128 }, () => 6));
+    for (const command of rushAction?.commands ?? []) {
+      const result = processCommand(currentState, command, dice);
+      expect(result.accepted).toBe(true);
+      currentState = result.state;
+    }
+
+    expect(currentState.armies[0].units[0].movementState).toBe(UnitMovementState.Rushed);
+  });
+
+  it('continues a declared rush with a rush move command only', () => {
+    const state = createGameState({
+      armies: [
+        createArmy({
+          playerIndex: 0,
+          units: [createUnit({
+            id: 'p0-unit-1',
+            movementState: UnitMovementState.RushDeclared,
+            models: [
+              createModel({ id: 'p0-m1', position: { x: 12, y: 12 } }),
+              createModel({ id: 'p0-m2', position: { x: 15, y: 12 } }),
+            ],
+          })],
+        }),
+        createArmy({
+          playerIndex: 1,
+          playerName: 'Player 2',
+          faction: LegionFaction.WorldEaters,
+          allegiance: Allegiance.Traitor,
+          units: [createUnit({
+            id: 'p1-unit-1',
+            models: [createModel({ id: 'p1-m1', position: { x: 36, y: 12 } })],
+          })],
+        }),
+      ],
+    });
+
+    const actions = generateMacroActions(
+      { state, actedUnitIds: new Set() },
+      0,
+      createSearchConfig(),
+    );
+    const rushMove = actions.find((action) => action.commands[0]?.type === 'moveUnit' && action.commands[0].isRush === true);
+
+    expect(rushMove).toBeDefined();
+    expect(rushMove?.commands).toHaveLength(1);
+    expect(rushMove?.commands[0]).toMatchObject({
+      type: 'moveUnit',
+      unitId: 'p0-unit-1',
+      isRush: true,
+    });
   });
 });

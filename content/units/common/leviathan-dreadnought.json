@@ -8,6 +8,10 @@
   "modelDefinitions": [
     {
       "name": "Leviathan Dreadnought",
+      "modelType": "Walker",
+      "modelSubTypes": [
+        "Heavy"
+      ],
       "baseSizeMM": 80,
       "countInBase": 1,
       "isAdditionalModelType": true,

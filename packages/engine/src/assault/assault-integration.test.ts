@@ -1010,30 +1010,38 @@ describe('Assault Phase Integration Tests', () => {
   // ─── 5.20.9: Challenge Declined → Disgraced ──────────────────────────────
   describe('5.20.9 — Challenge declined → Disgraced applied (model gets WS/LD halved via modifiers)', () => {
     it('should apply Disgraced modifiers (WS and LD halved) when challenge is declined', () => {
-      // Set up two units locked in combat with character models
-      const challengerSgt = createModel('challenger-sgt', 10, 10, {
-        profileModelName: 'Sergeant',
-        isWarlord: false,
+      // Set up two units locked in combat with real Champion subtype models
+      const challengerChampion = createModel('challenger-champion', 10, 10, {
+        profileModelName: 'Chosen Champion',
+        unitProfileId: 'praetorian-command-squad',
       });
       const chargerModels = [
-        challengerSgt,
-        ...createModelRow('charger', 4, 11, 10),
+        challengerChampion,
+        ...createModelRow('charger', 4, 11, 10, 1, {
+          profileModelName: 'Chosen',
+          unitProfileId: 'praetorian-command-squad',
+        }),
       ];
 
-      const defenderSgt = createModel('defender-sgt', 10, 18, {
-        profileModelName: 'Sergeant',
-        isWarlord: false,
+      const defenderChampion = createModel('defender-champion', 10, 18, {
+        profileModelName: 'Chosen Champion',
+        unitProfileId: 'praetorian-command-squad',
       });
       const targetModels = [
-        defenderSgt,
-        ...createModelRow('target', 4, 11, 18),
+        defenderChampion,
+        ...createModelRow('target', 4, 11, 18, 1, {
+          profileModelName: 'Chosen',
+          unitProfileId: 'praetorian-command-squad',
+        }),
       ];
 
       const chargerUnit = createUnit('charger-unit', chargerModels, {
+        profileId: 'praetorian-command-squad',
         isLockedInCombat: true,
         engagedWithUnitIds: ['target-unit'],
       });
       const targetUnit = createUnit('target-unit', targetModels, {
+        profileId: 'praetorian-command-squad',
         isLockedInCombat: true,
         engagedWithUnitIds: ['charger-unit'],
       });
@@ -1045,8 +1053,11 @@ describe('Assault Phase Integration Tests', () => {
         ],
       });
 
+      const declared = declareChallenge(state, 'challenger-champion', 'defender-champion');
+      expect(declared.valid).toBe(true);
+
       // Decline the challenge
-      const result = declineChallenge(state, 'challenger-sgt', 'target-unit');
+      const result = declineChallenge(declared.state, 'challenger-champion', 'target-unit');
 
       expect(result.accepted).toBe(false);
 
@@ -1054,7 +1065,7 @@ describe('Assault Phase Integration Tests', () => {
       const disgracedEvent = result.events.find(e => e.type === 'disgracedApplied');
       expect(disgracedEvent).toBeDefined();
 
-      // The declining side's eligible model (Sergeant) should have WS and LD halved
+      // The declining side's eligible model (Champion) should have WS and LD halved
       expect(result.disgracedModelId).toBeDefined();
 
       // Find the disgraced model and check its modifiers

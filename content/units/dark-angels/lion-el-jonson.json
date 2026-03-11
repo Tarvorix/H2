@@ -8,6 +8,10 @@
   "modelDefinitions": [
     {
       "name": "Lion El’Jonson",
+      "modelType": "Paragon",
+      "modelSubTypes": [
+        "Unique"
+      ],
       "baseSizeMM": 40,
       "countInBase": 1,
       "isAdditionalModelType": true,

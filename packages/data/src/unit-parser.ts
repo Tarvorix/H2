@@ -166,6 +166,7 @@ function parseIntSafe(val: string): number {
 function parseBaseSizeMM(modelName: string): number {
   const match = modelName.match(/⌀(\d+)mm/);
   if (match) return parseInt(match[1]);
+  if (modelName.includes('No official base size')) return 0;
   if (modelName.includes('Use model')) return 0; // Vehicles
   return 32; // Default infantry base
 }

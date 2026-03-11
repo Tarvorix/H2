@@ -11,12 +11,38 @@ import { processCommand, getValidCommands } from './command-processor';
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
-function createModel(id: string, x: number, y: number): ModelState {
+function createModel(id: string, x: number, y: number, overrides: Partial<ModelState> = {}): ModelState {
   return {
     id, profileModelName: 'Legionary', unitProfileId: 'tactical',
     position: { x, y }, currentWounds: 1, isDestroyed: false,
     modifiers: [], equippedWargear: [], isWarlord: false,
+    ...overrides,
   };
+}
+
+function createTacticalModel(id: string, x: number, y: number, overrides: Partial<ModelState> = {}): ModelState {
+  return createModel(id, x, y, {
+    profileModelName: 'Legionary',
+    unitProfileId: 'tactical-squad',
+    equippedWargear: ['bolter', 'bolt-pistol', 'frag-grenades', 'krak-grenades'],
+    ...overrides,
+  });
+}
+
+function createLibrarianModel(
+  id: string,
+  x: number,
+  y: number,
+  disciplineIds: string[] = [],
+  overrides: Partial<ModelState> = {},
+): ModelState {
+  return createModel(id, x, y, {
+    profileModelName: 'Librarian',
+    unitProfileId: 'librarian',
+    currentWounds: 3,
+    equippedWargear: ['force-weapon', 'bolt-pistol', 'frag-grenades', 'krak-grenades', ...disciplineIds],
+    ...overrides,
+  });
 }
 
 function createUnit(id: string, models: ModelState[], overrides: Partial<UnitState> = {}): UnitState {
@@ -61,6 +87,266 @@ function createGameState(overrides: Partial<GameState> = {}): GameState {
 // ─── Basic Routing Tests ────────────────────────────────────────────────────
 
 describe('processCommand', () => {
+  describe('psychic runtime integration', () => {
+    it('should expose and execute Tranquillity during StartEffects', () => {
+      const psykerUnit = createUnit(
+        'psyker-unit',
+        [createLibrarianModel('psyker-m0', 10, 10, ['thaumaturgy'])],
+        { profileId: 'librarian' },
+      );
+      const enemyPsykerUnit = createUnit(
+        'enemy-psyker',
+        [createLibrarianModel('enemy-m0', 18, 10, ['telepathy'])],
+        { profileId: 'librarian' },
+      );
+      const state = createGameState({
+        currentPhase: Phase.Start,
+        currentSubPhase: SubPhase.StartEffects,
+        armies: [
+          createArmy(0, [psykerUnit]),
+          createArmy(1, [enemyPsykerUnit]),
+        ],
+      });
+
+      expect(getValidCommands(state)).toContain('manifestPsychicPower');
+
+      const dice = new FixedDiceProvider([4, 6]);
+      const result = processCommand(state, {
+        type: 'manifestPsychicPower',
+        powerId: 'tranquillity',
+        focusModelId: 'psyker-m0',
+        targetUnitId: 'enemy-psyker',
+      }, dice as any);
+
+      expect(result.accepted).toBe(true);
+      expect(result.state.psychicState?.activeEffects.some((effect) =>
+        effect.sourcePowerId === 'tranquillity' && effect.targetUnitId === 'enemy-psyker',
+      )).toBe(true);
+    });
+
+    it('should execute Mind-burst during the Move sub-phase', () => {
+      const psykerUnit = createUnit(
+        'psyker-unit',
+        [createLibrarianModel('psyker-m0', 10, 10, ['telepathy'])],
+        { profileId: 'librarian' },
+      );
+      const targetUnit = createUnit(
+        'target-unit',
+        [createTacticalModel('target-m0', 20, 10)],
+        { profileId: 'tactical-squad', statuses: [TacticalStatus.Pinned] },
+      );
+      const state = createGameState({
+        currentPhase: Phase.Movement,
+        currentSubPhase: SubPhase.Move,
+        armies: [
+          createArmy(0, [psykerUnit]),
+          createArmy(1, [targetUnit]),
+        ],
+      });
+
+      const dice = new FixedDiceProvider([6, 6, 3, 1, 1]);
+      const result = processCommand(state, {
+        type: 'manifestPsychicPower',
+        powerId: 'mind-burst',
+        focusModelId: 'psyker-m0',
+        targetUnitId: 'target-unit',
+      }, dice as any);
+
+      expect(result.accepted).toBe(true);
+      const updatedSource = result.state.armies[0].units[0];
+      const updatedTarget = result.state.armies[1].units[0];
+      expect(updatedSource.modifiers.some((modifier) => modifier.characteristic === 'NoMove')).toBe(true);
+      expect(updatedSource.modifiers.some((modifier) => modifier.characteristic === 'NoRush')).toBe(true);
+      expect(updatedTarget.movementState).toBe(UnitMovementState.FellBack);
+      expect(updatedTarget.statuses).toEqual([]);
+    });
+
+    it('should resolve a psychic shooting weapon through the live shooting command', () => {
+      const attackerUnit = createUnit(
+        'attacker',
+        [createLibrarianModel('attacker-m0', 10, 10, ['telekinesis'])],
+        { profileId: 'librarian' },
+      );
+      const targetUnit = createUnit(
+        'target',
+        [createTacticalModel('target-m0', 18, 10)],
+        { profileId: 'tactical-squad' },
+      );
+      const state = createGameState({
+        currentPhase: Phase.Shooting,
+        currentSubPhase: SubPhase.Attack,
+        armies: [
+          createArmy(0, [attackerUnit]),
+          createArmy(1, [targetUnit], { reactionAllotmentRemaining: 0 }),
+        ],
+      });
+
+      const dice = new FixedDiceProvider([4, 4, 4, 4, 4, 4, 1, 1, 1]);
+      const result = processCommand(state, {
+        type: 'declareShooting',
+        attackingUnitId: 'attacker',
+        targetUnitId: 'target',
+        weaponSelections: [{ modelId: 'attacker-m0', weaponId: 'immovable-force' }],
+      }, dice as any);
+
+      expect(result.accepted).toBe(true);
+      expect(result.events.some((event) => event.type === 'shootingAttackDeclared')).toBe(true);
+      expect(result.state.shootingAttackState?.currentStep).toBe('COMPLETE');
+    });
+
+    it('should offer Force Barrier and resume the shooting attack after acceptance', () => {
+      const attackerUnit = createUnit(
+        'attacker',
+        [createTacticalModel('attacker-m0', 10, 10)],
+        { profileId: 'tactical-squad' },
+      );
+      const targetUnit = createUnit(
+        'target',
+        [createLibrarianModel('target-m0', 18, 10, ['telekinesis'])],
+        { profileId: 'librarian' },
+      );
+      const state = createGameState({
+        currentPhase: Phase.Shooting,
+        currentSubPhase: SubPhase.Attack,
+        armies: [
+          createArmy(0, [attackerUnit]),
+          createArmy(1, [targetUnit]),
+        ],
+      });
+
+      const offered = processCommand(state, {
+        type: 'declareShooting',
+        attackingUnitId: 'attacker',
+        targetUnitId: 'target',
+        weaponSelections: [{ modelId: 'attacker-m0', weaponId: 'bolter' }],
+      }, new FixedDiceProvider([]) as any);
+
+      expect(offered.accepted).toBe(true);
+      expect(offered.state.awaitingReaction).toBe(true);
+      expect(offered.state.pendingReaction?.reactionType).toBe('force-barrier');
+
+      const resolved = processCommand(offered.state, {
+        type: 'selectReaction',
+        unitId: 'target',
+        reactionType: 'force-barrier',
+      }, new FixedDiceProvider([3, 3, 4, 4, 1, 3]) as any);
+
+      expect(resolved.accepted).toBe(true);
+      expect(resolved.state.awaitingReaction).toBe(false);
+      expect(resolved.state.armies[1].units[0].hasReactedThisTurn).toBe(true);
+      expect(resolved.state.armies[1].units[0].models[0].modifiers.some((modifier) =>
+        modifier.characteristic === 'Shrouded' && modifier.value === 3,
+      )).toBe(true);
+      expect(resolved.state.armies[1].units[0].models[0].currentWounds).toBe(3);
+    });
+
+    it('should resolve Resurrection before casualty removal and restore a model', () => {
+      const attackerUnit = createUnit(
+        'attacker',
+        [createTacticalModel('attacker-m0', 10, 10)],
+        { profileId: 'tactical-squad' },
+      );
+      const reactiveUnit = createUnit(
+        'reactive',
+        [
+          createLibrarianModel('reactive-focus', 18, 10, ['thaumaturgy']),
+          createLibrarianModel('reactive-casualty', 19, 10, ['thaumaturgy'], {
+            isDestroyed: true,
+            currentWounds: 0,
+          }),
+        ],
+        { profileId: 'librarian' },
+      );
+      const state = createGameState({
+        currentPhase: Phase.Shooting,
+        currentSubPhase: SubPhase.Attack,
+        awaitingReaction: true,
+        pendingReaction: {
+          reactionType: 'resurrection',
+          eligibleUnitIds: ['reactive'],
+          triggerDescription: 'test',
+          triggerSourceUnitId: 'attacker',
+        },
+        shootingAttackState: {
+          attackerUnitId: 'attacker',
+          targetUnitId: 'reactive',
+          attackerPlayerIndex: 0,
+          targetFacing: null,
+          weaponAssignments: [],
+          fireGroups: [],
+          currentFireGroupIndex: 0,
+          currentStep: 'AWAITING_RESURRECTION',
+          accumulatedGlancingHits: [],
+          accumulatedCasualties: ['reactive-casualty'],
+          unitSizesAtStart: { attacker: 1, reactive: 2 },
+          pendingMoraleChecks: [],
+          returnFireResolved: true,
+          isReturnFire: false,
+          modelsWithLOS: [],
+        } as any,
+        armies: [
+          createArmy(0, [attackerUnit]),
+          createArmy(1, [reactiveUnit]),
+        ],
+      });
+
+      const result = processCommand(state, {
+        type: 'selectReaction',
+        unitId: 'reactive',
+        reactionType: 'resurrection',
+      }, new FixedDiceProvider([3, 3, 4]) as any);
+
+      expect(result.accepted).toBe(true);
+      expect(result.state.awaitingReaction).toBe(false);
+      expect(result.state.shootingAttackState?.currentStep).toBe('COMPLETE');
+      expect(result.state.armies[1].units[0].models[1].isDestroyed).toBe(false);
+      expect(result.state.armies[1].units[0].models[1].currentWounds).toBe(3);
+    });
+
+    it('should allow psychic melee weapons to be declared during the Fight sub-phase', () => {
+      const psykerUnit = createUnit(
+        'psyker-unit',
+        [createLibrarianModel('psyker-m0', 10, 10, ['biomancy'])],
+        { profileId: 'librarian' },
+      );
+      const enemyUnit = createUnit(
+        'enemy-unit',
+        [createTacticalModel('enemy-m0', 11, 10)],
+        { profileId: 'tactical-squad' },
+      );
+      const state = createGameState({
+        currentPhase: Phase.Assault,
+        currentSubPhase: SubPhase.Fight,
+        armies: [
+          createArmy(0, [psykerUnit]),
+          createArmy(1, [enemyUnit]),
+        ],
+        activeCombats: [{
+          combatId: 'combat-1',
+          activePlayerUnitIds: ['psyker-unit'],
+          reactivePlayerUnitIds: ['enemy-unit'],
+          activePlayerCRP: 0,
+          reactivePlayerCRP: 0,
+          activePlayerCasualties: [],
+          reactivePlayerCasualties: [],
+          resolved: false,
+          isMassacre: false,
+          challengeState: null,
+        }],
+      });
+
+      const result = processCommand(state, {
+        type: 'declareWeapons',
+        weaponSelections: [{ modelId: 'psyker-m0', weaponId: 'biomantic-slam' }],
+      }, new FixedDiceProvider([]) as any);
+
+      expect(result.accepted).toBe(true);
+      expect(result.state.activeCombats?.[0].weaponDeclarations).toEqual([
+        { modelId: 'psyker-m0', weaponId: 'biomantic-slam' },
+      ]);
+    });
+  });
+
   describe('game over rejection', () => {
     it('should reject all commands when game is over', () => {
       const state = createGameState({ isGameOver: true });
@@ -130,13 +416,63 @@ describe('processCommand', () => {
         type: 'selectReaction',
         unitId: 'r-u1',
         reactionType: 'Reposition',
+        modelPositions: [{ modelId: 'r-m0', position: { x: 38, y: 24 } }],
       }, dice);
 
       expect(result.accepted).toBe(true);
       expect(result.state.awaitingReaction).toBe(false);
       expect(result.state.armies[1].reactionAllotmentRemaining).toBe(0);
       expect(result.state.armies[1].units[0].hasReactedThisTurn).toBe(true);
+      expect(result.state.armies[1].units[0].models[0].position).toEqual({ x: 38, y: 24 });
       expect(result.events.some((event) => event.type === 'repositionExecuted')).toBe(true);
+    });
+
+    it('should resolve Chasing the Wind through the live movement path', () => {
+      const reactiveUnit = createUnit(
+        'ws-unit',
+        [createTacticalModel('ws-m0', 10, 10)],
+        { profileId: 'tactical-squad' },
+      );
+      const triggerUnit = createUnit(
+        'enemy-unit',
+        [createTacticalModel('enemy-m0', 18, 10)],
+        { profileId: 'tactical-squad' },
+      );
+      const state = createGameState({
+        awaitingReaction: true,
+        pendingReaction: {
+          reactionType: 'ws-chasing-wind',
+          isAdvancedReaction: true,
+          eligibleUnitIds: ['ws-unit'],
+          triggerDescription: 'enemy moved within 12"',
+          triggerSourceUnitId: 'enemy-unit',
+        },
+        armies: [
+          createArmy(0, [triggerUnit], { faction: LegionFaction.DarkAngels }),
+          createArmy(1, [reactiveUnit], { faction: LegionFaction.WhiteScars }),
+        ],
+      });
+
+      const result = processCommand(state, {
+        type: 'selectReaction',
+        unitId: 'ws-unit',
+        reactionType: 'ws-chasing-wind',
+        modelPositions: [{ modelId: 'ws-m0', position: { x: 15, y: 10 } }],
+      }, new FixedDiceProvider([]) as any);
+
+      expect(result.accepted).toBe(true);
+      expect(result.state.awaitingReaction).toBe(false);
+      expect(result.state.armies[1].reactionAllotmentRemaining).toBe(0);
+      expect(result.state.armies[1].units[0].hasReactedThisTurn).toBe(true);
+      expect(result.state.armies[1].units[0].models[0].position).toEqual({ x: 15, y: 10 });
+      expect(result.state.advancedReactionsUsed).toContainEqual({
+        reactionId: 'ws-chasing-wind',
+        playerIndex: 1,
+        battleTurn: 1,
+      });
+      expect(result.events.some((event) => event.type === 'advancedReactionDeclared')).toBe(true);
+      expect(result.events.some((event) => event.type === 'advancedReactionResolved')).toBe(true);
+      expect(result.events.some((event) => event.type === 'modelMoved')).toBe(true);
     });
 
     it('should execute Return Fire and finalize the pending shooting attack window', () => {
@@ -577,7 +913,36 @@ describe('processCommand', () => {
       }, dice);
 
       expect(result.accepted).toBe(true);
-      expect(result.state.armies[0].units[0].movementState).toBe(UnitMovementState.Rushed);
+      expect(result.state.armies[0].units[0].movementState).toBe(UnitMovementState.RushDeclared);
+    });
+
+    it('should allow a declared rush to be completed with a rush move', () => {
+      const unit = createUnit('u1', [createModel('m1', 10, 10)]);
+
+      const state = createGameState({
+        currentPhase: Phase.Movement,
+        currentSubPhase: SubPhase.Move,
+        armies: [createArmy(0, [unit]), createArmy(1, [])],
+      });
+
+      const declared = processCommand(state, {
+        type: 'rushUnit',
+        unitId: 'u1',
+      }, new FixedDiceProvider([]));
+
+      expect(declared.accepted).toBe(true);
+      expect(declared.state.armies[0].units[0].movementState).toBe(UnitMovementState.RushDeclared);
+
+      const moved = processCommand(declared.state, {
+        type: 'moveUnit',
+        unitId: 'u1',
+        isRush: true,
+        modelPositions: [{ modelId: 'm1', position: { x: 20, y: 10 } }],
+      }, new FixedDiceProvider([]));
+
+      expect(moved.accepted).toBe(true);
+      expect(moved.state.armies[0].units[0].movementState).toBe(UnitMovementState.Rushed);
+      expect(moved.state.armies[0].units[0].models[0].position).toEqual({ x: 20, y: 10 });
     });
   });
 
@@ -638,7 +1003,9 @@ describe('processCommand', () => {
         embarkedOnId: 't1',
         isDeployed: false,
       });
-      const transportUnit = createUnit('t1', [createModel('t-m0', 20, 24)]);
+      const transportUnit = createUnit('t1', [createModel('t-m0', 20, 24)], {
+        profileId: 'rhino',
+      });
 
       const state = createGameState({
         currentPhase: Phase.Movement,

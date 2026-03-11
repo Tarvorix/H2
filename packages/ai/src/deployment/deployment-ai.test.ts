@@ -352,6 +352,8 @@ describe('generateDeploymentPlacement — deployment zones', () => {
         },
         scoringHistory: [],
         vpAtTurnStart: [],
+        vanguardBonusHistory: [],
+        assaultPhaseObjectiveSnapshot: null,
       },
     });
     state.armies[0] = createArmy({ playerIndex: 0, units: [unit] });

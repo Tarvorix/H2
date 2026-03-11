@@ -8,6 +8,11 @@
   "modelDefinitions": [
     {
       "name": "Mastodon",
+      "modelType": "Vehicle",
+      "modelSubTypes": [
+        "Transport",
+        "SuperHeavy"
+      ],
       "baseSizeMM": 32,
       "countInBase": 1,
       "isAdditionalModelType": true,
@@ -99,10 +104,21 @@
   ],
   "accessPoints": [
     {
-      "name": "- This Model has one Access Point on the Rear Facing and one Access Point on the Front Facing.",
-      "relativePosition": {
-        "x": 0,
-        "y": 0
+      "label": "Rear Access Point",
+      "geometry": {
+        "kind": "facings",
+        "facings": [
+          "rear"
+        ]
+      }
+    },
+    {
+      "label": "Front Access Point",
+      "geometry": {
+        "kind": "facings",
+        "facings": [
+          "front"
+        ]
       }
     }
   ]

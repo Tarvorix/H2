@@ -8,6 +8,11 @@
   "modelDefinitions": [
     {
       "name": "Angron Transfigured",
+      "modelType": "Paragon",
+      "modelSubTypes": [
+        "Unique",
+        "Antigrav"
+      ],
       "baseSizeMM": 100,
       "countInBase": 1,
       "isAdditionalModelType": true,

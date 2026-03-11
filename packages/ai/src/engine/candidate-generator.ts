@@ -34,6 +34,7 @@ import { prioritizeChargeTargets, prioritizeShootingTargets } from '../evaluatio
 import {
   getChargeableUnits,
   getEnemyDeployedUnits,
+  getModelInitiativeCharacteristic,
   getModelMovementCharacteristic,
   getShootableUnits,
   getUnitCentroid,
@@ -111,6 +112,7 @@ function isLegalMoveFormation(
   state: GameState,
   unitId: string,
   modelPositions: { modelId: string; position: Position }[],
+  isRush: boolean = false,
 ): boolean {
   if (!areModelPositionsWithinBattlefield(state, modelPositions)) {
     return false;
@@ -119,7 +121,22 @@ function isLegalMoveFormation(
   const dice = new FixedDiceProvider(
     Array.from({ length: Math.max(16, modelPositions.length * 4) }, () => 6),
   );
-  return handleMoveUnit(state, unitId, modelPositions, dice).accepted;
+  return handleMoveUnit(
+    state,
+    unitId,
+    modelPositions,
+    dice,
+    isRush ? { isRush: true } : undefined,
+  ).accepted;
+}
+
+function getUnitMaxTranslation(unit: UnitState, isRush: boolean): number {
+  const aliveModels = getAliveModels(unit);
+  return aliveModels.reduce((currentMin, model) => Math.min(
+    currentMin,
+    getModelMovementCharacteristic(model)
+      + (isRush ? getModelInitiativeCharacteristic(model) : 0),
+  ), Number.POSITIVE_INFINITY);
 }
 
 function buildReserveEntryPositions(
@@ -537,7 +554,13 @@ function generateMoveActions(
     if (getAliveModels(unit).length === 0) return false;
     if (!canUnitMove(unit)) return false;
     const centroid = getUnitCentroid(unit);
-    return centroid !== null && unit.movementState === UnitMovementState.Stationary;
+    return (
+      centroid !== null &&
+      (
+        unit.movementState === UnitMovementState.Stationary
+        || unit.movementState === UnitMovementState.RushDeclared
+      )
+    );
   });
 
   for (const unit of movableUnits) {
@@ -545,57 +568,81 @@ function generateMoveActions(
     const centroid = getUnitCentroid(unit);
     if (!centroid || aliveModels.length === 0) continue;
 
-    const maxMove = aliveModels.reduce(
-      (currentMin, model) => Math.min(currentMin, getModelMovementCharacteristic(model)),
-      Number.POSITIVE_INFINITY,
-    );
+    const buildDestinations = (isRush: boolean): Array<MovementDestinationCandidate & { lane: MovementLane; selectedScore: number }> => {
+      const maxMove = getUnitMaxTranslation(unit, isRush);
+      const destinations = generateCandidatePositions(centroid, maxMove, battlefieldWidth, battlefieldHeight)
+        .map((position) => {
+          const modelPositions = translateUnitToCentroid(unit, position);
+          if (!modelPositions) return null;
+          if (!isLegalMoveFormation(node.state, unit.id, modelPositions, isRush)) {
+            return null;
+          }
+          const baseScore = evaluateMovementDestination(node.state, unit.id, position, playerIndex);
+          return {
+            position,
+            baseScore,
+            laneScores: buildMovementLaneScores(node.state, playerIndex, unit, position, baseScore),
+            modelPositions,
+          };
+        })
+        .filter((candidate): candidate is MovementDestinationCandidate => candidate !== null);
 
-    const destinations = generateCandidatePositions(centroid, maxMove, battlefieldWidth, battlefieldHeight)
-      .map((position) => {
-        const modelPositions = translateUnitToCentroid(unit, position);
-        if (!modelPositions) return null;
-        if (!isLegalMoveFormation(node.state, unit.id, modelPositions)) {
-          return null;
-        }
-        const baseScore = evaluateMovementDestination(node.state, unit.id, position, playerIndex);
-        return {
-          position,
-          baseScore,
-          laneScores: buildMovementLaneScores(node.state, playerIndex, unit, position, baseScore),
-          modelPositions,
-        };
-      })
-      .filter((candidate): candidate is MovementDestinationCandidate => candidate !== null);
-    const selectedDestinations = selectDiversifiedMovementDestinations(destinations, config.maxActionsPerUnit);
+      return selectDiversifiedMovementDestinations(destinations, config.maxActionsPerUnit);
+    };
 
-    for (const destination of selectedDestinations) {
-      actions.push(
-        makeAction(
-          `move:${unit.id}:${destination.position.x.toFixed(1)}:${destination.position.y.toFixed(1)}`,
-          `Move ${unit.id}`,
-          [{
-            type: 'moveUnit',
-            unitId: unit.id,
-            modelPositions: destination.modelPositions,
-          }],
-          destination.selectedScore,
-          [unit.id],
-          [laneReason(destination.lane)],
-        ),
-      );
+    if (unit.movementState === UnitMovementState.Stationary) {
+      const selectedDestinations = buildDestinations(false);
+      for (const destination of selectedDestinations) {
+        actions.push(
+          makeAction(
+            `move:${unit.id}:${destination.position.x.toFixed(1)}:${destination.position.y.toFixed(1)}`,
+            `Move ${unit.id}`,
+            [{
+              type: 'moveUnit',
+              unitId: unit.id,
+              modelPositions: destination.modelPositions,
+            }],
+            destination.selectedScore,
+            [unit.id],
+            [laneReason(destination.lane)],
+          ),
+        );
+      }
     }
 
-    if (canUnitRush(unit)) {
-      actions.push(
-        makeAction(
-          `rush:${unit.id}`,
-          `Rush ${unit.id}`,
-          [{ type: 'rushUnit', unitId: unit.id }],
-          4,
-          [unit.id],
-          ['rush option'],
-        ),
-      );
+    const canGenerateRushMoves =
+      unit.movementState === UnitMovementState.RushDeclared || canUnitRush(unit);
+    if (canGenerateRushMoves) {
+      const selectedRushDestinations = buildDestinations(true);
+      for (const destination of selectedRushDestinations) {
+        const rushCommands: GameCommand[] = unit.movementState === UnitMovementState.RushDeclared
+          ? [{
+              type: 'moveUnit',
+              unitId: unit.id,
+              modelPositions: destination.modelPositions,
+              isRush: true,
+            }]
+          : [
+              { type: 'rushUnit', unitId: unit.id },
+              {
+                type: 'moveUnit',
+                unitId: unit.id,
+                modelPositions: destination.modelPositions,
+                isRush: true,
+              },
+            ];
+
+        actions.push(
+          makeAction(
+            `rush:${unit.id}:${destination.position.x.toFixed(1)}:${destination.position.y.toFixed(1)}`,
+            `Rush ${unit.id}`,
+            rushCommands,
+            destination.selectedScore + 1,
+            [unit.id],
+            ['rush move', laneReason(destination.lane)],
+          ),
+        );
+      }
     }
   }
 
