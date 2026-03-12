@@ -454,9 +454,16 @@ This is the format written by training and loaded by gate scripts. It is the dep
 
 ### Current default model behavior
 
-The current built-in default gameplay model is still simple. It is a hand-built baseline registered under `gameplay-default-v1`.
+The fallback baseline gameplay model is still simple. It is a hand-built model registered under `gameplay-default-v1` when no promoted override is present.
 
-Trained candidate models can outperform or underperform it, but today the in-game UI still points Engine selection at the built-in default gameplay model id unless runtime registration is changed.
+Today the live runtime default is a two-layer setup:
+
+- the runtime-facing id remains `gameplay-default-v1`
+- `packages/ai/src/engine/default-model.ts` first checks `packages/ai/src/engine/default-gameplay-model-override.ts`
+- if that override exists, its weights are loaded as the live `gameplay-default-v1`
+- if that override is `null`, runtime falls back to the hand-built baseline
+
+So the UI still points Engine selection at `gameplay-default-v1`, but that id now resolves to the currently promoted gameplay model after `pnpm nnue:promote` has been run.
 
 ## UI, Headless, and MCP Surfaces
 
@@ -580,6 +587,8 @@ The current default self-play flow is:
 4. Emit replay artifacts plus JSONL samples.
 5. Write a manifest recording match outcomes, sample count, and shard paths.
 
+If `--model` is omitted, self-play uses `DEFAULT_GAMEPLAY_NNUE_MODEL_ID`, which means new self-play processes use the currently promoted `gameplay-default-v1` weights after promotion.
+
 Current CLI defaults are:
 
 - `--matches 4`
@@ -636,6 +645,7 @@ The gate reports:
 - aborted runs
 - timeouts
 - win rate
+- pass/fail against the configured threshold
 - per-match termination details
 
 This is the main mechanism currently used to judge whether a trained candidate is stronger than the heuristic baseline.
@@ -661,6 +671,8 @@ Current gameplay-gate CLI defaults are:
 - `--threshold 0.55`
 - `maxCommands 1500` inside the shared gate runner
 
+The gate CLI also has one important shell-level behavior: failed gates return exit code `1`, while passed gates return exit code `0`. So a failed gate is reported as a command failure by `pnpm`, even when the runtime itself was healthy and there were no aborts or timeouts.
+
 ## Deployment Path Today
 
 There are two different meanings of "deploy" in the current project:
@@ -679,14 +691,16 @@ Today:
 - headless and MCP accept `nnueModelId`
 - but that model id must already exist in the process-local registry
 
-So the current production deployment path is still effectively a promotion step:
+The current production deployment path is now a real promotion workflow:
 
 - generate a candidate
 - gate it
-- bless it
-- then make it available to the runtime registry and/or replace the built-in default model
+- run `pnpm nnue:promote`
+- archive the blessed candidate and gate summary under `archive/nnue/gameplay-promotions/`
+- rewrite `packages/ai/src/engine/default-gameplay-model-override.ts`
+- rebuild so new runtime processes load the promoted weights as `gameplay-default-v1`
 
-This means the training pipeline exists, but the runtime model-loading product story is not fully finished yet.
+This is still not a full arbitrary-model loader for UI users, but it is no longer just a manual code-edit story. There is now a concrete blessed-candidate deployment path and a durable archive of promoted gameplay models.
 
 ## Determinism and Safety Properties
 
@@ -712,6 +726,8 @@ This is a strong foundation. It is one of the most valuable things already prese
 - Versioned, checksummed model format
 - Curated 2000-point default training surface
 - Mirrored default gameplay gate pairings for fairer short benchmarks
+- Working `pnpm nnue:promote` workflow that updates the live default model
+- Durable promoted-model archive under `archive/nnue/gameplay-promotions/`
 
 ## Current Limitations
 
@@ -722,6 +738,9 @@ This is a strong foundation. It is one of the most valuable things already prese
 - Phase-specific candidate generation is better than the earlier baseline, but it is still heuristic and selective rather than exhaustive.
 - The engine runtime now supports psychic commands and psychic reaction windows, but the current Engine searcher still does not generate those psychic decisions itself.
 - Runtime model deployment still depends on model ids already being registered; there is no finished user-facing model loader in the UI.
+- Promotion/archive management is still single-slot at runtime:
+  - `gameplay-default-v1` is the only live promoted gameplay slot
+  - there is no built-in `list`, `restore`, or challenger-vs-champion archive CLI yet
 - Engine gameplay uses tactical deployment logic rather than a separate engine deployment planner.
 
 ## Possible Improvements to Implement
@@ -742,8 +761,9 @@ This is a strong foundation. It is one of the most valuable things already prese
 - Make the evaluator richer.
   - Learn more than the current output-weight style fit.
   - Consider a larger hidden representation while preserving the quantized runtime format.
-- Bootstrap training rounds.
-  - Use the best promoted candidate as the self-play model for the next training batch instead of always generating from the weakest baseline.
+- Bootstrap training rounds more explicitly.
+  - New self-play already uses the currently promoted `gameplay-default-v1` by default.
+  - The next improvement is clearer challenger/champion controls so corpus generation can deliberately target a chosen archived model instead of only the single live default slot.
 
 ### Search improvements
 
@@ -772,7 +792,7 @@ This is a strong foundation. It is one of the most valuable things already prese
 
 - Add runtime loading/registration of external gameplay model files.
 - Add UI model selection rather than only hardcoding the default gameplay model id.
-- Add a proper promotion workflow for blessed gameplay candidates.
+- Add archive-management commands such as promoted-model `list`, `restore`, and possibly explicit challenger-vs-champion gating against archived entries.
 - Add benchmark suites with stable seeds, curated matchup rotations, and tracked historical results.
 - Split gameplay deployment AI from gameplay turn AI if deployment quality becomes a bottleneck.
 

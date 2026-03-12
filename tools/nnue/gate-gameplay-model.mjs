@@ -53,6 +53,7 @@ const summary = runGateMatches({
   },
 });
 progress.finish(`W-L-D ${summary.engineWins}-${summary.tacticalWins}-${summary.draws} aborted=${summary.aborted} timeouts=${summary.timeouts}`);
+const passed = summary.winRate > threshold;
 
 if (summaryOut) {
   writeJson(summaryOut, {
@@ -62,6 +63,7 @@ if (summaryOut) {
     maxDepthSoft: maxDepthSoft ?? null,
     rolloutCount: rolloutCount ?? null,
     ...summary,
+    passed,
   });
 }
 
@@ -77,9 +79,9 @@ console.log(JSON.stringify({
   aborted: summary.aborted,
   timeouts: summary.timeouts,
   winRate: summary.winRate,
-  passed: summary.winRate > threshold,
+  passed,
 }, null, 2));
 
-if (summary.winRate <= threshold) {
+if (!passed) {
   process.exitCode = 1;
 }

@@ -1,10 +1,12 @@
 import { hashStableValue } from '@hh/engine';
-import type { NNUEModel } from '../types';
+import type { NNUEModel, SerializedNNUEModel } from '../types';
+import { deserializeNNUEModel } from './serialization';
 import { GAMEPLAY_FEATURE_DIMENSION, GAMEPLAY_FEATURE_VERSION } from './feature-extractor';
+import { DEFAULT_GAMEPLAY_MODEL_OVERRIDE } from './default-gameplay-model-override';
 
 export const DEFAULT_GAMEPLAY_NNUE_MODEL_ID = 'gameplay-default-v1';
 
-function buildDefaultGameplayModel(): NNUEModel {
+function buildBaselineGameplayModel(): NNUEModel {
   const featureImportances = [
     12, 13, 10, 18, 16,
     11, 18, 10, 15, 14,
@@ -76,4 +78,23 @@ function buildDefaultGameplayModel(): NNUEModel {
   };
 }
 
-export const DEFAULT_GAMEPLAY_NNUE_MODEL = buildDefaultGameplayModel();
+function normalizeOverrideModelId(serializedModel: SerializedNNUEModel): SerializedNNUEModel {
+  return {
+    ...serializedModel,
+    manifest: {
+      ...serializedModel.manifest,
+      modelId: DEFAULT_GAMEPLAY_NNUE_MODEL_ID,
+    },
+  };
+}
+
+export function materializeDefaultGameplayModel(
+  serializedOverride: SerializedNNUEModel | null = DEFAULT_GAMEPLAY_MODEL_OVERRIDE,
+): NNUEModel {
+  if (serializedOverride) {
+    return deserializeNNUEModel(normalizeOverrideModelId(serializedOverride));
+  }
+  return buildBaselineGameplayModel();
+}
+
+export const DEFAULT_GAMEPLAY_NNUE_MODEL = materializeDefaultGameplayModel();

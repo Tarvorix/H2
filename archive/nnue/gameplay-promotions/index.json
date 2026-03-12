@@ -1,0 +1,23 @@
+[
+  {
+    "archiveDir": "/Users/kylebullock/HHv2/archive/nnue/gameplay-promotions/2026-03-12T14-51-25-058Z-gameplay-default-v1-candidate-gameplay-model-1773293596447",
+    "sourceModelId": "gameplay-default-v1-candidate-gameplay-model-1773293596447",
+    "sourceModelPath": "/Users/kylebullock/HHv2/tmp/selfplay-200x1000-20260311/candidate-gameplay-model.json",
+    "archivedModelPath": "/Users/kylebullock/HHv2/archive/nnue/gameplay-promotions/2026-03-12T14-51-25-058Z-gameplay-default-v1-candidate-gameplay-model-1773293596447/candidate-gameplay-model.json",
+    "gateSummaryPath": "/Users/kylebullock/HHv2/tmp/selfplay-200x1000-20260311/gate-summary.json",
+    "archivedGateSummaryPath": "/Users/kylebullock/HHv2/archive/nnue/gameplay-promotions/2026-03-12T14-51-25-058Z-gameplay-default-v1-candidate-gameplay-model-1773293596447/gate-summary.json",
+    "promotedAt": "2026-03-12T14:51:25.058Z",
+    "promotedModelId": "gameplay-default-v1",
+    "gateResult": {
+      "passed": true,
+      "winRate": 0.75,
+      "engineWins": 15,
+      "tacticalWins": 5,
+      "draws": 0,
+      "aborted": 0,
+      "timeouts": 0,
+      "threshold": 0.55,
+      "timeBudgetMs": 1000
+    }
+  }
+]

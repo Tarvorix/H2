@@ -1,6 +1,152 @@
 # HHv2 TODO
 
-Last Updated: 2026-03-11
+Last Updated: 2026-03-12
+
+## Execution Plan (Refresh engine_primer.md - 2026-03-12)
+- [x] Re-audit `engine_primer.md` against the current promotion, archive, selfplay default-model, and gate-summary behavior.
+- [x] Update only the stale primer sections so the document matches the live code and tooling.
+- [x] Re-read the edited primer against the live files and record verification.
+- Progress:
+  - Current doc/code drift before edits:
+    - the primer still describes `gameplay-default-v1` as only the simple built-in baseline, but live runtime now loads a promoted override when present.
+    - the primer still says a proper promotion workflow does not exist, but `pnpm nnue:promote` now rewrites the live default and archives blessed candidates under `archive/nnue/gameplay-promotions/`.
+    - the primer does not state that new self-play runs without `--model` now use the current promoted default model.
+    - the primer does not record that gameplay gate summaries now persist `passed` in JSON, and that promotion can read older summaries that omitted it by deriving pass/fail from `winRate` and `threshold`.
+  - 2026-03-12 primer refresh:
+    - updated the current default-model section to describe the live override-backed `gameplay-default-v1` path and the fallback baseline.
+    - updated self-play to state that omitted `--model` now resolves to the currently promoted default for new processes.
+    - updated gate to document persisted pass/fail status and the expected shell exit-code behavior on failed gates.
+    - updated deployment/runtime sections to describe the real `pnpm nnue:promote` workflow and the durable archive at `archive/nnue/gameplay-promotions/`.
+    - updated strengths, limitations, and product-improvement sections to reflect the new archive-backed single-slot promotion system and the remaining gaps (`list`, `restore`, challenger/champion archive flows).
+  - Verification:
+    - code-vs-doc reread against:
+      - `tools/nnue/self-play.mjs`
+      - `tools/nnue/gate-gameplay-model.mjs`
+      - `tools/nnue/promote-gameplay-model.mjs`
+      - `tools/nnue/promotion-helpers.mjs`
+      - `packages/ai/src/engine/default-model.ts`
+      - `packages/ai/src/engine/default-gameplay-model-override.ts`
+      - `packages/ai/src/engine/model-registry.ts`
+    - `pnpm test -- packages/ai/src/engine/default-model.test.ts packages/ai/src/engine/promotion-cli.test.ts`
+      - passed: `2` files, `2` tests
+    - `pnpm build`
+      - passed across the workspace
+
+## Execution Plan (Promoted Model Archive - 2026-03-12)
+- [x] Add a durable repo-local archive for promoted gameplay models outside `tmp/`.
+- [x] Make `nnue:promote` persist the blessed candidate, gate summary, and promotion record into that archive on every promotion.
+- [x] Backfill the current 15-5 champion into the archive and verify the archive path plus promotion workflow.
+- Progress:
+  - Current gap before edits:
+    - the live promoted default is stored in `packages/ai/src/engine/default-gameplay-model-override.ts`, but historical promoted candidates still only live in their original `tmp/...` run folders.
+    - there is no dedicated repo-local archive path for blessed gameplay models, so restoring or comparing champions later still depends on `tmp/` hygiene.
+  - Implementation target for this pass:
+    - add `archive/nnue/gameplay-promotions/` as the canonical durable home for promoted gameplay models.
+    - write one archived folder per promotion containing the candidate JSON, gate summary copy, and a promotion record with source/gate metadata.
+    - keep the existing live promotion behavior intact while making future restorations safer.
+  - 2026-03-12 implementation progress:
+    - added archive constants and naming helpers in `tools/nnue/promotion-helpers.mjs`.
+    - updated `tools/nnue/promote-gameplay-model.mjs` so every promotion now:
+      - copies the blessed candidate JSON into a dated folder under `archive/nnue/gameplay-promotions/`
+      - copies the gate summary alongside it when one is present
+      - writes `promotion-record.json` inside that archived promotion folder
+      - appends the promotion record to `archive/nnue/gameplay-promotions/index.json`
+    - extended `packages/ai/src/engine/promotion-cli.test.ts` so the promotion workflow is now verified against archive creation as well as live override writing.
+  - Verification:
+    - `pnpm build`
+      - passed
+    - `pnpm test -- packages/ai/src/engine/default-model.test.ts packages/ai/src/engine/promotion-cli.test.ts`
+      - passed: `2` files, `2` tests
+    - backfilled the current champion by rerunning:
+      - `pnpm nnue:promote --model tmp/selfplay-200x1000-20260311/candidate-gameplay-model.json --gate-summary tmp/selfplay-200x1000-20260311/gate-summary.json`
+      - passed and rebuilt the workspace
+    - archive contents confirmed at:
+      - `archive/nnue/gameplay-promotions/2026-03-12T14-51-25-058Z-gameplay-default-v1-candidate-gameplay-model-1773293596447/`
+      - with `candidate-gameplay-model.json`, `gate-summary.json`, `promotion-record.json`, and root `archive/nnue/gameplay-promotions/index.json`
+
+## Execution Plan (Gameplay Promotion Gate Summary Bugfix - 2026-03-12)
+- [x] Fix `nnue:promote` so it accepts existing gameplay gate-summary files that omit `passed` but still include `winRate` and `threshold`.
+- [x] Fix `nnue:gate` so future gate-summary artifacts persist `passed` explicitly instead of only printing it to stdout.
+- [x] Add regression coverage for the real historical gate-summary shape and verify the promotion command path.
+- Progress:
+  - Confirmed the live bug before edits:
+    - `tmp/selfplay-200x1000-20260311/gate-summary.json` contains `winRate` and `threshold` but no `passed` property.
+    - `tools/nnue/promotion-helpers.mjs` currently requires `gateSummary.passed === true`, so promotion incorrectly rejects that real passed gate artifact.
+    - `tools/nnue/gate-gameplay-model.mjs` prints `passed` to stdout but does not write it into the JSON summary file.
+  - 2026-03-12 implementation progress:
+    - updated `tools/nnue/promotion-helpers.mjs` so promotion derives `passed` from `winRate > threshold` whenever the gate-summary file omits the explicit boolean.
+    - updated `tools/nnue/gate-gameplay-model.mjs` so future `gate-summary.json` artifacts persist `passed` in the written JSON, matching the console output.
+    - updated `packages/ai/src/engine/promotion-cli.test.ts` to use the real historical gate-summary shape with no `passed` field, preventing this regression from reappearing.
+  - Verification:
+    - `pnpm build`
+      - passed
+    - `pnpm test -- packages/ai/src/engine/default-model.test.ts packages/ai/src/engine/promotion-cli.test.ts`
+      - passed: `2` files, `2` tests
+    - `pnpm nnue:promote --model tmp/selfplay-200x1000-20260311/candidate-gameplay-model.json --gate-summary tmp/selfplay-200x1000-20260311/gate-summary.json --out-file tmp/promote-smoke/default-gameplay-model-override.ts --no-build`
+      - passed as a non-destructive smoke using the exact real gate-summary file that previously failed
+
+## Execution Plan (Gameplay NNUE Promotion Workflow - 2026-03-12)
+- [x] Add a real `nnue:promote` command for gameplay models instead of relying on manual/default-model edits.
+- [x] Wire the runtime default gameplay model to a tracked promoted-artifact override so a blessed candidate actually becomes the in-game default.
+- [x] Add focused verification for the promotion path and record the exact promotion command.
+- Progress:
+  - Confirmed the current gap before edits:
+    - `nnue:gate` can load a candidate file into the process-local registry, but there is no `nnue:promote` entrypoint.
+    - runtime surfaces still default to the built-in `gameplay-default-v1` in `packages/ai/src/engine/default-model.ts`.
+    - the current default gameplay model is hard-coded in source, so a passed gate result is not enough to change live runtime behavior.
+  - Implementation target for this pass:
+    - add a tracked source override file for the promoted default gameplay model.
+    - keep `gameplay-default-v1` as the runtime id while replacing its weights from a blessed candidate.
+    - add a CLI promotion command that validates the candidate and optional gate summary, then rewrites the override artifact.
+  - 2026-03-12 implementation progress:
+    - added `packages/ai/src/engine/default-gameplay-model.override.ts` as the tracked promoted-artifact hook for the runtime default gameplay model.
+    - rewired `packages/ai/src/engine/default-model.ts` so `gameplay-default-v1` now materializes from promoted override weights when present, while preserving the existing built-in baseline as the fallback.
+    - added `tools/nnue/promote-gameplay-model.mjs` plus a new `pnpm nnue:promote` package script.
+    - adjusted the tracked override filename to `default-gameplay-model-override.ts` so the existing ESM `.js` extension loader resolves the built artifact correctly; the earlier dotted filename would be treated as having extension `.override` and would not auto-resolve to `.js`.
+    - kept `default-gameplay-model.override.ts` as a compatibility re-export shim instead of deleting it, preserving any existing source references while the live runtime path uses the hyphenated filename.
+    - the promotion command now:
+      - validates the candidate as a gameplay NNUE model
+      - requires a passed `--gate-summary` unless `--force` is used
+      - rewrites the tracked runtime override file with the blessed weights under `gameplay-default-v1`
+      - rebuilds the workspace by default so the promoted model is immediately reflected in built runtime artifacts
+    - added focused regression coverage for:
+      - runtime default-model id normalization when loading promoted weights
+      - the `nnue:promote` file-writing flow in `--no-build` mode through a `packages/ai/src/engine` Vitest entry that matches the repo's test include pattern
+  - Verification:
+    - `pnpm build`
+      - passed after wiring the runtime default to the tracked promotion override
+    - `pnpm test -- packages/ai/src/engine/default-model.test.ts packages/ai/src/engine/promotion-cli.test.ts`
+      - passed: `2` files, `2` tests
+    - `pnpm nnue:promote --model tmp/selfplay-200x1000-20260311/candidate-gameplay-model.json --gate-summary tmp/promote-smoke/gate-summary-passed.json --out-file tmp/promote-smoke/default-gameplay-model-override.ts --no-build`
+      - passed as a non-destructive CLI smoke, proving the package-script entrypoint rewrites a promotion override module and normalizes the promoted runtime id to `gameplay-default-v1`
+  - Promotion command for live use:
+    - `pnpm nnue:promote --model <candidate-model.json> --gate-summary <gate-summary.json>`
+    - the command rebuilds the workspace by default so the promoted gameplay model becomes the active built-in `gameplay-default-v1`
+
+## Execution Plan (Alpha Transformer + PUCT Blueprint - 2026-03-12)
+- [x] Audit the current AI architecture and isolate the shared seams that an Alpha pipeline may reuse without altering `Tactical` or `Engine`.
+- [x] Write `alpha_plan.md` as a complete standalone blueprint for an AlphaZero-style transformer + PUCT/MCTS AI line.
+- [x] Explicitly document pipeline isolation, model/search/training architecture, runtime integration, testing, and acceptance criteria so Alpha can be implemented without interfering with `nnue:*`.
+- Progress:
+  - Confirmed the current AI seams that Alpha may plug into while preserving existing behavior:
+    - strategy-tier dispatch in `packages/ai/src/types.ts` and `packages/ai/src/ai-controller.ts`
+    - current Engine wrapper in `packages/ai/src/strategy/engine-strategy.ts`
+    - shared macro-action surface in `packages/ai/src/engine/candidate-generator.ts`
+    - UI AI selection in `packages/ui/src/game/screens/ArmyLoadScreen.tsx`
+    - UI AI execution in `packages/ui/src/game/hooks/useAITurn.ts`
+    - current NNUE tooling entrypoints in `package.json` and `tools/nnue/`
+  - Added `alpha_plan.md` at the repo root with a full blueprint covering:
+    - non-negotiable isolation rules
+    - transformer + action-conditioned policy/value architecture
+    - PUCT/MCTS theory and chance-handling approach
+    - distillation bootstrap from the current Engine
+    - Alpha-only self-play/train/gate pipeline and artifact contracts
+    - UI/headless/MCP runtime integration boundaries
+    - testing, implementation phases, risks, and acceptance criteria
+  - Alpha plan boundary is explicit:
+    - `Tactical` remains unchanged
+    - `Engine` remains unchanged
+    - `nnue:selfplay`, `nnue:train`, and `nnue:gate` remain separate from any future `alpha:*` tooling
 
 ## Execution Plan (Full Engine Selfplay Coverage Repair - 2026-03-11)
 - [ ] Inventory every live human-playable runtime decision surface and compare it to the current Engine search macro-action surface.

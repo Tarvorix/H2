@@ -12,6 +12,7 @@
     "nnue:selfplay": "node --loader ./tools/esm-js-extension-loader.mjs tools/nnue/self-play.mjs",
     "nnue:train": "node --loader ./tools/esm-js-extension-loader.mjs tools/nnue/train-gameplay-model.mjs",
     "nnue:gate": "node --loader ./tools/esm-js-extension-loader.mjs tools/nnue/gate-gameplay-model.mjs",
+    "nnue:promote": "node --loader ./tools/esm-js-extension-loader.mjs tools/nnue/promote-gameplay-model.mjs",
     "nnue:roster:gate": "node --loader ./tools/esm-js-extension-loader.mjs tools/nnue/gate-roster-model.mjs",
     "headless:build": "pnpm --filter @hh/headless build",
     "headless:run": "node --loader ./tools/esm-js-extension-loader.mjs packages/headless/dist/cli.js",
