@@ -11,6 +11,7 @@ import type { WeaponAssignment, ResolvedWeaponProfile } from './shooting-types';
 import {
   validateWeaponAssignments,
   determineSnapShots,
+  getWeaponSelectionOptions,
   resolveWeaponAssignment,
 } from './weapon-declaration';
 
@@ -28,7 +29,7 @@ function createModel(id: string, overrides: Partial<ModelState> = {}): ModelStat
     currentWounds: 1,
     isDestroyed: false,
     modifiers: [],
-    equippedWargear: ['bolter'],
+    equippedWargear: ['bolter', 'flamer', 'plasma-gun', 'heavy-bolter', 'lascannon', 'krak-grenades', 'missile-launcher'],
     isWarlord: false,
     ...overrides,
   };
@@ -161,6 +162,60 @@ describe('resolveWeaponAssignment', () => {
     expect(result!.range).toBe(18);
     expect(result!.rangedStrength).toBe(7);
   });
+
+  it('resolves grouped mounted vehicle weapons to their base profile with multiplied firepower', () => {
+    const assignment: WeaponAssignment = {
+      modelId: 'model-1',
+      weaponId: 'two-centreline-mounted-twin-lascannon',
+    };
+
+    const result = resolveWeaponAssignment(assignment);
+    expect(result).toBeDefined();
+    expect(result!.name).toBe('Twin lascannon');
+    expect(result!.range).toBe(48);
+    expect(result!.firepower).toBe(4);
+    expect(result!.rangedStrength).toBe(9);
+    expect(result!.ap).toBe(2);
+  });
+
+  it('resolves parent missile-launcher assignments with the selected profile name', () => {
+    const assignment: WeaponAssignment = {
+      modelId: 'model-1',
+      weaponId: 'missile-launcher',
+      profileName: 'Krak',
+    };
+
+    const result = resolveWeaponAssignment(assignment);
+    expect(result).toBeDefined();
+    expect(result!.name).toBe('Missile launcher - Krak');
+    expect(result!.range).toBe(48);
+    expect(result!.rangedStrength).toBe(8);
+    expect(result!.ap).toBe(3);
+  });
+
+  it('resolves range-band parent weapons automatically from target distance', () => {
+    const assignment: WeaponAssignment = {
+      modelId: 'model-1',
+      weaponId: 'conversion-beam-cannon',
+    };
+
+    const result = resolveWeaponAssignment(assignment, undefined, undefined, 20);
+    expect(result).toBeDefined();
+    expect(result!.name).toBe('Conversion beam cannon');
+    expect(result!.rangedStrength).toBe(7);
+    expect(result!.ap).toBe(3);
+    expect(result!.rangeBand).toEqual({ min: 15, max: 30 });
+  });
+
+  it('returns all legal profile options for a parent multi-profile weapon', () => {
+    const options = getWeaponSelectionOptions({
+      modelId: 'model-1',
+      weaponId: 'missile-launcher',
+    });
+
+    expect(options).toHaveLength(2);
+    expect(options.map((option) => option.assignment.profileName)).toEqual(['Frag', 'Krak']);
+  });
 });
 
 // ─── determineSnapShots Tests ───────────────────────────────────────────────
@@ -185,6 +240,22 @@ describe('determineSnapShots', () => {
       const weapon = makeWeaponProfile(); // Regular bolter
 
       expect(determineSnapShots(unit, weapon)).toBe(true);
+    });
+
+    it('weapons without Skyfire fire snap shots when targeting Flyers', () => {
+      const unit = createUnit('unit-1');
+      const weapon = makeWeaponProfile();
+
+      expect(determineSnapShots(unit, weapon, false, false, false, true)).toBe(true);
+    });
+
+    it('Skyfire weapons ignore the flyer snap shot penalty', () => {
+      const unit = createUnit('unit-1');
+      const weapon = makeWeaponProfile({
+        specialRules: [{ name: 'Skyfire' }],
+      });
+
+      expect(determineSnapShots(unit, weapon, false, false, false, true)).toBe(false);
     });
 
     it('Pinned unit fires even non-heavy weapons as snap shots', () => {
@@ -511,6 +582,26 @@ describe('validateWeaponAssignments', () => {
       expect(result.errors.some((e) => e.code === 'INVALID_WEAPON')).toBe(true);
     });
 
+    it('rejects ranged weapons the model does not have equipped', () => {
+      const unit = createUnit('unit-1', {
+        models: [
+          createModel('unit-1-m1', { equippedWargear: ['bolter'] }),
+          createModel('unit-1-m2'),
+          createModel('unit-1-m3'),
+        ],
+      });
+      const assignments: WeaponAssignment[] = [
+        { modelId: 'unit-1-m1', weaponId: 'plasma-gun' },
+      ];
+      const modelsWithLOS = ['unit-1-m1'];
+      const targetDistance = 20;
+
+      const result = validateWeaponAssignments(assignments, unit, modelsWithLOS, targetDistance);
+
+      expect(result.valid).toBe(false);
+      expect(result.errors.some((e) => e.code === 'WEAPON_NOT_EQUIPPED')).toBe(true);
+    });
+
     it('rejects model not in LOS', () => {
       const unit = createUnit('unit-1');
       const assignments: WeaponAssignment[] = [
@@ -658,7 +749,13 @@ describe('validateWeaponAssignments', () => {
     });
 
     it('meltagun at 12" range is valid at 12"', () => {
-      const unit = createUnit('unit-1');
+      const unit = createUnit('unit-1', {
+        models: [
+          createModel('unit-1-m1', { equippedWargear: ['meltagun'] }),
+          createModel('unit-1-m2'),
+          createModel('unit-1-m3'),
+        ],
+      });
       const assignments: WeaponAssignment[] = [
         { modelId: 'unit-1-m1', weaponId: 'meltagun' },
       ];

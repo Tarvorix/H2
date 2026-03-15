@@ -144,8 +144,11 @@ function resetArmyTurnState(state: GameState, playerIndex: number): GameState {
       hasReactedThisTurn: false,
       hasShotThisTurn: false,
       movementState: UnitMovementState.Stationary,
+      reserveEntryMethodThisTurn: null,
+      cannotChargeThisTurn: false,
     })),
     reactionAllotmentRemaining: armies[playerIndex].baseReactionAllotment,
+    deepStrikeAttemptsThisTurn: 0,
   };
   return { ...state, armies };
 }

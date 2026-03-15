@@ -160,6 +160,7 @@ export function renderFrame(
         gameState: state.gameState,
         selectedUnitId: null,
         hoveredUnitId: null,
+        positionOverrides: new Map(),
       },
       zoom,
     );

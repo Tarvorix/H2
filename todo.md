@@ -1,6 +1,752 @@
 # HHv2 TODO
 
-Last Updated: 2026-03-12
+Last Updated: 2026-03-14
+
+## Execution Plan (Verify Engine Search Family - 2026-03-15)
+- [x] Inspect the live Engine search implementation and identify whether it uses negamax or a different alpha-beta search structure.
+- [x] Record the exact code-level answer in `todo.md` before reporting back.
+- Progress:
+  - Scope locked before verification:
+    - audit only
+    - no runtime/search behavior changes
+  - Verification result:
+    - `packages/ai/src/engine/search.ts` does not implement sign-flipped negamax recursion
+    - `searchNode(...)` explicitly computes `const maximizing = decisionOwner === runtime.rootPlayerIndex` and then uses separate maximizing/minimizing branches to update `bestScore`, `alpha`, and `beta`
+    - the live Engine search is therefore a minimax-style alpha-beta search with iterative deepening, aspiration windows, transposition table, killer/history ordering, and deterministic rollout averaging, not a literal negamax implementation
+
+## Execution Plan (Implement Rules-Complete Audit Findings - 2026-03-14)
+- [x] Extend shared game state and command flow for reserve readiness, reserve type, flyer combat assignment, and per-turn Deep Strike tracking.
+- [ ] Correct reserve handling so passed reserve tests may keep units off-board, edge entry follows reserve-move rules, Deep Strike restrictions are enforced, and illegal placements resolve casualties where required.
+- [ ] Add flyer-specific runtime behavior for Aerial Reserves, Combat Assignments, Combat Air Patrol eligibility, flyer reaction/status prohibitions, and flyer damage-table exceptions.
+- [ ] Add the generic advanced reaction suite (`Death or Glory`, `Intercept`, `Evade`, `Nullify`, `Heroic Intervention`, `Combat Air Patrol`) with trigger checks and resolution handlers.
+- [ ] Add vehicle Repair Tests in the Statuses sub-phase and correct `Suppressed` / vehicle status removal handling to match the rules.
+- [ ] Run focused tests for reserves, reactions, flyers, assault, and end-phase cleanup, then update this section with exact results before reporting back.
+- Progress:
+  - 2026-03-14 next implementation batch queued:
+    - fix the `packages/ui` project-reference configuration so repo-root `pnpm -s tsc -b --pretty false` can validate the workspace instead of failing on stale/no-emit UI settings
+    - finish flyer combat-assignment runtime behavior, starting with the post-move `Combat Air Patrol` window and assignment-specific movement/shooting/return-to-aerial-reserves rules
+    - continue into the remaining generic advanced reactions once the flyer trigger windows are wired and covered by focused tests
+  - 2026-03-14 UI typecheck configuration patch:
+    - changed the repo root project reference to point at `packages/ui/tsconfig.build.json` instead of the no-emit editor config
+    - added `packages/ui/tsconfig.build.json` so project references can emit declarations into `dist-types` without colliding with Vite output
+    - updated `packages/ui/package.json` so `build` uses the emit-capable build config while `typecheck` stays no-emit against the editor config
+    - validation:
+      - `pnpm --filter @hh/ui typecheck`
+        - passed
+      - `pnpm -s tsc -b --pretty false`
+        - UI project-reference failures cleared; root build now advances to pre-existing non-UI type errors in tests and tooling packages
+  - 2026-03-14 flyer combat-assignment rules patch in progress:
+    - wired mandatory flyer move checks before leaving the Move sub-phase
+    - wired post-move `Combat Air Patrol` reaction offering for active Flyers on combat assignments
+    - wired end-of-shooting return to Aerial Reserves for active combat-assignment Flyers, including Extraction Mission passenger status cleanup
+    - enforced Extraction Mission deploy prerequisites plus flyer embark/disembark restrictions by mission
+    - enforced assignment-specific shooting restrictions and added the missing global `Snap Shots unless Skyfire` rule when targeting Flyers
+    - corrected unit-move dangerous terrain / LOS blocking so Flyers no longer take unit-move dangerous terrain tests or block LOS as ordinary vehicles
+    - fixed grouped mounted-weapon resolution so mounted/count-prefixed vehicle and flyer wargear IDs (for example `two-centreline-mounted-twin-lascannon`) now resolve through the live shooting pipeline with the correct multiplied firepower
+    - corrected the legacy weapon normalizer so it no longer discards normalized weapon IDs on non-`boltgun` lookups
+    - added profile-aware ranged weapon resolution so base multi-profile wargear IDs now resolve legally through `profileName` and parent-weapon mappings instead of requiring callers to know internal child IDs
+    - added selection-option generation for parent-profile weapons and wired it into the UI and AI shooting flows so missile/shell/maximal/range-band weapons can be selected from normal equipped wargear
+    - corrected range-band handling so minimum bands are enforced and range-dependent weapons auto-select the matching profile where the rules/data define a single legal band at the current distance
+    - corrected shared fire-group Rapid Fire calculation to use per-model target distance when the target unit is known instead of one unit-wide distance for every model
+    - added command-level `declareShooting` regression coverage for the ranged `WEAPON_NOT_EQUIPPED` rule so shooting command routing stays aligned with the live weapon-assignment validator
+    - corrected shooting validation order so unresolved or melee selections still report `INVALID_WEAPON` before the new ranged-equipment ownership gate, and made the meltagun edge-case test explicitly equip its weapon
+    - started the generic advanced-reaction pass by wiring `Nullify` for failed psychic-curse resistance checks, including paused curse-state tracking and UI reaction-string support beyond the old `CoreReaction`-only reaction surface
+    - validation after the ranged weapon-ownership shooting patch:
+      - `pnpm --filter @hh/engine typecheck`
+        - passed
+      - `pnpm test -- packages/engine/src/shooting/weapon-declaration.test.ts packages/engine/src/command-processor.test.ts`
+        - passed: `2` files, `156` tests
+    - validation after the profile/range/UI shooting patch:
+      - `pnpm --filter @hh/engine typecheck`
+        - passed
+      - `pnpm --filter @hh/engine build`
+        - passed
+      - `pnpm --filter @hh/ai typecheck`
+        - passed
+      - `pnpm --filter @hh/ui typecheck`
+        - passed
+      - `pnpm test -- packages/engine/src/shooting/weapon-declaration.test.ts packages/engine/src/shooting/shooting-validator.test.ts packages/engine/src/command-processor.test.ts packages/ai/src/helpers/weapon-selection.test.ts`
+        - passed: `4` files, `224` tests
+      - `pnpm -s tsc -b --pretty false`
+        - still blocked by pre-existing non-UI workspace test/tooling type errors outside this patch
+    - validation after mounted-weapon resolver patch:
+      - `pnpm --filter @hh/engine typecheck`
+        - passed
+      - `pnpm test -- packages/engine/src/command-processor.test.ts packages/engine/src/shooting/weapon-declaration.test.ts packages/engine/src/movement/reserves-handler.test.ts`
+        - passed: `3` files, `164` tests
+  - 2026-03-14 next rules-completeness batch locked before edits:
+    - wire the generic `Evade` reaction into the charge flow at the post-volley/pre-charge-roll window using the existing reposition-style movement rules
+    - fix the missing basic challenge-pass plumbing in engine/UI so the Challenge Step 1 “declare no challenge” path is real instead of an invalid `declineChallenge` call
+    - use that challenge-pass hook to add the generic `Heroic Intervention` reaction window instead of leaving the rules trigger unwired
+  - 2026-03-15 next rules-completeness batch locked before edits:
+    - add explicit Challenge Step 1 combat-pass state so the engine can track which combats have already been processed in the Challenge sub-phase
+    - wire the generic `Heroic Intervention` reaction off that pass flow, including reactive-side challenge declaration, active-side response, and per-combat continuation to later eligible combats
+    - fix AI challenge command generation so it responds at the real `DECLARE` step and can pass specific combats instead of blindly ending the whole sub-phase
+  - 2026-03-15 implementation progress:
+    - added explicit Challenge Step 1 combat-pass tracking via `processedChallengeCombatIds` and `passChallenge`, so the engine now enforces per-combat Challenge decisions instead of allowing the entire sub-phase to be skipped blindly
+    - wired the generic `Heroic Intervention` reaction from the active player’s per-combat pass decision, including reactive-unit reaction selection, reactive-side challenge declaration, active-side response, and decision-player routing through the live challenge flow
+    - updated the challenge UI flow so normal challenge declaration passes a specific combat, while pending `Heroic Intervention` opens a reactive-side challenge declaration without exposing the old broken skip path
+    - corrected AI challenge generation so it answers pending challenges at `DECLARE`, can issue reactive-side `Heroic Intervention` declarations, and can pass specific combats with `passChallenge`
+    - validation after the challenge-pass + `Heroic Intervention` batch:
+      - `pnpm --filter @hh/types build`
+        - passed
+      - `pnpm --filter @hh/engine typecheck`
+        - passed
+      - `pnpm --filter @hh/ui typecheck`
+        - passed
+      - `pnpm --filter @hh/ai typecheck`
+        - passed
+      - `pnpm test -- packages/engine/src/command-processor.test.ts packages/ai/src/phases/assault-ai.test.ts`
+        - passed: `2` files, `131` tests
+  - 2026-03-15 next rules-completeness batch locked before edits:
+    - add vehicle move-through detection and post-move enemy-unit impact hits so the base vehicle movement rules exist in the live movement pipeline instead of being silently ignored
+    - wire the generic movement-side `Death or Glory` reaction off that move-through trigger, including attack selection, vehicle-front-armour resolution, attacker survival/casualty outcome, and suppression of move-through hits when the vehicle is destroyed
+    - add a real UI placement/confirmation flow for move-based reactions so `Reposition`, `Evade`, and `Combat Air Patrol` can collect `modelPositions` instead of only being usable through direct test/AI command generation
+  - 2026-03-14 implementation progress:
+    - corrected the charge pipeline to use the live post-setup / post-volley distance when resolving Step 5 instead of the stale pre-setup declaration distance
+    - wired the generic `Evade` reaction offer after volley attacks for Light/Cavalry charge targets and resolved it through the existing reposition reaction movement rules
+    - added focused charge-routing regressions for post-setup range recalculation, the `Evade` offer after declining Overwatch, and the `Evade` early-failed-charge case when the target escapes beyond 12"
+    - tightened the new charge fixtures to suppress unrelated volley attacks so the focused regressions exercise only the Step 5 distance fix and `Evade` reaction path
+    - started the UI follow-up by wiring challenge-flow entry from the action bar, deriving live challenge modal state from engine `challengeState`, and replacing the broken declare-step “Decline to Challenge” button with a real sub-phase skip
+    - validation after the charge-distance + `Evade` patch:
+      - `pnpm --filter @hh/engine typecheck`
+        - passed
+      - `pnpm --filter @hh/ui typecheck`
+        - passed
+      - `pnpm test -- packages/engine/src/command-processor.test.ts`
+        - passed: `1` file, `111` tests
+    - validation after the challenge UI flow patch:
+      - `pnpm --filter @hh/ui typecheck`
+        - passed
+      - `pnpm --filter @hh/engine typecheck`
+        - passed
+  - Scope locked before implementation:
+    - implement the high-severity rules gaps found in the 2026-03-14 audit
+    - preserve existing working mechanics unless a rules correction requires behavior change
+    - patch the shared engine/state surfaces first so later rules can hook into them cleanly
+  - Planned dependency order:
+    - reserve state + reserve entry semantics
+    - end-phase vehicle repair / status cleanup corrections
+    - flyer and aerial reserve state transitions
+    - generic advanced reaction trigger + resolution plumbing
+  - 2026-03-14 checkpoint:
+    - re-validated the interrupted reserve/flyer state patch after user abort
+    - package-local validation passed:
+      - `pnpm --filter @hh/types typecheck`
+      - `pnpm --filter @hh/engine typecheck`
+      - `pnpm --filter @hh/headless typecheck`
+    - compile-surface hardening now in place for:
+      - flyer charge prohibition
+      - flyer tactical-status immunity through shared status helper
+      - flyer single-armour facing lookup
+      - headless defaults for aerial reserves / combat-assignment state fields
+    - end-phase / flyer damage corrections now in place for:
+      - per-status Cool Checks for `Pinned`, `Suppressed`, `Stunned`, and `Stupefied`
+      - vehicle `Repair Test` handling with `Auto-repair (X+)` target support
+      - flyer glancing-hit handling as direct Hull Point loss instead of the normal Vehicle Damage Table
+      - shared status application using flyer immunity in both standard shooting and overload misfire flows
+    - focused verification after status/repair/flyer patch:
+      - `pnpm test -- packages/engine/src/command-processor.test.ts packages/engine/src/shooting/overload-misfire.test.ts packages/engine/src/shooting/shooting-integration.test.ts`
+      - passed: `3` files, `140` tests
+  - 2026-03-14 reserve/flyer re-check correction batch in progress:
+    - corrected the reserve-ready implementation so a passed reserves roll no longer marks the unit as if it already entered play
+    - corrected aerial-reserve deployment so flyers stay `Stationary` after assignment placement instead of consuming their movement window during the Reserves sub-phase
+    - corrected baseline flyer movement interaction so flyers no longer inherit standard rush, dangerous-terrain, or impassable-path restrictions that should not apply to them
+    - corrected the deploy-time reserve reaction trigger so Aerial Reserve placement offers `Intercept` only; the post-move `Combat Air Patrol` window remains a follow-up flyer task
+    - rewrote the stale reserve handler tests to cover the live reserve-ready / Deep Strike / Outflank / aerial-assignment flow and added command-processor coverage for reserve-entry `Intercept`
+    - package-local validation after the re-check corrections:
+      - `pnpm --filter @hh/engine typecheck`
+      - `pnpm --filter @hh/ai typecheck`
+      - `pnpm --filter @hh/mcp-server typecheck`
+    - focused verification after the reserve/flyer correction batch:
+      - `pnpm test -- packages/engine/src/movement/reserves-handler.test.ts packages/engine/src/command-processor.test.ts packages/engine/src/shooting/overload-misfire.test.ts packages/engine/src/shooting/shooting-integration.test.ts`
+      - passed: `4` files, `155` tests
+
+## Execution Plan (Audit Engine Rules Coverage Against HH Rules Docs - 2026-03-14)
+- [x] Re-read the primary project references in `plan.md`, `reference.md`, and `HH_v2_units.md`, then load the battle/rules documents needed to audit each mechanics area.
+- [x] Map every rules-bearing engine/data module and identify which gameplay systems are fully implemented, partially implemented, or missing.
+- [x] Cross-check code paths and tests for movement, shooting, assault, morale, reactions, missions, legion rules, psychic rules, transports/reserves, and setup/deployment against the written rules.
+- [x] Record exact findings with file/line references and classify each issue as missing rule, incorrect implementation, or insufficient test coverage.
+- [x] Update this section with the audit result and next recommended remediation order before reporting back.
+- Progress:
+  - Scope locked before audit:
+    - audit code and tests against the rules documents named in `AGENTS.md`
+    - do not change engine/runtime behavior during the initial audit pass
+    - use `packages/engine/src`, `packages/data/src`, `packages/army-builder/src`, and relevant UI setup flow only where they carry rules logic
+  - Current audit staging:
+    - workspace structure mapped
+    - current `todo.md` loaded
+    - primary references `plan.md`, `reference.md`, and `HH_v2_units.md` loaded
+  - Audit result:
+    - high-severity gaps confirmed in generic advanced reactions, flyer/aerial reserves support, reserve-entry semantics, deep strike enforcement, and vehicle status recovery
+    - direct correctness bugs confirmed in status cleanup for `Suppressed` and in flyer handling through the shared vehicle damage path
+    - next recommended remediation order:
+      - add missing state and command support for flyers, aerial reserves, and combat assignments
+      - fix reserve test and reserve entry flow before patching deep strike/outflank restrictions
+      - add the generic advanced reaction set (`Death or Glory`, `Intercept`, `Evade`, `Nullify`, `Heroic Intervention`, `Combat Air Patrol`)
+      - add vehicle repair tests and correct end-phase status removal rules
+
+## Execution Plan (Verify March 14 LOS Fix Record Against Live Code - 2026-03-14)
+- [x] Re-read the March 14 LOS/fallback todo entry and verify the claimed fix is present in the live AI helper and NNUE runner code.
+- [x] Run focused verification for the LOS-aware weapon-selection behavior and a small NNUE self-play smoke on the current workspace.
+- [x] Update this section with the exact verification result before reporting back.
+- Progress:
+  - Scope locked before verification:
+    - audit only
+    - do not change engine/runtime behavior unless the live verification disproves the recorded fix
+  - Current code read before running verification:
+    - `packages/ai/src/helpers/weapon-selection.ts` now filters shooting assignments through `getModelsWithLOSToUnit(...)`
+    - `packages/ai/src/helpers/weapon-selection.ts` also makes `hasWeaponsInRange(...)` LOS-aware
+    - `tools/nnue/common.mjs` now retries `buildFallbackCommand(state)` on rejected AI commands and only records training samples for accepted non-recovered Engine decisions
+  - Verification:
+    - `pnpm test -- packages/ai/src/helpers/weapon-selection.test.ts packages/ai/src/phases/shooting-ai.test.ts packages/ai/src/engine/candidate-generator.test.ts`
+      - passed: `3` files, `39` tests
+    - `pnpm nnue:selfplay --matches 1 --time-budget-ms 25 --max-commands 128 --out-dir tmp/nnue-selfplay-smoke-20260314-los-audit`
+      - passed
+      - result: `match 1/1 samples=128 end=max-commands`
+      - no `command-rejected`
+    - conclusion:
+      - the March 14 LOS/fallback fix is present in live code and the focused verification matches the `todo.md` record
+      - the earlier March 13 corpus/gate drift cannot be explained by the old LOS bug still being active in the current workspace
+
+## Execution Plan (Fix Shared Shooting LOS Rejections And Long-Run Fallbacks - 2026-03-14)
+- [x] Patch the shared shooting weapon-selection helper so AI only assigns weapons from models that actually have line of sight, matching the battle rules docs.
+- [x] Add focused regression coverage for mixed-LOS shooting assignments and LOS-aware in-range checks.
+- [x] Update the NNUE and Alpha instrumented match runners to try the existing fallback-command path on rejected AI commands so long self-play/gate jobs do not die on a single bad command.
+- [x] Rebuild the affected AI package, run focused tests, and run small NNUE/Alpha smoke checks before reporting back.
+- Progress:
+  - Scope locked before edits:
+    - fix only the shared shooting assignment legality and the long-run instrumented runner fallback behavior
+    - do not touch `packages/engine/*`
+    - do not touch `tools/nnue/self-play.mjs`
+    - keep the fix rules-accurate to `HH_Rules_Battle.md`
+  - Current confirmed root cause before edits:
+    - `HH_Rules_Battle.md` states:
+      - at least one attacker must have LOS to at least one target model
+      - only attacker models with LOS may shoot
+      - if there is no valid LOS, choose a new target or end the attack
+    - `packages/ai/src/helpers/weapon-selection.ts` currently assigns weapons for any alive model that has an in-range weapon, even if that model does not have LOS
+    - `packages/engine/src/shooting/weapon-declaration.ts` correctly rejects those assignments with `MODEL_NO_LOS`
+    - `tools/nnue/common.mjs` and `tools/alpha/common.mjs` currently terminate the whole run on `command-rejected` instead of using the fallback-command recovery already present in `packages/headless/src/index.ts`
+  - 2026-03-14 implementation progress:
+    - updated `packages/ai/src/helpers/weapon-selection.ts` to:
+      - filter attacking models through `getModelsWithLOSToUnit(...)` before assigning ranged weapons
+      - make `hasWeaponsInRange(...)` LOS-aware as well as range-aware
+    - updated `packages/ai/src/helpers/weapon-selection.test.ts` with regressions that:
+      - only the LOS-capable model receives a shooting assignment when terrain blocks another model
+      - `hasWeaponsInRange(...)` returns `false` when the only in-range model is blocked by LOS terrain
+    - updated `tools/nnue/common.mjs` so instrumented NNUE self-play:
+      - tries the fallback command when an AI-generated command is rejected
+      - only persists a training sample when the original AI command was accepted
+      - keeps recovered fallback commands out of the replay/sample label path
+    - updated `tools/alpha/common.mjs` so Alpha self-play/gate:
+      - tries the fallback command when an AI-generated command is rejected
+      - only persists Alpha observations for accepted non-recovered AI decisions
+    - updated `tools/alpha/distill-engine.mjs` so fresh distill:
+      - tries the fallback command when an AI-generated teacher command is rejected
+      - only persists teacher samples for accepted non-recovered teacher decisions
+    - updated `tools/alpha/common.mjs` and `tools/alpha/self-play.mjs` so Alpha self-play can still bind replay-buffer rows to the executed command when live Alpha diagnostics do not include `selectedMacroActionId`, as long as the current legal action surface has a unique matching command type
+  - Verification:
+    - `pnpm --filter @hh/ai build`
+      - passed
+    - `pnpm test -- packages/ai/src/helpers/weapon-selection.test.ts packages/ai/src/phases/shooting-ai.test.ts packages/ai/src/engine/candidate-generator.test.ts`
+      - passed (`39` tests)
+    - `pnpm nnue:selfplay --matches 1 --time-budget-ms 25 --max-commands 128 --out-dir tmp/nnue-selfplay-smoke-20260314-los-fallback`
+      - passed
+      - `match 1/1 samples=128 end=max-commands`
+      - no `command-rejected`
+    - `pnpm alpha:distill --matches 1 --time-budget-ms 25 --max-commands 64 --out-dir tmp/alpha-distill-smoke-20260314-los-fallback`
+      - passed
+      - `match 1/1 samples=51 end=max-commands`
+      - no `command-rejected`
+    - `pnpm alpha:selfplay --model-file tmp/alpha/overnight-20260313-022026/train-r0-restart/alpha-r0.json --matches 1 --curriculum mirror --time-budget-ms 25 --max-simulations 8 --max-commands 256 --out-dir tmp/alpha-selfplay-smoke-20260314-mirror-256-los-fallback-v2`
+      - passed
+      - `match 1/1 mode=mirror samples=45 end=game-over`
+      - no `command-rejected`
+
+## Execution Plan (Audit Regular Engine Self-Play Failures After Alpha Work - 2026-03-13)
+- [x] Scan every replay under `tmp/selfplay-200x1000-20260313` and classify every non-`game-over` termination with the exact rejected command and error.
+- [x] Audit all current Engine/NNUE/heuristic-related worktree diffs against those failure categories to identify what changed and what did not.
+- [x] Report exact findings, with file-level references and the smallest defensible explanation of how the current run drift happened.
+- Progress:
+  - Scope locked before edits:
+    - audit only
+    - no code changes during this pass
+    - inspect the completed regular Engine self-play run and the current worktree together
+  - Current confirmed symptom before the audit:
+    - the regular `tmp/selfplay-200x1000-20260313` run terminated match `183` with `terminatedReason: "command-rejected"`
+    - the rejected command in replay `selfplay-1773463666324-183.json` is a `declareShooting`
+    - the engine error is `Model 'p1-u10-m4' does not have line of sight to the target`
+  - 2026-03-13 audit findings:
+    - scanned every replay currently on disk under `tmp/selfplay-200x1000-20260313/replays`
+    - current regular Engine self-play run summary:
+      - `184` replays on disk
+      - `176` `game-over`
+      - `8` `command-rejected`
+    - every one of the `8` failed replays is the same failure class:
+      - rejected `declareShooting`
+      - error bucket: `Model <id> does not have line of sight to the target`
+    - checked earlier pre-Alpha self-play artifacts:
+      - `tmp/selfplay-200x1000-20260311/replays`: `189` `game-over`, `13` `command-rejected`
+      - `tmp/selfplay-150x1000-20260312-a/replays`: `146` `game-over`, `4` `command-rejected`
+      - `tmp/selfplay-150x1000-20260312-b/replays`: `143` `game-over`, `7` `command-rejected`
+      - `tmp/selfplay-100x1000-20260312-a/replays`: `99` `game-over`, `3` `command-rejected`
+      - `tmp/selfplay-100x1000-20260312-b/replays`: `99` `game-over`, `3` `command-rejected`
+    - conclusion from the replay evidence:
+      - the regular Engine self-play `declareShooting` LOS rejection bug predates the Alpha work and is already present in the March 11 / March 12 runs
+      - the current March 13 run is still hitting that same pre-existing bug, not a new failure category introduced by Alpha
+    - current worktree diff audit:
+      - current Engine/NNUE/heuristic-related diffs are limited to:
+        - `packages/ai/src/phases/movement-ai.ts`
+        - `packages/ai/src/phases/movement-ai.test.ts`
+        - `tools/nnue/common.mjs`
+        - `tools/nnue/gate-gameplay-model.mjs`
+      - no current diff in:
+        - `packages/ai/src/engine/search.ts`
+        - `packages/ai/src/engine/candidate-generator.ts`
+        - `packages/ai/src/phases/shooting-ai.ts`
+        - `packages/engine/src/shooting/*`
+        - `packages/engine/src/command-processor.ts`
+        - `tools/nnue/self-play.mjs`
+      - the `tools/nnue/common.mjs` diff is confined to gameplay gate helper flow and does not touch the regular self-play path
+      - the Tactical movement heuristic diff in `packages/ai/src/phases/movement-ai.ts` should not have been made after the user's constraint, but it does not explain regular Engine-vs-Engine `declareShooting` LOS rejections
+
+## Execution Plan (Fix Tactical Movement Legality Near Enemy Exclusion - 2026-03-13)
+- [x] Re-audit the Tactical movement path and isolate the smallest AI-side fix that prevents illegal `moveUnit` commands near enemy exclusion zones.
+- [x] Update Tactical movement generation so it validates translated model destinations against engine movement rules and falls back to legal translations without touching regular Engine or `tools/nnue/*`.
+- [x] Add focused regression coverage for the reproduced Tactical `Cannot end move within 1" of an enemy model` failure and verify the AI package build plus targeted tests.
+- Progress:
+  - Scope locked before edits:
+    - fix only Tactical movement generation
+    - do not touch `packages/ai/src/engine/*`
+    - do not touch `packages/engine/*`
+    - do not touch `tools/nnue/*`
+  - Current confirmed bug before edits:
+    - Tactical movement currently computes a centroid translation in `packages/ai/src/phases/movement-ai.ts`
+    - it emits a `moveUnit` command without validating the translated model positions against engine movement rules
+    - this can produce `command-rejected` failures such as `Cannot end move within 1" of an enemy model`
+  - Planned implementation:
+    - validate Tactical translated positions with `validateModelMove(...)` before emitting `moveUnit`
+    - search fallback translated centroids along the intended vector until a legal destination is found
+    - skip units with no legal move instead of ending the entire movement pass early
+  - 2026-03-13 implementation progress:
+    - updated `packages/ai/src/phases/movement-ai.ts` so movement AI now:
+      - iterates movable units until it finds a legal translated move instead of ending the sub-phase early on the first unworkable unit
+      - validates translated model destinations with `validateModelMove(...)` before emitting `moveUnit`
+      - uses fallback translated centroids along and around the intended vector to stay out of enemy exclusion zones and other illegal end states
+      - keeps the change isolated to AI-side Tactical/basic movement generation only
+    - updated `packages/ai/src/phases/movement-ai.test.ts` with a focused regression that reproduces the Tactical near-enemy case and asserts the emitted move passes engine movement validation
+  - Verification:
+    - `pnpm --filter @hh/ai build`
+      - passed
+    - `pnpm test -- packages/ai/src/phases/movement-ai.test.ts`
+      - passed (`12` tests)
+    - `pnpm alpha:gate --model tmp/alpha/overnight-20260313-022026/train-r1-restart-v2/alpha-r1.json --matches 1 --threshold -1 --time-budget-ms 200 --max-simulations 64 --max-commands 400 --out tmp/alpha/gate-tactical-fix-smoke-20260313.json`
+      - passed
+      - summary:
+        - `candidateWins=1`
+        - `engineWins=1`
+        - `draws=1`
+        - `aborted=0`
+        - `timeouts=0`
+      - confirmed the previous Tactical-side rejection no longer shows up as an aborted gate match in the live gate loop
+
+## Execution Plan (Fix Alpha Self-Play Duplicate Search - 2026-03-13)
+- [x] Re-audit the Alpha self-play instrumentation path to isolate the duplicate Alpha search and define the smallest Alpha-only fix.
+- [x] Update the Alpha self-play/common path so each acting Alpha side searches once per decision and reuses that result for both command emission and replay-buffer sample creation.
+- [x] Re-run focused Alpha tooling verification, then give the restart command that reuses the finished 100-game distill and existing first-train output.
+- Progress:
+  - Scope locked before edits:
+    - do not touch `packages/ai/src/engine/*`
+    - do not touch `tools/nnue/*`
+    - keep the finished distill corpus reusable
+    - keep the fix isolated to Alpha self-play/tooling and Alpha-side result reuse
+  - Current confirmed bottleneck before edits:
+    - `tools/alpha/self-play.mjs` currently asks `runAlphaInstrumentedMatch(...)` to capture a sample before the real command is generated
+    - `tools/alpha/common.mjs:createAlphaSelfPlaySample(...)` currently calls `searchAlphaBestAction(...)`
+    - `tools/alpha/common.mjs:runAlphaInstrumentedMatch(...)` then calls `generateNextCommand(...)`, which searches again for the same acting Alpha side and state
+    - this makes mirror Alpha self-play pay for two Alpha searches per real Alpha decision instead of one
+  - 2026-03-13 implementation progress:
+    - updated `tools/alpha/common.mjs:runAlphaInstrumentedMatch(...)` so the self-play instrumentation callback now runs after the real command is generated, with access to:
+      - the resolved command
+      - the live Alpha diagnostics from the actual search result
+      - the acted-unit set from before the decision
+      - a `usedQueuedPlan` flag so queued continuation commands are not logged as fresh search samples
+    - updated `tools/alpha/common.mjs:createAlphaSelfPlaySample(...)` so it no longer reruns Alpha search; it now builds the sample from:
+      - the current state
+      - the regenerated legal root action list
+      - the already-selected macro action id and search metrics from the real Alpha decision
+    - updated `tools/alpha/self-play.mjs` to skip queued-plan continuations and phase-control-only steps, and to build self-play rows from the actual Alpha diagnostics instead of calling `searchAlphaBestAction(...)` a second time
+    - added a focused Alpha tooling regression in `tools/alpha/tooling-interop.test.ts` for building a self-play sample from a preselected macro action without rerunning Alpha search
+    - kept the change isolated to Alpha tooling only; no Engine runtime/search or `tools/nnue/*` files were edited
+  - Verification:
+    - `pnpm --filter @hh/ai build`
+      - passed
+    - `pnpm test -- packages/ai/src/alpha/default-model.test.ts packages/ai/src/alpha/serialization.test.ts`
+      - passed
+    - `pnpm alpha:selfplay --model-file tmp/alpha/train-script-smoke-20260313/alpha-script-smoke.json --matches 1 --curriculum mirror --time-budget-ms 5 --max-simulations 32 --max-commands 32 --out-dir tmp/alpha/selfplay-dupfix-smoke-20260313`
+      - passed through the real package-script wrapper path
+    - `pnpm alpha:selfplay --model-file tmp/alpha/train-script-smoke-20260313/alpha-script-smoke.json --matches 1 --curriculum mirror --time-budget-ms 20 --max-simulations 64 --max-commands 128 --out-dir tmp/alpha/selfplay-dupfix-smoke-20260313-b`
+      - passed through the real package-script wrapper path
+      - the resulting replay was a phase-control-only degenerate smoke (`103` `endSubPhase` commands, `0` real Alpha search decisions), so `sampleCount=0` there is expected and does not indicate the duplicate-search fix failed
+    - verified the saved restart inputs still exist:
+      - `tmp/alpha/overnight-20260313-022026/distill/manifest.json`
+      - `tmp/alpha/overnight-20260313-022026/train-r0-restart/alpha-r0.json`
+
+## Execution Plan (Fix Alpha Gate Abort Causes - 2026-03-13)
+- [x] Audit the current Alpha gate aborts and isolate the exact causes before editing code.
+- [x] Fix the promoted-default Alpha checksum/load path and the gate-side `command-rejected` classification without touching Engine runtime or `tools/nnue/*`.
+- [x] Rebuild and verify the Alpha gate path against the existing `alpha-r1` candidate.
+- Progress:
+  - Scope locked before edits:
+    - keep the fix isolated to Alpha runtime/tooling
+    - do not touch `packages/ai/src/engine/*`
+    - do not touch `tools/nnue/*`
+  - Current confirmed abort causes before edits:
+    - `10` `alpha-default` gate matches aborted because `DEFAULT_ALPHA_MODEL` was being loaded with a stale checksum after the promoted model id was normalized to `alpha-default-v1`
+    - `3` tactical gate matches were being counted as generic `aborted` runs even though the rejecting move came from the Tactical opponent, not from Alpha
+  - 2026-03-13 implementation progress:
+    - updated `packages/ai/src/alpha/default-model.ts` so promoted-default Alpha model materialization recomputes `weightsChecksum` after normalizing the model id to `alpha-default-v1`
+    - updated `tools/alpha/gate.mjs` so `terminatedReason === 'command-rejected'` is attributed to the side that issued the rejected command:
+      - candidate rejected command => `opponent-win`
+      - opponent rejected command => `candidate-win`
+    - updated `packages/ai/src/alpha/default-model.test.ts` so the promoted override is validated after id normalization rather than only checking the model id field
+    - directly reproduced the first aborted tactical match and confirmed the rejected move came from Tactical:
+      - `actingPlayerIndex: 1`
+      - `aiDiagnostics: null`
+      - error: `Cannot end move within 1" of an enemy model`
+  - Verification:
+    - `pnpm --filter @hh/ai build`
+      - passed
+    - `pnpm test -- packages/ai/src/alpha/default-model.test.ts packages/ai/src/alpha/serialization.test.ts`
+      - passed
+    - `pnpm alpha:gate --model tmp/alpha/overnight-20260313-022026/train-r1-restart-v2/alpha-r1.json --matches 1 --threshold -1 --time-budget-ms 200 --max-simulations 64 --max-commands 400 --out tmp/alpha/gate-smoke-fix-20260313.json`
+      - passed
+      - summary:
+        - `candidateWins=1`
+        - `engineWins=1`
+        - `draws=1`
+        - `aborted=0`
+        - `timeouts=0`
+      - confirmed the previous `alpha-default` checksum-mismatch abort no longer occurs
+      - confirmed the previous Tactical `command-rejected` case is no longer counted as a generic abort
+
+## Execution Plan (Refresh alpha_primer.md For Current Alpha Tooling Workflow - 2026-03-13)
+- [x] Re-audit the Alpha primer sections that describe tooling entrypoints and training runtime so they match the current `pnpm alpha:*` workflow exactly.
+- [x] Update `alpha_primer.md` to document the compatible-Node plus native TensorFlow backend path and point readers at `Alpha_Training_Commands.md` for the concrete command sheet.
+- [x] Re-read the edited primer against the live Alpha scripts and record verification.
+- Progress:
+  - Scope locked before edits:
+    - update `alpha_primer.md` only
+    - keep the change documentation-only
+    - reflect the current safe `pnpm alpha:*` workflow without changing runtime behavior
+  - Current verified primer drift before edits:
+    - the primer still describes Alpha training/self-play/gate as generic TensorFlow.js tooling but does not explain that the safe package-script path now routes through `tools/alpha/run-with-compatible-node.mjs`
+    - the primer does not mention the native `@tensorflow/tfjs-node` backend now used by Node-side Alpha tooling
+    - the primer does not point readers to `Alpha_Training_Commands.md` for the concrete command reference sheet
+  - 2026-03-13 implementation progress:
+    - updated the Alpha architecture/tooling overview to include the compatible-Node launcher and the native `tfjs-node` backend used by Node-side Alpha tooling
+    - added a dedicated `Command entrypoints` subsection to the training pipeline section
+    - documented the supported operational rule:
+      - use `pnpm alpha:*`
+      - treat raw `node tools/alpha/*.mjs` as non-standard for TensorFlow-heavy Alpha tooling
+    - updated the self-play, training, and gating sections to explain that the supported fast path is the `pnpm` script wrapper
+    - pointed the primer at `Alpha_Training_Commands.md` for the concrete copy-paste command sheet
+  - Verification:
+    - re-read the edited Alpha primer sections against the live root `package.json` Alpha scripts
+    - confirmed that:
+      - `alpha:train`
+      - `alpha:selfplay`
+      - `alpha:gate`
+      route through `tools/alpha/run-with-compatible-node.mjs`
+    - confirmed that:
+      - `alpha:distill`
+      - `alpha:promote`
+      - `alpha:inspect`
+      remain direct `pnpm alpha:*` entrypoints
+    - re-read the updated `alpha_primer.md` sections to confirm the command-entrypoint, training-backend, and command-sheet references are now consistent
+    - documentation-only change; no runtime behavior changed
+
+## Execution Plan (Create Alpha_Training_Commands.md - 2026-03-13)
+- [x] Audit the current Alpha package scripts and the live finished 100-game distill path so the command sheet matches the current working workflow exactly.
+- [x] Write `Alpha_Training_Commands.md` as a concise reference sheet with only the current safe Alpha commands.
+- [x] Re-read the command sheet against the live package scripts and current distill path and record verification.
+- Progress:
+  - Scope locked before edits:
+    - add a new `Alpha_Training_Commands.md`
+    - include only the current safe `pnpm alpha:*` workflow
+    - include the existing finished 100-game distill restart path
+    - do not change runtime behavior
+  - Current verified command/runtime facts before the doc write:
+    - `alpha:train`, `alpha:selfplay`, and `alpha:gate` now route through `tools/alpha/run-with-compatible-node.mjs`
+    - `alpha:distill`, `alpha:promote`, and `alpha:inspect` remain standard `pnpm alpha:*` script entrypoints
+    - the current finished 100-game distill manifest is `tmp/alpha/overnight-20260313-022026/distill/manifest.json`
+    - that distill corpus currently contains `100` matches and `19464` samples
+  - 2026-03-13 implementation progress:
+    - added `Alpha_Training_Commands.md` as the current Alpha command reference sheet
+    - documented the required safe execution rule:
+      - use `pnpm alpha:*`
+      - do not call `tools/alpha/train.mjs`, `tools/alpha/self-play.mjs`, or `tools/alpha/gate.mjs` directly with raw `node`
+    - documented the live restart flow for the finished `100`-game distill run:
+      - train from the existing distill manifest
+      - run `100` Alpha self-play games
+      - retrain on distill plus self-play
+      - gate at `10` matches per opponent
+    - documented the individual commands for:
+      - train only
+      - self-play only
+      - retrain
+      - gate
+      - promote
+      - inspect
+      - full overnight rerun from scratch
+      - minimal smoke checks
+  - Verification:
+    - re-read `Alpha_Training_Commands.md` against the live root `package.json` Alpha scripts
+    - confirmed that:
+      - `alpha:train`
+      - `alpha:selfplay`
+      - `alpha:gate`
+      all route through `tools/alpha/run-with-compatible-node.mjs`
+    - confirmed that:
+      - `alpha:distill`
+      - `alpha:promote`
+      - `alpha:inspect`
+      remain direct `pnpm alpha:*` entrypoints
+    - re-read the current finished distill manifest at `tmp/alpha/overnight-20260313-022026/distill/manifest.json`
+    - confirmed the documented live corpus values:
+      - `matchCount=100`
+      - `sampleCount=19464`
+    - documentation-only change; no runtime behavior changed
+
+## Execution Plan (Wire Native TensorFlow Node Backend For Alpha Tooling - 2026-03-13)
+- [x] Audit the current Alpha TensorFlow import path and identify the smallest safe way to enable the native Node backend for Alpha tooling only.
+- [x] Add the Node backend dependency and bootstrap it from Alpha tooling without changing browser/runtime Alpha behavior.
+- [x] Verify that Alpha tooling resolves the `tensorflow` backend and that a tiny Alpha train smoke still works.
+- Progress:
+  - Scope locked before edits:
+    - do not touch browser UI/runtime behavior
+    - do not touch Engine runtime/search code
+    - wire the fast TensorFlow backend only for Node-side Alpha tooling
+  - Current confirmed state before the change:
+    - `packages/ai` currently depends only on `@tensorflow/tfjs`
+    - Alpha inference and training import `@tensorflow/tfjs` directly
+    - there is no `@tensorflow/tfjs-node` dependency and no backend bootstrap code today
+    - Alpha tooling is therefore falling back to the slow pure-JS TensorFlow backend in Node
+  - 2026-03-13 implementation progress:
+    - added root dev dependency `@tensorflow/tfjs-node@4.22.0`
+    - added `tools/alpha/tfjs-node-bootstrap.mjs` to register the native `tensorflow` backend before Alpha inference/training code loads
+    - added `tools/alpha/run-with-compatible-node.mjs` so Alpha TensorFlow-heavy package scripts automatically re-exec under a compatible Homebrew Node 20/22 binary instead of the current global Node 25
+    - updated package scripts so:
+      - `alpha:train`
+      - `alpha:selfplay`
+      - `alpha:gate`
+      now route through the compatible-Node launcher
+    - confirmed that the first direct `tfjs-node` attempt failed under `node v25.2.1`, then installed Homebrew `node@20` and switched the Alpha tooling path to it
+    - left browser/runtime Alpha behavior unchanged; the change is isolated to Node-side tooling entrypoints
+  - Verification:
+    - `pnpm install`
+      - passed
+      - installed `@tensorflow/tfjs-node`
+    - `/opt/homebrew/opt/node@20/bin/node -v`
+      - `v20.20.0`
+    - `node tools/alpha/run-with-compatible-node.mjs tools/alpha/train.mjs --input tmp/alpha/distill-rerun-cli-smoke-20260313-diagnostics-restore/manifest.json --epochs 1 --batch-size 2 --out-dir tmp/alpha/train-node-wrapper-smoke-20260313 --model-id alpha-node-wrapper-smoke`
+      - passed
+    - `pnpm alpha:train --input tmp/alpha/distill-rerun-cli-smoke-20260313-diagnostics-restore/manifest.json --epochs 1 --batch-size 2 --out-dir tmp/alpha/train-script-smoke-20260313 --model-id alpha-script-smoke`
+      - passed through the package-script wrapper path
+    - `pnpm alpha:selfplay --model-file tmp/alpha/train-script-smoke-20260313/alpha-script-smoke.json --matches 1 --curriculum mirror --time-budget-ms 5 --max-simulations 32 --max-commands 5 --out-dir tmp/alpha/selfplay-script-smoke-20260313`
+      - passed
+    - `pnpm alpha:gate --model tmp/alpha/train-script-smoke-20260313/alpha-script-smoke.json --matches 1 --threshold -1 --time-budget-ms 5 --max-simulations 32 --max-commands 5 --out tmp/alpha/gate-script-smoke-20260313.json`
+      - passed
+
+## Execution Plan (Create alpha_primer.md - 2026-03-13)
+- [x] Re-audit `engine_primer.md` structure against the live Alpha runtime, tooling, deployment, and diagnostics surfaces.
+- [x] Write `alpha_primer.md` as a current-state primer that mirrors the Engine primer style while describing the shipped Alpha stack accurately.
+- [x] Re-read the new primer against the live Alpha code/tooling defaults and record verification.
+- Progress:
+  - Scope locked before edits:
+    - add a new `alpha_primer.md`
+    - do not change runtime behavior
+    - mirror `engine_primer.md` as a primer, not a future design note
+  - Current verified Alpha surfaces before the doc write:
+    - runtime strategy path is `AI controller -> AlphaStrategy -> searchAlphaBestAction(...)`
+    - UI routes Alpha through `alpha-ai.worker.ts` and exposes Balanced (`600ms / 256 sims`) and Tournament (`1500ms / 640 sims`) presets plus shadow Alpha controls in both setup screens
+    - headless and MCP both accept Alpha config fields and shadow Alpha fields
+    - Alpha tooling exists under `tools/alpha/*` with `distill`, `selfplay`, `train`, `gate`, `promote`, and `inspect`
+    - the current promoted default Alpha runtime id is `alpha-default-v1`, loaded from `packages/ai/src/alpha/default-alpha-model-override.ts`
+  - 2026-03-13 implementation progress:
+    - added `alpha_primer.md` as a current-state Alpha primer that mirrors the structure and level of detail in `engine_primer.md`
+    - covered the live Alpha runtime architecture, worker path, shared queued-plan behavior, search defaults, model stack, registry/default-model behavior, UI/headless/MCP surfaces, tooling commands, gate behavior, and promotion path
+    - explicitly documented current live constraints such as:
+      - the shared macro-action generator still bounding Alpha's search surface
+      - the lack of a built-in heuristic fallback Alpha runtime model if the override were missing
+      - the current promoted-default metadata showing a forced/failed gate result
+  - Verification:
+    - reread `alpha_primer.md` against:
+      - `packages/ai/src/ai-controller.ts`
+      - `packages/ai/src/strategy/alpha-strategy.ts`
+      - `packages/ai/src/alpha/search.ts`
+      - `packages/ai/src/alpha/common.ts`
+      - `packages/ai/src/alpha/model-registry.ts`
+      - `packages/ai/src/alpha/default-model.ts`
+      - `tools/alpha/distill-engine.mjs`
+      - `tools/alpha/self-play.mjs`
+      - `tools/alpha/train.mjs`
+      - `tools/alpha/gate.mjs`
+      - `tools/alpha/promote-model.mjs`
+      - `packages/headless/src/cli.ts`
+      - `packages/mcp-server/src/register-tools.ts`
+      - `packages/ui/src/game/hooks/useAITurn.ts`
+      - `packages/ui/src/game/hooks/alpha-ai.worker.ts`
+      - `packages/ui/src/game/screens/ArmyLoadScreen.tsx`
+      - `packages/ui/src/game/screens/ArmyBuilderScreen.tsx`
+    - confirmed the documented UI Alpha and shadow Alpha budget/base-seed presets against both setup screens
+    - documentation-only change; no build or test run was required for this pass
+
+## Execution Plan (Dual Gameplay Gate: Tactical + Previous Champion - 2026-03-13)
+- [x] Audit the current gameplay gate path and identify the smallest safe way to benchmark a candidate against both `Tactical` and the current live default champion.
+- [x] Update only the gameplay gate tooling/helpers needed so `pnpm nnue:gate` runs both benchmarks, preserves the Tactical summary surface, and records the previous-champion result in the JSON summary.
+- [x] Add focused regression coverage for the new dual-gate summary/pass behavior and verify with targeted tests.
+- Progress:
+  - Scope locked before edits:
+    - do not modify Engine runtime/search code
+    - do not modify self-play or training behavior
+    - keep the existing Tactical gate benchmark intact
+    - add the previous-version benchmark using the current live default gameplay model (`gameplay-default-v1`) before promotion of any new candidate
+  - Current verified gate behavior before edits:
+    - `tools/nnue/gate-gameplay-model.mjs` runs only one benchmark block against `Tactical`
+    - `tools/nnue/common.mjs` hardcodes `AIStrategyTier.Tactical` as the opponent inside `runGateMatches(...)`
+    - the promotion archive exists, but the current live previous champion is already available in-process as `gameplay-default-v1`, so a second benchmark does not need a separate archive restore step
+  - 2026-03-13 implementation progress:
+    - generalized the gameplay gate match loop in `tools/nnue/common.mjs` so the existing Tactical benchmark and a new Engine-vs-Engine benchmark can share the same classified headless result path without touching runtime/search code
+    - kept `runGateMatches(...)` intact for the Tactical block and added `runModelGateMatches(...)` for candidate-vs-current-default benchmark runs
+    - updated `tools/nnue/gate-gameplay-model.mjs` so `pnpm nnue:gate` now:
+      - runs the existing candidate-vs-`Tactical` block first
+      - runs a second candidate-vs-`gameplay-default-v1` block when the candidate is a distinct model id
+      - records `previousThreshold`, `tacticalPassed`, and a `previousVersion` result block in the JSON summary
+      - sets overall `passed` only when both the Tactical block and the previous-version block pass
+    - used a strict majority threshold for the previous-version block (`--previous-threshold`, default `0.5`) so a new candidate must actually beat the incumbent champion instead of only tying it
+    - added focused regression coverage in `packages/ai/src/engine/gameplay-gate-summary.test.ts` for:
+      - dual-pass success
+      - Tactical pass plus previous-version failure
+      - Tactical-only fallback when gating the live default model itself
+  - Verification:
+    - `pnpm test -- packages/ai/src/engine/gameplay-gate-summary.test.ts packages/ai/src/engine/promotion-cli.test.ts`
+      - passed: `2` files, `4` tests
+    - `pnpm build`
+      - passed across the workspace
+    - `pnpm nnue:gate --model tmp/selfplay-200x1000-20260311/candidate-gameplay-model.json --matches 1 --time-budget-ms 5 --threshold -1 --previous-threshold -1 --out tmp/gate-dual-smoke-20260313.json`
+      - passed as an end-to-end smoke of the dual-opponent CLI path
+      - confirmed summary output now includes the `previousVersion` benchmark against `gameplay-default-v1`
+
+## Execution Plan (Restore Engine Isolation And Remove The Engine Diagnostics Coupling - 2026-03-13)
+- [x] Re-audit the current Engine diagnostics type wiring and restore the regular Engine search path to the original shared `AIDiagnostics` contract.
+- [x] Remove unused Engine-only diagnostics narrowing from shared AI types/exports while keeping Alpha-specific diagnostics isolated to Alpha search results.
+- [x] Rebuild and run focused Alpha tooling verification to confirm Alpha still works after the diagnostics decoupling.
+- Progress:
+  - Scope locked before edits:
+    - do not delete files
+    - do not revert commits
+    - do not touch `tools/nnue/*`
+    - do not touch `packages/engine/*`
+    - restore only the regular Engine diagnostics typing and shared AI contract coupling I introduced
+  - Current confirmed state before the restore:
+    - `packages/ai/src/engine/search.ts` is only changed by a diagnostics type narrowing from `AIDiagnostics` to `EngineAIDiagnostics`
+    - `packages/ai/src/types.ts` currently makes `SearchResult.diagnostics` depend on `EngineAIDiagnostics`
+    - `EngineAIDiagnostics` and `BasicOrTacticalAIDiagnostics` are only referenced from shared type definitions/exports and the regular Engine search file
+    - Alpha-specific diagnostics remain separately typed through `AlphaAIDiagnostics` and `AlphaSearchResult`
+  - 2026-03-13 implementation progress:
+    - restored `packages/ai/src/engine/search.ts` to the original shared diagnostics contract by changing the import and local diagnostics annotations back to `AIDiagnostics`
+    - rewired `packages/ai/src/types.ts` so `AIDiagnostics` is once again the shared regular diagnostics contract and `SearchResult.diagnostics` no longer depends on an Engine-only type
+    - kept Alpha-specific search diagnostics isolated to `AlphaAIDiagnostics` and `AlphaSearchResult`
+    - removed unused `BasicOrTacticalAIDiagnostics` and `EngineAIDiagnostics` exports from shared AI types and `packages/ai/src/index.ts`
+    - left the fast Alpha distill path isolated under `tools/alpha/*`; no further regular Engine files were edited
+  - Verification:
+    - `git diff -- packages/ai/src/engine/search.ts`
+      - clean: no remaining diff in the regular Engine search file
+    - `rg -n "EngineAIDiagnostics|BasicOrTacticalAIDiagnostics" packages/ai/src packages/headless/src packages/mcp-server/src`
+      - clean: no remaining regular-surface references
+    - `pnpm --filter @hh/ai build`
+      - passed
+    - `pnpm --filter @hh/headless build`
+      - passed
+    - `pnpm test -- packages/ai/src/alpha/tooling-interop.test.ts packages/ai/src/alpha/promotion-cli.test.ts packages/ai/src/alpha/default-model.test.ts packages/ai/src/alpha/serialization.test.ts`
+      - passed: `4` files, `6` tests
+    - `pnpm alpha:distill --matches 1 --time-budget-ms 5 --max-commands 5 --out-dir tmp/alpha/distill-rerun-cli-smoke-20260313-diagnostics-restore`
+      - passed
+      - output: `matchCount=1`, `sampleCount=4`, `shardCount=1`, `importMode="rerun"`
+
+## Execution Plan (Alpha Distill Double-Search Fix - 2026-03-13)
+- [x] Audit the fresh `alpha:distill` rerun path to isolate why it is materially slower than `nnue:selfplay`.
+- [x] Remove duplicate Engine search from fresh `alpha:distill` without touching `tools/nnue/*` or Engine runtime/search code.
+- [x] Add focused Alpha-side regression coverage for the fixed rerun path and reverify the Alpha tooling slice.
+- Progress:
+  - Current confirmed problem:
+    - fresh `alpha:distill` records the teacher sample through `createDistillSample(...)`, which already runs `searchBestAction(...)`
+    - the same decision is then executed through `generateNextCommand(...)` inside the Alpha match runner, which runs `searchBestAction(...)` a second time via `EngineStrategy`
+    - that makes fresh `alpha:distill` materially slower than normal Engine self-play because each Engine decision pays for search twice
+  - Scope lock for this fix:
+    - do not modify `tools/nnue/*`
+    - do not modify `packages/ai/src/engine/*`
+    - do not change Engine move-selection behavior
+    - fix only the Alpha distill rerun path by reusing the first search result for both sample generation and command execution
+  - 2026-03-13 implementation progress:
+    - extended `tools/alpha/common.mjs` so distill samples can be built from precomputed root actions and an already-selected teacher macro action, avoiding redundant action regeneration inside sample construction
+    - added `tools/alpha/teacher-engine-search.mjs` as a separate Alpha-only teacher search path that mirrors the current Engine search behavior while also returning the root legal action set needed for Alpha policy targets
+    - replaced the fresh rerun branch in `tools/alpha/distill-engine.mjs` with an isolated Alpha-side fast distill runner that:
+      - does not call the working Engine `generateNextCommand(...)` or modify `packages/ai/src/engine/*`
+      - uses the separate Alpha-only teacher search for real Engine-like decision nodes
+      - reuses that one teacher search result for all of:
+        - chosen command emission
+        - queued-plan continuation capture
+        - score/diagnostics capture
+        - root-action-based Alpha teacher sample generation
+      - keeps phase-control commands and queued continuations out of duplicate teacher sampling
+    - left replay-import mode unchanged; the speed fix is isolated to fresh rerun distill
+    - left `tools/nnue/*` and `packages/ai/src/engine/*` untouched
+    - added a fresh rerun regression case to `packages/ai/src/alpha/tooling-interop.test.ts`
+  - Verification:
+    - `pnpm test -- packages/ai/src/alpha/tooling-interop.test.ts packages/ai/src/alpha/promotion-cli.test.ts packages/ai/src/alpha/default-model.test.ts packages/ai/src/alpha/serialization.test.ts`
+      - passed: `4` files, `6` tests
+    - `pnpm alpha:distill --matches 1 --time-budget-ms 5 --max-commands 5 --out-dir tmp/alpha/distill-rerun-cli-smoke-20260313-isolated-teacher`
+      - passed
+      - output: `matchCount=1`, `sampleCount=4`, `shardCount=1`, `importMode=\"rerun\"`
+    - observed rerun-smoke improvement on the same `1 match / 5 commands / 5ms` CLI shape:
+      - pre-isolated-teacher smoke: about `1.6s`
+      - isolated-teacher smoke: about `0.9s`
+
+## Execution Plan (Alpha Existing Engine Selfplay Import + Candidate Selfplay File Support - 2026-03-13)
+- [x] Audit the current Alpha distill/selfplay entrypoints against the existing NNUE selfplay manifest and replay artifact shape.
+- [x] Add an additive Alpha distill import path that consumes existing Engine selfplay manifests/replay artifacts without rerunning Engine matches.
+- [x] Add additive `alpha:selfplay` support for loading a candidate Alpha model directly from a model file instead of requiring prior promotion/registration.
+- [x] Add focused regression coverage for the new Alpha importer/model-file flows and verify they do not touch `tools/nnue/*` or Engine runtime behavior.
+- Progress:
+  - Scope locked before edits:
+    - do not modify `tools/nnue/*`
+    - do not modify `packages/ai/src/engine/*`
+    - do not modify Engine runtime/search semantics or the existing NNUE artifact contract
+  - Current verified gaps:
+    - `tools/alpha/distill-engine.mjs` only regenerates Engine-vs-Engine teacher matches and cannot consume existing NNUE selfplay manifests/replays.
+    - `tools/alpha/train.mjs` correctly expects Alpha-native replay-buffer rows and therefore cannot use NNUE shard rows directly.
+    - `tools/alpha/self-play.mjs` currently accepts only `--model <model-id>` and bootstraps a fresh seed model when that id is not registered.
+  - Implementation target for this pass:
+    - extend Alpha distill so it can read existing NNUE selfplay manifests and replay artifact paths, replay those decisions through the current Engine teacher, and emit Alpha replay-buffer rows under `tmp/alpha`.
+    - extend Alpha selfplay so it can load `--model-file <candidate.json>` directly for post-train selfplay without a forced promotion step.
+  - 2026-03-13 implementation progress:
+    - rewrote `tools/alpha/distill-engine.mjs` into a direct-callable/exported Alpha distill entrypoint with two modes:
+      - existing behavior preserved: rerun Engine-vs-Engine teacher matches when no import input is supplied
+      - new additive behavior: `--input` / `--input-manifest` / `--input-replay` can ingest existing NNUE selfplay manifests or replay artifacts, deterministically replay the recorded commands, rebuild Alpha distill targets on those exact decision states, and emit Alpha-format shards under `tmp/alpha`
+    - rewrote `tools/alpha/self-play.mjs` into a direct-callable/exported Alpha selfplay entrypoint with additive `--model-file <candidate.json>` support while preserving the existing `--model <model-id>` path
+    - added regression coverage in `packages/ai/src/alpha/tooling-interop.test.ts` for:
+      - importing an existing Engine replay/manifest into Alpha distill output
+      - running Alpha selfplay directly from a candidate model JSON file
+    - left `tools/nnue/*`, `packages/ai/src/engine/*`, and the Engine/NNUE runtime and artifact paths untouched
+  - Verification:
+    - `pnpm test -- packages/ai/src/alpha/tooling-interop.test.ts packages/ai/src/alpha/promotion-cli.test.ts packages/ai/src/alpha/default-model.test.ts packages/ai/src/alpha/serialization.test.ts`
+      - passed: `4` files, `5` tests
+    - direct interop proof inside the new test suite:
+      - imported an existing Engine-style selfplay manifest/replay into Alpha distill shards
+      - ran Alpha selfplay directly from a candidate model file with no promotion step
 
 ## Execution Plan (Refresh engine_primer.md - 2026-03-12)
 - [x] Re-audit `engine_primer.md` against the current promotion, archive, selfplay default-model, and gate-summary behavior.
@@ -2330,3 +3076,132 @@ Remove all MVP hardwires and fully implement Blackshields + Shattered Legions as
 - [x] Add worker progress telemetry cadence requirements (50–100ms updates with depth/nodes/PV).
 - [x] Expand reaction fingerprint definition for transposition determinism (`hasReactedThisTurn`, allotments, advanced reaction usage).
 - [x] Add exact deterministic seed schedule + PRNG specification for mixed-search rollouts.
+
+## Documentation Rewrite Plan (2026-03-13)
+- [x] Audit the current repo surfaces that `alpha_plan.md` must match before rewriting the document.
+- [x] Rewrite `alpha_plan.md` as a full Alpha transformer implementation specification aligned to the live repo state.
+- [x] Remove milestone/scaffolding wording and lock Alpha to a full end-to-end completion standard.
+- [x] Add explicit non-interference guarantees covering `Tactical`, `Engine`, and all `nnue:*` tooling/artifacts.
+
+## Documentation Rewrite Completion (2026-03-13)
+- Rewrote `alpha_plan.md` as a full implementation spec instead of a milestone/scaffolding blueprint.
+- Updated the plan to match the live repo seams verified on 2026-03-13:
+  - both AI setup screens (`ArmyLoadScreen` and `ArmyBuilderScreen`)
+  - current worker routing (`Engine` worker only today, Alpha worker added as a separate path)
+  - headless runtime surfaces (`index.ts`, `session.ts`, `decision-support.ts`, `cli.ts`)
+  - MCP schema surface in `packages/mcp-server/src/register-tools.ts`
+  - current archive-backed, code-generated default-model promotion pattern used by NNUE
+- Locked Alpha to a complete end-to-end standard:
+  - transformer runtime
+  - PUCT/MCTS search
+  - distillation
+  - self-play
+  - training
+  - gate
+  - promotion
+  - full runtime shadow mode
+- Explicitly removed partial-implementation language:
+  - no empty `AlphaStrategy`
+  - no scaffolding-only milestone
+  - no dummy or handwritten default model
+  - no `models/alpha` filesystem runtime registry
+- Added hard non-interference rules requiring that `Tactical`, `Engine`, and all `nnue:*` tooling and artifacts remain unchanged.
+
+## Alpha Implementation Plan (2026-03-13)
+- [x] Add Alpha package/runtime/tooling dependencies and root scripts without changing existing `nnue:*` behavior.
+- [x] Implement Alpha core inside `packages/ai/src/alpha` with model registry, serialization, TFJS inference, encoders, search, diagnostics, and strategy routing.
+- [x] Extend UI, headless, and MCP player-selection/runtime surfaces for Alpha and runtime shadow Alpha while preserving current Tactical and Engine behavior.
+- [ ] Implement `tools/alpha` distill/self-play/train/gate/promote/inspect flows with Alpha-only temp and archive paths.
+- [ ] Add Alpha and regression tests, run install/typecheck/tests, and verify Tactical/Engine isolation.
+
+## Alpha Implementation Progress (2026-03-13)
+- Added root `alpha:*` scripts to `package.json`.
+- Added `@tensorflow/tfjs` as an `@hh/ai` dependency.
+- Ran `pnpm install` successfully after manifest updates.
+- Implemented the Alpha core under `packages/ai/src/alpha`:
+  - shared Alpha constants, base64 tensor serialization, checksum handling, and default search config
+  - deterministic state and action encoders over the current `GameState` + shared macro-action surface
+  - TFJS transformer forward pass, tensor layout, and deterministic model initialization
+  - explicit PUCT search with sampled chance outcomes, queued-plan emission, batched leaf evaluation, and root caching
+  - Alpha model registry/default-model plumbing and additive strategy-factory routing
+- Extended `packages/ai/src/types.ts`, `packages/ai/src/index.ts`, and `packages/ai/src/ai-controller.ts` for the Alpha tier, Alpha diagnostics, Alpha config fields, and shadow Alpha diagnostics attachment.
+- Ran `pnpm --filter @hh/ai typecheck` successfully after the Alpha core landed.
+- Wired Alpha through the runtime surfaces:
+  - added dedicated Alpha worker files and hook routing in `packages/ui/src/game/hooks`
+  - exposed Alpha tier selection plus runtime shadow Alpha controls in both setup screens
+  - extended headless library/session/decision-support/CLI config plumbing for `alphaModelId`, `maxSimulations`, and `shadowAlpha`
+  - extended MCP `playerConfigSchema` to accept Alpha and shadow Alpha config fields
+- Rebuilt `@hh/ai` and verified downstream typechecks stay green:
+  - `pnpm --filter @hh/ui typecheck`
+  - `pnpm --filter @hh/headless typecheck`
+  - `pnpm --filter @hh/mcp-server typecheck`
+- Fixed the Alpha trainer loss-capture typing in `packages/ai/src/alpha/training.ts` so `@hh/ai` can build/typecheck cleanly before the remaining Alpha tooling work lands.
+- Added the first half of the Alpha tooling pipeline under `tools/alpha`:
+  - `distill-engine.mjs` for Engine-teacher corpus generation
+  - `self-play.mjs` for Alpha mirror/curriculum corpus generation
+  - `train.mjs` for TFJS Alpha model training and candidate export
+- Added the remaining Alpha tooling flow:
+  - `gate.mjs` for Tactical/Engine/current-Alpha benchmark gating
+  - `inspect-buffer.mjs` for replay-buffer inspection
+  - `promote-model.mjs` plus `promotion-helpers.mjs` for archive-backed Alpha promotion and override generation
+- Moved Alpha optimizer creation behind `@hh/ai` exports so the root `tools/alpha` scripts consume the AI package API instead of importing TFJS directly from the workspace root.
+- Fixed the shared `tools/alpha/common.mjs` export surface so the new Alpha CLI scripts can import the Engine baseline helpers they run against.
+- Added Alpha self-play bootstrap model registration so the Alpha corpus pipeline can run before the first promoted default model exists.
+- Removed the duplicate `createAlphaTrainingSeedModel` re-export from `tools/alpha/common.mjs` so the new self-play bootstrap path loads cleanly under Node ESM.
+- Fixed Alpha self-play sample capture so deterministic single-action Alpha decisions are preserved as training rows instead of being dropped when root search does not expand.
+- Added Alpha regression coverage for:
+  - AI controller Alpha strategy routing
+  - Alpha serialization/default-model materialization
+  - headless Alpha config persistence
+  - MCP schema exposure of the Alpha tier
+  - Alpha promotion CLI override generation
+- Corrected the initial Alpha regression tests to use the Alpha-specific strategy factory contract and the actual `createFreshAlphaModel` export surface.
+- Added the Alpha promotion CLI regression under `packages/ai/src/alpha` so it runs inside the existing Vitest include set instead of being skipped under `tools/alpha`.
+- Executed the Alpha tooling pipeline end to end:
+  - `pnpm alpha:distill` produced `tmp/alpha/distill-smoke/manifest.json` with 120 Engine-teacher samples
+  - `pnpm alpha:selfplay` produced `tmp/alpha/selfplay-smoke2/manifest.json` with 4 Alpha self-play samples after fixing deterministic single-action capture
+  - `pnpm alpha:train` produced `tmp/alpha/train-smoke/alpha-smoke-candidate.json` from 124 replay-buffer rows
+  - normalized the trained candidate manifest to `tmp/alpha/train/alpha-initial-v1-candidate.json`
+  - `pnpm alpha:inspect` summarized the Alpha replay buffer successfully
+  - `pnpm alpha:gate` produced `tmp/alpha/gate/alpha-initial-v1-candidate.gate.json`
+- Promoted a real trained Alpha default model:
+  - generated and archived `packages/ai/src/alpha/default-alpha-model-override.ts`
+  - archived promotion records under `archive/alpha/promotions`
+  - final promoted source model id is `alpha-initial-v1-candidate`
+- Verified the repo after promotion:
+  - `pnpm --filter @hh/ai build`
+  - `pnpm --filter @hh/ai typecheck`
+  - `pnpm --filter @hh/ui typecheck`
+  - `pnpm --filter @hh/headless typecheck`
+  - `pnpm --filter @hh/mcp-server typecheck`
+  - `pnpm typecheck`
+  - targeted Vitest slice passed for AI Alpha tests, headless Alpha config coverage, and MCP Alpha schema coverage
+- Current Alpha gate caveat:
+  - the recorded gate summary for `alpha-initial-v1-candidate` did not pass; the 1-match Tactical/Engine/current-Alpha smoke gate produced timeouts/abort before a decisive result, so promotion used the recorded gate summary with `--force` to populate the first real default Alpha model.
+
+## Reaction UX / Death Or Glory Progress (2026-03-15)
+- Tightened the in-progress movement reaction patch so it compiles cleanly again:
+  - fixed `Death or Glory` stat-modifier typing
+  - fixed the `advancedReactionResolved` payload shape for `death-or-glory`
+  - removed the unsafe `moveModel` nullability hole
+  - removed the brittle object-identity check from the post-move `Death or Glory` hook
+  - fixed the declined `Death or Glory` branch so the current trigger still resolves its move-through hits before the queue advances
+- Finished the UI compile-path for move-based reactions:
+  - canvas overlay callers now pass preview `positionOverrides`
+  - `ReactionPrompt` now narrows the new reaction steps cleanly and supports the move-placement / `Death or Glory` selection flow
+- Wired the simple AI reaction path to emit legal payloads for the new reaction requirements:
+  - move-based reactions now include conservative legal `modelPositions`
+  - `Death or Glory` now includes a selected reacting model plus weapon/profile
+  - aerial reserve reactions now generate valid battlefield-edge entry placements
+- Added regression coverage for:
+  - reducer move-reaction placement confirmation
+  - reducer `Death or Glory` attacker/weapon confirmation
+  - command-processor vehicle move-through `Death or Glory` offer / resolution / decline paths
+  - AI reaction command generation for stationary move payloads, `Death or Glory`, and Combat Air Patrol edge entry
+- Validation status so far:
+  - `pnpm --filter @hh/types build`: PASS
+  - `pnpm --filter @hh/engine typecheck`: PASS
+  - `pnpm --filter @hh/engine build`: PASS
+  - `pnpm --filter @hh/ui typecheck`: PASS
+  - `pnpm --filter @hh/ai typecheck`: PASS
+  - `pnpm test -- packages/ai/src/phases/reaction-ai.test.ts packages/engine/src/command-processor.test.ts packages/ui/src/game/reducer.test.ts`: PASS (`147/147`)

@@ -12,8 +12,7 @@ import { useCallback } from 'react';
 import type { GameUIState, GameUIAction } from '../types';
 import { WeaponSelectionPanel } from './WeaponSelectionPanel';
 import { FireGroupDisplay } from './FireGroupDisplay';
-import { findWeapon, findLegionWeapon, isRangedWeapon } from '@hh/data';
-import { checkWeaponRange, getClosestModelDistance, hasLOSToUnit, TEMPLATE_EFFECTIVE_RANGE_INCHES } from '@hh/engine';
+import { checkWeaponRange, getClosestModelDistance, getWeaponSelectionOptions, hasLOSToUnit, TEMPLATE_EFFECTIVE_RANGE_INCHES } from '@hh/engine';
 import type { GameState, UnitState } from '@hh/types';
 
 interface ShootingFlowProps {
@@ -28,10 +27,6 @@ interface ShootingTargetInfo {
   hasLOS: boolean;
   hasAnyWeaponInRange: boolean;
   canTarget: boolean;
-}
-
-function lookupWeapon(weaponId: string) {
-  return findWeapon(weaponId) ?? findLegionWeapon(weaponId);
 }
 
 function findUnitById(gs: GameState, unitId: string): UnitState | null {
@@ -51,11 +46,6 @@ function getRangedWeaponIdsForModel(model: UnitState['models'][number]): string[
   return ['bolter'];
 }
 
-function getEffectiveWeaponRange(weapon: ReturnType<typeof lookupWeapon>): number {
-  if (!weapon || !isRangedWeapon(weapon)) return 0;
-  return weapon.hasTemplate ? TEMPLATE_EFFECTIVE_RANGE_INCHES : weapon.range;
-}
-
 function getShootingTargetInfo(
   gs: GameState,
   attackerUnitId: string,
@@ -66,9 +56,13 @@ function getShootingTargetInfo(
   const aliveAttackers = attacker.models.filter(m => !m.isDestroyed);
   const maxAttackerRange = aliveAttackers.reduce((maxRange, model) => {
     const ranges = getRangedWeaponIdsForModel(model)
-      .map((weaponId) => lookupWeapon(weaponId))
-      .filter((weapon): weapon is ReturnType<typeof lookupWeapon> & { range: number } => !!weapon && isRangedWeapon(weapon))
-      .map((weapon) => getEffectiveWeaponRange(weapon))
+      .flatMap((weaponId) =>
+        getWeaponSelectionOptions(
+          { modelId: model.id, weaponId },
+          attacker,
+          gs,
+        ).map((option) => option.weaponProfile.hasTemplate ? TEMPLATE_EFFECTIVE_RANGE_INCHES : option.weaponProfile.range),
+      )
       .filter(range => range > 0);
 
     const modelMaxRange = ranges.length > 0 ? Math.max(...ranges) : 0;
@@ -84,11 +78,24 @@ function getShootingTargetInfo(
 
       const hasAnyWeaponInRange = aliveAttackers.some((attackerModel) => {
         return getRangedWeaponIdsForModel(attackerModel).some((weaponId) => {
-          const weapon = lookupWeapon(weaponId);
-          if (!weapon || !isRangedWeapon(weapon)) return false;
-          const effectiveRange = getEffectiveWeaponRange(weapon);
-          if (effectiveRange <= 0) return false;
-          return checkWeaponRange(attackerModel, targetAliveModels, effectiveRange);
+          const options = getWeaponSelectionOptions(
+            { modelId: attackerModel.id, weaponId },
+            attacker,
+            gs,
+            closestDistance,
+          );
+          return options.some((option) => {
+            const effectiveRange = option.weaponProfile.hasTemplate
+              ? TEMPLATE_EFFECTIVE_RANGE_INCHES
+              : option.weaponProfile.range;
+            if (effectiveRange <= 0) return false;
+            return checkWeaponRange(
+              attackerModel,
+              targetAliveModels,
+              effectiveRange,
+              option.weaponProfile.rangeBand?.min ?? 0,
+            );
+          });
         });
       });
 

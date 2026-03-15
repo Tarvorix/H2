@@ -1,0 +1,18 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist-types",
+    "rootDir": "./src",
+    "noEmit": false,
+    "emitDeclarationOnly": true
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "references": [
+    { "path": "../types" },
+    { "path": "../engine" },
+    { "path": "../geometry" },
+    { "path": "../data" },
+    { "path": "../ai" },
+    { "path": "../army-builder" }
+  ]
+}

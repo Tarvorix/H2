@@ -7,9 +7,10 @@ import type {
   ModelState,
   ObjectiveMarker,
   Position,
+  ReserveType,
   UnitState,
 } from '@hh/types';
-import { LegionFaction, Phase, SubPhase, UnitMovementState } from '@hh/types';
+import { LegionFaction, ModelSubType, Phase, SubPhase, UnitMovementState } from '@hh/types';
 import {
   STANDARD_BATTLEFIELD_HEIGHT,
   STANDARD_BATTLEFIELD_WIDTH,
@@ -207,6 +208,10 @@ function createArmyState(
       battlefieldWidth,
       battlefieldHeight,
     );
+    const isFlyer = profile.unitSubTypes.includes(ModelSubType.Flyer);
+    const reserveType: ReserveType = isFlyer ? 'aerial' : 'standard';
+    const isInReserves = unitSetup.isInReserves ?? isFlyer;
+    const isDeployed = unitSetup.isDeployed ?? !isInReserves;
 
     return {
       id: unitSetup.unitId ?? `p${playerIndex}-unit-${unitIndex}`,
@@ -222,8 +227,14 @@ function createArmyState(
       movementState: UnitMovementState.Stationary,
       isLockedInCombat: false,
       embarkedOnId: null,
-      isInReserves: unitSetup.isInReserves ?? false,
-      isDeployed: unitSetup.isDeployed ?? true,
+      isInReserves,
+      isDeployed,
+      reserveType,
+      reserveReadyToEnter: false,
+      flyerCombatAssignment: null,
+      aerialReserveReturnCount: 0,
+      reserveEntryMethodThisTurn: null,
+      cannotChargeThisTurn: false,
       engagedWithUnitIds: [],
       modifiers: [],
     };
@@ -249,6 +260,7 @@ function createArmyState(
     pointsLimit: setup.pointsLimit ?? totalPoints,
     reactionAllotmentRemaining: baseReactionAllotment,
     baseReactionAllotment,
+    deepStrikeAttemptsThisTurn: 0,
     victoryPoints: 0,
   };
 }

@@ -22,6 +22,8 @@ import { AIStrategyTier } from './types';
 import { BasicStrategy } from './strategy/basic-strategy';
 import { TacticalStrategy } from './strategy/tactical-strategy';
 import { EngineStrategy } from './strategy/engine-strategy';
+import { AlphaStrategy } from './strategy/alpha-strategy';
+import { searchAlphaBestAction } from './alpha/search';
 import {
   clearQueuedPlan,
   cloneQueuedPlan,
@@ -48,7 +50,54 @@ export function createStrategy(configOrTier: AIStrategyTier | AIPlayerConfig): A
         throw new Error('Engine strategy creation requires a full AIPlayerConfig.');
       }
       return new EngineStrategy(configOrTier);
+    case AIStrategyTier.Alpha:
+      if (typeof configOrTier === 'string') {
+        throw new Error('Alpha strategy creation requires a full AIPlayerConfig.');
+      }
+      return new AlphaStrategy(configOrTier);
   }
+}
+
+function createFallbackDiagnostics(config: AIPlayerConfig, error?: string) {
+  return {
+    tier: config.strategyTier,
+    modelId: config.strategyTier === AIStrategyTier.Engine
+      ? config.nnueModelId
+      : config.strategyTier === AIStrategyTier.Alpha
+        ? config.alphaModelId
+        : undefined,
+    principalVariation: [],
+    ...(error ? { error } : {}),
+  };
+}
+
+function maybeAttachShadowAlphaDiagnostics(
+  state: GameState,
+  config: AIPlayerConfig,
+  context: AITurnContext,
+): void {
+  if (config.strategyTier === AIStrategyTier.Alpha) return;
+  if (!config.shadowAlpha?.enabled) return;
+
+  const shadowConfig: AIPlayerConfig = {
+    ...config,
+    strategyTier: AIStrategyTier.Alpha,
+    alphaModelId: config.shadowAlpha.alphaModelId ?? config.alphaModelId,
+    timeBudgetMs: config.shadowAlpha.timeBudgetMs ?? config.timeBudgetMs,
+    maxSimulations: config.shadowAlpha.maxSimulations ?? config.maxSimulations,
+    baseSeed: config.shadowAlpha.baseSeed ?? config.baseSeed,
+    diagnosticsEnabled: config.shadowAlpha.diagnosticsEnabled ?? config.diagnosticsEnabled,
+    shadowAlpha: null,
+  };
+
+  const shadowResult = searchAlphaBestAction(state, shadowConfig, context.actedUnitIds);
+  const liveDiagnostics = context.latestDiagnostics ?? createFallbackDiagnostics(config);
+  const shadowSummary = { ...shadowResult.diagnostics };
+  delete (shadowSummary as { shadowAlphaDiagnostics?: unknown }).shadowAlphaDiagnostics;
+  context.latestDiagnostics = {
+    ...liveDiagnostics,
+    shadowAlphaDiagnostics: shadowSummary,
+  };
 }
 
 // ─── Turn Context Factory ────────────────────────────────────────────────────
@@ -227,6 +276,7 @@ export function generateNextCommand(
   try {
     const strategy = createStrategy(config);
     const command = strategy.generateNextCommand(state, config.playerIndex, context);
+    maybeAttachShadowAlphaDiagnostics(state, config, context);
     if (command) {
       markCommandPendingResult(context, currentFingerprint, decisionOwner, command);
     }
@@ -234,12 +284,7 @@ export function generateNextCommand(
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     context.latestError = message;
-    context.latestDiagnostics = {
-      tier: config.strategyTier,
-      modelId: config.nnueModelId,
-      principalVariation: [],
-      error: message,
-    };
+    context.latestDiagnostics = createFallbackDiagnostics(config, message);
     clearQueuedPlan(context);
     throw error;
   }

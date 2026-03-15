@@ -424,17 +424,52 @@ export function runInstrumentedMatch({
       );
     }
 
-    const resolvedCommand = command ?? buildFallbackCommand(state);
+    const fallbackCommand = buildFallbackCommand(state);
+    const resolvedCommand = command ?? fallbackCommand;
     if (!resolvedCommand) {
       return buildEarlyResult('no-command-generated', null);
     }
 
-    if (config.strategyTier === AIStrategyTier.Engine) {
+    let executedCommand = resolvedCommand;
+    let result = processCommand(state, resolvedCommand, dice);
+    let recoveredWithFallback = false;
+
+    if (!result.accepted && command && fallbackCommand && fallbackCommand.type !== resolvedCommand.type) {
+      const fallbackResult = processCommand(state, fallbackCommand, dice);
+      if (fallbackResult.accepted) {
+        executedCommand = fallbackCommand;
+        result = fallbackResult;
+        recoveredWithFallback = true;
+      }
+    }
+
+    step += 1;
+    commandHistory.push({
+      step,
+      command: executedCommand,
+      actingPlayerIndex: decisionPlayer,
+      accepted: result.accepted,
+      errorMessages: result.errors.map((entry) => entry.message),
+      eventCount: result.events.length,
+      battleTurn: result.state.currentBattleTurn,
+      phase: result.state.currentPhase,
+      subPhase: result.state.currentSubPhase,
+      aiDiagnostics: recoveredWithFallback ? null : diagnostics,
+    });
+
+    if (!result.accepted) {
+      return buildEarlyResult(
+        'command-rejected',
+        result.errors.map((entry) => entry.message).join('; '),
+      );
+    }
+
+    if (config.strategyTier === AIStrategyTier.Engine && command && !recoveredWithFallback) {
       samples.push({
         matchId,
         sampleIndex: samples.length + 1,
         playerIndex: decisionPlayer,
-        replayStep: step + 1,
+        replayStep: step,
         stateHash: hashGameState(state),
         currentBattleTurn: state.currentBattleTurn,
         currentPhase: state.currentPhase,
@@ -444,33 +479,11 @@ export function runInstrumentedMatch({
         modelId: config.nnueModelId ?? DEFAULT_GAMEPLAY_NNUE_MODEL_ID,
         baseSeed: config.baseSeed ?? null,
         rolloutCount: config.rolloutCount ?? 1,
-        selectedCommandType: resolvedCommand.type,
+        selectedCommandType: executedCommand.type,
         selectedMacroActionId: diagnostics?.selectedMacroActionId ?? null,
         selectedMacroActionLabel: diagnostics?.selectedMacroActionLabel ?? null,
         principalVariation: diagnostics?.principalVariation ?? [],
       });
-    }
-
-    step += 1;
-    const result = processCommand(state, resolvedCommand, dice);
-    commandHistory.push({
-      step,
-      command: resolvedCommand,
-      actingPlayerIndex: decisionPlayer,
-      accepted: result.accepted,
-      errorMessages: result.errors.map((entry) => entry.message),
-      eventCount: result.events.length,
-      battleTurn: result.state.currentBattleTurn,
-      phase: result.state.currentPhase,
-      subPhase: result.state.currentSubPhase,
-      aiDiagnostics: diagnostics,
-    });
-
-    if (!result.accepted) {
-      return buildEarlyResult(
-        'command-rejected',
-        result.errors.map((entry) => entry.message).join('; '),
-      );
     }
 
     state = result.state;
@@ -586,6 +599,14 @@ export function loadSerializedModel(filePath) {
   return model;
 }
 
+function createTacticalPlayerConfig(playerIndex) {
+  return {
+    enabled: true,
+    playerIndex,
+    strategyTier: AIStrategyTier.Tactical,
+  };
+}
+
 function getDecisionPlayerIndexFromState(state) {
   return state.awaitingReaction
     ? (state.activePlayerIndex === 0 ? 1 : 0)
@@ -685,42 +706,133 @@ export function runGateMatches({
   }),
   onMatchComplete,
 }) {
-  let engineWins = 0;
-  let tacticalWins = 0;
+  return runHeadToHeadGateMatches({
+    matches,
+    setupFactory,
+    onMatchComplete,
+    favoredPlayerFactory: (playerIndex, matchIndex) => createEnginePlayerConfig(playerIndex, {
+      timeBudgetMs,
+      nnueModelId: candidateModelId,
+      baseSeed: (playerIndex === 0 ? 10_000 : 20_000) + matchIndex,
+      ...(maxDepthSoft !== undefined ? { maxDepthSoft } : {}),
+      ...(rolloutCount !== undefined ? { rolloutCount } : {}),
+    }),
+    opponentPlayerFactory: (playerIndex) => createTacticalPlayerConfig(playerIndex),
+    resultAdapter: ({
+      favoredWins,
+      opponentWins,
+      draws,
+      aborted,
+      timeouts,
+      winRate,
+      results,
+    }) => ({
+      engineWins: favoredWins,
+      tacticalWins: opponentWins,
+      draws,
+      aborted,
+      timeouts,
+      winRate,
+      results: results.map((entry) => ({
+        ...entry,
+        enginePlayerIndex: entry.favoredPlayerIndex,
+      })),
+    }),
+    totalsAdapter: ({ favoredWins, opponentWins, draws, aborted, timeouts }) => ({
+      engineWins: favoredWins,
+      tacticalWins: opponentWins,
+      draws,
+      aborted,
+      timeouts,
+    }),
+  });
+}
+
+export function runModelGateMatches({
+  matches,
+  timeBudgetMs,
+  candidateModelId,
+  opponentModelId,
+  maxDepthSoft,
+  rolloutCount,
+  setupFactory = (matchIndex) => createMirroredGateSetupOptions(matchIndex, {
+    firstPlayerIndex: matchIndex % 2,
+  }),
+  onMatchComplete,
+}) {
+  return runHeadToHeadGateMatches({
+    matches,
+    setupFactory,
+    onMatchComplete,
+    favoredPlayerFactory: (playerIndex, matchIndex) => createEnginePlayerConfig(playerIndex, {
+      timeBudgetMs,
+      nnueModelId: candidateModelId,
+      baseSeed: (playerIndex === 0 ? 30_000 : 40_000) + matchIndex,
+      ...(maxDepthSoft !== undefined ? { maxDepthSoft } : {}),
+      ...(rolloutCount !== undefined ? { rolloutCount } : {}),
+    }),
+    opponentPlayerFactory: (playerIndex, matchIndex) => createEnginePlayerConfig(playerIndex, {
+      timeBudgetMs,
+      nnueModelId: opponentModelId,
+      baseSeed: (playerIndex === 0 ? 50_000 : 60_000) + matchIndex,
+      ...(maxDepthSoft !== undefined ? { maxDepthSoft } : {}),
+      ...(rolloutCount !== undefined ? { rolloutCount } : {}),
+    }),
+    resultAdapter: ({
+      favoredWins,
+      opponentWins,
+      draws,
+      aborted,
+      timeouts,
+      winRate,
+      results,
+    }) => ({
+      candidateWins: favoredWins,
+      opponentWins,
+      draws,
+      aborted,
+      timeouts,
+      winRate,
+      results: results.map((entry) => ({
+        ...entry,
+        candidatePlayerIndex: entry.favoredPlayerIndex,
+      })),
+    }),
+    totalsAdapter: ({ favoredWins, opponentWins, draws, aborted, timeouts }) => ({
+      candidateWins: favoredWins,
+      opponentWins,
+      draws,
+      aborted,
+      timeouts,
+    }),
+  });
+}
+
+function runHeadToHeadGateMatches({
+  matches,
+  setupFactory,
+  onMatchComplete,
+  favoredPlayerFactory,
+  opponentPlayerFactory,
+  resultAdapter,
+  totalsAdapter,
+}) {
+  let favoredWins = 0;
+  let opponentWins = 0;
   let draws = 0;
   let aborted = 0;
   let timeouts = 0;
   const results = [];
 
   for (let matchIndex = 0; matchIndex < matches; matchIndex++) {
-    const enginePlayerIndex = matchIndex % 2;
+    const favoredPlayerIndex = matchIndex % 2;
     const aiPlayers = [
-      enginePlayerIndex === 0
-        ? createEnginePlayerConfig(0, {
-          timeBudgetMs,
-          nnueModelId: candidateModelId,
-          baseSeed: 10_000 + matchIndex,
-          ...(maxDepthSoft !== undefined ? { maxDepthSoft } : {}),
-          ...(rolloutCount !== undefined ? { rolloutCount } : {}),
-        })
-        : {
-          enabled: true,
-          playerIndex: 0,
-          strategyTier: AIStrategyTier.Tactical,
-        },
-      enginePlayerIndex === 1
-        ? createEnginePlayerConfig(1, {
-          timeBudgetMs,
-          nnueModelId: candidateModelId,
-          baseSeed: 20_000 + matchIndex,
-          ...(maxDepthSoft !== undefined ? { maxDepthSoft } : {}),
-          ...(rolloutCount !== undefined ? { rolloutCount } : {}),
-        })
-        : {
-          enabled: true,
-          playerIndex: 1,
-          strategyTier: AIStrategyTier.Tactical,
-        },
+      favoredPlayerIndex === 0
+        ? favoredPlayerFactory(0, matchIndex)
+        : opponentPlayerFactory(0, matchIndex),
+      favoredPlayerIndex === 1
+        ? favoredPlayerFactory(1, matchIndex)
+        : opponentPlayerFactory(1, matchIndex),
     ];
 
     const result = runHeadlessMatch(
@@ -730,11 +842,11 @@ export function runGateMatches({
         aiPlayers,
       },
     );
-    const classification = classifyHeadlessResult(result, enginePlayerIndex);
+    const classification = classifyHeadlessResult(result, favoredPlayerIndex);
     if (classification.outcome === 'favored-win') {
-      engineWins += 1;
+      favoredWins += 1;
     } else if (classification.outcome === 'favored-loss') {
-      tacticalWins += 1;
+      opponentWins += 1;
     } else if (classification.outcome === 'draw') {
       draws += 1;
     } else if (classification.outcome === 'timeout') {
@@ -745,7 +857,7 @@ export function runGateMatches({
 
     results.push({
       matchIndex,
-      enginePlayerIndex,
+      favoredPlayerIndex,
       winnerPlayerIndex: result.finalState.winnerPlayerIndex,
       classifiedOutcome: classification.outcome,
       classifiedReason: classification.reason,
@@ -758,27 +870,27 @@ export function runGateMatches({
     if (typeof onMatchComplete === 'function') {
       onMatchComplete({
         matchIndex,
-        enginePlayerIndex,
+        favoredPlayerIndex,
         result,
         classification,
-        totals: {
-          engineWins,
-          tacticalWins,
+        totals: totalsAdapter({
+          favoredWins,
+          opponentWins,
           draws,
           aborted,
           timeouts,
-        },
+        }),
       });
     }
   }
 
-  return {
-    engineWins,
-    tacticalWins,
+  return resultAdapter({
+    favoredWins,
+    opponentWins,
     draws,
     aborted,
     timeouts,
-    winRate: matches > 0 ? engineWins / matches : 0,
+    winRate: matches > 0 ? favoredWins / matches : 0,
     results,
-  };
+  });
 }

@@ -6,9 +6,11 @@
 
 import { describe, it, expect } from 'vitest';
 import { Phase, SubPhase, UnitMovementState } from '@hh/types';
+import { getEnemyModelShapes, validateModelMove } from '@hh/engine';
 import type { GameState, UnitState, ModelState, ArmyState } from '@hh/types';
 import type { AITurnContext } from '../types';
 import { generateMovementCommand } from './movement-ai';
+import { getModelMovementCharacteristic } from '../helpers/unit-queries';
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -247,6 +249,42 @@ describe('generateMovementCommand — Tactical strategy', () => {
 
     expect(result).not.toBeNull();
     expect(result!.type).toBe('moveUnit');
+  });
+
+  it('avoids ending a tactical move within the enemy exclusion zone', () => {
+    const mover = createModel({ id: 'model-1', position: { x: 10, y: 10 } });
+    const unit = createUnit({
+      id: 'unit-1',
+      models: [mover],
+      movementState: UnitMovementState.Stationary,
+    });
+    const enemyModel = createModel({ id: 'enemy-m1', position: { x: 14, y: 10 } });
+    const enemyUnit = createUnit({ id: 'enemy-1', models: [enemyModel], isDeployed: true });
+
+    const state = createGameState({ currentSubPhase: SubPhase.Move });
+    state.armies[0] = createArmy({ playerIndex: 0, units: [unit] });
+    state.armies[1] = createArmy({ playerIndex: 1, units: [enemyUnit] });
+
+    const ctx = createContext();
+    const result = generateMovementCommand(state, 0, ctx, 'tactical');
+
+    expect(result).not.toBeNull();
+    expect(result!.type).toBe('moveUnit');
+
+    const targetPosition = (result as any).modelPositions[0].position;
+    const errors = validateModelMove(
+      mover,
+      targetPosition,
+      getModelMovementCharacteristic(mover),
+      state.terrain,
+      getEnemyModelShapes(state, 0),
+      [],
+      state.battlefield.width,
+      state.battlefield.height,
+    );
+
+    expect(errors).toEqual([]);
+    expect(targetPosition.x).toBeLessThan(enemyModel.position.x);
   });
 
   it('returns null for non-movement sub-phases', () => {

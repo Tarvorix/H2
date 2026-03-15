@@ -187,6 +187,12 @@ const gameCommandSchema = z.discriminatedUnion('type', [
     type: z.literal('deployUnit'),
     unitId: idSchema,
     modelPositions: z.array(modelPositionSchema),
+    combatAssignment: z.enum([
+      'drop-mission',
+      'extraction-mission',
+      'strike-mission',
+      'strafing-run',
+    ]).optional(),
   }),
   z.object({
     type: z.literal('reservesTest'),
@@ -243,10 +249,20 @@ const playerConfigSchema = z.object({
   deploymentFormation: z.enum(['auto', 'line', 'double-rank', 'block', 'column']).optional(),
   timeBudgetMs: z.number().int().positive().optional(),
   nnueModelId: z.string().min(1).optional(),
+  alphaModelId: z.string().min(1).optional(),
   baseSeed: z.number().int().optional(),
   rolloutCount: z.number().int().positive().optional(),
   maxDepthSoft: z.number().int().positive().optional(),
+  maxSimulations: z.number().int().positive().optional(),
   diagnosticsEnabled: z.boolean().optional(),
+  shadowAlpha: z.object({
+    enabled: z.boolean(),
+    alphaModelId: z.string().min(1).optional(),
+    timeBudgetMs: z.number().int().positive().optional(),
+    maxSimulations: z.number().int().positive().optional(),
+    baseSeed: z.number().int().optional(),
+    diagnosticsEnabled: z.boolean().optional(),
+  }).nullable().optional(),
 });
 
 const setupUnitSchema = z.object({

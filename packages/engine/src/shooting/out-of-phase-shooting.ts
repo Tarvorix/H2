@@ -16,7 +16,7 @@ import {
 import { lookupModelDefinition, lookupUnitProfile } from '../profile-lookup';
 import { handleShootingAttack } from '../phases/shooting-phase';
 import type { ShootingAttackExecutionOptions } from '../phases/shooting-phase';
-import { resolveWeaponAssignment } from './weapon-declaration';
+import { getWeaponSelectionOptions, isWeaponProfileInRange } from './weapon-declaration';
 import { formFireGroups } from './fire-groups';
 import { getBlastSizeInches } from './special-shot-resolution';
 import { isDefensiveWeapon } from './return-fire-handler';
@@ -130,46 +130,51 @@ export function buildOutOfPhaseShootingCommand(
     }
 
     const candidateWeapons = getModelWeaponIds(model, attackerUnit)
-      .map((weaponId) => {
-        const baseProfile = resolveWeaponAssignment({ modelId: model.id, weaponId }, attackerUnit);
-        if (!baseProfile) {
-          return null;
-        }
+      .flatMap((weaponId) =>
+        getWeaponSelectionOptions(
+          { modelId: model.id, weaponId },
+          attackerUnit,
+          state,
+          targetDistance,
+        ).map((selectionOption) => {
+          const weaponProfile = options.weaponProfileModifier
+            ? options.weaponProfileModifier(selectionOption.weaponProfile, {
+                modelId: model.id,
+                weaponId,
+              })
+            : selectionOption.weaponProfile;
 
-        const weaponProfile = options.weaponProfileModifier
-          ? options.weaponProfileModifier(baseProfile, { modelId: model.id, weaponId })
-          : baseProfile;
+          if (
+            options.defensiveWeaponsOnly &&
+            !isDefensiveWeapon(weaponProfile.rangedStrength, weaponProfile.traits)
+          ) {
+            return null;
+          }
 
-        if (
-          options.defensiveWeaponsOnly &&
-          !isDefensiveWeapon(weaponProfile.rangedStrength, weaponProfile.traits)
-        ) {
-          return null;
-        }
+          if (!weaponProfile.hasTemplate && !isWeaponProfileInRange(weaponProfile, targetDistance)) {
+            return null;
+          }
 
-        if (!weaponProfile.hasTemplate && targetDistance > weaponProfile.range) {
-          return null;
-        }
+          if (
+            options.weaponFilter &&
+            !options.weaponFilter({
+              attackerUnit,
+              targetUnit,
+              attackerModel: model,
+              targetDistance,
+              weaponProfile,
+            })
+          ) {
+            return null;
+          }
 
-        if (
-          options.weaponFilter &&
-          !options.weaponFilter({
-            attackerUnit,
-            targetUnit,
-            attackerModel: model,
-            targetDistance,
+          return {
+            assignment: selectionOption.assignment,
             weaponProfile,
-          })
-        ) {
-          return null;
-        }
-
-        return {
-          weaponId,
-          weaponProfile,
-        };
-      })
-      .filter((candidate): candidate is { weaponId: string; weaponProfile: ResolvedWeaponProfile } =>
+          };
+        }),
+      )
+      .filter((candidate): candidate is { assignment: WeaponAssignment; weaponProfile: ResolvedWeaponProfile } =>
         candidate !== null,
       );
 
@@ -182,8 +187,7 @@ export function buildOutOfPhaseShootingCommand(
     );
 
     weaponSelections.push({
-      modelId: model.id,
-      weaponId: candidateWeapons[0].weaponId,
+      ...candidateWeapons[0].assignment,
     });
   }
 
@@ -201,6 +205,7 @@ export function buildOutOfPhaseShootingCommand(
     options.forceSnapShots === true,
     options.weaponProfileModifier,
     state,
+    targetUnit,
   );
 
   const blastPlacements: BlastPlacement[] = [];

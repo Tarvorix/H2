@@ -144,6 +144,40 @@ export function unitProfileHasSpecialRule(
   return rules.some(r => r.name.toLowerCase() === lowerName);
 }
 
+export function getUnitSpecialRuleValue(
+  profileId: string,
+  ruleName: string,
+): number | null {
+  const rules = getUnitSpecialRules(profileId);
+  const lowerName = ruleName.toLowerCase();
+  const match = rules.find((rule) => rule.name.toLowerCase() === lowerName);
+  if (!match?.value) {
+    return null;
+  }
+
+  const parsed = Number.parseInt(String(match.value).replace(/[^0-9-]/g, ''), 10);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+export function unitProfileHasSubType(
+  profileId: string,
+  subType: ModelSubType,
+): boolean {
+  const profile = getProfileById(profileId);
+  if (!profile) return false;
+  return profile.unitSubTypes.includes(subType);
+}
+
+export function unitProfileHasTrait(
+  profileId: string,
+  traitName: string,
+): boolean {
+  const profile = getProfileById(profileId);
+  if (!profile) return false;
+  const lowerName = traitName.toLowerCase();
+  return profile.traits.some((trait) => trait.value.toLowerCase() === lowerName);
+}
+
 /**
  * Check if a model definition has a specific special rule.
  */
@@ -311,6 +345,13 @@ export function getVehicleArmour(
 ): { front: number; side: number; rear: number } | undefined {
   const chars = getModelCharacteristics(profileId, modelName);
   if (!chars || !isVehicleCharacteristics(chars)) return undefined;
+  if (unitProfileHasSubType(profileId, ModelSubType.Flyer)) {
+    return {
+      front: chars.frontArmour,
+      side: chars.frontArmour,
+      rear: chars.frontArmour,
+    };
+  }
   return {
     front: chars.frontArmour,
     side: chars.sideArmour,

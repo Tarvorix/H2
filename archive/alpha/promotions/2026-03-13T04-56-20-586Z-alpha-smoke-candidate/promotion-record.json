@@ -1,0 +1,25 @@
+{
+  "archiveDir": "/Users/kylebullock/HHv2/archive/alpha/promotions/2026-03-13T04-56-20-586Z-alpha-smoke-candidate",
+  "sourceModelId": "alpha-smoke-candidate",
+  "sourceModelPath": "/Users/kylebullock/HHv2/tmp/alpha/train-smoke/alpha-smoke-candidate.json",
+  "archivedModelPath": "/Users/kylebullock/HHv2/archive/alpha/promotions/2026-03-13T04-56-20-586Z-alpha-smoke-candidate/candidate-alpha-model.json",
+  "gateSummaryPath": "/Users/kylebullock/HHv2/tmp/alpha/gate-smoke/alpha-smoke-candidate.gate.json",
+  "archivedGateSummaryPath": "/Users/kylebullock/HHv2/archive/alpha/promotions/2026-03-13T04-56-20-586Z-alpha-smoke-candidate/gate-summary.json",
+  "promotedAt": "2026-03-13T04:56:20.586Z",
+  "promotedModelId": "alpha-default-v1",
+  "gateResult": {
+    "passed": false,
+    "winRate": 0,
+    "candidateWins": 0,
+    "engineWins": 0,
+    "tacticalWins": 0,
+    "defaultAlphaWins": 0,
+    "draws": 0,
+    "aborted": 0,
+    "timeouts": 2,
+    "threshold": 0.25,
+    "timeBudgetMs": 100,
+    "maxSimulations": 32,
+    "matchesPerOpponent": 1
+  }
+}

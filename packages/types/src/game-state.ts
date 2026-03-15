@@ -130,6 +130,24 @@ export type ModifierExpiry =
   | { type: 'endOfBattle' }
   | { type: 'manual' };
 
+export type ReserveType = 'standard' | 'aerial';
+
+export type FlyerCombatAssignment =
+  | 'drop-mission'
+  | 'extraction-mission'
+  | 'strike-mission'
+  | 'strafing-run';
+
+export type ReserveEntryMethod =
+  | 'edge'
+  | 'deepStrike'
+  | 'outflank'
+  | 'drop-mission'
+  | 'extraction-mission'
+  | 'strike-mission'
+  | 'strafing-run'
+  | 'combat-air-patrol';
+
 // ─── Unit State ───────────────────────────────────────────────────────────────
 
 /**
@@ -156,8 +174,20 @@ export interface UnitState {
   embarkedOnId: string | null;
   /** Whether this unit is in reserves */
   isInReserves: boolean;
+  /** Which reserve rules apply while the unit remains off-board */
+  reserveType?: ReserveType;
+  /** Whether the unit has passed any required reserves roll and may now enter play */
+  reserveReadyToEnter?: boolean;
   /** Whether this unit has been placed on the battlefield yet */
   isDeployed: boolean;
+  /** Current flyer combat assignment, if the unit is in Aerial Reserves or entering via one */
+  flyerCombatAssignment?: FlyerCombatAssignment | null;
+  /** Number of times the unit has returned to Aerial Reserves after being deployed */
+  aerialReserveReturnCount?: number;
+  /** How the unit most recently entered play this player turn */
+  reserveEntryMethodThisTurn?: ReserveEntryMethod | null;
+  /** Whether the unit is barred from declaring a charge this player turn */
+  cannotChargeThisTurn?: boolean;
   /** IDs of enemy units this unit is currently locked in combat with */
   engagedWithUnitIds: string[];
   /** Unit-level characteristic modifiers */
@@ -209,6 +239,8 @@ export interface ArmyState {
   reactionAllotmentRemaining: number;
   /** Base reaction allotment per Player Turn */
   baseReactionAllotment: number;
+  /** Number of Deep Strike attempts already made by this army in the current player turn */
+  deepStrikeAttemptsThisTurn?: number;
   /** Victory points scored */
   victoryPoints: number;
   /** Rite of War in use (if any) */
@@ -331,6 +363,14 @@ export interface GameState {
   legionTacticaState: [LegionTacticaState, LegionTacticaState];
   /** Psychic runtime state — usage tracking and ongoing psychic effects. */
   psychicState?: PsychicState;
+  /** Pending psychic curse resolution awaiting a Nullify reaction decision. */
+  pendingPsychicCurseState?: PendingPsychicCurseState;
+  /** Pending Death or Glory queue for vehicle move-through triggers and post-move impact hits. */
+  pendingDeathOrGloryState?: PendingDeathOrGloryState;
+  /** Challenge combats that have already been passed or fully processed this Challenge sub-phase. */
+  processedChallengeCombatIds?: string[];
+  /** Pending Heroic Intervention declaration after the active player passes a specific combat. */
+  pendingHeroicInterventionState?: PendingHeroicInterventionState;
   /** Mission state — objectives, scoring, special rules (null if no mission selected) */
   missionState: MissionState | null;
 }
@@ -441,6 +481,20 @@ export interface AssaultChallengeState {
   challengedCRP: number;
   /** Current round (1-based) */
   round: number;
+}
+
+/**
+ * State of a pending Heroic Intervention reaction in the Challenge sub-phase.
+ */
+export interface PendingHeroicInterventionState {
+  /** Combat that was passed by the active player and can now receive the reaction. */
+  combatId: string;
+  /** Reactive player index making the Heroic Intervention declaration. */
+  reactingPlayerIndex: number;
+  /** Active player index that will answer the challenge if one is declared. */
+  activePlayerIndex: number;
+  /** Reacting unit chosen to make the Heroic Intervention. */
+  reactingUnitId: string;
 }
 
 // ─── Shooting Attack State (imported into GameState) ─────────────────────────
@@ -712,6 +766,28 @@ export interface PsychicState {
   activeEffects: ActivePsychicEffect[];
 }
 
+export interface PendingPsychicCurseState {
+  powerId: string;
+  sourceUnitId: string;
+  sourceFocusModelId: string;
+  targetUnitId: string;
+  sourcePlayerIndex: number;
+  resistanceFocusUnitId: string;
+  resistancePerilsValue: number | null;
+}
+
+export interface PendingDeathOrGloryTrigger {
+  vehicleUnitId: string;
+  vehicleModelId: string;
+  movedThroughUnitIds: string[];
+}
+
+export interface PendingDeathOrGloryState {
+  activeUnitId: string;
+  currentTriggerIndex: number;
+  triggers: PendingDeathOrGloryTrigger[];
+}
+
 /**
  * A snapshot of state at the end of a phase/action for undo support.
  */
@@ -743,6 +819,7 @@ export type GameCommand =
   | DeclareShootingCommand
   | ResolveShootingCasualtiesCommand
   | DeclareChargeCommand
+  | PassChallengeCommand
   | DeclareChallengeCommand
   | AcceptChallengeCommand
   | DeclineChallengeCommand
@@ -802,6 +879,11 @@ export interface DeclareChargeCommand {
   psychicPower?: DeclaredPsychicPower;
 }
 
+export interface PassChallengeCommand {
+  type: 'passChallenge';
+  combatId: string;
+}
+
 export interface ManifestPsychicPowerCommand {
   type: 'manifestPsychicPower';
   powerId: string;
@@ -826,6 +908,9 @@ export interface SelectReactionCommand {
   unitId: string;
   reactionType: string;
   modelPositions?: { modelId: string; position: Position }[];
+  reactingModelId?: string;
+  weaponId?: string;
+  profileName?: string;
 }
 
 export interface DeclineReactionCommand {
@@ -859,6 +944,7 @@ export interface DeployUnitCommand {
   type: 'deployUnit';
   unitId: string;
   modelPositions: { modelId: string; position: Position }[];
+  combatAssignment?: FlyerCombatAssignment;
 }
 
 export interface ReservesTestCommand {

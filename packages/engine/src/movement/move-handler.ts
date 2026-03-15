@@ -75,8 +75,11 @@ import {
   getModelInvulnSave,
   getModelStateCharacteristics,
   isVehicleCharacteristics,
+  modelHasSubType,
+  unitProfileHasSubType,
 } from '../profile-lookup';
 import { getCurrentModelInitiative, getCurrentModelMovement } from '../runtime-characteristics';
+import { ModelSubType } from '@hh/types';
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -323,6 +326,7 @@ export function handleMoveModel(
 
   const { model, unit } = modelInfo;
   const unitId = unit.id;
+  const isFlyer = modelHasSubType(model.unitProfileId, model.profileModelName, ModelSubType.Flyer);
 
   // Validate model belongs to the active player
   const playerIndex = findUnitPlayerIndex(state, unitId);
@@ -431,6 +435,7 @@ export function handleMoveModel(
   }
 
   if (
+    !isFlyer &&
     !ignoresDifficultTerrain &&
     !hasTakenDangerousTerrainTestThisPhase(state, modelId) &&
     hasDangerousTerrainInteraction(model.position, targetPosition, state.terrain)
@@ -770,11 +775,13 @@ export function handleMoveUnit(
   // ── Step 5: Apply dangerous terrain and movement updates atomically ──
 
   let newState = state;
+  const isFlyerUnit = unitProfileHasSubType(unit.profileId, ModelSubType.Flyer);
 
   for (const model of aliveModels) {
     const targetPosition = targetPositionByModelId.get(model.id)!;
 
     if (
+      !isFlyerUnit &&
       !ignoresDifficultTerrain &&
       !hasTakenDangerousTerrainTestThisPhase(newState, model.id) &&
       hasDangerousTerrainInteraction(model.position, targetPosition, state.terrain)

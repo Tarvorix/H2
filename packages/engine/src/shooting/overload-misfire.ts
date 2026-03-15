@@ -5,7 +5,7 @@ import type {
   SpecialRuleRef,
   TacticalStatus,
 } from '@hh/types';
-import { VehicleFacing } from '@hh/types';
+import { ModelSubType, VehicleFacing } from '@hh/types';
 import type {
   CommandResult,
   DamageAppliedEvent,
@@ -21,15 +21,19 @@ import {
   getModelSave,
   getModelToughness,
   getVehicleArmour,
+  unitProfileHasSubType,
 } from '../profile-lookup';
-import { updateModelInUnit, updateUnitInGameState, applyWoundsToModel } from '../state-helpers';
+import { updateModelInUnit, updateUnitInGameState, applyWoundsToModel, addStatus } from '../state-helpers';
 import type { FireGroup, GlancingHit, HitResult, WoundResult } from './shooting-types';
 import { getSpecialRuleValue } from './hit-resolution';
 import { resolveArmourPenetration } from './armour-penetration';
 import { resolveDamage, handleDamageMitigation } from './damage-resolution';
 import { removeCasualties } from './casualty-removal';
 import { resolveSaves } from './save-resolution';
-import { resolveVehicleDamageTable } from './vehicle-damage';
+import {
+  accumulateHullPointLossesFromGlancingHits,
+  resolveVehicleDamageTable,
+} from './vehicle-damage';
 import { resolveWoundTests } from './wound-resolution';
 
 interface DamageMitigationOption {
@@ -436,27 +440,34 @@ function resolveVehicleMisfireGroup(
     const currentVehicle = findModel(currentState, group.sourceModelId);
     if (currentVehicle && !currentVehicle.model.isDestroyed) {
       const currentUnit = currentVehicle.unit;
-      const existingStatuses = new Map<string, TacticalStatus[]>([
-        [group.sourceModelId, [...currentUnit.statuses]],
-      ]);
-      const damageTable = resolveVehicleDamageTable(accumulatedGlancingHits, existingStatuses, dice);
-      events.push(...damageTable.events);
+      if (unitProfileHasSubType(currentUnit.profileId, ModelSubType.Flyer)) {
+        for (const hullPointEntry of accumulateHullPointLossesFromGlancingHits(accumulatedGlancingHits)) {
+          currentState = updateUnitInGameState(currentState, hullPointEntry.vehicleUnitId, (unit) =>
+            updateModelInUnit(unit, hullPointEntry.vehicleModelId, (model) =>
+              applyWoundsToModel(model, hullPointEntry.hullPointsLost),
+            ),
+          );
+        }
+      } else {
+        const existingStatuses = new Map<string, TacticalStatus[]>([
+          [group.sourceModelId, [...currentUnit.statuses]],
+        ]);
+        const damageTable = resolveVehicleDamageTable(accumulatedGlancingHits, existingStatuses, dice);
+        events.push(...damageTable.events);
 
-      for (const statusEntry of damageTable.statusesToApply) {
-        currentState = updateUnitInGameState(currentState, statusEntry.vehicleUnitId, (unit) => {
-          if (unit.statuses.includes(statusEntry.status)) {
-            return unit;
-          }
-          return { ...unit, statuses: [...unit.statuses, statusEntry.status] };
-        });
-      }
+        for (const statusEntry of damageTable.statusesToApply) {
+          currentState = updateUnitInGameState(currentState, statusEntry.vehicleUnitId, (unit) =>
+            addStatus(unit, statusEntry.status),
+          );
+        }
 
-      for (const hullPointEntry of damageTable.hullPointsToRemove) {
-        currentState = updateUnitInGameState(currentState, hullPointEntry.vehicleUnitId, (unit) =>
-          updateModelInUnit(unit, hullPointEntry.vehicleModelId, (model) =>
-            applyWoundsToModel(model, hullPointEntry.hullPointsLost),
-          ),
-        );
+        for (const hullPointEntry of damageTable.hullPointsToRemove) {
+          currentState = updateUnitInGameState(currentState, hullPointEntry.vehicleUnitId, (unit) =>
+            updateModelInUnit(unit, hullPointEntry.vehicleModelId, (model) =>
+              applyWoundsToModel(model, hullPointEntry.hullPointsLost),
+            ),
+          );
+        }
       }
     }
   }

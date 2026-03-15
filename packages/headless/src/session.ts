@@ -2,6 +2,7 @@ import type { GameCommand, GameState } from '@hh/types';
 import { FixedDiceProvider, RandomDiceProvider, getValidCommands, hashGameState, processCommand } from '@hh/engine';
 import {
   AIStrategyTier,
+  DEFAULT_ALPHA_MODEL_ID,
   DEFAULT_GAMEPLAY_NNUE_MODEL_ID,
   createTurnContext,
   generateNextCommand,
@@ -36,10 +37,13 @@ export interface HeadlessMatchPlayerConfig {
   deploymentFormation?: AIDeploymentFormation;
   timeBudgetMs?: number;
   nnueModelId?: string;
+  alphaModelId?: string;
   baseSeed?: number;
   rolloutCount?: number;
   maxDepthSoft?: number;
+  maxSimulations?: number;
   diagnosticsEnabled?: boolean;
+  shadowAlpha?: AIPlayerConfig['shadowAlpha'];
 }
 
 export interface HeadlessMatchCommandRecord {
@@ -158,6 +162,7 @@ function defaultPlayerConfig(): HeadlessMatchPlayerConfig {
 
 function toAIPlayerConfig(playerIndex: 0 | 1, config: HeadlessMatchPlayerConfig): AIPlayerConfig {
   const isEngine = (config.strategyTier ?? AIStrategyTier.Tactical) === AIStrategyTier.Engine;
+  const isAlpha = (config.strategyTier ?? AIStrategyTier.Tactical) === AIStrategyTier.Alpha;
   return {
     enabled: config.mode === 'ai',
     playerIndex,
@@ -166,10 +171,13 @@ function toAIPlayerConfig(playerIndex: 0 | 1, config: HeadlessMatchPlayerConfig)
     commandDelayMs: 0,
     timeBudgetMs: config.timeBudgetMs,
     nnueModelId: isEngine ? (config.nnueModelId ?? DEFAULT_GAMEPLAY_NNUE_MODEL_ID) : undefined,
+    alphaModelId: isAlpha ? (config.alphaModelId ?? DEFAULT_ALPHA_MODEL_ID) : undefined,
     baseSeed: config.baseSeed,
     rolloutCount: config.rolloutCount,
     maxDepthSoft: config.maxDepthSoft,
+    maxSimulations: config.maxSimulations,
     diagnosticsEnabled: config.diagnosticsEnabled,
+    shadowAlpha: config.shadowAlpha,
   };
 }
 

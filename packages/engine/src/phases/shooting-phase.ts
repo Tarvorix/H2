@@ -14,7 +14,7 @@ import type {
   ModelState,
   SpecialRuleRef,
 } from '@hh/types';
-import { Phase, SubPhase, CoreReaction, VehicleFacing } from '@hh/types';
+import { ModelSubType, Phase, SubPhase, CoreReaction, VehicleFacing } from '@hh/types';
 import type { CommandResult, DiceProvider, GameEvent, ShootingAttackDeclaredEvent, FireGroupResolvedEvent, DamageAppliedEvent } from '../types';
 import { determineVehicleFacing } from '@hh/geometry';
 import {
@@ -33,6 +33,7 @@ import {
   updateModelInUnit,
   updateUnitInGameState,
   applyWoundsToModel,
+  addStatus,
 } from '../state-helpers';
 
 // Shooting pipeline modules
@@ -52,7 +53,10 @@ import type { TargetModelInfo } from '../shooting/target-model-selection';
 import { resolveSaves } from '../shooting/save-resolution';
 import { resolveDamage, handleDamageMitigation } from '../shooting/damage-resolution';
 import { removeCasualties } from '../shooting/casualty-removal';
-import { resolveVehicleDamageTable } from '../shooting/vehicle-damage';
+import {
+  accumulateHullPointLossesFromGlancingHits,
+  resolveVehicleDamageTable,
+} from '../shooting/vehicle-damage';
 import { resolveShootingMorale as resolveMorale } from '../shooting/morale-handler';
 import { checkReturnFireTrigger } from '../shooting/return-fire-handler';
 import { awardVanguardBonusForDestroyedUnits } from '../missions/vanguard-bonus';
@@ -87,6 +91,7 @@ import {
   getModelSave,
   getModelInvulnSave,
   getVehicleArmour,
+  unitProfileHasSubType,
 } from '../profile-lookup';
 
 /**
@@ -686,8 +691,19 @@ export function finalizePendingShootingAttackStepEleven(
   allEvents.push(...vanguardBonusResult.events);
 
   if (!options.suppressMoraleAndStatusChecks && attackState.accumulatedGlancingHits.length > 0) {
-    const existingStatuses = new Map<string, import('@hh/types').TacticalStatus[]>();
+    const flyerGlancingHits: GlancingHit[] = [];
+    const standardGlancingHits: GlancingHit[] = [];
     for (const glancingHit of attackState.accumulatedGlancingHits) {
+      const vehicleUnit = findUnit(currentState, glancingHit.vehicleUnitId);
+      if (vehicleUnit && unitProfileHasSubType(vehicleUnit.profileId, ModelSubType.Flyer)) {
+        flyerGlancingHits.push(glancingHit);
+      } else {
+        standardGlancingHits.push(glancingHit);
+      }
+    }
+
+    const existingStatuses = new Map<string, import('@hh/types').TacticalStatus[]>();
+    for (const glancingHit of standardGlancingHits) {
       if (!existingStatuses.has(glancingHit.vehicleModelId)) {
         const vehicleUnit = findUnit(currentState, glancingHit.vehicleUnitId);
         if (vehicleUnit) {
@@ -696,19 +712,26 @@ export function finalizePendingShootingAttackStepEleven(
       }
     }
 
-    const vehicleDamage = resolveVehicleDamageTable(attackState.accumulatedGlancingHits, existingStatuses, dice);
-    allEvents.push(...vehicleDamage.events);
+    if (standardGlancingHits.length > 0) {
+      const vehicleDamage = resolveVehicleDamageTable(standardGlancingHits, existingStatuses, dice);
+      allEvents.push(...vehicleDamage.events);
 
-    for (const statusEntry of vehicleDamage.statusesToApply) {
-      currentState = updateUnitInGameState(currentState, statusEntry.vehicleUnitId, (unit) => {
-        if (!unit.statuses.includes(statusEntry.status)) {
-          return { ...unit, statuses: [...unit.statuses, statusEntry.status] };
-        }
-        return unit;
-      });
+      for (const statusEntry of vehicleDamage.statusesToApply) {
+        currentState = updateUnitInGameState(currentState, statusEntry.vehicleUnitId, (unit) =>
+          addStatus(unit, statusEntry.status),
+        );
+      }
+
+      for (const hullPointEntry of vehicleDamage.hullPointsToRemove) {
+        currentState = updateUnitInGameState(currentState, hullPointEntry.vehicleUnitId, (unit) =>
+          updateModelInUnit(unit, hullPointEntry.vehicleModelId, (model) =>
+            applyWoundsToModel(model, hullPointEntry.hullPointsLost),
+          ),
+        );
+      }
     }
 
-    for (const hullPointEntry of vehicleDamage.hullPointsToRemove) {
+    for (const hullPointEntry of accumulateHullPointLossesFromGlancingHits(flyerGlancingHits)) {
       currentState = updateUnitInGameState(currentState, hullPointEntry.vehicleUnitId, (unit) =>
         updateModelInUnit(unit, hullPointEntry.vehicleModelId, (model) =>
           applyWoundsToModel(model, hullPointEntry.hullPointsLost),
@@ -897,6 +920,7 @@ export function handleShootingAttack(
     attackerUnit,
     modelsWithLOS,
     targetDistance,
+    targetAliveModels,
   );
 
   if (!weaponValidation.valid) {
@@ -960,6 +984,7 @@ export function handleShootingAttack(
     options.forceSnapShots === true,
     fireGroupWeaponProfileModifier,
     currentState,
+    targetUnit,
   );
 
   if (fireGroups.length === 0) {

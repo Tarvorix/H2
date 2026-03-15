@@ -22,9 +22,17 @@ import type {
   SelectAftermathCommand,
   ResolveFightCommand,
 } from '@hh/types';
-import { AftermathOption, CoreReaction, TacticalStatus } from '@hh/types';
+import { AftermathOption, CoreReaction, ModelSubType, ModelType, TacticalStatus } from '@hh/types';
 import type { CommandResult, DiceProvider, GameEvent } from '../types';
-import { findModel, findUnit, findUnitPlayerIndex, getAliveModels } from '../game-queries';
+import {
+  canUnitReact,
+  findModel,
+  findUnit,
+  findUnitPlayerIndex,
+  getAliveModels,
+  getClosestModelDistance,
+  hasReactionAllotment,
+} from '../game-queries';
 import { setAwaitingReaction } from '../state-helpers';
 import { checkAssaultAdvancedReactionTriggers } from '../legion/advanced-reaction-registry';
 
@@ -73,7 +81,9 @@ import {
   getModelSave,
   getModelStrength,
   getModelToughness,
+  getModelType,
   getModelWS,
+  modelHasSubType,
 } from '../profile-lookup';
 
 // ─── Charge Sub-Phase ──────────────────────────────────────────────────────
@@ -162,6 +172,68 @@ function offerChargeAdvancedReaction(
     errors: [],
     accepted: true,
   };
+}
+
+function getCurrentChargeDistance(
+  state: GameState,
+  chargingUnitId: string,
+  targetUnitId: string,
+): number {
+  return getClosestModelDistance(state, chargingUnitId, targetUnitId);
+}
+
+function unitQualifiesForEvade(
+  unit: NonNullable<GameState['armies']>[number]['units'][number],
+): boolean {
+  const aliveModels = getAliveModels(unit);
+  return (
+    aliveModels.length > 0 &&
+    aliveModels.every((model) =>
+      modelHasSubType(model.unitProfileId, model.profileModelName, ModelSubType.Light) ||
+      getModelType(model.unitProfileId, model.profileModelName) === ModelType.Cavalry,
+    )
+  );
+}
+
+function maybeOfferEvadeReaction(
+  state: GameState,
+  existingEvents: GameEvent[],
+  chargingUnitId: string,
+  targetUnitId: string,
+  setupMoveDistance: number,
+  isDisordered: boolean,
+  modelsWithLOS: string[],
+  declaredPsychicPower: DeclareChargeCommand['psychicPower'],
+): CommandResult | null {
+  const targetUnit = findUnit(state, targetUnitId);
+  const targetPlayerIndex = findUnitPlayerIndex(state, targetUnitId);
+  if (!targetUnit || targetPlayerIndex === undefined) {
+    return null;
+  }
+  if (!unitQualifiesForEvade(targetUnit)) {
+    return null;
+  }
+  if (!canUnitReact(targetUnit)) {
+    return null;
+  }
+  if (!hasReactionAllotment(state.armies[targetPlayerIndex])) {
+    return null;
+  }
+
+  return offerChargeAdvancedReaction(
+    state,
+    existingEvents,
+    'evade',
+    [targetUnitId],
+    chargingUnitId,
+    targetUnitId,
+    'CHARGE_ROLL',
+    setupMoveDistance,
+    isDisordered,
+    getCurrentChargeDistance(state, chargingUnitId, targetUnitId),
+    modelsWithLOS,
+    declaredPsychicPower,
+  );
 }
 
 /**
@@ -292,6 +364,7 @@ export function handleCharge(
   }
   newState = declaredPsychicResult.state;
   events.push(...declaredPsychicResult.events);
+  const currentChargeDistance = getCurrentChargeDistance(newState, chargingUnitId, targetUnitId);
 
   // If setup move achieved base contact, charge succeeds immediately
   if (setupResult.chargeCompleteViaSetup) {
@@ -325,7 +398,7 @@ export function handleCharge(
           isDisordered: disordered,
           chargeCompleteViaSetup: false,
           overwatchResolved: false,
-          closestDistance: targetValidation.closestDistance,
+          closestDistance: currentChargeDistance,
           modelsWithLOS: targetValidation.modelsWithLOS,
           declaredPsychicPower: command.psychicPower,
         },
@@ -355,7 +428,7 @@ export function handleCharge(
         'VOLLEY_ATTACKS',
         setupResult.setupMoveDistance,
         disordered,
-        targetValidation.closestDistance,
+        currentChargeDistance,
         targetValidation.modelsWithLOS,
         command.psychicPower,
       );
@@ -390,7 +463,7 @@ export function handleCharge(
           isDisordered: disordered,
           chargeCompleteViaSetup: false,
           overwatchResolved: false,
-          closestDistance: targetValidation.closestDistance,
+          closestDistance: currentChargeDistance,
           modelsWithLOS: targetValidation.modelsWithLOS,
           declaredPsychicPower: command.psychicPower,
         },
@@ -421,6 +494,22 @@ export function handleCharge(
   }
 
   if (options.skipAdvancedReactionChecks !== true) {
+    const evadeReaction = maybeOfferEvadeReaction(
+      newState,
+      events,
+      chargingUnitId,
+      targetUnitId,
+      setupResult.setupMoveDistance,
+      disordered,
+      targetValidation.modelsWithLOS,
+      command.psychicPower,
+    );
+    if (evadeReaction) {
+      return evadeReaction;
+    }
+  }
+
+  if (options.skipAdvancedReactionChecks !== true) {
     const afterVolleyTrigger = checkAssaultAdvancedReactionTriggers(
       newState,
       'afterVolleyAttacks',
@@ -438,7 +527,7 @@ export function handleCharge(
         'CHARGE_ROLL',
         setupResult.setupMoveDistance,
         disordered,
-        targetValidation.closestDistance,
+        getCurrentChargeDistance(newState, chargingUnitId, targetUnitId),
         targetValidation.modelsWithLOS,
         command.psychicPower,
       );
@@ -446,13 +535,12 @@ export function handleCharge(
   }
 
   // Step 5: Charge Roll & Move
-  const closestDist = targetValidation.closestDistance;
   const chargeResult = resolveChargeMove(
     newState,
     chargingUnitId,
     targetUnitId,
     dice,
-    closestDist,
+    getCurrentChargeDistance(newState, chargingUnitId, targetUnitId),
   );
   newState = chargeResult.state;
   events.push(...chargeResult.events);

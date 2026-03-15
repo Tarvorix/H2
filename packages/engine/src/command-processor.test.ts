@@ -29,6 +29,35 @@ function createTacticalModel(id: string, x: number, y: number, overrides: Partia
   });
 }
 
+function createFlyerModel(id: string, x: number, y: number, overrides: Partial<ModelState> = {}): ModelState {
+  return createModel(id, x, y, {
+    profileModelName: 'Xiphon',
+    unitProfileId: 'xiphon-interceptor',
+    currentWounds: 5,
+    equippedWargear: ['two-centreline-mounted-twin-lascannon', 'centreline-mounted-rotary-missile-launcher'],
+    ...overrides,
+  });
+}
+
+function createRhinoModel(id: string, x: number, y: number, overrides: Partial<ModelState> = {}): ModelState {
+  return createModel(id, x, y, {
+    profileModelName: 'Rhino',
+    unitProfileId: 'rhino',
+    currentWounds: 4,
+    equippedWargear: ['hull-front-mounted-combi-bolter'],
+    ...overrides,
+  });
+}
+
+function createOutriderModel(id: string, x: number, y: number, overrides: Partial<ModelState> = {}): ModelState {
+  return createModel(id, x, y, {
+    profileModelName: 'Outrider',
+    unitProfileId: 'outrider-squadron',
+    currentWounds: 2,
+    ...overrides,
+  });
+}
+
 function createLibrarianModel(
   id: string,
   x: number,
@@ -84,6 +113,55 @@ function createGameState(overrides: Partial<GameState> = {}): GameState {
   };
 }
 
+function createChallengeGameState(overrides: Partial<GameState> = {}): GameState {
+  const activeUnit = createUnit(
+    'active-unit',
+    [
+      createModel('active-champion', 10, 10, {
+        profileModelName: 'Chosen Champion',
+        unitProfileId: 'praetorian-command-squad',
+      }),
+      createModel('active-chosen', 10, 12, {
+        profileModelName: 'Chosen',
+        unitProfileId: 'praetorian-command-squad',
+      }),
+    ],
+    {
+      profileId: 'praetorian-command-squad',
+      isLockedInCombat: true,
+      engagedWithUnitIds: ['reactive-unit'],
+    },
+  );
+  const reactiveUnit = createUnit(
+    'reactive-unit',
+    [
+      createModel('reactive-champion', 11, 10, {
+        profileModelName: 'Chosen Champion',
+        unitProfileId: 'praetorian-command-squad',
+      }),
+      createModel('reactive-chosen', 11, 12, {
+        profileModelName: 'Chosen',
+        unitProfileId: 'praetorian-command-squad',
+      }),
+    ],
+    {
+      profileId: 'praetorian-command-squad',
+      isLockedInCombat: true,
+      engagedWithUnitIds: ['active-unit'],
+    },
+  );
+
+  return createGameState({
+    currentPhase: Phase.Assault,
+    currentSubPhase: SubPhase.Challenge,
+    armies: [
+      createArmy(0, [activeUnit]),
+      createArmy(1, [reactiveUnit]),
+    ],
+    ...overrides,
+  });
+}
+
 // ─── Basic Routing Tests ────────────────────────────────────────────────────
 
 describe('processCommand', () => {
@@ -104,7 +182,7 @@ describe('processCommand', () => {
         currentSubPhase: SubPhase.StartEffects,
         armies: [
           createArmy(0, [psykerUnit]),
-          createArmy(1, [enemyPsykerUnit]),
+          createArmy(1, [enemyPsykerUnit], { reactionAllotmentRemaining: 0 }),
         ],
       });
 
@@ -159,6 +237,105 @@ describe('processCommand', () => {
       expect(updatedSource.modifiers.some((modifier) => modifier.characteristic === 'NoRush')).toBe(true);
       expect(updatedTarget.movementState).toBe(UnitMovementState.FellBack);
       expect(updatedTarget.statuses).toEqual([]);
+    });
+
+    it('should offer Nullify after a failed Tranquillity resistance check and cancel the curse on success', () => {
+      const psykerUnit = createUnit(
+        'psyker-unit',
+        [createLibrarianModel('psyker-m0', 10, 10, ['thaumaturgy'])],
+        { profileId: 'librarian' },
+      );
+      const enemyPsykerUnit = createUnit(
+        'enemy-psyker',
+        [createLibrarianModel('enemy-m0', 18, 10, ['telepathy'])],
+        { profileId: 'librarian' },
+      );
+      const supportingNullifier = createUnit(
+        'nullifier',
+        [createLibrarianModel('nullifier-m0', 24, 10, ['thaumaturgy'])],
+        { profileId: 'librarian' },
+      );
+      const state = createGameState({
+        currentPhase: Phase.Start,
+        currentSubPhase: SubPhase.StartEffects,
+        armies: [
+          createArmy(0, [psykerUnit]),
+          createArmy(1, [enemyPsykerUnit, supportingNullifier]),
+        ],
+      });
+
+      const offered = processCommand(state, {
+        type: 'manifestPsychicPower',
+        powerId: 'tranquillity',
+        focusModelId: 'psyker-m0',
+        targetUnitId: 'enemy-psyker',
+      }, new FixedDiceProvider([4, 6]) as any);
+
+      expect(offered.accepted).toBe(true);
+      expect(offered.state.awaitingReaction).toBe(true);
+      expect(offered.state.pendingReaction?.reactionType).toBe('nullify');
+      expect(offered.state.pendingReaction?.eligibleUnitIds).toContain('nullifier');
+
+      const resolved = processCommand(offered.state, {
+        type: 'selectReaction',
+        unitId: 'nullifier',
+        reactionType: 'nullify',
+      }, new FixedDiceProvider([2, 3]) as any);
+
+      expect(resolved.accepted).toBe(true);
+      expect(resolved.state.awaitingReaction).toBe(false);
+      expect(resolved.state.pendingPsychicCurseState).toBeUndefined();
+      expect(resolved.state.armies[1].units[1].hasReactedThisTurn).toBe(true);
+      expect(resolved.state.psychicState?.activeEffects.some((effect) =>
+        effect.sourcePowerId === 'tranquillity' && effect.targetUnitId === 'enemy-psyker',
+      )).toBe(false);
+    });
+
+    it('should apply Mind-burst normally when a pending Nullify reaction is declined', () => {
+      const psykerUnit = createUnit(
+        'psyker-unit',
+        [createLibrarianModel('psyker-m0', 10, 10, ['telepathy'])],
+        { profileId: 'librarian' },
+      );
+      const targetUnit = createUnit(
+        'target-unit',
+        [createTacticalModel('target-m0', 20, 10)],
+        { profileId: 'tactical-squad', statuses: [TacticalStatus.Pinned] },
+      );
+      const supportingNullifier = createUnit(
+        'nullifier',
+        [createLibrarianModel('nullifier-m0', 24, 10, ['thaumaturgy'])],
+        { profileId: 'librarian' },
+      );
+      const state = createGameState({
+        currentPhase: Phase.Movement,
+        currentSubPhase: SubPhase.Move,
+        armies: [
+          createArmy(0, [psykerUnit]),
+          createArmy(1, [targetUnit, supportingNullifier]),
+        ],
+      });
+
+      const offered = processCommand(state, {
+        type: 'manifestPsychicPower',
+        powerId: 'mind-burst',
+        focusModelId: 'psyker-m0',
+        targetUnitId: 'target-unit',
+      }, new FixedDiceProvider([5, 4]) as any);
+
+      expect(offered.accepted).toBe(true);
+      expect(offered.state.awaitingReaction).toBe(true);
+      expect(offered.state.pendingReaction?.reactionType).toBe('nullify');
+
+      const declined = processCommand(offered.state, {
+        type: 'declineReaction',
+      }, new FixedDiceProvider([3, 1, 1]) as any);
+
+      expect(declined.accepted).toBe(true);
+      expect(declined.state.awaitingReaction).toBe(false);
+      expect(declined.state.pendingPsychicCurseState).toBeUndefined();
+      expect(declined.state.armies[1].units[0].movementState).toBe(UnitMovementState.FellBack);
+      expect(declined.state.armies[1].units[0].statuses).toEqual([]);
     });
 
     it('should resolve a psychic shooting weapon through the live shooting command', () => {
@@ -722,6 +899,296 @@ describe('processCommand', () => {
     });
   });
 
+  describe('reserve-entry reactions', () => {
+    it('offers Intercept after reserve entry and does not offer Combat Air Patrol during flyer placement', () => {
+      const enteringFlyer = createUnit(
+        'flyer-u1',
+        [createModel('flyer-m0', 0, 0, {
+          profileModelName: 'Xiphon',
+          unitProfileId: 'xiphon-interceptor',
+          equippedWargear: ['two-centreline-mounted-twin-lascannon'],
+        })],
+        {
+          profileId: 'xiphon-interceptor',
+          isInReserves: true,
+          isDeployed: false,
+          reserveType: 'aerial',
+          reserveReadyToEnter: true,
+        } as Partial<UnitState>,
+      );
+      const reactiveGroundUnit = createUnit(
+        'ground-interceptor',
+        [createTacticalModel('ground-m0', 18, 18, { equippedWargear: ['bolter'] })],
+        { profileId: 'tactical-squad' } as Partial<UnitState>,
+      );
+      const reactiveFlyer = createUnit(
+        'cap-xiphon',
+        [createModel('cap-m0', 0, 0, {
+          profileModelName: 'Xiphon',
+          unitProfileId: 'xiphon-interceptor',
+          equippedWargear: ['two-centreline-mounted-twin-lascannon'],
+        })],
+        {
+          profileId: 'xiphon-interceptor',
+          isInReserves: true,
+          isDeployed: false,
+          reserveType: 'aerial',
+        } as Partial<UnitState>,
+      );
+
+      const state = createGameState({
+        currentPhase: Phase.Movement,
+        currentSubPhase: SubPhase.Reserves,
+        armies: [
+          createArmy(0, [enteringFlyer]),
+          createArmy(1, [reactiveGroundUnit, reactiveFlyer]),
+        ],
+      });
+
+      const result = processCommand(state, {
+        type: 'deployUnit',
+        unitId: 'flyer-u1',
+        modelPositions: [{ modelId: 'flyer-m0', position: { x: 0.5, y: 18 } }],
+        combatAssignment: 'strike-mission',
+      }, new FixedDiceProvider([]));
+
+      expect(result.accepted).toBe(true);
+      expect(result.state.awaitingReaction).toBe(true);
+      expect(result.state.pendingReaction?.reactionType).toBe('reserve-entry-intercept');
+      expect(result.state.pendingReaction?.eligibleUnitIds).toEqual(['ground-interceptor']);
+      expect(result.state.pendingReaction?.triggerDescription).toContain('allowing Intercept');
+    });
+
+    it('resolves Intercept after reserve entry through the selectReaction flow', () => {
+      const enteringUnit = createUnit(
+        'reserve-u1',
+        [createTacticalModel('reserve-m0', 0, 0, { equippedWargear: ['bolter'] })],
+        {
+          profileId: 'tactical-squad',
+          isInReserves: true,
+          isDeployed: false,
+          reserveReadyToEnter: true,
+        } as Partial<UnitState>,
+      );
+      const reactiveUnit = createUnit(
+        'reactive-u1',
+        [createTacticalModel('reactive-m0', 18, 24, { equippedWargear: ['bolter'] })],
+        { profileId: 'tactical-squad' } as Partial<UnitState>,
+      );
+      const state = createGameState({
+        currentPhase: Phase.Movement,
+        currentSubPhase: SubPhase.Reserves,
+        armies: [
+          createArmy(0, [enteringUnit]),
+          createArmy(1, [reactiveUnit]),
+        ],
+      });
+
+      const offered = processCommand(state, {
+        type: 'deployUnit',
+        unitId: 'reserve-u1',
+        modelPositions: [{ modelId: 'reserve-m0', position: { x: 0.5, y: 24 } }],
+      }, new FixedDiceProvider([]));
+
+      expect(offered.accepted).toBe(true);
+      expect(offered.state.awaitingReaction).toBe(true);
+
+      const resolved = processCommand(offered.state, {
+        type: 'selectReaction',
+        unitId: 'reactive-u1',
+        reactionType: 'reserve-entry-intercept',
+      }, new FixedDiceProvider([6, 4, 2, 2, 1]) as any);
+
+      expect(resolved.accepted).toBe(true);
+      expect(resolved.state.awaitingReaction).toBe(false);
+      expect(resolved.state.armies[1].units[0].hasReactedThisTurn).toBe(true);
+      expect(resolved.state.armies[1].reactionAllotmentRemaining).toBe(0);
+    });
+  });
+
+  describe('flyer combat assignments', () => {
+    it('requires assigned flyers to move before ending the Move sub-phase', () => {
+      const flyer = createUnit(
+        'active-flyer',
+        [createFlyerModel('flyer-m0', 0.5, 18)],
+        {
+          profileId: 'xiphon-interceptor',
+          reserveType: 'aerial',
+          flyerCombatAssignment: 'strike-mission',
+          reserveEntryMethodThisTurn: 'strike-mission',
+        } as Partial<UnitState>,
+      );
+
+      const state = createGameState({
+        currentPhase: Phase.Movement,
+        currentSubPhase: SubPhase.Move,
+        armies: [createArmy(0, [flyer]), createArmy(1, [])],
+      });
+
+      const result = processCommand(state, { type: 'endSubPhase' }, new FixedDiceProvider([]));
+
+      expect(result.accepted).toBe(false);
+      expect(result.errors[0].code).toBe('FLYER_COMBAT_ASSIGNMENT_MOVE_REQUIRED');
+    });
+
+    it('offers and resolves Combat Air Patrol after a flyer completes its assignment move', () => {
+      const activeFlyer = createUnit(
+        'active-flyer',
+        [createFlyerModel('flyer-m0', 0.5, 18)],
+        {
+          profileId: 'xiphon-interceptor',
+          reserveType: 'aerial',
+          flyerCombatAssignment: 'strike-mission',
+          reserveEntryMethodThisTurn: 'strike-mission',
+        } as Partial<UnitState>,
+      );
+      const reactiveFlyer = createUnit(
+        'reactive-flyer',
+        [createFlyerModel('reactive-m0', 0, 0)],
+        {
+          profileId: 'xiphon-interceptor',
+          reserveType: 'aerial',
+          isInReserves: true,
+          isDeployed: false,
+        } as Partial<UnitState>,
+      );
+
+      const state = createGameState({
+        currentPhase: Phase.Movement,
+        currentSubPhase: SubPhase.Move,
+        armies: [
+          createArmy(0, [activeFlyer], { reactionAllotmentRemaining: 0 }),
+          createArmy(1, [reactiveFlyer]),
+        ],
+      });
+
+      const offered = processCommand(state, {
+        type: 'moveUnit',
+        unitId: 'active-flyer',
+        modelPositions: [{ modelId: 'flyer-m0', position: { x: 18.5, y: 18 } }],
+      }, new FixedDiceProvider([]));
+
+      expect(offered.accepted).toBe(true);
+      expect(offered.state.awaitingReaction).toBe(true);
+      expect(offered.state.pendingReaction?.reactionType).toBe('combat-air-patrol');
+      expect(offered.state.pendingReaction?.eligibleUnitIds).toEqual(['reactive-flyer']);
+
+      const resolved = processCommand(offered.state, {
+        type: 'selectReaction',
+        unitId: 'reactive-flyer',
+        reactionType: 'combat-air-patrol',
+        modelPositions: [{ modelId: 'reactive-m0', position: { x: 54, y: 18 } }],
+      }, new FixedDiceProvider([6, 5, 4, 3, 2, 6, 5, 4, 3, 2, 6, 5]) as any);
+
+      expect(resolved.accepted).toBe(true);
+      expect(resolved.state.awaitingReaction).toBe(false);
+      expect(resolved.state.armies[1].units[0].isInReserves).toBe(true);
+      expect(resolved.state.armies[1].units[0].isDeployed).toBe(false);
+      expect(resolved.state.armies[1].units[0].aerialReserveReturnCount).toBe(1);
+      expect(resolved.state.armies[1].units[0].hasReactedThisTurn).toBe(true);
+      expect(resolved.state.armies[1].reactionAllotmentRemaining).toBe(0);
+    });
+
+    it('returns extraction flyers and embarked passengers to Aerial Reserves at the end of shooting', () => {
+      const extractionFlyer = createUnit(
+        'extraction-flyer',
+        [createModel('flyer-m0', 18.5, 18, {
+          profileModelName: 'Thunderhawk',
+          unitProfileId: 'thunderhawk-gunship',
+          currentWounds: 18,
+          equippedWargear: ['centreline-mounted-turbo-laser-destructor'],
+        })],
+        {
+          profileId: 'thunderhawk-gunship',
+          reserveType: 'aerial',
+          movementState: UnitMovementState.Moved,
+          flyerCombatAssignment: 'extraction-mission',
+          reserveEntryMethodThisTurn: 'extraction-mission',
+        } as Partial<UnitState>,
+      );
+      const embarkedUnit = createUnit(
+        'embarked-unit',
+        [createTacticalModel('embarked-m0', 0, 0)],
+        {
+          embarkedOnId: 'extraction-flyer',
+          isDeployed: true,
+          isInReserves: false,
+          statuses: [TacticalStatus.Pinned, TacticalStatus.Suppressed],
+        } as Partial<UnitState>,
+      );
+
+      const state = createGameState({
+        currentPhase: Phase.Shooting,
+        currentSubPhase: SubPhase.ShootingMorale,
+        armies: [createArmy(0, [extractionFlyer, embarkedUnit]), createArmy(1, [])],
+      });
+
+      const result = processCommand(state, { type: 'endSubPhase' }, new FixedDiceProvider([]));
+
+      expect(result.accepted).toBe(true);
+      expect(result.state.currentPhase).toBe(Phase.Assault);
+      expect(result.state.armies[0].units[0].isInReserves).toBe(true);
+      expect(result.state.armies[0].units[0].isDeployed).toBe(false);
+      expect(result.state.armies[0].units[0].flyerCombatAssignment).toBeNull();
+      expect(result.state.armies[0].units[0].aerialReserveReturnCount).toBe(1);
+      expect(result.state.armies[0].units[1].isInReserves).toBe(true);
+      expect(result.state.armies[0].units[1].isDeployed).toBe(false);
+      expect(result.state.armies[0].units[1].statuses).toEqual([]);
+    });
+
+    it('enforces strike mission shooting restrictions and centreline snap shots', () => {
+      const attacker = createUnit(
+        'strike-flyer',
+        [createFlyerModel('attacker-m0', 18.5, 18)],
+        {
+          profileId: 'xiphon-interceptor',
+          reserveType: 'aerial',
+          movementState: UnitMovementState.Moved,
+          flyerCombatAssignment: 'strike-mission',
+          reserveEntryMethodThisTurn: 'strike-mission',
+        } as Partial<UnitState>,
+      );
+      const target = createUnit(
+        'target-unit',
+        [createTacticalModel('target-m0', 30, 18)],
+        { profileId: 'tactical-squad' } as Partial<UnitState>,
+      );
+
+      const state = createGameState({
+        currentPhase: Phase.Shooting,
+        currentSubPhase: SubPhase.Attack,
+        armies: [
+          createArmy(0, [attacker]),
+          createArmy(1, [target], { reactionAllotmentRemaining: 0 }),
+        ],
+      });
+
+      const invalid = processCommand(state, {
+        type: 'declareShooting',
+        attackingUnitId: 'strike-flyer',
+        targetUnitId: 'target-unit',
+        weaponSelections: [{ modelId: 'attacker-m0', weaponId: 'bolter' }],
+        blastPlacements: [],
+        templatePlacements: [],
+      }, new FixedDiceProvider([]));
+
+      expect(invalid.accepted).toBe(false);
+      expect(invalid.errors[0].code).toBe('STRIKE_MISSION_WEAPON_RESTRICTED');
+
+      const valid = processCommand(state, {
+        type: 'declareShooting',
+        attackingUnitId: 'strike-flyer',
+        targetUnitId: 'target-unit',
+        weaponSelections: [{ modelId: 'attacker-m0', weaponId: 'two-centreline-mounted-twin-lascannon' }],
+        blastPlacements: [],
+        templatePlacements: [],
+      }, new FixedDiceProvider([6, 5, 4, 3, 6, 5, 4, 3, 6, 5, 4, 3]) as any);
+
+      expect(valid.accepted).toBe(true);
+      expect(valid.state.shootingAttackState?.fireGroups[0].isSnapShot).toBe(true);
+    });
+  });
+
   describe('moveModel integration', () => {
     it('should successfully move a model during Move sub-phase', () => {
       const model = createModel('m1', 10, 10);
@@ -775,6 +1242,133 @@ describe('processCommand', () => {
       expect(result.state.pendingReaction!.reactionType).toBe(CoreReaction.Reposition);
       expect(result.state.pendingReaction!.eligibleUnitIds).toContain('reactive-u1');
       expect(result.events.some(e => e.type === 'repositionTriggered')).toBe(true);
+    });
+
+    it('should offer Death or Glory when a vehicle moves through an enemy unit', () => {
+      const vehicleUnit = createUnit(
+        'vehicle-u1',
+        [createRhinoModel('vehicle-m0', 10, 10)],
+        { profileId: 'rhino' },
+      );
+      const reactiveUnit = createUnit(
+        'reactive-u1',
+        [createTacticalModel('reactive-m0', 15, 10)],
+        { profileId: 'tactical-squad' },
+      );
+
+      const state = createGameState({
+        currentPhase: Phase.Movement,
+        currentSubPhase: SubPhase.Move,
+        activePlayerIndex: 0,
+        armies: [
+          createArmy(0, [vehicleUnit]),
+          createArmy(1, [reactiveUnit]),
+        ],
+      });
+
+      const result = processCommand(state, {
+        type: 'moveModel',
+        modelId: 'vehicle-m0',
+        targetPosition: { x: 20, y: 10 },
+      }, new FixedDiceProvider([]));
+
+      expect(result.accepted).toBe(true);
+      expect(result.state.awaitingReaction).toBe(true);
+      expect(result.state.pendingReaction?.reactionType).toBe('death-or-glory');
+      expect(result.state.pendingReaction?.eligibleUnitIds).toEqual(['reactive-u1']);
+      expect(result.state.pendingReaction?.triggerSourceUnitId).toBe('vehicle-u1');
+    });
+
+    it('should resolve Death or Glory before impact hits and keep the attacker alive if the vehicle is destroyed', () => {
+      const vehicleUnit = createUnit(
+        'vehicle-u1',
+        [createRhinoModel('vehicle-m0', 10, 10)],
+        { profileId: 'rhino' },
+      );
+      const reactiveUnit = createUnit(
+        'reactive-u1',
+        [createTacticalModel('reactive-m0', 15, 10, { equippedWargear: ['melta-bombs'] })],
+        { profileId: 'tactical-squad' },
+      );
+
+      const state = createGameState({
+        currentPhase: Phase.Movement,
+        currentSubPhase: SubPhase.Move,
+        activePlayerIndex: 0,
+        armies: [
+          createArmy(0, [vehicleUnit]),
+          createArmy(1, [reactiveUnit]),
+        ],
+      });
+
+      const offered = processCommand(state, {
+        type: 'moveModel',
+        modelId: 'vehicle-m0',
+        targetPosition: { x: 20, y: 10 },
+      }, new FixedDiceProvider([]));
+
+      const resolved = processCommand(offered.state, {
+        type: 'selectReaction',
+        unitId: 'reactive-u1',
+        reactionType: 'death-or-glory',
+        reactingModelId: 'reactive-m0',
+        weaponId: 'melta-bombs',
+      }, new FixedDiceProvider([6]));
+
+      expect(resolved.accepted).toBe(true);
+      expect(resolved.state.awaitingReaction).toBe(false);
+      expect(resolved.state.pendingReaction).toBeUndefined();
+      expect(resolved.state.pendingDeathOrGloryState).toBeUndefined();
+      expect(resolved.state.armies[0].units[0].models[0]?.isDestroyed).toBe(true);
+      expect(resolved.state.armies[1].units[0].models[0]?.isDestroyed).toBe(false);
+      expect(resolved.events.some((event) =>
+        event.type === 'advancedReactionResolved' &&
+        event.reactionId === 'death-or-glory' &&
+        event.success,
+      )).toBe(true);
+    });
+
+    it('should apply move-through hits after a declined Death or Glory reaction', () => {
+      const vehicleUnit = createUnit(
+        'vehicle-u1',
+        [createRhinoModel('vehicle-m0', 10, 10)],
+        { profileId: 'rhino' },
+      );
+      const reactiveUnit = createUnit(
+        'reactive-u1',
+        [createTacticalModel('reactive-m0', 15, 10)],
+        { profileId: 'tactical-squad' },
+      );
+
+      const state = createGameState({
+        currentPhase: Phase.Movement,
+        currentSubPhase: SubPhase.Move,
+        activePlayerIndex: 0,
+        armies: [
+          createArmy(0, [vehicleUnit]),
+          createArmy(1, [reactiveUnit]),
+        ],
+      });
+
+      const offered = processCommand(state, {
+        type: 'moveModel',
+        modelId: 'vehicle-m0',
+        targetPosition: { x: 20, y: 10 },
+      }, new FixedDiceProvider([]));
+
+      const declined = processCommand(
+        offered.state,
+        { type: 'declineReaction' },
+        new FixedDiceProvider([6, 6, 6, 6, 6, 6, 6, 1, 1, 1, 1, 1, 1]),
+      );
+
+      expect(declined.accepted).toBe(true);
+      expect(declined.state.awaitingReaction).toBe(false);
+      expect(declined.state.armies[1].units[0].models[0]?.isDestroyed).toBe(true);
+      expect(declined.events.some((event) =>
+        event.type === 'damageApplied' &&
+        event.unitId === 'reactive-u1',
+      )).toBe(true);
     });
 
     it('should not trigger reposition when enemy is beyond 12"', () => {
@@ -1088,6 +1682,31 @@ describe('processCommand', () => {
 
       expect(result.accepted).toBe(false);
       expect(result.errors[0].code).toBe('WRONG_PHASE');
+    });
+
+    it('should reject declareShooting when a model selects a ranged weapon it does not have equipped', () => {
+      const attackerUnit = createUnit('a-u1', [
+        { ...createModel('a-m0', 24, 24), equippedWargear: ['bolter'] },
+      ]);
+      const targetUnit = createUnit('t-u1', [createModel('t-m0', 30, 24)]);
+      const state = createGameState({
+        currentPhase: Phase.Shooting,
+        currentSubPhase: SubPhase.Attack,
+        armies: [
+          createArmy(0, [attackerUnit]),
+          createArmy(1, [targetUnit], { reactionAllotmentRemaining: 0 }),
+        ],
+      });
+
+      const result = processCommand(state, {
+        type: 'declareShooting',
+        attackingUnitId: 'a-u1',
+        targetUnitId: 't-u1',
+        weaponSelections: [{ modelId: 'a-m0', weaponId: 'plasma-gun' }],
+      }, new FixedDiceProvider([]));
+
+      expect(result.accepted).toBe(false);
+      expect(result.errors[0].code).toBe('WEAPON_NOT_EQUIPPED');
     });
 
     it('should reject a second normal shooting attack from the same unit in the same turn', () => {
@@ -1467,6 +2086,159 @@ describe('processCommand', () => {
       }
       // The charge was accepted either way (overwatch just pauses the flow)
     });
+
+    it('uses the post-setup distance when resolving the charge roll', () => {
+      const charger = createUnit(
+        'charger-u1',
+        [createModel('c-m0', 10, 10, {
+          profileModelName: 'Legionary',
+          unitProfileId: 'tactical-squad',
+        })],
+        {
+          profileId: 'tactical-squad',
+          modifiers: [{ characteristic: 'NoVolleyAttacks', value: 1, source: 'test' }],
+        },
+      );
+      const target = createUnit(
+        'target-u1',
+        [createModel('t-m0', 18.76, 10, {
+          profileModelName: 'Legionary',
+          unitProfileId: 'tactical-squad',
+        })],
+        {
+          profileId: 'tactical-squad',
+          modifiers: [{ characteristic: 'NoVolleyAttacks', value: 1, source: 'test' }],
+        },
+      );
+
+      const state = createGameState({
+        currentPhase: Phase.Assault,
+        currentSubPhase: SubPhase.Charge,
+        activePlayerIndex: 0,
+        armies: [
+          createArmy(0, [charger]),
+          createArmy(1, [target], { reactionAllotmentRemaining: 0 }),
+        ],
+      });
+
+      const result = processCommand(state, {
+        type: 'declareCharge',
+        chargingUnitId: 'charger-u1',
+        targetUnitId: 'target-u1',
+      }, new FixedDiceProvider([5, 1]) as any);
+
+      expect(result.accepted).toBe(true);
+      expect(result.events.some((event) => event.type === 'chargeSucceeded')).toBe(true);
+      expect(result.state.armies[0].units[0].isLockedInCombat).toBe(true);
+      expect(result.state.armies[1].units[0].isLockedInCombat).toBe(true);
+    });
+
+    it('offers Evade after volley attacks when a Light or Cavalry target declines Overwatch', () => {
+      const charger = createUnit(
+        'charger-u1',
+        [createModel('c-m0', 10, 10, {
+          profileModelName: 'Legionary',
+          unitProfileId: 'tactical-squad',
+        })],
+        {
+          profileId: 'tactical-squad',
+          modifiers: [{ characteristic: 'NoVolleyAttacks', value: 1, source: 'test' }],
+        },
+      );
+      const target = createUnit(
+        'target-u1',
+        [createOutriderModel('t-m0', 22.76, 10)],
+        {
+          profileId: 'outrider-squadron',
+          modifiers: [{ characteristic: 'NoVolleyAttacks', value: 1, source: 'test' }],
+        },
+      );
+
+      const state = createGameState({
+        currentPhase: Phase.Assault,
+        currentSubPhase: SubPhase.Charge,
+        activePlayerIndex: 0,
+        armies: [
+          createArmy(0, [charger]),
+          createArmy(1, [target], { reactionAllotmentRemaining: 2, baseReactionAllotment: 2 }),
+        ],
+      });
+
+      const declared = processCommand(state, {
+        type: 'declareCharge',
+        chargingUnitId: 'charger-u1',
+        targetUnitId: 'target-u1',
+      }, new FixedDiceProvider([]) as any);
+
+      expect(declared.accepted).toBe(true);
+      expect(declared.state.pendingReaction?.reactionType).toBe(CoreReaction.Overwatch);
+
+      const offered = processCommand(declared.state, {
+        type: 'declineReaction',
+      }, new FixedDiceProvider([]) as any);
+
+      expect(offered.accepted).toBe(true);
+      expect(offered.state.awaitingReaction).toBe(true);
+      expect(offered.state.pendingReaction?.reactionType).toBe('evade');
+      expect(offered.state.pendingReaction?.eligibleUnitIds).toEqual(['target-u1']);
+    });
+
+    it('lets Evade fail the charge when the target moves beyond the maximum charge range', () => {
+      const charger = createUnit(
+        'charger-u1',
+        [createModel('c-m0', 10, 10, {
+          profileModelName: 'Legionary',
+          unitProfileId: 'tactical-squad',
+        })],
+        {
+          profileId: 'tactical-squad',
+          modifiers: [{ characteristic: 'NoVolleyAttacks', value: 1, source: 'test' }],
+        },
+      );
+      const target = createUnit(
+        'target-u1',
+        [createOutriderModel('t-m0', 22.76, 10)],
+        {
+          profileId: 'outrider-squadron',
+          modifiers: [{ characteristic: 'NoVolleyAttacks', value: 1, source: 'test' }],
+        },
+      );
+
+      const state = createGameState({
+        currentPhase: Phase.Assault,
+        currentSubPhase: SubPhase.Charge,
+        activePlayerIndex: 0,
+        armies: [
+          createArmy(0, [charger]),
+          createArmy(1, [target], { reactionAllotmentRemaining: 2, baseReactionAllotment: 2 }),
+        ],
+      });
+
+      const declared = processCommand(state, {
+        type: 'declareCharge',
+        chargingUnitId: 'charger-u1',
+        targetUnitId: 'target-u1',
+      }, new FixedDiceProvider([]) as any);
+      const offered = processCommand(declared.state, {
+        type: 'declineReaction',
+      }, new FixedDiceProvider([]) as any);
+
+      const resolved = processCommand(offered.state, {
+        type: 'selectReaction',
+        unitId: 'target-u1',
+        reactionType: 'evade',
+        modelPositions: [{ modelId: 't-m0', position: { x: 26.76, y: 10 } }],
+      }, new FixedDiceProvider([]) as any);
+
+      expect(resolved.accepted).toBe(true);
+      expect(resolved.state.awaitingReaction).toBe(false);
+      expect(resolved.state.assaultAttackState).toBeUndefined();
+      expect(resolved.state.armies[1].reactionAllotmentRemaining).toBe(1);
+      expect(resolved.state.armies[1].units[0].hasReactedThisTurn).toBe(true);
+      expect(resolved.events.some((event) => event.type === 'chargeRoll')).toBe(false);
+      expect(resolved.state.armies[0].units[0].isLockedInCombat).toBe(false);
+      expect(resolved.state.armies[1].units[0].isLockedInCombat).toBe(false);
+    });
   });
 
   describe('declareChallenge routing', () => {
@@ -1702,6 +2474,85 @@ describe('processCommand', () => {
 
       expect(result.accepted).toBe(false);
       expect(result.errors[0].code).toBe('GAMBIT_INVALID');
+    });
+  });
+
+  describe('challenge pass and Heroic Intervention', () => {
+    it('offers Heroic Intervention when the active player passes an eligible combat', () => {
+      const state = createChallengeGameState();
+
+      const result = processCommand(state, {
+        type: 'passChallenge',
+        combatId: 'combat-0',
+      }, new FixedDiceProvider([]) as any);
+
+      expect(result.accepted).toBe(true);
+      expect(result.state.awaitingReaction).toBe(true);
+      expect(result.state.pendingReaction?.reactionType).toBe('heroic-intervention');
+      expect(result.state.pendingReaction?.eligibleUnitIds).toEqual(['reactive-unit']);
+      expect(result.state.processedChallengeCombatIds).toEqual(['combat-0']);
+    });
+
+    it('transfers challenge declaration to the reactive unit after Heroic Intervention is selected', () => {
+      const passed = processCommand(createChallengeGameState(), {
+        type: 'passChallenge',
+        combatId: 'combat-0',
+      }, new FixedDiceProvider([]) as any);
+
+      const result = processCommand(passed.state, {
+        type: 'selectReaction',
+        unitId: 'reactive-unit',
+        reactionType: 'heroic-intervention',
+      }, new FixedDiceProvider([]) as any);
+
+      expect(result.accepted).toBe(true);
+      expect(result.state.awaitingReaction).toBe(false);
+      expect(result.state.pendingHeroicInterventionState).toMatchObject({
+        combatId: 'combat-0',
+        reactingUnitId: 'reactive-unit',
+        reactingPlayerIndex: 1,
+      });
+      expect(result.state.armies[1].reactionAllotmentRemaining).toBe(0);
+      expect(result.state.armies[1].units[0].hasReactedThisTurn).toBe(true);
+    });
+
+    it('allows the reactive player to declare the challenge after Heroic Intervention', () => {
+      const passed = processCommand(createChallengeGameState(), {
+        type: 'passChallenge',
+        combatId: 'combat-0',
+      }, new FixedDiceProvider([]) as any);
+      const intervened = processCommand(passed.state, {
+        type: 'selectReaction',
+        unitId: 'reactive-unit',
+        reactionType: 'heroic-intervention',
+      }, new FixedDiceProvider([]) as any);
+
+      const declared = processCommand(intervened.state, {
+        type: 'declareChallenge',
+        challengerModelId: 'reactive-champion',
+        targetModelId: 'active-champion',
+      }, new FixedDiceProvider([]) as any);
+
+      expect(declared.accepted).toBe(true);
+      expect(declared.state.pendingHeroicInterventionState).toBeUndefined();
+      expect(declared.state.activeCombats?.[0]?.challengeState).toMatchObject({
+        challengerId: 'reactive-champion',
+        challengedId: 'active-champion',
+        challengerPlayerIndex: 1,
+        challengedPlayerIndex: 0,
+        currentStep: 'DECLARE',
+      });
+      expect(getValidCommands(declared.state)).toContain('acceptChallenge');
+      expect(getValidCommands(declared.state)).toContain('declineChallenge');
+    });
+
+    it('rejects ending the Challenge sub-phase while an eligible combat still needs a decision', () => {
+      const result = processCommand(createChallengeGameState(), {
+        type: 'endSubPhase',
+      }, new FixedDiceProvider([]) as any);
+
+      expect(result.accepted).toBe(false);
+      expect(result.errors[0].code).toBe('CHALLENGE_COMBATS_REMAIN');
     });
   });
 
@@ -2326,21 +3177,19 @@ describe('getValidCommands', () => {
   // ─── Assault Sub-Phase getValidCommands Tests ─────────────────────────────
 
   it('should return challenge commands during Challenge sub-phase', () => {
-    const state = createGameState({
-      currentPhase: Phase.Assault,
-      currentSubPhase: SubPhase.Challenge,
-    });
+    const state = createChallengeGameState();
     const commands = getValidCommands(state);
     expect(commands).toContain('declareChallenge');
-    expect(commands).toContain('acceptChallenge');
-    expect(commands).toContain('declineChallenge');
-    expect(commands).toContain('selectGambit');
+    expect(commands).toContain('passChallenge');
     expect(commands).toContain('endSubPhase');
     expect(commands).toContain('endPhase');
     // Should NOT contain commands from other sub-phases
     expect(commands).not.toContain('declareCharge');
     expect(commands).not.toContain('resolveFight');
     expect(commands).not.toContain('selectAftermath');
+    expect(commands).not.toContain('acceptChallenge');
+    expect(commands).not.toContain('declineChallenge');
+    expect(commands).not.toContain('selectGambit');
   });
 
   it('should return resolveFight during Fight sub-phase', () => {
@@ -2434,7 +3283,7 @@ describe('phase handler auto-processing', () => {
   });
 
   describe('handleStatusCleanup via endSubPhase', () => {
-    it('should auto-remove Suppressed status when entering Statuses sub-phase', () => {
+    it('should run a Cool Check for Suppressed units when entering Statuses sub-phase', () => {
       const unit = createUnit('u1', [createModel('m1', 10, 10)], {
         statuses: [TacticalStatus.Suppressed],
       });
@@ -2445,7 +3294,8 @@ describe('phase handler auto-processing', () => {
         armies: [createArmy(0, [unit]), createArmy(1, [])],
       });
 
-      const dice = new FixedDiceProvider([]);
+      // Dice for Cool Check: 2d6 = 1+1 = 2 (passes any Cool value)
+      const dice = new FixedDiceProvider([1, 1]);
       // Advance from EndEffects → Statuses
       const result = processCommand(state, { type: 'endSubPhase' }, dice);
 
@@ -2453,7 +3303,8 @@ describe('phase handler auto-processing', () => {
       expect(result.state.currentPhase).toBe(Phase.End);
       expect(result.state.currentSubPhase).toBe(SubPhase.Statuses);
 
-      // handleStatusCleanup should have removed Suppressed
+      // handleStatusCleanup should make a cool check and remove Suppressed on success
+      expect(result.events.some(e => e.type === 'coolCheck')).toBe(true);
       const updatedUnit = result.state.armies[0].units[0];
       expect(updatedUnit.statuses).not.toContain(TacticalStatus.Suppressed);
 

@@ -618,6 +618,15 @@ describe('checkWeaponRange', () => {
     expect(result).toBe(false);
   });
 
+  it('should respect minimum range bands for profile-specific weapons', () => {
+    const attackerModel = createModel('atk-0', 0, 0);
+    const targetModels = [createModel('tgt-0', 10, 0)];
+
+    const result = checkWeaponRange(attackerModel, targetModels, 45, 30);
+
+    expect(result).toBe(false);
+  });
+
   it('should use the attacker model base size instead of a fixed 32mm default', () => {
     const attackerModel = createModel(
       'atk-contemptor',

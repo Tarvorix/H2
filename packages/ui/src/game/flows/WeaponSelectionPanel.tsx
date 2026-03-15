@@ -8,31 +8,29 @@
 
 import { useCallback } from 'react';
 import type { GameUIState, GameUIAction, WeaponSelection } from '../types';
-import type { RangedWeaponProfile, MeleeWeaponProfile } from '@hh/types';
-import { findWeapon, findLegionWeapon, isRangedWeapon, isMeleeWeapon } from '@hh/data';
-import { checkWeaponRange, getClosestModelDistance } from '@hh/engine';
-
-/**
- * Look up a weapon by ID, checking both generic and legion-specific databases.
- */
-function lookupWeapon(weaponId: string): RangedWeaponProfile | MeleeWeaponProfile | undefined {
-  return findWeapon(weaponId) ?? findLegionWeapon(weaponId);
-}
+import { checkWeaponRange, getClosestModelDistance, getWeaponSelectionOptions, TEMPLATE_EFFECTIVE_RANGE_INCHES } from '@hh/engine';
 
 /**
  * Format a weapon's stats for display.
  */
-function formatWeaponStats(weapon: RangedWeaponProfile | MeleeWeaponProfile): string {
-  if (isRangedWeapon(weapon)) {
-    const apStr = weapon.ap !== null ? `AP${weapon.ap}` : 'AP-';
-    const traitsStr = weapon.traits.length > 0 ? ` ${weapon.traits.join(', ')}` : '';
-    return `${weapon.range}" S${weapon.rangedStrength} ${apStr}${traitsStr}`;
-  }
-  if (isMeleeWeapon(weapon)) {
-    const apStr = weapon.ap !== null ? `AP${weapon.ap}` : 'AP-';
-    return `Melee ${apStr}`;
-  }
-  return '';
+function formatWeaponStats(
+  weapon: {
+    range: number;
+    rangedStrength: number;
+    ap: number | null;
+    traits: string[];
+    hasTemplate: boolean;
+    rangeBand?: { min: number; max: number };
+  },
+): string {
+  const apStr = weapon.ap !== null ? `AP${weapon.ap}` : 'AP-';
+  const traitsStr = weapon.traits.length > 0 ? ` ${weapon.traits.join(', ')}` : '';
+  const rangeStr = weapon.hasTemplate
+    ? `${TEMPLATE_EFFECTIVE_RANGE_INCHES}"`
+    : weapon.rangeBand && weapon.rangeBand.min > 0
+      ? `>${weapon.rangeBand.min}" to ${weapon.range}"`
+      : `${weapon.range}"`;
+  return `${rangeStr} S${weapon.rangedStrength} ${apStr}${traitsStr}`;
 }
 
 interface WeaponSelectionPanelProps {
@@ -85,10 +83,10 @@ export function WeaponSelectionPanel({
   const aliveModels = attackingUnit.models.filter(m => !m.isDestroyed);
 
   const handleSelectWeapon = useCallback(
-    (modelId: string, weaponId: string, weaponName: string) => {
+    (selection: WeaponSelection) => {
       dispatch({
         type: 'SET_WEAPON_SELECTION',
-        selection: { modelId, weaponId, weaponName },
+        selection,
       });
     },
     [dispatch],
@@ -112,6 +110,14 @@ export function WeaponSelectionPanel({
       {aliveModels.map((model, idx) => {
         const selectedWeapon = currentSelections.find(ws => ws.modelId === model.id);
         const weapons = model.equippedWargear;
+        const selectionOptions = (weapons.length > 0 ? weapons : ['bolter']).flatMap((weaponId) =>
+          getWeaponSelectionOptions(
+            { modelId: model.id, weaponId },
+            attackingUnit,
+            gs,
+            Number.isFinite(closestDistance) ? closestDistance : undefined,
+          ),
+        );
 
         return (
           <div key={model.id} className="weapon-selection-model">
@@ -124,76 +130,52 @@ export function WeaponSelectionPanel({
               )}
             </div>
 
-            {weapons.length === 0 ? (
+            {selectionOptions.length === 0 ? (
               <div style={{ fontSize: 11, color: '#6b7fa0', padding: '4px 0' }}>
                 No ranged weapons equipped
               </div>
             ) : (
-              weapons.map((weaponId) => {
-                const weapon = lookupWeapon(weaponId);
-                const displayName = weapon ? weapon.name : weaponId;
-                const stats = weapon ? formatWeaponStats(weapon) : '';
-                const canShootWithWeapon = weapon && isRangedWeapon(weapon)
-                  ? weapon.range > 0 && checkWeaponRange(model, targetAliveModels, weapon.range)
-                  : false;
-                const isMeleeOnly = !!weapon && isMeleeWeapon(weapon);
-                const isDisabled = weapon ? !canShootWithWeapon : false;
+              selectionOptions.map((option) => {
+                const effectiveRange = option.weaponProfile.hasTemplate
+                  ? TEMPLATE_EFFECTIVE_RANGE_INCHES
+                  : option.weaponProfile.range;
+                const stats = formatWeaponStats(option.weaponProfile);
+                const canShootWithWeapon = effectiveRange > 0 && checkWeaponRange(
+                  model,
+                  targetAliveModels,
+                  effectiveRange,
+                  option.weaponProfile.rangeBand?.min ?? 0,
+                );
+                const isDisabled = !canShootWithWeapon;
                 return (
-                  <div key={weaponId} className="weapon-option">
+                  <div key={`${option.assignment.weaponId}|${option.assignment.profileName ?? ''}`} className="weapon-option">
                     <input
                       type="radio"
                       name={`weapon-${model.id}`}
-                      checked={selectedWeapon?.weaponId === weaponId}
+                      checked={
+                        selectedWeapon?.weaponId === option.assignment.weaponId
+                        && selectedWeapon?.profileName === option.assignment.profileName
+                      }
                       disabled={isDisabled}
-                      onChange={() => handleSelectWeapon(model.id, weaponId, displayName)}
+                      onChange={() => handleSelectWeapon({
+                        modelId: model.id,
+                        weaponId: option.assignment.weaponId,
+                        weaponName: option.displayName,
+                        profileName: option.assignment.profileName,
+                      })}
                     />
-                    <span className="weapon-option-name">{displayName}</span>
+                    <span className="weapon-option-name">{option.displayName}</span>
                     {stats && <span className="weapon-option-stats">{stats}</span>}
-                    {weapon && (
-                      <span
-                        className="weapon-option-stats"
-                        style={{ color: canShootWithWeapon ? '#22c55e' : '#ef4444' }}
-                      >
-                        {canShootWithWeapon
-                          ? 'In Range'
-                          : isMeleeOnly
-                            ? 'Melee Only'
-                            : 'Out of Range'}
-                      </span>
-                    )}
+                    <span
+                      className="weapon-option-stats"
+                      style={{ color: canShootWithWeapon ? '#22c55e' : '#ef4444' }}
+                    >
+                      {canShootWithWeapon ? 'In Range' : 'Out of Range'}
+                    </span>
                   </div>
                 );
               })
             )}
-
-            {/* If no equipped wargear, offer a default bolter for preset armies */}
-            {weapons.length === 0 && (() => {
-              const bolter = lookupWeapon('bolter');
-              const bolterName = bolter ? bolter.name : 'Bolter';
-              const bolterStats = bolter ? formatWeaponStats(bolter) : '24" S4 AP5 Rapid Fire';
-              const bolterInRange = bolter && isRangedWeapon(bolter)
-                ? bolter.range > 0 && checkWeaponRange(model, targetAliveModels, bolter.range)
-                : false;
-              return (
-                <div className="weapon-option">
-                  <input
-                    type="radio"
-                    name={`weapon-${model.id}`}
-                    checked={selectedWeapon?.weaponId === 'bolter'}
-                    disabled={!bolterInRange}
-                    onChange={() => handleSelectWeapon(model.id, 'bolter', bolterName)}
-                  />
-                  <span className="weapon-option-name">{bolterName}</span>
-                  <span className="weapon-option-stats">{bolterStats}</span>
-                  <span
-                    className="weapon-option-stats"
-                    style={{ color: bolterInRange ? '#22c55e' : '#ef4444' }}
-                  >
-                    {bolterInRange ? 'In Range' : 'Out of Range'}
-                  </span>
-                </div>
-              );
-            })()}
 
             {selectedWeapon && (
               <button

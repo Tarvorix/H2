@@ -22,7 +22,6 @@ import {
   Phase,
   SubPhase,
   TacticalStatus,
-  CoreReaction,
   ChallengeGambit,
   AftermathOption,
   Allegiance,
@@ -279,13 +278,16 @@ export type AssaultFlowStep =
 
 export type ReactionFlowStep =
   | { step: 'prompt'; pendingReaction: PendingReaction }
-  | { step: 'selectUnit'; reactionType: CoreReaction; eligibleUnitIds: string[] }
+  | { step: 'selectUnit'; reactionType: string; eligibleUnitIds: string[] }
+  | { step: 'placeModels'; reactionType: string; unitId: string; currentModelId: string; modelPositions: { modelId: string; position: Position }[] }
+  | { step: 'confirmMove'; reactionType: string; unitId: string; modelPositions: { modelId: string; position: Position }[] }
+  | { step: 'selectDeathOrGloryAttack'; reactionType: string; unitId: string }
   | { step: 'resolving' };
 
 // ── Challenge Flow ──────────────────────────────────────────────────────────
 
 export type ChallengeFlowStep =
-  | { step: 'declareChallenge'; eligibleChallengers: string[]; eligibleTargets: string[] }
+  | { step: 'declareChallenge'; combatId: string; eligibleChallengers: string[]; eligibleTargets: string[]; canPass: boolean }
   | { step: 'respondToChallenge'; challengerModelId: string; targetModelId: string }
   | { step: 'selectGambit'; modelId: string; availableGambits: ChallengeGambit[] }
   | { step: 'focusRoll' }
@@ -555,15 +557,21 @@ export type GameUIAction =
   | { type: 'RESOLVE_SHOOTING_CASUALTIES' }
   // ── Assault Flow ──────────────────────────────────────────────────────────
   | { type: 'START_CHARGE_FLOW' }
+  | { type: 'START_CHALLENGE_FLOW' }
   | { type: 'SELECT_CHARGE_TARGET'; targetUnitId: string }
   | { type: 'CONFIRM_CHARGE' }
   | { type: 'CANCEL_CHARGE' }
   | { type: 'RESOLVE_FIGHT'; combatId: string }
   | { type: 'SELECT_AFTERMATH'; unitId: string; option: AftermathOption }
   // ── Reaction Flow ─────────────────────────────────────────────────────────
-  | { type: 'SELECT_REACTION_UNIT'; unitId: string; reactionType: CoreReaction }
+  | { type: 'SELECT_REACTION_UNIT'; unitId: string; reactionType: string }
+  | { type: 'PLACE_REACTION_MODEL'; position: Position }
+  | { type: 'RESET_REACTION_MOVE' }
+  | { type: 'CONFIRM_REACTION_MOVE' }
+  | { type: 'CONFIRM_DEATH_OR_GLORY_ATTACK'; unitId: string; reactingModelId: string; weaponId: string; profileName?: string }
   | { type: 'DECLINE_REACTION' }
   // ── Challenge Flow ────────────────────────────────────────────────────────
+  | { type: 'PASS_CHALLENGE_COMBAT'; combatId: string }
   | { type: 'DECLARE_CHALLENGE'; challengerModelId: string; targetModelId: string }
   | { type: 'ACCEPT_CHALLENGE'; modelId: string }
   | { type: 'DECLINE_CHALLENGE' }

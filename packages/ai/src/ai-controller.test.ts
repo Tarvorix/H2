@@ -17,6 +17,7 @@ import { AIStrategyTier } from './types';
 import type { AIPlayerConfig } from './types';
 import { BasicStrategy } from './strategy/basic-strategy';
 import { TacticalStrategy } from './strategy/tactical-strategy';
+import { AlphaStrategy } from './strategy/alpha-strategy';
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -206,6 +207,16 @@ describe('createStrategy', () => {
   it('returns TacticalStrategy for Tactical tier', () => {
     const strategy = createStrategy(AIStrategyTier.Tactical);
     expect(strategy).toBeInstanceOf(TacticalStrategy);
+  });
+
+  it('returns AlphaStrategy for Alpha tier', () => {
+    const strategy = createStrategy(createConfig({
+      strategyTier: AIStrategyTier.Alpha,
+      alphaModelId: 'alpha-test-model',
+      timeBudgetMs: 100,
+      maxSimulations: 32,
+    }));
+    expect(strategy).toBeInstanceOf(AlphaStrategy);
   });
 });
 

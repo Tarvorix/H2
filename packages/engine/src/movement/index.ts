@@ -54,3 +54,12 @@ export {
   REPOSITION_TRIGGER_RANGE,
   REPOSITION_DEFAULT_INITIATIVE,
 } from './reposition-handler';
+
+export {
+  detectVehicleMoveThroughTriggers,
+  getDeathOrGloryEligibleModelIds,
+  getDeathOrGloryEligibleUnitIds,
+  getDeathOrGloryWeaponOptions,
+  resolveDeathOrGloryReaction,
+  resolveVehicleMoveThroughHits,
+} from './death-or-glory';

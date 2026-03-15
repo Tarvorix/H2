@@ -17,7 +17,8 @@ import type {
   AdvancedReactionUsage,
   LegionTacticaState,
 } from '@hh/types';
-import { Phase, SubPhase, TacticalStatus, UnitMovementState } from '@hh/types';
+import { ModelSubType, Phase, SubPhase, TacticalStatus, UnitMovementState } from '@hh/types';
+import { unitProfileHasSubType } from './profile-lookup';
 
 // ─── Army Helpers ────────────────────────────────────────────────────────────
 
@@ -198,6 +199,9 @@ export function expireModifiersForTransition(
  * Add a tactical status to a unit (if not already present).
  */
 export function addStatus(unit: UnitState, status: TacticalStatus): UnitState {
+  if (unitProfileHasSubType(unit.profileId, ModelSubType.Flyer)) {
+    return unit;
+  }
   if (unit.statuses.includes(status)) return unit;
   return { ...unit, statuses: [...unit.statuses, status] };
 }

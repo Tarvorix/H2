@@ -16,6 +16,8 @@
  */
 
 import type { GameState, UnitState, SpecialRuleRef } from '@hh/types';
+import { ModelSubType } from '@hh/types';
+import { distanceShapes } from '@hh/geometry';
 import type {
   WeaponAssignment,
   FireGroup,
@@ -25,7 +27,8 @@ import type {
   ResolvedWeaponProfileModifier,
 } from './shooting-types';
 import { resolveWeaponAssignment, determineSnapShots } from './weapon-declaration';
-import { getModelBS as lookupModelBS } from '../profile-lookup';
+import { getModelBS as lookupModelBS, unitProfileHasSubType } from '../profile-lookup';
+import { getModelShape } from '../game-queries';
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -109,6 +112,26 @@ function calculateEffectiveFirepower(
   return baseFirepower;
 }
 
+function getTargetDistanceForModel(
+  attackerModel: UnitState['models'][number],
+  targetUnit?: UnitState,
+): number | null {
+  if (!targetUnit) {
+    return null;
+  }
+
+  const targetModels = targetUnit.models.filter((model) => !model.isDestroyed);
+  if (targetModels.length === 0) {
+    return null;
+  }
+
+  const attackerShape = getModelShape(attackerModel);
+  return targetModels.reduce<number>((closest, targetModel) => {
+    const distance = distanceShapes(attackerShape, getModelShape(targetModel));
+    return Math.min(closest, distance);
+  }, Number.POSITIVE_INFINITY);
+}
+
 /**
  * Generate the grouping key for a fire group.
  * All attacks with the same key belong to the same fire group.
@@ -162,6 +185,7 @@ export function formFireGroups(
   forceSnapShots: boolean = false,
   weaponProfileModifier?: ResolvedWeaponProfileModifier,
   state?: GameState,
+  targetUnit?: UnitState,
 ): FireGroup[] {
   // Map to accumulate attacks by group key
   const groupMap = new Map<string, {
@@ -174,10 +198,13 @@ export function formFireGroups(
     specialRules: SpecialRuleRef[];
     traits: string[];
   }>();
+  const targetIsFlyer = targetUnit
+    ? unitProfileHasSubType(targetUnit.profileId, ModelSubType.Flyer)
+    : false;
 
   for (const assignment of assignments) {
     // Resolve the weapon profile
-    const baseWeaponProfile = resolveWeaponAssignment(assignment, attackerUnit, state);
+    const baseWeaponProfile = resolveWeaponAssignment(assignment, attackerUnit, state, targetDistance);
     if (!baseWeaponProfile) {
       // Skip invalid weapons — these should have been caught during validation
       continue;
@@ -210,10 +237,12 @@ export function formFireGroups(
       forceSnapShots,
       countsAsStationary,
       forceNoSnapShots,
+      targetIsFlyer,
     );
 
     // Calculate effective firepower (Rapid Fire doubling at half range)
-    const effectiveFirepower = calculateEffectiveFirepower(weaponProfile, targetDistance);
+    const modelTargetDistance = getTargetDistanceForModel(model, targetUnit) ?? targetDistance;
+    const effectiveFirepower = calculateEffectiveFirepower(weaponProfile, modelTargetDistance);
 
     // Determine the profile name for grouping
     const profileName = assignment.profileName ?? '';

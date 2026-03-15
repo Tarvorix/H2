@@ -11,10 +11,17 @@
  */
 
 import type { Position, ArmyList, GameState } from '@hh/types';
+import { ChallengeGambit, CoreReaction, Phase, SubPhase } from '@hh/types';
 import type { CommandResult } from '@hh/engine';
-import { getModelInitiative, getModelMovement, canUnitShoot } from '@hh/engine';
-import { checkWeaponRange, getClosestModelDistance, hasLOSToUnit, TEMPLATE_EFFECTIVE_RANGE_INCHES } from '@hh/engine';
-import { findMission, getProfileById, findWeapon, findLegionWeapon, isRangedWeapon } from '@hh/data';
+import {
+  getModelInitiative,
+  getModelMovement,
+  canUnitShoot,
+  getEligibleAcceptors,
+  getEligibleChallengers,
+} from '@hh/engine';
+import { checkWeaponRange, getClosestModelDistance, getWeaponSelectionOptions, hasLOSToUnit, TEMPLATE_EFFECTIVE_RANGE_INCHES } from '@hh/engine';
+import { findMission, getProfileById } from '@hh/data';
 import type { ArmyConfig, UnitSelection } from './types';
 import {
   executeCommand,
@@ -25,6 +32,7 @@ import {
   buildDeclineReactionCommand,
   buildEndPhaseCommand,
   buildEndSubPhaseCommand,
+  buildPassChallengeCommand,
   buildDeclareChallengeCommand,
   buildSelectGambitCommand,
   buildSelectAftermathCommand,
@@ -122,13 +130,13 @@ function findUnitById(
   return null;
 }
 
-function lookupWeapon(weaponId: string) {
-  return findWeapon(weaponId) ?? findLegionWeapon(weaponId);
-}
-
-function getEffectiveWeaponRange(weapon: ReturnType<typeof lookupWeapon>): number {
-  if (!weapon || !isRangedWeapon(weapon)) return 0;
-  return weapon.hasTemplate ? TEMPLATE_EFFECTIVE_RANGE_INCHES : weapon.range;
+function findCombatByUnitId(
+  gameState: GameState,
+  unitId: string,
+): NonNullable<GameState['activeCombats']>[number] | null {
+  return gameState.activeCombats?.find((combat) =>
+    combat.activePlayerUnitIds.includes(unitId) || combat.reactivePlayerUnitIds.includes(unitId),
+  ) ?? null;
 }
 
 function getRangedWeaponIdsForModel(model: GameState['armies'][number]['units'][number]['models'][number]): string[] {
@@ -154,13 +162,65 @@ function canAnyWeaponReachTarget(
 
   return aliveAttackers.some((attackerModel) =>
     getRangedWeaponIdsForModel(attackerModel).some((weaponId) => {
-      const weapon = lookupWeapon(weaponId);
-      if (!weapon || !isRangedWeapon(weapon)) return false;
-      const effectiveRange = getEffectiveWeaponRange(weapon);
-      if (effectiveRange <= 0) return false;
-      return checkWeaponRange(attackerModel, aliveTargets, effectiveRange);
+      const closestDistance = getClosestModelDistance(gameState, attackerUnitId, targetUnitId);
+      const options = getWeaponSelectionOptions(
+        { modelId: attackerModel.id, weaponId },
+        attacker,
+        gameState,
+        closestDistance,
+      );
+      return options.some((option) => {
+        const effectiveRange = option.weaponProfile.hasTemplate
+          ? TEMPLATE_EFFECTIVE_RANGE_INCHES
+          : option.weaponProfile.range;
+        if (effectiveRange <= 0) return false;
+        return checkWeaponRange(
+          attackerModel,
+          aliveTargets,
+          effectiveRange,
+          option.weaponProfile.rangeBand?.min ?? 0,
+        );
+      });
     }),
   );
+}
+
+function reactionRequiresPlacement(
+  gameState: GameState,
+  unitId: string,
+  reactionType: string,
+): boolean {
+  if (
+    reactionType === 'evade' ||
+    reactionType === 'combat-air-patrol' ||
+    reactionType === CoreReaction.Reposition ||
+    reactionType === 'ws-chasing-wind'
+  ) {
+    return true;
+  }
+
+  if (reactionType !== 'reserve-entry-intercept') {
+    return false;
+  }
+
+  const unit = findUnitById(gameState, unitId);
+  return !!unit && unit.isInReserves && (unit.reserveType ?? 'standard') === 'aerial';
+}
+
+function reactionRequiresDeathOrGloryAttackSelection(reactionType: string): boolean {
+  return reactionType === 'death-or-glory';
+}
+
+function getAliveUnitModelIds(
+  gameState: GameState,
+  unitId: string,
+): string[] {
+  const unit = findUnitById(gameState, unitId);
+  if (!unit) {
+    return [];
+  }
+
+  return unit.models.filter((model) => !model.isDestroyed).map((model) => model.id);
 }
 
 function resolvePreparedShootingAttack(
@@ -447,6 +507,13 @@ function applyEngineCommand(
     flowState = { type: 'idle' };
   }
 
+  const challengeFlowState = getChallengeFlowState(result.state);
+  if (challengeFlowState) {
+    flowState = challengeFlowState;
+  } else if (state.flowState.type === 'challenge') {
+    flowState = { type: 'idle' };
+  }
+
   return {
     ...state,
     gameState: result.state,
@@ -487,6 +554,79 @@ function withReactionFlowPriority(
     ...state,
     flowState: fallbackFlowState,
   };
+}
+
+function getChallengeFlowState(
+  gameState: GameState,
+): GameUIState['flowState'] | null {
+  if (gameState.currentPhase !== Phase.Assault || gameState.currentSubPhase !== SubPhase.Challenge) {
+    return null;
+  }
+
+  if (gameState.pendingHeroicInterventionState) {
+    const combat = gameState.activeCombats?.find(
+      (candidate) => candidate.combatId === gameState.pendingHeroicInterventionState?.combatId,
+    );
+    if (!combat) {
+      return null;
+    }
+
+    const eligibleChallengers = getEligibleChallengers(
+      gameState,
+      gameState.pendingHeroicInterventionState.reactingUnitId,
+    ).eligibleChallengerIds;
+    const eligibleTargets = [...new Set(
+      combat.activePlayerUnitIds.flatMap((unitId) => getEligibleAcceptors(gameState, unitId)),
+    )];
+    if (eligibleChallengers.length === 0 || eligibleTargets.length === 0) {
+      return null;
+    }
+
+    return {
+      type: 'challenge',
+      step: {
+        step: 'declareChallenge',
+        combatId: combat.combatId,
+        eligibleChallengers,
+        eligibleTargets,
+        canPass: false,
+      },
+    };
+  }
+
+  const activeChallenge = gameState.activeCombats?.find((combat) => combat.challengeState)?.challengeState;
+  if (!activeChallenge) {
+    return null;
+  }
+
+  switch (activeChallenge.currentStep) {
+    case 'DECLARE':
+      return {
+        type: 'challenge',
+        step: {
+          step: 'respondToChallenge',
+          challengerModelId: activeChallenge.challengerId,
+          targetModelId: activeChallenge.challengedId,
+        },
+      };
+    case 'FACE_OFF':
+      return {
+        type: 'challenge',
+        step: {
+          step: 'selectGambit',
+          modelId: activeChallenge.challengerGambit === null
+            ? activeChallenge.challengerId
+            : activeChallenge.challengedId,
+          availableGambits: Object.values(ChallengeGambit),
+        },
+      };
+    case 'FOCUS':
+      return { type: 'challenge', step: { step: 'focusRoll' } };
+    case 'STRIKE':
+      return { type: 'challenge', step: { step: 'strike' } };
+    default:
+      return null;
+  }
 }
 
 // ─── Reducer ─────────────────────────────────────────────────────────────────
@@ -1547,6 +1687,115 @@ export function gameReducer(
       };
     }
 
+    case 'START_CHALLENGE_FLOW': {
+      if (state.flowState.type !== 'idle') return state;
+      if (!state.selectedUnitId || !state.gameState) return state;
+
+      const selectedUnit = findUnitById(state.gameState, state.selectedUnitId);
+      const selectedUnitArmyIndex = state.gameState.armies.findIndex((army) =>
+        army.units.some((unit) => unit.id === state.selectedUnitId),
+      );
+      if (!selectedUnit || !selectedUnit.isLockedInCombat) {
+        return {
+          ...state,
+          notifications: [
+            ...state.notifications,
+            {
+              message: 'Cannot start challenge flow: select an engaged unit.',
+              type: 'warning' as const,
+              timestamp: Date.now(),
+              duration: 3000,
+            },
+          ],
+        };
+      }
+      if (selectedUnitArmyIndex !== state.gameState.activePlayerIndex) {
+        return {
+          ...state,
+          notifications: [
+            ...state.notifications,
+            {
+              message: 'Only the active player may initiate a challenge declaration.',
+              type: 'warning' as const,
+              timestamp: Date.now(),
+              duration: 3000,
+            },
+          ],
+        };
+      }
+
+      const combat = findCombatByUnitId(state.gameState, state.selectedUnitId);
+      if (!combat) {
+        return state;
+      }
+      if (combat.challengeState && combat.challengeState.currentStep !== 'GLORY') {
+        return {
+          ...state,
+          notifications: [
+            ...state.notifications,
+            {
+              message: 'Resolve the active challenge in this combat before starting another declaration.',
+              type: 'warning' as const,
+              timestamp: Date.now(),
+              duration: 3000,
+            },
+          ],
+        };
+      }
+      if (state.gameState.processedChallengeCombatIds?.includes(combat.combatId)) {
+        return {
+          ...state,
+          notifications: [
+            ...state.notifications,
+            {
+              message: 'This combat has already been processed in the current Challenge sub-phase.',
+              type: 'warning' as const,
+              timestamp: Date.now(),
+              duration: 3000,
+            },
+          ],
+        };
+      }
+
+      const eligibleChallengers = getEligibleChallengers(
+        state.gameState,
+        state.selectedUnitId,
+      ).eligibleChallengerIds;
+      const eligibleTargets = combat.reactivePlayerUnitIds.flatMap((enemyUnitId) =>
+        getEligibleAcceptors(state.gameState!, enemyUnitId),
+      );
+      if (eligibleChallengers.length === 0 || eligibleTargets.length === 0) {
+        return {
+          ...state,
+          notifications: [
+            ...state.notifications,
+            {
+              message: eligibleChallengers.length === 0
+                ? 'No eligible challenger is available in the selected combat.'
+                : 'No enemy model is currently eligible to accept a challenge.',
+              type: 'warning' as const,
+              timestamp: Date.now(),
+              duration: 3000,
+            },
+          ],
+        };
+      }
+
+      return {
+        ...state,
+        flowState: {
+          type: 'challenge',
+          step: {
+            step: 'declareChallenge',
+            combatId: combat.combatId,
+            eligibleChallengers,
+            eligibleTargets,
+            canPass: true,
+          },
+        },
+      };
+    }
+
     case 'SELECT_CHARGE_TARGET': {
       if (state.flowState.type !== 'assault') return state;
       const assaultStep = state.flowState.step;
@@ -1631,9 +1880,147 @@ export function gameReducer(
 
     // ── Reaction Flow ───────────────────────────────────────────────────
     case 'SELECT_REACTION_UNIT': {
+      if (!state.gameState) {
+        return state;
+      }
+
+      if (reactionRequiresPlacement(state.gameState, action.unitId, action.reactionType)) {
+        const aliveModelIds = getAliveUnitModelIds(state.gameState, action.unitId);
+        const currentModelId = aliveModelIds[0] ?? null;
+        if (!currentModelId) {
+          return state;
+        }
+
+        return {
+          ...state,
+          selectedUnitId: action.unitId,
+          flowState: {
+            type: 'reaction',
+            step: {
+              step: 'placeModels',
+              reactionType: action.reactionType,
+              unitId: action.unitId,
+              currentModelId,
+              modelPositions: [],
+            },
+          },
+        };
+      }
+
+      if (reactionRequiresDeathOrGloryAttackSelection(action.reactionType)) {
+        return {
+          ...state,
+          selectedUnitId: action.unitId,
+          flowState: {
+            type: 'reaction',
+            step: {
+              step: 'selectDeathOrGloryAttack',
+              reactionType: action.reactionType,
+              unitId: action.unitId,
+            },
+          },
+        };
+      }
+
       const newState = applyEngineCommand(
         state,
         buildReactionCommand(action.unitId, action.reactionType),
+      );
+      return withReactionFlowPriority(newState, { type: 'idle' });
+    }
+
+    case 'PLACE_REACTION_MODEL': {
+      if (state.flowState.type !== 'reaction') return state;
+      if (state.flowState.step.step !== 'placeModels') return state;
+      if (!state.gameState) return state;
+
+      const step = state.flowState.step;
+      const aliveModelIds = getAliveUnitModelIds(state.gameState, step.unitId);
+      const existing = step.modelPositions.filter((entry) => entry.modelId !== step.currentModelId);
+      const nextModelPositions = [
+        ...existing,
+        { modelId: step.currentModelId, position: action.position },
+      ];
+      const nextCurrentModelId = aliveModelIds.find((modelId) =>
+        !nextModelPositions.some((entry) => entry.modelId === modelId),
+      ) ?? null;
+
+      if (!nextCurrentModelId) {
+        return {
+          ...state,
+          flowState: {
+            type: 'reaction',
+            step: {
+              step: 'confirmMove',
+              reactionType: step.reactionType,
+              unitId: step.unitId,
+              modelPositions: nextModelPositions,
+            },
+          },
+        };
+      }
+
+      return {
+        ...state,
+        flowState: {
+          type: 'reaction',
+          step: {
+            ...step,
+            currentModelId: nextCurrentModelId,
+            modelPositions: nextModelPositions,
+          },
+        },
+      };
+    }
+
+    case 'RESET_REACTION_MOVE': {
+      if (state.flowState.type !== 'reaction') return state;
+      const step = state.flowState.step;
+      if (step.step !== 'placeModels' && step.step !== 'confirmMove') return state;
+      if (!state.gameState) return state;
+
+      const currentModelId = getAliveUnitModelIds(state.gameState, step.unitId)[0] ?? null;
+      if (!currentModelId) {
+        return state;
+      }
+
+      return {
+        ...state,
+        flowState: {
+          type: 'reaction',
+          step: {
+            step: 'placeModels',
+            reactionType: step.reactionType,
+            unitId: step.unitId,
+            currentModelId,
+            modelPositions: [],
+          },
+        },
+      };
+    }
+
+    case 'CONFIRM_REACTION_MOVE': {
+      if (state.flowState.type !== 'reaction') return state;
+      if (state.flowState.step.step !== 'confirmMove') return state;
+
+      const step = state.flowState.step;
+      const newState = applyEngineCommand(
+        state,
+        buildReactionCommand(step.unitId, step.reactionType, {
+          modelPositions: step.modelPositions,
+        }),
+      );
+      return withReactionFlowPriority(newState, { type: 'idle' });
+    }
+
+    case 'CONFIRM_DEATH_OR_GLORY_ATTACK': {
+      const newState = applyEngineCommand(
+        state,
+        buildReactionCommand(action.unitId, 'death-or-glory', {
+          reactingModelId: action.reactingModelId,
+          weaponId: action.weaponId,
+          profileName: action.profileName,
+        }),
       );
       return withReactionFlowPriority(newState, { type: 'idle' });
     }
@@ -1644,6 +2031,14 @@ export function gameReducer(
     }
 
     // ── Challenge Flow ──────────────────────────────────────────────────
+    case 'PASS_CHALLENGE_COMBAT': {
+      const newState = applyEngineCommand(
+        state,
+        buildPassChallengeCommand(action.combatId),
+      );
+      return newState;
+    }
+
     case 'DECLARE_CHALLENGE': {
       const newState = applyEngineCommand(
         state,

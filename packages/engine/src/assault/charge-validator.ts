@@ -9,7 +9,7 @@
  */
 
 import type { GameState, UnitState } from '@hh/types';
-import { UnitMovementState, TacticalStatus } from '@hh/types';
+import { ModelSubType, UnitMovementState, TacticalStatus } from '@hh/types';
 import type { ValidationError } from '../types';
 import {
   findUnit,
@@ -18,6 +18,7 @@ import {
   getClosestModelDistance,
   getModelsWithLOSToUnit,
 } from '../game-queries';
+import { unitProfileHasSubType } from '../profile-lookup';
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -125,6 +126,22 @@ export function validateChargeEligibility(
       code: 'CHARGER_RUSHED',
       message: 'Unit that Rushed this turn cannot declare a charge',
       context: { chargingUnitId, movementState: chargingUnit.movementState },
+    });
+  }
+
+  if (chargingUnit.cannotChargeThisTurn) {
+    errors.push({
+      code: 'CHARGER_CANNOT_CHARGE_THIS_TURN',
+      message: 'This unit is not allowed to declare a charge this player turn',
+      context: { chargingUnitId },
+    });
+  }
+
+  if (unitProfileHasSubType(chargingUnit.profileId, ModelSubType.Flyer)) {
+    errors.push({
+      code: 'CHARGER_FLYER',
+      message: 'Units with the Flyer sub-type cannot declare charges',
+      context: { chargingUnitId },
     });
   }
 

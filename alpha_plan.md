@@ -1,856 +1,702 @@
 # Alpha Plan
 
-Date: 2026-03-12  
+Date: 2026-03-13  
 Workspace: `/Users/kylebullock/HHv2`
 
-## Purpose
+## Standard
 
-This document defines a third AI family for `HHv2`:
+`Alpha` is not complete until the full transformer runtime, search, distillation, self-play, training, gate, promotion, and full runtime shadow-mode stack exists end to end.
 
-- `Tactical` remains the heuristic AI.
-- `Engine` remains the current Stockfish-style search + NNUE AI.
-- `Alpha` is a new, fully separate transformer + PUCT/MCTS AI pipeline.
+This document is not a milestone scaffold, bootstrap sketch, placeholder architecture note, or partial rollout plan. It is the required implementation specification for a complete third AI family in `HHv2`.
 
-This plan is explicitly about adding `Alpha` without weakening, replacing, or destabilizing either `Tactical` or `Engine`.
+The three AI families remain:
+
+- `Basic`: random valid-action baseline
+- `Tactical`: heuristic AI
+- `Engine`: Stockfish-style search + NNUE AI
+- `Alpha`: transformer policy/value + PUCT/MCTS AI
+
+`Alpha` is additive. It does not replace, weaken, or rewrite `Tactical` or `Engine`.
+
+## Verified Repo Baseline
+
+This specification is aligned to the live repository state verified on 2026-03-13:
+
+- `packages/ai/src/types.ts` currently exposes `Basic`, `Tactical`, and `Engine` only.
+- `packages/ai/src/ai-controller.ts` is the current strategy-factory and queued-plan dispatch seam.
+- `packages/ai/src/index.ts` is the public AI package export surface.
+- `packages/ui/src/game/screens/ArmyLoadScreen.tsx` and `packages/ui/src/game/screens/ArmyBuilderScreen.tsx` both configure AI opponents today.
+- `packages/ui/src/game/hooks/useAITurn.ts` routes `Engine` through `packages/ui/src/game/hooks/engine-ai.worker.ts`; `Basic` and `Tactical` run on the main thread.
+- `packages/headless/src/index.ts`, `packages/headless/src/session.ts`, `packages/headless/src/decision-support.ts`, and `packages/headless/src/cli.ts` all participate in AI runtime selection.
+- `packages/mcp-server/src/register-tools.ts` owns the schema-driven player configuration surface for match creation.
+- `packages/mcp-server/src/match-manager.ts` is pass-through orchestration and should remain that way.
+- Current default-model promotion for gameplay NNUE is archive-backed and code-generated through `tools/nnue/*` and `packages/ai/src/engine/default-gameplay-model-override.ts`.
+
+`Alpha` must fit these live seams exactly unless the user explicitly requests a broader architectural rewrite.
 
 ## Non-Negotiable Isolation Rules
 
-The `Alpha` pipeline must remain separate from the current `Engine` pipeline in every material way except for the shared game/rules runtime.
+The following are hard requirements:
 
-Required guarantees:
+1. `Tactical` behavior remains byte-for-byte unchanged unless the user separately requests Tactical work.
+2. `Engine` move selection, search behavior, evaluator behavior, worker behavior, and runtime defaults remain unchanged unless the user separately requests Engine work.
+3. `nnue:selfplay`, `nnue:train`, `nnue:gate`, and `nnue:promote` remain unchanged in behavior, artifact contract, archive paths, and runtime ownership.
+4. `Alpha` owns its own runtime, model format, self-play format, training data, gate data, promotion archives, diagnostics, and tooling.
+5. `Alpha` may share only:
+   - `GameState`
+   - command legality and command processing
+   - the existing legal macro-action surface produced from `generateMacroActions`
+   - the AI controller / strategy dispatch seam
+   - UI / headless / MCP seat-selection plumbing
+6. `Alpha` must not write to:
+   - `tmp/nnue`
+   - `archive/nnue`
+   - `packages/ai/src/engine/default-gameplay-model-override.ts`
+   - any `Engine` model registry or NNUE artifact file
+7. `Alpha` must be selectable as an additional AI tier, never as a replacement tier for `Engine`.
+8. `Alpha` is rejected if its implementation changes `Tactical` or `Engine` behavior in any way beyond the additive integration points explicitly listed in this document.
 
-1. `Tactical` behavior must remain unchanged.
-2. `Engine` behavior must remain unchanged.
-3. Existing `nnue:selfplay`, `nnue:train`, and `nnue:gate` scripts must remain unchanged in behavior and artifact contract.
-4. `Alpha` must have its own self-play, training, gate, model registry, model format, artifacts, and diagnostics.
-5. The only shared surfaces are:
-   - the game state
-   - the legal command/rules engine
-   - the existing AI controller strategy interface
-   - player-selection plumbing in UI/headless/MCP
-6. `Alpha` must be selectable as an additional AI tier, not as a replacement for `Engine`.
-7. Any future acceleration, backend changes, or training experiments for `Alpha` must not change `Engine` artifacts or `Engine` scripts.
+## Definition Of Done
 
-## Objective
+`Alpha` is only done when all of the following are simultaneously true:
 
-Add a new `Alpha` AI tier that can:
+1. A complete transformer policy/value model exists and runs in TypeScript at runtime.
+2. `Alpha` can legally complete full games against humans, `Tactical`, `Engine`, and itself.
+3. `Alpha` owns a complete distillation, self-play, training, gate, inspect, and promotion toolchain.
+4. `Alpha` has a promoted default model that was actually trained and gated, not hand-authored or stubbed.
+5. Full runtime shadow mode exists in UI, headless, and MCP without emitting Alpha commands.
+6. Tactical, Engine, and all `nnue:*` flows remain unchanged.
 
-- play against humans
-- play against `Tactical`
-- play against `Engine`
-- play mirror matches against itself
-- improve over time through its own training pipeline
-
-The first implementation target is TypeScript-first for ease of integration and shared runtime use. Training backend changes can happen later, but the architectural contract must be defined now so future backend changes do not force runtime rewrites.
+There is no acceptable “partial Alpha” state described by this document.
 
 ## What Alpha Is
 
-`Alpha` is an AlphaZero-style sidecar AI, adapted to `HHv2`.
+`Alpha` is a full AlphaZero-style sidecar AI adapted to `HHv2`:
 
-It is not a literal AlphaGo clone.
+- compact but serious entity transformer
+- policy head over legal macro-actions
+- value head over game outcomes
+- PUCT/MCTS over the shared legal macro-action surface
+- explicit handling for chance outcomes and reaction windows
+- Engine-distilled warm start
+- self-play improvement loop
+- Alpha-only gate and promotion flow
+- full runtime shadow mode
 
-It combines:
+This is the correct AI family for `HHv2` because the game state is not a fixed-grid board. It includes:
 
-- a compact entity transformer encoder
-- a policy head over legal macro-actions
-- a value head over the current game state
-- PUCT/MCTS over the legal macro-action surface
-- self-play and distillation training
-
-This is the right adaptation because `HHv2` is not a clean fixed-grid board game. It has:
-
+- variable unit counts
 - continuous positions
-- variable numbers of units and models
 - terrain geometry
-- mission/objective state
-- phase/sub-phase flow
+- mission and objective state
+- irregular phases and sub-phases
 - reaction windows
-- stochastic dice outcomes
+- dice-driven stochastic outcomes
 - variable legal action counts
-
-A literal board CNN is a poor fit. A giant transformer is too expensive for early runtime budgets. A compact entity transformer with action-conditioned policy scoring is the best first serious design.
 
 ## What Alpha Is Not
 
 `Alpha` is not:
 
-- a modification of the current `Engine` searcher
-- a new NNUE model kind under the current `Engine` registry
-- a rewrite of current tactical heuristics
+- a modification of `packages/ai/src/engine/search.ts`
+- a new NNUE model kind under the current Engine registry
+- a rewrite of `Tactical`
 - a second rules engine
-- a Python-first mandatory dependency
-
-The core design principle is:
-
-- share game legality
-- do not share search/training/model infrastructure
-
-## Why Transformer + PUCT Instead of CNN + AlphaGo-Style Board Search
-
-### Why not a board CNN
-
-The game state is more naturally represented as entities than as a dense fixed board tensor. A board raster can be constructed later, but as a first-class architecture it creates avoidable problems:
-
-- unit count varies
-- units have discrete datasheet attributes not naturally captured by image planes
-- legal actions are candidate lists, not board coordinates
-- phases and reaction windows are symbolic and irregular
-- many crucial features are relational rather than purely spatial
-
-### Why a compact transformer
-
-A compact entity transformer can model:
-
-- friendly/enemy unit interactions
-- objective pressure
-- activation context
-- threat relationships
-- terrain context
-- action-conditioned scoring
-
-without forcing the game into a fake Go board.
-
-### Why not a giant transformer
-
-MCTS needs many evaluations. A large model would destroy throughput. The first `Alpha` runtime must fit real search budgets, so the model must remain compact.
-
-## High-Level Architecture
-
-```mermaid
-flowchart TD
-  GS["GameState"] --> CG["Shared Macro-Action Generator"]
-  GS --> SE["Alpha State Encoder"]
-  CG --> AE["Alpha Action Encoder"]
-  SE --> PV["Policy / Value Model"]
-  AE --> PV
-  PV --> MCTS["PUCT / MCTS Search"]
-  MCTS --> BA["Best Macro Action"]
-  BA --> CMD["First GameCommand + queued follow-ups"]
-
-  SELF["Alpha Self-Play"] --> DATA["Alpha Replay Buffer"]
-  TEACH["Engine Distillation Data"] --> DATA
-  DATA --> TRAIN["Alpha Trainer"]
-  TRAIN --> REG["Alpha Model Registry"]
-  REG --> PV
-```
+- a placeholder tier
+- a training-later runtime stub
+- a dummy model with toy or handwritten weights
+- a filesystem model registry under `models/alpha`
 
 ## Shared Surfaces vs Separate Surfaces
 
 ### Shared surfaces
 
-`Alpha` should reuse:
+`Alpha` reuses only:
 
 - `GameState`
 - command legality and command processing
-- battlefield geometry and unit data
-- macro-action generation rules/legality surfaces
-- headless match execution
-- UI AI selection and dispatch points
+- battlefield geometry and unit/objective/terrain state
+- the legal macro-action surface produced by the current macro-action generator
+- queued-plan emission through the current AI controller contract
+- headless match execution and replay machinery
+- UI, headless, and MCP player-selection plumbing
 
 ### Separate surfaces
 
-`Alpha` must own:
+`Alpha` owns:
 
 - `AlphaStrategy`
 - `AlphaSearch`
 - `AlphaModel`
 - `AlphaModelRegistry`
+- `AlphaModelSerialization`
+- `AlphaInference`
+- `AlphaDiagnostics`
+- `alpha:distill`
 - `alpha:selfplay`
 - `alpha:train`
 - `alpha:gate`
-- `alpha:distill`
-- its own self-play manifests/shards/replay buffers
-- its own diagnostics types
-- its own worker path if needed
+- `alpha:promote`
+- `alpha:inspect`
+- Alpha-only temporary artifacts and archives
+- Alpha-only shadow logs
 
-## Runtime Placement in the Current Codebase
+## Runtime Placement In The Current Codebase
 
 Minimal shared integration points:
 
 - `packages/ai/src/types.ts`
-  - add a new `AIStrategyTier.Alpha`
+  - add `AIStrategyTier.Alpha`
+  - add `alphaModelId?: string`
+  - add `shadowAlpha?: ShadowAlphaConfig | null`
+  - convert `AIDiagnostics` from a flat shape into a tier-discriminated union
 - `packages/ai/src/ai-controller.ts`
   - add strategy-factory support for `Alpha`
+  - preserve current queued-plan semantics unchanged
+- `packages/ai/src/index.ts`
+  - export Alpha types, strategy, diagnostics, model, and tooling-facing helpers
 - `packages/ui/src/game/screens/ArmyLoadScreen.tsx`
-  - expose `Alpha` as another AI choice
+  - expose `Alpha` as a selectable AI tier
+  - expose Alpha runtime budget presets
+  - expose runtime shadow-mode controls
+- `packages/ui/src/game/screens/ArmyBuilderScreen.tsx`
+  - expose the same `Alpha` controls as `ArmyLoadScreen`
 - `packages/ui/src/game/hooks/useAITurn.ts`
-  - route `Alpha` through a dedicated worker path if search cost requires it
-- `packages/headless`
-  - allow `Alpha` player config selection
-- `packages/mcp-server`
-  - allow `Alpha` player config selection
+  - route `Engine` exactly as it works today
+  - route `Alpha` through a dedicated Alpha worker
+  - keep `Basic` and `Tactical` on the main thread
+- `packages/ui/src/game/hooks/alpha-ai.worker.ts`
+  - new dedicated Alpha worker
+- `packages/ui/src/game/hooks/alpha-ai-worker.types.ts`
+  - Alpha-specific worker request/response surface
+- `packages/headless/src/index.ts`
+  - support Alpha in the library-runner surface
+- `packages/headless/src/session.ts`
+  - support Alpha and shadow Alpha in session player configs and diagnostics
+- `packages/headless/src/decision-support.ts`
+  - continue exposing the shared legal macro-action surface while accepting Alpha player config fields
+- `packages/headless/src/cli.ts`
+  - accept Alpha as a tier
+  - add Alpha model flags and shadow-mode flags
+  - keep current Engine flags functioning unchanged
+- `packages/mcp-server/src/register-tools.ts`
+  - extend `playerConfigSchema` with Alpha and shadow-Alpha fields
+- `packages/mcp-server/src/match-manager.ts`
+  - remain additive pass-through only
 
-Everything else should live in new `Alpha`-specific files and directories.
+All search, model, training, promotion, and shadow logging implementation beyond those seams belongs in Alpha-specific files.
 
-## Proposed Directory Layout
+## Repository Layout
+
+The Alpha implementation lives in additive repo-owned paths only:
 
 ```text
 packages/ai/src/
   alpha/
     strategy/
       alpha-strategy.ts
+      alpha-strategy.test.ts
     search/
       alpha-search.ts
+      alpha-search.test.ts
       puct.ts
+      puct.test.ts
       tree.ts
-      expansion.ts
-      chance-handling.ts
-      policy-targets.ts
+      tree.test.ts
+      chance-nodes.ts
+      chance-nodes.test.ts
+      root-reuse.ts
+      root-reuse.test.ts
+      seed-schedule.ts
+      seed-schedule.test.ts
     model/
       alpha-model.ts
-      alpha-model-registry.ts
-      alpha-model-serialization.ts
-      alpha-default-model.ts
-      alpha-inference.ts
-      alpha-feature-schema.ts
+      alpha-model.test.ts
+      model-registry.ts
+      model-registry.test.ts
+      serialization.ts
+      serialization.test.ts
+      inference.ts
+      inference.test.ts
+      default-model.ts
+      default-model.test.ts
+      default-alpha-model-override.ts
     encoding/
       state-encoder.ts
+      state-encoder.test.ts
       action-encoder.ts
+      action-encoder.test.ts
       token-builders.ts
+      token-builders.test.ts
       terrain-summary.ts
+      terrain-summary.test.ts
     training/
       replay-buffer.ts
+      replay-buffer.test.ts
       distillation-targets.ts
-      alpha-trainer.ts
-      alpha-dataset.ts
+      distillation-targets.test.ts
+      trainer.ts
+      trainer.test.ts
+      dataset.ts
+      dataset.test.ts
     diagnostics/
-      alpha-diagnostics.ts
-    tests/
-      ...
+      diagnostics.ts
+      diagnostics.test.ts
 
 tools/alpha/
   common.mjs
+  distill-engine.mjs
   self-play.mjs
   train.mjs
   gate.mjs
-  distill-engine.mjs
+  promote-model.mjs
   inspect-buffer.mjs
 ```
 
-Artifact directories:
+Temporary artifacts and archives:
 
 ```text
 tmp/alpha/
-  selfplay/
   distill/
+  selfplay/
   train/
   gate/
-models/alpha/
+  shadow/
+
+archive/alpha/
+  promotions/
 ```
 
-These names are intentionally distinct from `tools/nnue` and `tmp/nnue`.
+There is no runtime `models/alpha/` registry in this plan.
 
-## Theory of Operation
+## Public Type Changes
 
-At each decision state:
+Alpha requires additive public-surface changes:
 
-1. Build the legal macro-action list.
-2. Encode the current state into transformer tokens.
-3. Encode each legal macro-action into action features.
-4. Run the model to produce:
-   - policy priors over legal macro-actions
-   - a value estimate for the position
-5. Run PUCT/MCTS to refine action choice.
-6. Choose one macro-action from the search result.
-7. Emit only the first public `GameCommand`; queue the rest in the same way the current AI controller already supports multi-command plans.
+```ts
+export interface ShadowAlphaConfig {
+  enabled: boolean;
+  alphaModelId?: string;
+  timeBudgetMs?: number;
+  baseSeed?: number;
+  diagnosticsEnabled?: boolean;
+}
 
-This keeps `Alpha` compatible with the current command-driven runtime.
+export interface AIPlayerConfig {
+  playerIndex: number;
+  strategyTier: AIStrategyTier;
+  deploymentFormation: AIDeploymentFormation;
+  commandDelayMs: number;
+  timeBudgetMs?: number;
+  nnueModelId?: string;   // Engine only
+  alphaModelId?: string;  // Alpha only
+  baseSeed?: number;
+  rolloutCount?: number;
+  maxDepthSoft?: number;
+  diagnosticsEnabled?: boolean;
+  shadowAlpha?: ShadowAlphaConfig | null;
+  enabled: boolean;
+}
+```
 
-## Search Space Definition
+Diagnostics become a tier-discriminated union:
 
-`Alpha` must search over the same macro-action surface concept that the current `Engine` uses.
+```ts
+type AIDiagnostics = EngineAIDiagnostics | AlphaAIDiagnostics;
+```
 
-Rationale:
+Requirements:
 
-- it keeps legality grounded in the real engine
-- it preserves practical action abstraction
-- it reduces branching factor relative to raw commands
-- it allows fairer comparison against `Engine`
+- `EngineAIDiagnostics` retains its current fields and semantics.
+- `AlphaAIDiagnostics` adds:
+  - `valueEstimate`
+  - `rootVisits`
+  - `nodesExpanded`
+  - `policyEntropy`
+  - `selectedMacroActionId`
+  - `selectedMacroActionLabel`
+  - `selectedCommandType`
+  - `searchTimeMs`
+  - `principalVariation`
+  - `error`
+- Headless and MCP surfaces must be able to surface either diagnostics shape without breaking existing Engine consumers.
 
-The `Alpha` candidate surface should initially reuse the current macro-action generator contract, then optionally fork later only if there is a clear need and explicit proof that divergence improves strength.
+## High-Level Architecture
+
+```mermaid
+flowchart TD
+  GS["GameState"] --> MAG["Shared Legal Macro-Action Surface"]
+  GS --> STE["Alpha State Encoder"]
+  MAG --> AE["Alpha Action Encoder"]
+  STE --> TR["6-Layer Entity Transformer"]
+  AE --> PH["Policy Head"]
+  TR --> PH
+  TR --> VH["Value Head"]
+  PH --> MCTS["PUCT / MCTS"]
+  VH --> MCTS
+  MCTS --> ACT["Selected Macro Action"]
+  ACT --> CMD["First GameCommand + queued follow-ups"]
+
+  DIST["Engine Distillation"] --> BUF["Alpha Replay Buffer"]
+  SP["Alpha Self-Play"] --> BUF
+  BUF --> TRAIN["TFJS Trainer"]
+  TRAIN --> REG["Alpha Model Registry"]
+  REG --> DEF["Promoted Alpha Default Override"]
+  DEF --> TR
+
+  LIVE["Live Tactical / Engine Match"] --> SHADOW["Runtime Shadow Alpha"]
+  SHADOW --> LOG["Shadow Logs"]
+```
 
 ## State Representation
 
-The state encoder should use entity tokens rather than a board CNN.
+The state encoder is entity-first and active-player-relative.
 
 ### Token families
 
-1. global token
+1. Global token
    - side to act
    - current phase
    - current sub-phase
    - battle turn
+   - first-player ownership
    - reaction ownership state
    - current VP totals
+   - mission scoring context
+   - pending decision kind
 
-2. friendly unit tokens
-   - unit profile / role embedding
-   - centroid position
+2. Unit tokens
+   - unit profile / role / legion / allegiance embeddings
+   - centroid position normalized to battlefield dimensions
+   - facing summary
    - alive model count
-   - wounds / hull / remaining strength
-   - mobility state
-   - objective-holder potential
-   - tactical status flags
+   - wounds / hull points / remaining strength summary
+   - morale, pinned, suppressed, stunned, routed, and other tactical-state flags
+   - embarked / transport / reserve state
+   - psychic capability and usage state
+   - objective pressure summary
+   - local cover / terrain relevance summary
+   - incoming and outgoing threat summaries
 
-3. enemy unit tokens
-   - same structure as friendly unit tokens
-
-4. objective tokens
+3. Objective tokens
    - location
-   - owner / contested status
-   - scoring relevance
+   - owner / contested state
+   - VP value and current VP value
+   - distance-to-friendly and distance-to-enemy summaries
 
-5. terrain summary tokens
+4. Terrain tokens
    - terrain type
-   - location / footprint summary
-   - obstruction / cover relevance
+   - footprint summary
+   - obstruction and cover relevance
+   - proximity summaries to important units and objectives
 
-6. optional special-state tokens
+5. Special-context tokens
+   - active combat
    - active challenge
    - pending reaction
-   - active psychic effects
-   - reserves / transport state summaries
+   - current psychic focus state
+   - other decision-critical transient state
 
 ### Representation rules
 
-- token schema must be versioned independently from `Engine` NNUE features
-- tokens must be active-player-relative where possible
-- token counts must be bounded with stable sorting/truncation rules for determinism
-- any truncation rules must be recorded in the model manifest
+- coordinates are normalized to battlefield width/height
+- token ordering is deterministic
+- token truncation is deterministic
+- truncation order and limits are stored in the model manifest
+- token schema version is independent from NNUE feature versioning
 
 ## Action Representation
 
-Actions must be encoded as legal candidate macro-actions, not as an enormous fixed action vocabulary.
+The policy head scores only the legal macro-action set available at the current state.
 
-Each macro-action should include features such as:
+Each macro-action embedding contains:
 
 - action family
-  - move
-  - rush
-  - shoot
-  - charge
-  - reaction
-  - psychic
-  - challenge
-  - aftermath
-  - phase-end
-- actor unit(s)
-- target unit(s)
-- movement distance / lane summary
-- objective effect estimate
-- threat / exposure deltas
-- weapon selection summary
-- whether the action is a continuation / follow-up
+- actor IDs
+- target IDs
+- movement distance and lane summary
+- weapon summary
+- objective delta estimate
+- exposure delta estimate
+- continuation flag
+- reaction metadata
+- chance-sensitivity metadata
 
-The policy head should score only the legal candidate set produced for the current state.
+Policy scoring uses:
 
-## Model Design
+- pooled transformer state readout
+- per-action embedding
+- action-query cross-attention into the state memory
+- one final logit per legal macro-action only
 
-### Core model
+There is no global fixed action vocabulary in v1.
 
-Recommended first serious model:
+## Transformer Architecture
 
-- compact entity transformer
-- 3 to 4 layers
-- model width `128` to `192`
-- `4` to `6` attention heads
-- modest FFN width
-- layer norm, residuals, dropout only if training proves it necessary
+The required v1 architecture is:
 
-### Heads
+- backend: TypeScript + `@tensorflow/tfjs`
+- 6 transformer layers
+- model width: `256`
+- attention heads: `8`
+- FFN width: `1024`
+- pre-norm residual blocks
+- learned token-type embeddings
+- Fourier coordinate embeddings for positions
+- dropout `0.1` during training
+- dropout disabled in inference
+- pooled global-token readout for value estimation
 
-1. policy head
-   - scores the current legal macro-action set
-   - outputs one logit per legal macro-action
+This is the minimum serious architecture for Alpha in this repo. It is not a placeholder.
 
-2. value head
-   - predicts scalar outcome estimate in `[-1, 1]`
-   - optional auxiliary head for projected VP differential
+## Policy And Value Heads
 
-### Policy scoring design
+### Policy head
 
-Recommended first design:
+- scores the current legal macro-action set only
+- uses action-query cross-attention against the state memory
+- produces one logit per legal macro-action
 
-- state encoder produces contextual token embeddings
-- pooled state embedding is concatenated with per-action features
-- optional cross-attention from action embeddings into the state context
-- final policy scorer emits logits only for current legal actions
+### Value head
 
-This is cheaper and more practical than trying to decode over a global action vocabulary.
+- scalar win value in `[-1, 1]`
+- auxiliary VP differential regression
+- auxiliary immediate tactical swing regression for training stability
 
-## Why This Can Compete With Engine
+## Model Artifact Contract
 
-The goal is not to replace `Engine`'s style. The goal is to create a learning-first peer line.
-
-The features that make `Alpha` potentially competitive are:
-
-- policy priors that bias search toward stronger macro-actions
-- value estimation that improves leaf evaluation
-- training from the stronger current `Engine` as a teacher
-- self-play refinement over time
-
-The first serious `Alpha` version should not begin from scratch. It should begin from distillation.
-
-## Distillation Bootstrap
-
-Initial near-peer viability depends heavily on using the current `Engine` as a teacher.
-
-### Distillation sources
-
-1. current `Engine` self-play
-2. current `Engine` vs `Tactical` games
-3. shadow-mode `Engine` decision logs on curated positions
-
-### Distillation targets
-
-For each decision state record:
-
-- serialized Alpha state tokens/features
-- legal candidate macro-actions
-- teacher chosen macro-action
-- teacher search diagnostics
-  - score
-  - depth
-  - nodes
-  - principal variation
-- final game outcome
-- optional immediate tactical deltas
-
-### Distillation phases
-
-1. policy imitation
-   - learn to match `Engine` selected macro-action
-2. value warm-start
-   - learn final outcome / score estimate
-3. optional soft-target policy
-   - if available, use teacher root score distribution instead of hard one-hot labels
-
-This reduces the amount of pure self-play needed before `Alpha` becomes respectable.
-
-## PUCT / MCTS Design
-
-### Root search unit
-
-Each root edge corresponds to one legal macro-action.
-
-### Selection rule
-
-Use standard PUCT-style scoring:
-
-`score = Q(s,a) + c_puct * P(s,a) * sqrt(N(s)) / (1 + N(s,a))`
-
-with:
-
-- `Q(s,a)` from backed-up leaf evaluations
-- `P(s,a)` from the policy head
-- root Dirichlet noise only during self-play training, never during evaluation/gate
-
-### Expansion
-
-When expanding a decision node:
-
-1. generate legal macro-actions
-2. evaluate the node with the Alpha model
-3. attach priors to each legal edge
-4. initialize child visit/value stats
-
-### Backup
-
-Backup should propagate:
-
-- value estimate
-- terminal result if terminal
-- player-relative sign handling
-
-### Temperature
-
-Self-play should use temperature at the root early in the game and decay later.
-
-Evaluation/gate should use near-greedy or greedy action selection.
-
-## Handling Stochasticity
-
-`HHv2` includes dice and reaction windows. `Alpha` therefore cannot be a naive deterministic game-tree clone of Go.
-
-### Required handling
-
-Use explicit chance-aware search handling with deterministic reproducibility.
-
-Recommended v1 approach:
-
-- decision nodes for player choices
-- sampled chance handling for dice outcomes
-- explicit reaction decision nodes when the opponent must respond
-- deterministic seed derivation per edge/sample for reproducibility
-
-### Why sampled chance handling first
-
-Full enumerated chance trees will explode quickly. Sampled chance handling is more practical for the first serious implementation.
-
-### Determinism rule
-
-Alpha search and tooling must define their own seed schedule, separate from `Engine`'s current search seed handling. Shared seed derivation code is acceptable only if the behavior is explicitly unchanged for `Engine`.
-
-## Self-Play Pipeline
-
-`Alpha` needs its own self-play runner and corpus format.
-
-### alpha:selfplay
-
-Responsibilities:
-
-- run Alpha-vs-Alpha matches
-- optionally run mixed `Alpha` vs `Engine` or `Alpha` vs `Tactical` curriculum matches
-- record training tuples
-- record replay artifacts
-- shard large corpora
-- emit Alpha-specific manifest files
-
-### Training tuple contents
-
-Each stored example should include:
-
-- state representation
-- legal candidate list
-- policy target
-  - visit counts or normalized visit distribution
-- chosen action
-- value target
-  - final outcome
-  - optional VP differential target
-- metadata
-  - battle turn
-  - phase/sub-phase
-  - matchup info
-  - model version
-  - search budget
-
-### Replay buffer
-
-Alpha should maintain its own replay buffer abstraction and retention policy, fully separate from the `nnue` pipeline.
-
-## Training Pipeline
-
-### alpha:distill-engine
-
-This script prepares teacher-labeled data from the current `Engine`.
-
-Responsibilities:
-
-- run or ingest `Engine` decisions
-- convert states/candidates to Alpha training examples
-- produce Alpha-distillation manifests and shards
-
-### alpha:train
-
-This script trains the Alpha model.
-
-Expected phases:
-
-1. distillation pretrain from `Engine`
-2. mixed distillation + self-play training
-3. self-play dominant fine-tuning
-
-### Loss design
-
-Recommended initial loss:
-
-- policy cross-entropy on teacher or visit distribution
-- value loss on final outcome
-- optional auxiliary VP regression
-- entropy regularization if collapse appears
-- weight decay / L2
-
-### Model artifact design
-
-Alpha artifacts must use a distinct schema, for example:
+Alpha artifacts use a repo-owned schema separate from NNUE:
 
 - `modelFamily: "alpha-transformer"`
 - `schemaVersion`
 - `tokenSchemaVersion`
 - `actionSchemaVersion`
+- `modelId`
 - `weightsChecksum`
 - `trainingMetadata`
+- transformer hyperparameters
+- base64-encoded Float32 tensor payloads
 
-Do not reuse the current NNUE manifest or file contract.
+The promoted default Alpha model is loaded from:
 
-## Gate / Evaluation Pipeline
+- `packages/ai/src/alpha/model/default-model.ts`
+- `packages/ai/src/alpha/model/default-alpha-model-override.ts`
 
-### alpha:gate
+The first promoted default Alpha model must be an actually trained distilled model that has passed Alpha’s own gate flow. No handwritten, empty, random, toy, or stub default model is acceptable.
 
-This script benchmarks Alpha candidates.
+## Search
 
-Required matchup modes:
+Alpha search is full PUCT/MCTS over the shared legal macro-action surface.
 
-- Alpha vs Tactical
-- Alpha vs Engine
-- Alpha vs Alpha baseline
+### Required search behavior
 
-### Gate goals
+- root edges correspond to legal macro-actions from the shared generator
+- explicit decision nodes
+- sampled chance nodes for dice-driven outcomes
+- explicit reaction-response nodes
+- deterministic seed schedule independent from Engine
+- root Dirichlet noise during self-play only
+- no Dirichlet noise in gate, evaluation, UI play, headless play, or shadow mode
+- root reuse for repeated evaluations of unchanged states
+- batched leaf evaluation in TFJS
+- command emission through the existing queued-plan contract
 
-1. strength tracking
-2. regression detection
-3. promotion decisions within the Alpha line only
+### Selection rule
 
-### Important boundary
+Use standard PUCT:
 
-An Alpha promotion must never overwrite or mutate `Engine` artifacts. Promotion means:
+`score = Q(s,a) + c_puct * P(s,a) * sqrt(N(s)) / (1 + N(s,a))`
 
-- mark Alpha candidate as new Alpha default
-- do not touch NNUE model registry or NNUE artifacts
+### Backup rules
 
-## Runtime Selection and Matchups
+Backup must propagate:
 
-After integration, the game should allow any player seat to choose:
+- player-relative signed value
+- terminal result when reached
+- sampled chance outcome value
+- auxiliary value targets for diagnostics only, not search replacement
 
-- `Basic`
-- `Tactical`
-- `Engine`
-- `Alpha`
+## Runtime Search Defaults
 
-Supported matchups:
+Required Alpha runtime presets:
 
-- Human vs Alpha
-- Tactical vs Alpha
-- Engine vs Alpha
-- Alpha vs Alpha
-- Tactical vs Engine
-- current existing pairings unchanged
+- UI Balanced: `600ms` or `256` simulations, whichever comes first
+- UI Tournament: `1500ms` or `640` simulations, whichever comes first
+- headless default: `1500ms` or `640` simulations
+- self-play default: `800` simulations with temperature and Dirichlet noise enabled
 
-This requires only shared config plumbing changes, not shared training/search code.
+These are Alpha-only controls. They must not alter current Engine defaults.
 
-## Shadow Mode
+## Distillation, Self-Play, Training, Gate, And Promotion
 
-Alpha should support an offline shadow mode before it is trusted as an active player.
+### `alpha:distill`
 
-Shadow mode behavior:
+Responsibilities:
 
-- live match still executes `Engine` or `Tactical`
-- Alpha receives the same state and legal candidates
-- Alpha logs what it would have chosen
-- no command from Alpha is executed
+- ingest Engine self-play states
+- ingest Engine vs Tactical games
+- ingest runtime shadow logs
+- convert those states into Alpha training tuples
+- produce Alpha-only distillation manifests and shards under `tmp/alpha/distill`
 
-This is the safest way to compare decision quality before full promotion.
+### `alpha:selfplay`
 
-## Worker and Runtime Strategy
+Responsibilities:
 
-Because Alpha search may be expensive, the UI should not run it on the main thread.
+- run Alpha vs Alpha matches
+- run curriculum matches vs Tactical and Engine
+- record policy targets from visit distributions
+- record value targets and auxiliary targets
+- emit replay artifacts and manifests under `tmp/alpha/selfplay`
 
-Recommended runtime path:
+### `alpha:train`
 
-- dedicated Alpha worker type for browser use
-- dedicated headless Alpha path for one-shot and session matches
-- optional progress telemetry surface similar to `Engine`
+Responsibilities:
 
-Telemetry fields:
+- train with TFJS
+- use policy loss, value loss, VP differential loss, tactical swing loss, entropy regularization, and weight decay
+- emit Alpha candidate model artifacts and training summaries under `tmp/alpha/train`
 
-- elapsed time
-- selected action
-- root visits
-- nodes expanded
-- principal variation summary
-- value estimate
-- policy entropy
+### `alpha:gate`
 
-## Performance Targets
+Responsibilities:
 
-Initial targets for Alpha should be explicit:
+- benchmark Alpha candidate vs Tactical
+- benchmark Alpha candidate vs Engine
+- benchmark Alpha candidate vs current Alpha default
+- write summaries under `tmp/alpha/gate`
+- decide promotion eligibility within the Alpha line only
 
-- default UI budget compatible with playable turns
-- no UI frame hitching
-- determinism in headless runs at fixed seeds
-- bounded memory use for tree and replay buffer
+### `alpha:promote`
 
-Suggested early runtime targets:
+Responsibilities:
 
-- normal UI budget: `400` to `800ms`
-- heavy headless benchmark budget: `800` to `1500ms`
+- archive the promoted candidate and gate summary under `archive/alpha/promotions`
+- generate `packages/ai/src/alpha/model/default-alpha-model-override.ts`
+- update Alpha-only promotion metadata
+- never modify any `nnue` file, archive, override, or registry
 
-These are Alpha-specific knobs and must not alter current Engine defaults.
+### `alpha:inspect`
 
-## TypeScript-First Constraint
+Responsibilities:
 
-The first implementation should be TypeScript-first.
+- inspect replay buffers
+- inspect distillation manifests
+- inspect training summaries and gate summaries
 
-Implications:
+## Runtime, UI, Headless, MCP, And Shadow Mode
 
-- runtime inference must work in TS
-- search must work in TS
-- self-play orchestration must work in TS
-- model schema and serialization must be owned by this repo
+### UI runtime
 
-Training can remain TS-first initially if feasible, but the architecture must allow future backend swaps without changing runtime contracts.
+Required UI behavior:
 
-### Backend abstraction rule
+- `ArmyLoadScreen` and `ArmyBuilderScreen` both expose `Alpha`
+- both screens expose Alpha model selection and Alpha budget presets
+- both screens expose shadow-mode controls
+- live seat can be `Tactical` or `Engine` while `shadowAlpha` runs sidecar inference
+- shadow Alpha never emits commands
 
-Define Alpha model serialization and inference contracts independently from any specific trainer implementation.
+### Worker runtime
 
-That allows future migration to:
+Required worker behavior:
 
-- a faster TS tensor path
-- a Python trainer
-- MLX
-- Core ML export
+- `Engine` keeps its current worker path unchanged
+- `Alpha` gets a dedicated worker beside the Engine worker
+- `useAITurn` dispatch rules become:
+  - `Engine` -> current Engine worker
+  - `Alpha` -> Alpha worker
+  - `Basic` / `Tactical` -> main thread
 
-without changing the gameplay/runtime integration layer.
+### Headless runtime
 
-## Testing and Verification
+Required headless behavior:
 
-Alpha needs its own test surface.
+- Alpha is supported in:
+  - library runner
+  - match session
+  - decision-support snapshots
+  - CLI parsing and help text
+- add Alpha-specific CLI model flags rather than overloading NNUE model ownership
+- shadow Alpha is supported in headless sessions and reflected in diagnostics/output artifacts
 
-### Unit tests
+### MCP runtime
 
-- model serialization round-trips
-- token builder determinism
-- action encoder determinism
-- PUCT score correctness
-- seed schedule determinism
+Required MCP behavior:
+
+- `playerConfigSchema` accepts `Alpha`
+- `playerConfigSchema` accepts `alphaModelId`
+- `playerConfigSchema` accepts `shadowAlpha`
+- match-manager remains additive pass-through only
+
+## Testing And Verification
+
+### Documentation verification
+
+- every file path named in this document must exist in the repo or be an additive file called for by this implementation spec
+- every live-repo claim in this document must match the repo state verified on 2026-03-13
+
+### Runtime regression
+
+- keep `pnpm typecheck` green
+- keep existing AI/headless/MCP tests green
+- add golden Engine regression tests proving Alpha integration does not change Engine selected commands on fixed seeds and curated states
+- add Tactical regression tests proving unchanged decisions on curated states
+
+### Alpha tests
+
+- serialization round-trip
+- token determinism
+- action-encoder determinism
+- PUCT selection correctness
 - tree backup correctness
+- chance-node seed determinism
+- worker vs direct-runtime parity
+- legal full-game headless Alpha mirrors
+- MCP Alpha match creation and AI advancement
+- runtime shadow-mode logging with zero Alpha command emission
+- tool tests for `alpha:distill`, `alpha:selfplay`, `alpha:train`, `alpha:gate`, and `alpha:promote`
 
-### Integration tests
+### Artifact isolation
 
-- Alpha emits only legal commands
-- Alpha queued plans obey the same invalidation expectations as current AI controller flow
-- Alpha works in headless one-shot runner
-- Alpha works in `HeadlessMatchSession`
-- Alpha worker matches direct runtime decisions at fixed seeds
+- assert Alpha scripts only write under `tmp/alpha` and `archive/alpha`
+- assert Alpha promotion only updates Alpha override files and Alpha archives
+- assert `nnue:*` artifacts and archive paths are untouched
 
-### Regression tests
+## Package Scripts
 
-- Alpha artifacts stay separate from NNUE artifacts
-- Alpha scripts never write to `tmp/nnue`
-- existing `nnue:*` behavior is unchanged
-- `Engine` selected command sequence is unchanged after Alpha integration
+Root `package.json` must add:
 
-## Implementation Phases
+- `alpha:distill`
+- `alpha:selfplay`
+- `alpha:train`
+- `alpha:gate`
+- `alpha:promote`
+- `alpha:inspect`
 
-### Phase A - Isolation scaffolding
+Each script uses the existing ESM loader pattern already used by `tools/nnue/*`.
 
-- add `AIStrategyTier.Alpha`
-- add empty `AlphaStrategy`
-- add Alpha-specific config and diagnostics types
-- add UI/headless/player-selection plumbing
-- add no-op shadow scaffolding
+## Completion Standard
 
-Exit criteria:
+Work order may be staged internally for engineering convenience, but Alpha is not considered implemented until every required workstream in this document is complete.
 
-- `Alpha` is selectable
-- `Tactical` and `Engine` behavior remains unchanged
+There is no acceptable intermediate state where:
 
-### Phase B - Alpha model contract
+- `Alpha` is selectable but untrained
+- `Alpha` has a dummy default model
+- `Alpha` can search but cannot train
+- `Alpha` can train but cannot gate
+- `Alpha` can gate but cannot promote
+- `Alpha` lacks full runtime shadow mode
 
-- define Alpha model manifest
-- define state token schema
-- define action encoding schema
-- define serialization/deserialization
-- define default Alpha model artifact
+## Hard Acceptance Statement
 
-Exit criteria:
+This plan is satisfied only when:
 
-- Alpha inference contract exists
-- artifacts load independently of NNUE
-
-### Phase C - Search core
-
-- implement PUCT/MCTS
-- connect shared macro-action generation
-- connect chance handling
-- emit commands through existing controller contract
-
-Exit criteria:
-
-- Alpha can play full legal games headlessly
-
-### Phase D - Distillation pipeline
-
-- implement `alpha:distill-engine`
-- generate Engine-teacher corpora
-- train initial policy/value model
-
-Exit criteria:
-
-- Alpha produces non-random decisions learned from Engine data
-
-### Phase E - Alpha self-play
-
-- implement `alpha:selfplay`
-- implement replay buffer
-- implement Alpha-only manifests/shards
-
-Exit criteria:
-
-- Alpha self-play runs complete cleanly
-
-### Phase F - Gate and promotion
-
-- implement `alpha:gate`
-- benchmark against Tactical and Engine
-- define Alpha-only promotion rules
-
-Exit criteria:
-
-- Alpha strength is measurable without touching Engine promotion flow
-
-## Risks and Mitigations
-
-### Risk: Alpha is too weak initially
-
-Mitigation:
-
-- bootstrap from Engine distillation
-- reuse current macro-action abstraction
-- keep model compact but expressive
-
-### Risk: Alpha is too slow
-
-Mitigation:
-
-- compact transformer only
-- candidate pruning from shared macro-action generation
-- dedicated worker path
-- explicit runtime budgets
-
-### Risk: Alpha contaminates Engine pipeline
-
-Mitigation:
-
-- separate directories
-- separate artifact schema
-- separate scripts
-- explicit regression tests that current `nnue:*` outputs/behavior are unchanged
-
-### Risk: stochasticity breaks reproducibility
-
-Mitigation:
-
-- Alpha-specific deterministic seed schedule
-- fixed reproducibility tests in headless and worker paths
-
-## Acceptance Criteria
-
-This blueprint is satisfied only when all of the following are true:
-
-1. `Alpha` is selectable as a distinct AI tier.
-2. `Tactical` remains unchanged.
-3. `Engine` remains unchanged.
-4. `nnue:selfplay`, `nnue:train`, and `nnue:gate` remain behaviorally unchanged.
-5. `Alpha` owns its own model registry, scripts, manifests, and artifacts.
-6. `Alpha` can complete headless games legally.
-7. `Alpha` can run its own distillation, self-play, training, and gate loops.
-8. Players can choose any pairing among `Tactical`, `Engine`, and `Alpha`.
-
-## Final Recommendation
-
-The correct path for `HHv2` is:
-
-- keep the current `Engine` line intact as the Stockfish-style AI
-- add `Alpha` as a separate transformer + PUCT/MCTS line
-- bootstrap `Alpha` from `Engine`
-- let both lines evolve independently
-
-That gives the project two genuinely different long-term AI families:
-
-- search + NNUE (`Engine`)
-- policy/value + PUCT (`Alpha`)
-
-with `Tactical` retained as the heuristic baseline and fallback.
+1. `Alpha` exists as a full transformer + PUCT/MCTS AI family with complete runtime, training, gate, promotion, and shadow-mode support.
+2. The first promoted default Alpha model is a trained distilled model, not a stub.
+3. `Tactical` behavior remains unchanged.
+4. `Engine` behavior remains unchanged.
+5. `nnue:selfplay`, `nnue:train`, `nnue:gate`, and `nnue:promote` remain unchanged.
+6. Alpha tooling writes only to Alpha-owned artifact paths.
+7. Alpha promotion modifies only Alpha-owned promotion paths.
+8. Alpha is rejected if it interferes with Tactical or Engine in any way.

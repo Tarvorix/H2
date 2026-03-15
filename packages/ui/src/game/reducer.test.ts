@@ -20,10 +20,19 @@ vi.mock('./command-bridge', async () => {
   return {
     ...actual,
     executeCommand: vi.fn(),
-    buildReactionCommand: vi.fn((unitId: string, reactionType: CoreReaction) => ({
+    buildReactionCommand: vi.fn((unitId: string, reactionType: string, options?: {
+      modelPositions?: { modelId: string; position: { x: number; y: number } }[];
+      reactingModelId?: string;
+      weaponId?: string;
+      profileName?: string;
+    }) => ({
       type: 'selectReaction',
       unitId,
       reactionType: String(reactionType),
+      modelPositions: options?.modelPositions,
+      reactingModelId: options?.reactingModelId,
+      weaponId: options?.weaponId,
+      profileName: options?.profileName,
     })),
     buildDeclineReactionCommand: vi.fn(() => ({ type: 'declineReaction' })),
     eventsToLogEntries: vi.fn(() => []),
@@ -259,6 +268,94 @@ describe('gameReducer reaction flow persistence', () => {
     if (nextState.flowState.type === 'reaction' && nextState.flowState.step.step === 'prompt') {
       expect(nextState.flowState.step.pendingReaction).toEqual(chainedPending);
     }
+  });
+});
+
+describe('gameReducer reaction interaction steps', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('collects placement before dispatching a move-based reaction', () => {
+    const state = createReactionUiState(createPendingReaction(CoreReaction.Reposition));
+
+    const selectedState = gameReducer(state, {
+      type: 'SELECT_REACTION_UNIT',
+      unitId: 'target-u1',
+      reactionType: CoreReaction.Reposition,
+    });
+
+    expect(vi.mocked(commandBridge.executeCommand)).not.toHaveBeenCalled();
+    expect(selectedState.flowState.type).toBe('reaction');
+    expect(selectedState.flowState.type === 'reaction' && selectedState.flowState.step.step === 'placeModels').toBe(true);
+
+    const placedState = gameReducer(selectedState, {
+      type: 'PLACE_REACTION_MODEL',
+      position: { x: 22, y: 22 },
+    });
+
+    expect(placedState.flowState.type).toBe('reaction');
+    expect(placedState.flowState.type === 'reaction' && placedState.flowState.step.step === 'confirmMove').toBe(true);
+
+    vi.mocked(commandBridge.executeCommand).mockReturnValue({
+      state: createBaseGameState(),
+      events: [],
+      errors: [],
+      accepted: true,
+    });
+
+    const confirmedState = gameReducer(placedState, { type: 'CONFIRM_REACTION_MOVE' });
+
+    expect(vi.mocked(commandBridge.buildReactionCommand)).toHaveBeenCalledWith(
+      'target-u1',
+      CoreReaction.Reposition,
+      {
+        modelPositions: [{ modelId: 'target-u1-m1', position: { x: 22, y: 22 } }],
+      },
+    );
+    expect(vi.mocked(commandBridge.executeCommand)).toHaveBeenCalledTimes(1);
+    expect(confirmedState.flowState).toEqual({ type: 'idle' });
+  });
+
+  it('collects the Death or Glory attacker and weapon before dispatching the reaction command', () => {
+    const state = createReactionUiState(createPendingReaction('death-or-glory'));
+
+    const selectedState = gameReducer(state, {
+      type: 'SELECT_REACTION_UNIT',
+      unitId: 'target-u1',
+      reactionType: 'death-or-glory',
+    });
+
+    expect(vi.mocked(commandBridge.executeCommand)).not.toHaveBeenCalled();
+    expect(selectedState.flowState.type).toBe('reaction');
+    expect(selectedState.flowState.type === 'reaction' && selectedState.flowState.step.step === 'selectDeathOrGloryAttack').toBe(true);
+
+    vi.mocked(commandBridge.executeCommand).mockReturnValue({
+      state: createBaseGameState(),
+      events: [],
+      errors: [],
+      accepted: true,
+    });
+
+    const confirmedState = gameReducer(selectedState, {
+      type: 'CONFIRM_DEATH_OR_GLORY_ATTACK',
+      unitId: 'target-u1',
+      reactingModelId: 'target-u1-m1',
+      weaponId: 'melta-bombs',
+      profileName: undefined,
+    });
+
+    expect(vi.mocked(commandBridge.buildReactionCommand)).toHaveBeenCalledWith(
+      'target-u1',
+      'death-or-glory',
+      {
+        reactingModelId: 'target-u1-m1',
+        weaponId: 'melta-bombs',
+        profileName: undefined,
+      },
+    );
+    expect(vi.mocked(commandBridge.executeCommand)).toHaveBeenCalledTimes(1);
+    expect(confirmedState.flowState).toEqual({ type: 'idle' });
   });
 });
 

@@ -78,6 +78,13 @@ export function ChallengeFlow({ state, dispatch }: ChallengeFlowProps) {
     dispatch({ type: 'DECLINE_CHALLENGE' });
   }, [dispatch]);
 
+  const handleSkipChallenges = useCallback(() => {
+    if (step.step !== 'declareChallenge' || !step.canPass) {
+      return;
+    }
+    dispatch({ type: 'PASS_CHALLENGE_COMBAT', combatId: step.combatId });
+  }, [dispatch, step]);
+
   const handleSelectGambit = useCallback(
     (modelId: string, gambit: ChallengeGambit) => {
       dispatch({ type: 'SELECT_GAMBIT', modelId, gambit });
@@ -111,11 +118,13 @@ export function ChallengeFlow({ state, dispatch }: ChallengeFlowProps) {
               </div>
             ))}
 
-            <div className="reaction-modal-actions">
-              <button className="toolbar-btn" onClick={handleDeclineChallenge}>
-                Decline to Challenge
-              </button>
-            </div>
+            {step.canPass && (
+              <div className="reaction-modal-actions">
+                <button className="toolbar-btn" onClick={handleSkipChallenges}>
+                  Pass This Combat
+                </button>
+              </div>
+            )}
           </>
         )}
 

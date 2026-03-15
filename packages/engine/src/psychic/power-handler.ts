@@ -4,6 +4,7 @@ import type {
   GameState,
   ManifestPsychicPowerCommand,
   ModelState,
+  PendingPsychicCurseState,
   SpecialRuleRef,
   UnitState,
 } from '@hh/types';
@@ -35,17 +36,20 @@ import {
 } from '../game-queries';
 import {
   addStatus,
+  setAwaitingReaction,
   setMovementState,
   updateUnitInGameState,
   updateModelInUnit,
 } from '../state-helpers';
 import {
   getBestAvailablePsychicFocus,
+  getCurrentModelWillpower,
   getActivePsychicEffects,
   getModelPsychicPower,
   getModelPsychicReaction,
   modelHasPsychicTrait,
   modelHasGrantedPsychicTrait,
+  modelHasLOSToModel,
   modelHasLOSToUnit,
   modelIsWithinRangeOfUnit,
   recordPsychicUsage,
@@ -272,6 +276,287 @@ function hasPsykerInUnit(state: GameState, unit: UnitState): boolean {
   return getAliveModels(unit).some((model) => modelHasPsychicTrait(state, model));
 }
 
+function buildPendingPsychicCurseState(
+  powerId: string,
+  sourceUnitId: string,
+  sourceFocusModelId: string,
+  targetUnitId: string,
+  sourcePlayerIndex: number,
+  resistanceFocusUnitId: string,
+  resistancePerilsValue: number | null,
+): PendingPsychicCurseState {
+  return {
+    powerId,
+    sourceUnitId,
+    sourceFocusModelId,
+    targetUnitId,
+    sourcePlayerIndex,
+    resistanceFocusUnitId,
+    resistancePerilsValue,
+  };
+}
+
+function getBestNullifyFocus(
+  state: GameState,
+  unitId: string,
+  targetUnitId: string,
+  sourceFocusModelId: string,
+): ModelState | null {
+  return getBestAvailablePsychicFocus(state, unitId, (model) =>
+    modelHasPsychicTrait(state, model) &&
+    (
+      modelHasLOSToUnit(state, model.id, targetUnitId) ||
+      modelHasLOSToModel(state, model.id, sourceFocusModelId)
+    ),
+  );
+}
+
+function getNullifyEligibleUnitIds(
+  state: GameState,
+  pendingCurse: PendingPsychicCurseState,
+): string[] {
+  const reactivePlayerIndex = findUnitPlayerIndex(state, pendingCurse.targetUnitId);
+  if (reactivePlayerIndex === undefined) {
+    return [];
+  }
+
+  const reactiveArmy = state.armies[reactivePlayerIndex];
+  if (reactiveArmy.reactionAllotmentRemaining <= 0) {
+    return [];
+  }
+
+  return reactiveArmy.units
+    .filter((unit) =>
+      canUnitReact(unit) &&
+      unitCanUsePsychicAbilities(state, unit) &&
+      !unitHasUsedPsychicReaction(state, unit.id) &&
+      getBestNullifyFocus(
+        state,
+        unit.id,
+        pendingCurse.targetUnitId,
+        pendingCurse.sourceFocusModelId,
+      ) !== null,
+    )
+    .map((unit) => unit.id);
+}
+
+function maybeOfferNullifyReaction(
+  state: GameState,
+  pendingCurse: PendingPsychicCurseState,
+): CommandResult | null {
+  const eligibleUnitIds = getNullifyEligibleUnitIds(state, pendingCurse);
+  if (eligibleUnitIds.length === 0) {
+    return null;
+  }
+
+  const reactionState = setAwaitingReaction(
+    {
+      ...state,
+      pendingPsychicCurseState: pendingCurse,
+    },
+    true,
+    {
+      reactionType: 'nullify',
+      isAdvancedReaction: false,
+      eligibleUnitIds,
+      triggerDescription: `Psychic Curse "${pendingCurse.powerId}" may be nullified before it resolves against "${pendingCurse.targetUnitId}".`,
+      triggerSourceUnitId: pendingCurse.sourceUnitId,
+    },
+  );
+
+  return successPsychic(reactionState);
+}
+
+function applyTranquillityEffect(
+  state: GameState,
+  pendingCurse: PendingPsychicCurseState,
+): GameState {
+  return addActivePsychicEffect(state, {
+    id: `tranquillity:${pendingCurse.sourceFocusModelId}:${pendingCurse.targetUnitId}:${state.currentBattleTurn}:${pendingCurse.sourcePlayerIndex}`,
+    sourcePowerId: 'tranquillity',
+    sourceUnitId: pendingCurse.sourceUnitId,
+    focusModelId: pendingCurse.sourceFocusModelId,
+    targetUnitId: pendingCurse.targetUnitId,
+    playerIndex: pendingCurse.sourcePlayerIndex,
+    expiry: {
+      type: 'startOfPlayerTurn',
+      playerIndex: pendingCurse.sourcePlayerIndex,
+    },
+  });
+}
+
+function applyMindBurstEffect(
+  state: GameState,
+  targetUnitId: string,
+  dice: DiceProvider,
+): { state: GameState; events: GameEvent[] } {
+  const targetUnit = findUnit(state, targetUnitId);
+  if (!targetUnit) {
+    return { state, events: [] };
+  }
+
+  let newState = state;
+  const events: GameEvent[] = [];
+
+  const statusClear = clearUnitStatuses(newState, targetUnitId);
+  newState = statusClear.state;
+  events.push(...statusClear.events);
+
+  const fallBack = resolveImmediateFallBackMove(newState, targetUnitId, dice.rollD6());
+  newState = updateUnitInGameState(fallBack.state, targetUnitId, (unit) =>
+    setMovementState(unit, UnitMovementState.FellBack),
+  );
+  events.push({
+    type: 'routMove',
+    unitId: targetUnitId,
+    distanceRolled: 0,
+    modelMoves: fallBack.modelMoves,
+    reachedEdge: fallBack.reachedEdge,
+  } satisfies RoutMoveEvent);
+
+  const leadershipModel = selectCharacteristicCheckModel(
+    targetUnit,
+    (model) => getModelLeadership(model.unitProfileId, model.profileModelName),
+  );
+  const targetNumber = leadershipModel
+    ? getModelLeadership(leadershipModel.unitProfileId, leadershipModel.profileModelName)
+    : 0;
+  const [die1, die2] = dice.roll2D6();
+  const roll = targetNumber > 0 ? die1 + die2 : 13;
+  const passed = targetNumber > 0 && roll <= targetNumber;
+  events.push({
+    type: 'leadershipCheck',
+    unitId: targetUnitId,
+    roll,
+    target: targetNumber,
+    passed,
+  } satisfies LeadershipCheckEvent);
+
+  if (!passed) {
+    newState = updateUnitInGameState(newState, targetUnitId, (unit) =>
+      addStatus(unit, TacticalStatus.Routed),
+    );
+    events.push({
+      type: 'statusApplied',
+      unitId: targetUnitId,
+      status: TacticalStatus.Routed,
+    } satisfies StatusAppliedEvent);
+  }
+
+  return { state: newState, events };
+}
+
+function finalizePendingPsychicCurse(
+  state: GameState,
+  dice: DiceProvider,
+  nullified: boolean,
+): CommandResult {
+  const pendingCurse = state.pendingPsychicCurseState;
+  if (!pendingCurse) {
+    return rejectPsychic(state, 'PSYCHIC_REACTION_UNAVAILABLE', 'No pending psychic curse is awaiting Nullify.');
+  }
+
+  let newState: GameState = {
+    ...state,
+    pendingPsychicCurseState: undefined,
+  };
+  const events: GameEvent[] = [];
+
+  if (!nullified) {
+    switch (pendingCurse.powerId) {
+      case 'tranquillity':
+        newState = applyTranquillityEffect(newState, pendingCurse);
+        break;
+      case 'mind-burst': {
+        const applied = applyMindBurstEffect(newState, pendingCurse.targetUnitId, dice);
+        newState = applied.state;
+        events.push(...applied.events);
+        break;
+      }
+      default:
+        return rejectPsychic(
+          newState,
+          'PSYCHIC_POWER_UNSUPPORTED',
+          `Pending psychic power '${pendingCurse.powerId}' cannot be resumed after Nullify.`,
+        );
+    }
+  }
+
+  newState = maybeApplyPerils(newState, pendingCurse.resistanceFocusUnitId, pendingCurse.resistancePerilsValue, dice);
+  return successPsychic(newState, events);
+}
+
+function finalizeTranquillityManifestation(
+  state: GameState,
+  sourceUnitId: string,
+  sourceFocusModelId: string,
+  targetUnitId: string,
+  resistance: NonNullable<ReturnType<typeof resolveResistanceCheck>>,
+  dice: DiceProvider,
+): CommandResult {
+  const pendingCurse = buildPendingPsychicCurseState(
+    'tranquillity',
+    sourceUnitId,
+    sourceFocusModelId,
+    targetUnitId,
+    state.activePlayerIndex,
+    resistance.focusUnitId,
+    resistance.perilsValue,
+  );
+
+  if (!resistance.passed) {
+    const nullifyOffer = maybeOfferNullifyReaction(state, pendingCurse);
+    if (nullifyOffer) {
+      return nullifyOffer;
+    }
+  }
+
+  let newState = state;
+  if (!resistance.passed) {
+    newState = applyTranquillityEffect(newState, pendingCurse);
+  }
+
+  newState = maybeApplyPerils(newState, resistance.focusUnitId, resistance.perilsValue, dice);
+  return successPsychic(newState);
+}
+
+function finalizeMindBurstManifestation(
+  state: GameState,
+  sourceUnitId: string,
+  sourceFocusModelId: string,
+  targetUnitId: string,
+  resistance: NonNullable<ReturnType<typeof resolveResistanceCheck>>,
+  dice: DiceProvider,
+): CommandResult {
+  const pendingCurse = buildPendingPsychicCurseState(
+    'mind-burst',
+    sourceUnitId,
+    sourceFocusModelId,
+    targetUnitId,
+    state.activePlayerIndex,
+    resistance.focusUnitId,
+    resistance.perilsValue,
+  );
+
+  if (!resistance.passed) {
+    const nullifyOffer = maybeOfferNullifyReaction(state, pendingCurse);
+    if (nullifyOffer) {
+      return nullifyOffer;
+    }
+  }
+
+  let newState = state;
+  const events: GameEvent[] = [];
+  if (!resistance.passed) {
+    const applied = applyMindBurstEffect(newState, targetUnitId, dice);
+    newState = applied.state;
+    events.push(...applied.events);
+  }
+
+  newState = maybeApplyPerils(newState, resistance.focusUnitId, resistance.perilsValue, dice);
+  return successPsychic(newState, events);
+}
+
 function chooseResurrectionTarget(state: GameState, unitId: string): ModelState | null {
   const casualties = (state.shootingAttackState?.accumulatedCasualties ?? [])
     .map((modelId) => findModel(state, modelId)?.model ?? null)
@@ -331,23 +616,14 @@ function manifestTranquillity(
   }
 
   let newState = recordPsychicUsage(state, focusContext.focusUnit.id, 'power');
-  if (!resistance.passed) {
-    newState = addActivePsychicEffect(newState, {
-      id: `tranquillity:${focusContext.focusModel.id}:${command.targetUnitId}:${state.currentBattleTurn}:${state.activePlayerIndex}`,
-      sourcePowerId: 'tranquillity',
-      sourceUnitId: focusContext.focusUnit.id,
-      focusModelId: focusContext.focusModel.id,
-      targetUnitId: command.targetUnitId,
-      playerIndex: state.activePlayerIndex,
-      expiry: {
-        type: 'startOfPlayerTurn',
-        playerIndex: state.activePlayerIndex,
-      },
-    });
-  }
-
-  newState = maybeApplyPerils(newState, resistance.focusUnitId, resistance.perilsValue, dice);
-  return successPsychic(newState);
+  return finalizeTranquillityManifestation(
+    newState,
+    focusContext.focusUnit.id,
+    focusContext.focusModel.id,
+    command.targetUnitId,
+    resistance,
+    dice,
+  );
 }
 
 function manifestMindBurst(
@@ -411,56 +687,14 @@ function manifestMindBurst(
     { type: 'endOfPhase', phase: Phase.Movement },
   ));
 
-  const events: GameEvent[] = [];
-  if (!resistance.passed) {
-    const statusClear = clearUnitStatuses(newState, command.targetUnitId);
-    newState = statusClear.state;
-    events.push(...statusClear.events);
-
-    const fallBack = resolveImmediateFallBackMove(newState, command.targetUnitId, dice.rollD6());
-    newState = updateUnitInGameState(fallBack.state, command.targetUnitId, (unit) =>
-      setMovementState(unit, UnitMovementState.FellBack),
-    );
-    events.push({
-      type: 'routMove',
-      unitId: command.targetUnitId,
-      distanceRolled: 0,
-      modelMoves: fallBack.modelMoves,
-      reachedEdge: fallBack.reachedEdge,
-    } satisfies RoutMoveEvent);
-
-    const leadershipModel = selectCharacteristicCheckModel(
-      targetUnit,
-      (model) => getModelLeadership(model.unitProfileId, model.profileModelName),
-    );
-    const targetNumber = leadershipModel
-      ? getModelLeadership(leadershipModel.unitProfileId, leadershipModel.profileModelName)
-      : 0;
-    const [die1, die2] = dice.roll2D6();
-    const roll = targetNumber > 0 ? die1 + die2 : 13;
-    const passed = targetNumber > 0 && roll <= targetNumber;
-    events.push({
-      type: 'leadershipCheck',
-      unitId: command.targetUnitId,
-      roll,
-      target: targetNumber,
-      passed,
-    } satisfies LeadershipCheckEvent);
-
-    if (!passed) {
-      newState = updateUnitInGameState(newState, command.targetUnitId, (unit) =>
-        addStatus(unit, TacticalStatus.Routed),
-      );
-      events.push({
-        type: 'statusApplied',
-        unitId: command.targetUnitId,
-        status: TacticalStatus.Routed,
-      } satisfies StatusAppliedEvent);
-    }
-  }
-
-  newState = maybeApplyPerils(newState, resistance.focusUnitId, resistance.perilsValue, dice);
-  return successPsychic(newState, events);
+  return finalizeMindBurstManifestation(
+    newState,
+    focusContext.focusUnit.id,
+    focusContext.focusModel.id,
+    command.targetUnitId,
+    resistance,
+    dice,
+  );
 }
 
 export function handleManifestPsychicPower(
@@ -735,6 +969,71 @@ function resolveResurrectionReaction(
   return successPsychic(newState);
 }
 
+function resolveNullifyReaction(
+  state: GameState,
+  unitId: string,
+  dice: DiceProvider,
+): CommandResult {
+  const pendingCurse = state.pendingPsychicCurseState;
+  if (!pendingCurse) {
+    return rejectPsychic(state, 'PSYCHIC_REACTION_UNAVAILABLE', 'Nullify may only be declared while a psychic curse is pending.');
+  }
+
+  const sourceFocus = findModel(state, pendingCurse.sourceFocusModelId);
+  if (!sourceFocus) {
+    return rejectPsychic(state, 'PSYCHIC_FOCUS_NOT_FOUND', 'Unable to resolve the psychic curse focus for Nullify.');
+  }
+
+  const focusModel = getBestNullifyFocus(
+    state,
+    unitId,
+    pendingCurse.targetUnitId,
+    pendingCurse.sourceFocusModelId,
+  );
+  if (!focusModel) {
+    return rejectPsychic(state, 'PSYCHIC_REACTION_UNAVAILABLE', 'No legal Psyker focus is available for Nullify.');
+  }
+
+  let newState = markUnitReacted(state, unitId);
+  newState = recordPsychicUsage(newState, unitId, 'reaction');
+  const manifestation = resolveManifestationCheck(newState, focusModel.id, dice);
+  if (!manifestation) {
+    return rejectPsychic(newState, 'PSYCHIC_MANIFESTATION_INVALID', 'Unable to resolve the Nullify Willpower Check.');
+  }
+
+  const reactingUnit = findUnit(newState, unitId);
+  if (!reactingUnit) {
+    return rejectPsychic(newState, 'UNIT_NOT_FOUND', `Reacting unit '${unitId}' was not found for Nullify.`);
+  }
+
+  const reactingWillpower = getCurrentModelWillpower(newState, reactingUnit, focusModel);
+  const sourceWillpower = getCurrentModelWillpower(newState, sourceFocus.unit, sourceFocus.model);
+  const powerModifier = reactingWillpower - sourceWillpower;
+  const adjustedTotal = manifestation.total === null ? null : manifestation.total - powerModifier;
+  const passed = manifestation.dice === null
+    ? false
+    : manifestation.dice[0] === 1 && manifestation.dice[1] === 1
+      ? true
+      : manifestation.dice[0] === 6 && manifestation.dice[1] === 6
+        ? false
+        : adjustedTotal !== null && adjustedTotal <= manifestation.targetNumber;
+
+  const finalized = finalizePendingPsychicCurse(newState, dice, passed);
+  if (!finalized.accepted) {
+    return finalized;
+  }
+
+  const finalState = maybeApplyPerils(finalized.state, manifestation.focusUnitId, manifestation.perilsValue, dice);
+  return successPsychic(finalState, finalized.events);
+}
+
+export function declineNullifyReaction(
+  state: GameState,
+  dice: DiceProvider,
+): CommandResult {
+  return finalizePendingPsychicCurse(state, dice, false);
+}
+
 export function resolvePsychicReaction(
   state: GameState,
   unitId: string,
@@ -760,6 +1059,8 @@ export function resolvePsychicReaction(
       return resolveForceBarrierReaction(state, unitId, dice);
     case 'resurrection':
       return resolveResurrectionReaction(state, unitId, dice);
+    case 'nullify':
+      return resolveNullifyReaction(state, unitId, dice);
     default:
       return rejectPsychic(state, 'PSYCHIC_REACTION_UNSUPPORTED', `Psychic reaction '${reactionId}' is not supported by the live engine.`);
   }
@@ -799,6 +1100,15 @@ export function unitCanDeclarePsychicReaction(
           modelHasGrantedPsychicTrait(model, 'Thaumaturge'),
         ) !== null
       );
+    case 'nullify': {
+      const pendingCurse = state.pendingPsychicCurseState;
+      return pendingCurse !== undefined && getBestNullifyFocus(
+        state,
+        unitId,
+        pendingCurse.targetUnitId,
+        pendingCurse.sourceFocusModelId,
+      ) !== null;
+    }
     default:
       return false;
   }

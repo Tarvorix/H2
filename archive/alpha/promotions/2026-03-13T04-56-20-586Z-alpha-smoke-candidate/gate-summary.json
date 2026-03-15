@@ -1,0 +1,64 @@
+{
+  "candidateModelId": "alpha-smoke-candidate",
+  "threshold": 0.25,
+  "timeBudgetMs": 100,
+  "maxSimulations": 32,
+  "matchesPerOpponent": 1,
+  "totalMatches": 2,
+  "candidateWins": 0,
+  "engineWins": 0,
+  "tacticalWins": 0,
+  "defaultAlphaWins": 0,
+  "draws": 0,
+  "aborted": 0,
+  "timeouts": 2,
+  "winRate": 0,
+  "passed": false,
+  "opponents": {
+    "tactical": {
+      "label": "Tactical",
+      "candidateWins": 0,
+      "opponentWins": 0,
+      "draws": 0,
+      "aborted": 0,
+      "timeouts": 1,
+      "matches": 1,
+      "winRate": 0
+    },
+    "engine": {
+      "label": "Engine",
+      "candidateWins": 0,
+      "opponentWins": 0,
+      "draws": 0,
+      "aborted": 0,
+      "timeouts": 1,
+      "matches": 1,
+      "winRate": 0
+    },
+    "alphaDefault": null
+  },
+  "results": [
+    {
+      "matchIndex": 0,
+      "opponent": "tactical",
+      "candidatePlayerIndex": 0,
+      "opponentPlayerIndex": 1,
+      "winnerPlayerIndex": null,
+      "terminatedReason": "max-commands",
+      "errorMessage": null,
+      "finalStateHash": "47171eb9f3ea37a2",
+      "classification": "timeout"
+    },
+    {
+      "matchIndex": 1,
+      "opponent": "engine",
+      "candidatePlayerIndex": 1,
+      "opponentPlayerIndex": 0,
+      "winnerPlayerIndex": null,
+      "terminatedReason": "max-commands",
+      "errorMessage": null,
+      "finalStateHash": "94175d659a45fefd",
+      "classification": "timeout"
+    }
+  ]
+}

@@ -334,6 +334,7 @@ export function checkWeaponRange(
   attackerModel: ModelState,
   targetModels: ModelState[],
   weaponRange: number,
+  minimumRange: number = 0,
   virtualRangeIncrease: number = 0,  // Legion tactica virtual range increase (e.g., Alpha Legion +2" treated as farther)
 ): boolean {
   // Apply legion tactica virtual range reduction (simulates target appearing farther away)
@@ -346,7 +347,10 @@ export function checkWeaponRange(
     const targetShape = getModelShape(targetModel);
     const distance = distanceShapes(attackerShape, targetShape);
 
-    if (distance <= effectiveWeaponRange) {
+    const aboveMinimum = minimumRange <= 0
+      ? distance >= 0
+      : distance > minimumRange;
+    if (aboveMinimum && distance <= effectiveWeaponRange) {
       return true; // At least one target model is in range
     }
   }

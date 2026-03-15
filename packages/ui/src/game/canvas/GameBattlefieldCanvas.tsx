@@ -209,6 +209,21 @@ export function GameBattlefieldCanvas({
           }
 
           if (
+            currentState.flowState.type === 'reaction' &&
+            currentState.flowState.step.step === 'placeModels'
+          ) {
+            const worldX = (action.screenX - currentState.camera.offsetX) / currentState.camera.zoom;
+            const worldY = (action.screenY - currentState.camera.offsetY) / currentState.camera.zoom;
+            const clampedX = Math.max(0, Math.min(currentState.battlefieldWidth, worldX));
+            const clampedY = Math.max(0, Math.min(currentState.battlefieldHeight, worldY));
+            dispatch({
+              type: 'PLACE_REACTION_MODEL',
+              position: { x: clampedX, y: clampedY },
+            });
+            break;
+          }
+
+          if (
             currentState.flowState.type === 'shooting' &&
             currentState.flowState.step.step === 'placeSpecial'
           ) {

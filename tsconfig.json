@@ -28,6 +28,6 @@
     { "path": "./packages/ai" },
     { "path": "./packages/headless" },
     { "path": "./packages/mcp-server" },
-    { "path": "./packages/ui" }
+    { "path": "./packages/ui/tsconfig.build.json" }
   ]
 }

@@ -11,8 +11,14 @@
  * 3. Extracting dice roll displays from events for the dice overlay
  */
 
-import type { BlastPlacement, GameState, GameCommand, Position, TemplatePlacement } from '@hh/types';
-import { CoreReaction } from '@hh/types';
+import type {
+  BlastPlacement,
+  FlyerCombatAssignment,
+  GameState,
+  GameCommand,
+  Position,
+  TemplatePlacement,
+} from '@hh/types';
 import type { GameEvent, CommandResult } from '@hh/engine';
 import { findModel, getModelShape, processCommand, RandomDiceProvider } from '@hh/engine';
 import type {
@@ -124,12 +130,22 @@ export function buildChargeCommand(
  */
 export function buildReactionCommand(
   unitId: string,
-  reactionType: CoreReaction,
+  reactionType: string,
+  options: {
+    modelPositions?: { modelId: string; position: Position }[];
+    reactingModelId?: string;
+    weaponId?: string;
+    profileName?: string;
+  } = {},
 ): GameCommand {
   return {
     type: 'selectReaction',
     unitId,
-    reactionType: reactionType as string,
+    reactionType,
+    modelPositions: options.modelPositions,
+    reactingModelId: options.reactingModelId,
+    weaponId: options.weaponId,
+    profileName: options.profileName,
   };
 }
 
@@ -152,6 +168,18 @@ export function buildEndPhaseCommand(): GameCommand {
  */
 export function buildEndSubPhaseCommand(): GameCommand {
   return { type: 'endSubPhase' };
+}
+
+/**
+ * Build a PassChallenge command.
+ */
+export function buildPassChallengeCommand(
+  combatId: string,
+): GameCommand {
+  return {
+    type: 'passChallenge',
+    combatId,
+  };
 }
 
 /**
@@ -212,11 +240,13 @@ export function buildResolveFightCommand(combatId: string): GameCommand {
 export function buildDeployUnitCommand(
   unitId: string,
   modelPositions: { modelId: string; position: Position }[],
+  combatAssignment?: FlyerCombatAssignment,
 ): GameCommand {
   return {
     type: 'deployUnit',
     unitId,
     modelPositions,
+    combatAssignment,
   };
 }
 

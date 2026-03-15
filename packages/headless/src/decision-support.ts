@@ -6,6 +6,7 @@ import {
 } from '@hh/engine';
 import {
   AIStrategyTier,
+  DEFAULT_ALPHA_MODEL_ID,
   DEFAULT_GAMEPLAY_NNUE_MODEL_ID,
   generateMacroActions,
   type MacroAction,
@@ -18,10 +19,20 @@ export interface DecisionSupportPlayerConfig {
   strategyTier?: AIStrategyTier;
   timeBudgetMs?: number;
   nnueModelId?: string;
+  alphaModelId?: string;
   baseSeed?: number;
   rolloutCount?: number;
   maxDepthSoft?: number;
+  maxSimulations?: number;
   diagnosticsEnabled?: boolean;
+  shadowAlpha?: {
+    enabled: boolean;
+    alphaModelId?: string;
+    timeBudgetMs?: number;
+    maxSimulations?: number;
+    baseSeed?: number;
+    diagnosticsEnabled?: boolean;
+  } | null;
 }
 
 export interface HeadlessDecisionOption {
@@ -47,10 +58,13 @@ export interface HeadlessDecisionOptionsSnapshot {
 function createSearchConfig(config: DecisionSupportPlayerConfig): SearchConfig {
   const timeBudgetMs = config.timeBudgetMs ?? 500;
   const maxDepthSoft = config.maxDepthSoft ?? (timeBudgetMs <= 600 ? 3 : 4);
+  const selectedTier = config.strategyTier ?? AIStrategyTier.Tactical;
 
   return {
     timeBudgetMs,
-    nnueModelId: config.nnueModelId ?? DEFAULT_GAMEPLAY_NNUE_MODEL_ID,
+    nnueModelId: selectedTier === AIStrategyTier.Alpha
+      ? (config.alphaModelId ?? DEFAULT_ALPHA_MODEL_ID)
+      : (config.nnueModelId ?? DEFAULT_GAMEPLAY_NNUE_MODEL_ID),
     baseSeed: config.baseSeed ?? 1337,
     rolloutCount: Math.max(1, config.rolloutCount ?? 1),
     maxDepthSoft: Math.max(1, maxDepthSoft),

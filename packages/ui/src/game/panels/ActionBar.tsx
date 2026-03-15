@@ -124,6 +124,15 @@ function getAvailableActions(
           action: { type: 'START_CHARGE_FLOW' },
           shortcut: 'C',
         });
+      } else if (gs.currentSubPhase === SubPhase.Challenge) {
+        actions.push({
+          id: 'challenge',
+          label: 'Challenge',
+          enabled: hasSelectedUnit,
+          disabledReason: !hasSelectedUnit ? 'Select an engaged unit first' : undefined,
+          action: { type: 'START_CHALLENGE_FLOW' },
+          shortcut: 'H',
+        });
       }
       break;
   }

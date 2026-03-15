@@ -2,6 +2,7 @@ import type {
   AftermathOption,
   BlastPlacement,
   DeclaredPsychicPower,
+  FlyerCombatAssignment,
   GameCommand,
   GameState,
   MeleeWeaponProfile,
@@ -13,6 +14,7 @@ import type {
 import {
   ChallengeGambit,
   CoreReaction,
+  ModelSubType,
   Phase,
   SubPhase,
   UnitMovementState,
@@ -49,6 +51,7 @@ import {
   modelHasPsychicTrait,
   modelHasLOSToUnit,
   modelIsWithinRangeOfUnit,
+  unitProfileHasSubType,
   unitCanUsePsychicAbilities,
   unitHasUsedPsychicPower,
 } from '@hh/engine';
@@ -191,6 +194,27 @@ function buildReserveEntryPositions(
       },
     };
   });
+}
+
+function chooseReserveCombatAssignment(
+  state: GameState,
+  unit: UnitState,
+  playerIndex: number,
+): FlyerCombatAssignment | undefined {
+  if ((unit.reserveType ?? 'standard') !== 'aerial') {
+    return undefined;
+  }
+
+  const army = state.armies[playerIndex];
+  if (army.units.some((candidate) => candidate.embarkedOnId === unit.id)) {
+    return 'drop-mission';
+  }
+
+  if (unitProfileHasSubType(unit.profileId, ModelSubType.Transport)) {
+    return 'extraction-mission';
+  }
+
+  return 'strike-mission';
 }
 
 function buildSpecialPlacements(
@@ -947,7 +971,7 @@ function generateReserveActions(
   for (const unit of army.units) {
     if (getAliveModels(unit).length === 0) continue;
 
-    if (unit.isInReserves && !node.actedUnitIds.has(unit.id)) {
+    if (unit.isInReserves && unit.reserveReadyToEnter !== true && !node.actedUnitIds.has(unit.id)) {
       actions.push(
         makeAction(
           `reserve:test:${unit.id}`,
@@ -961,7 +985,7 @@ function generateReserveActions(
       continue;
     }
 
-    if (unit.movementState === UnitMovementState.EnteredFromReserves && !node.actedUnitIds.has(unit.id)) {
+    if (unit.reserveReadyToEnter === true && !node.actedUnitIds.has(unit.id)) {
       actions.push(
         makeAction(
           `reserve:deploy:${unit.id}`,
@@ -970,6 +994,7 @@ function generateReserveActions(
             type: 'deployUnit',
             unitId: unit.id,
             modelPositions: buildReserveEntryPositions(node.state, unit, playerIndex),
+            combatAssignment: chooseReserveCombatAssignment(node.state, unit, playerIndex),
           }],
           18,
           [unit.id],
@@ -1575,6 +1600,8 @@ function generateChallengeActions(
 ): MacroAction[] {
   const actions: MacroAction[] = [];
   const combats = node.state.activeCombats ?? [];
+  const processedCombatIds = new Set(node.state.processedChallengeCombatIds ?? []);
+  const pendingHeroicIntervention = node.state.pendingHeroicInterventionState;
 
   for (const combat of combats) {
     const challengeState = (combat as typeof combat & {
@@ -1590,13 +1617,25 @@ function generateChallengeActions(
     }).challengeState;
 
     if (!challengeState) {
-      const combatUnitIds = [...combat.activePlayerUnitIds, ...combat.reactivePlayerUnitIds];
-      const ownUnitIds = combatUnitIds.filter((unitId) =>
-        node.state.armies[playerIndex].units.some((unit) => unit.id === unitId),
+      const isHeroicInterventionCombat = (
+        pendingHeroicIntervention?.combatId === combat.combatId &&
+        pendingHeroicIntervention.reactingPlayerIndex === playerIndex
       );
-      const enemyUnitIds = combatUnitIds.filter((unitId) =>
-        node.state.armies[playerIndex === 0 ? 1 : 0].units.some((unit) => unit.id === unitId),
-      );
+
+      if (processedCombatIds.has(combat.combatId) && !isHeroicInterventionCombat) {
+        continue;
+      }
+
+      if (!isHeroicInterventionCombat && playerIndex !== node.state.activePlayerIndex) {
+        continue;
+      }
+
+      const ownUnitIds = isHeroicInterventionCombat
+        ? [pendingHeroicIntervention.reactingUnitId]
+        : [...combat.activePlayerUnitIds];
+      const enemyUnitIds = isHeroicInterventionCombat
+        ? [...combat.activePlayerUnitIds]
+        : [...combat.reactivePlayerUnitIds];
       if (ownUnitIds.length === 0 || enemyUnitIds.length === 0) continue;
 
       const declareActions = ownUnitIds.flatMap((ownUnitId) => {
@@ -1631,10 +1670,23 @@ function generateChallengeActions(
         .slice(0, 4);
 
       actions.push(...declareActions);
+
+      if (!isHeroicInterventionCombat && declareActions.length > 0) {
+        actions.push(
+          makeAction(
+            `challenge:pass:${combat.combatId}`,
+            'Pass challenge combat',
+            [{ type: 'passChallenge', combatId: combat.combatId }],
+            1,
+            combat.activePlayerUnitIds,
+            ['pass challenge combat'],
+          ),
+        );
+      }
       continue;
     }
 
-    if (challengeState.challengedPlayerIndex === playerIndex && challengeState.currentStep === 'FACE_OFF') {
+    if (challengeState.challengedPlayerIndex === playerIndex && challengeState.currentStep === 'DECLARE') {
       actions.push(
         makeAction(
           `challenge:accept:${challengeState.challengedId}`,

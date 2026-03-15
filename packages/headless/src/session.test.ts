@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { Allegiance, LegionFaction } from '@hh/types';
 import { FixedDiceProvider } from '@hh/engine';
-import { AIStrategyTier, DEFAULT_GAMEPLAY_NNUE_MODEL_ID } from '@hh/ai';
+import {
+  AIStrategyTier,
+  DEFAULT_ALPHA_MODEL_ID,
+  DEFAULT_GAMEPLAY_NNUE_MODEL_ID,
+} from '@hh/ai';
 import {
   createHeadlessMatchSession,
   verifyReplayArtifactDeterminism,
@@ -121,5 +125,64 @@ describe('HeadlessMatchSession', () => {
     expect(record.aiDiagnostics?.tier).toBe(AIStrategyTier.Engine);
     expect(session.getAIDiagnostics()[0]?.modelId).toBe(DEFAULT_GAMEPLAY_NNUE_MODEL_ID);
     expect(session.getNudgeSnapshot().aiDiagnostics).toEqual(session.getAIDiagnostics()[0]);
+  });
+
+  it('preserves Alpha and shadow Alpha config fields in the session player config surface', () => {
+    const session = createHeadlessMatchSession({
+      setupOptions: {
+        missionId: 'heart-of-battle',
+        armies: [
+          {
+            playerName: 'Player 1',
+            faction: LegionFaction.WorldEaters,
+            allegiance: Allegiance.Traitor,
+            units: [{ profileId: 'techmarine', modelCount: 1, isWarlord: true }],
+          },
+          {
+            playerName: 'Player 2',
+            faction: LegionFaction.AlphaLegion,
+            allegiance: Allegiance.Traitor,
+            units: [{ profileId: 'techmarine', modelCount: 1, isWarlord: true }],
+          },
+        ],
+      },
+      playerConfigs: [
+        {
+          mode: 'ai',
+          strategyTier: AIStrategyTier.Alpha,
+          alphaModelId: DEFAULT_ALPHA_MODEL_ID,
+          timeBudgetMs: 600,
+          maxSimulations: 256,
+          shadowAlpha: {
+            enabled: true,
+            alphaModelId: DEFAULT_ALPHA_MODEL_ID,
+            timeBudgetMs: 300,
+            maxSimulations: 96,
+            baseSeed: 1234,
+            diagnosticsEnabled: true,
+          },
+        },
+        {
+          mode: 'ai',
+          strategyTier: AIStrategyTier.Tactical,
+        },
+      ],
+      diceProvider: new FixedDiceProvider(Array.from({ length: 64 }, () => 3)),
+    });
+
+    expect(session.getPlayerConfigs()[0]).toMatchObject({
+      strategyTier: AIStrategyTier.Alpha,
+      alphaModelId: DEFAULT_ALPHA_MODEL_ID,
+      timeBudgetMs: 600,
+      maxSimulations: 256,
+      shadowAlpha: {
+        enabled: true,
+        alphaModelId: DEFAULT_ALPHA_MODEL_ID,
+        timeBudgetMs: 300,
+        maxSimulations: 96,
+        baseSeed: 1234,
+        diagnosticsEnabled: true,
+      },
+    });
   });
 });

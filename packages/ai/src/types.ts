@@ -22,9 +22,26 @@ export enum AIStrategyTier {
   Tactical = 'Tactical',
   /** Search + NNUE engine */
   Engine = 'Engine',
+  /** Transformer policy/value + PUCT/MCTS search */
+  Alpha = 'Alpha',
 }
 
 // ─── Configuration ───────────────────────────────────────────────────────────
+
+export interface ShadowAlphaConfig {
+  /** Whether Alpha shadow mode is enabled for this seat. */
+  enabled: boolean;
+  /** Alpha model ID to use for shadow inference. */
+  alphaModelId?: string;
+  /** Search budget in ms for Alpha shadow inference. */
+  timeBudgetMs?: number;
+  /** Optional hard cap on Alpha simulations. */
+  maxSimulations?: number;
+  /** Deterministic base seed for Alpha shadow sampling. */
+  baseSeed?: number;
+  /** Emit Alpha shadow diagnostics. */
+  diagnosticsEnabled?: boolean;
+}
 
 /**
  * Configuration for an AI player.
@@ -42,14 +59,20 @@ export interface AIPlayerConfig {
   timeBudgetMs?: number;
   /** Gameplay NNUE model ID to use for the Engine tier. */
   nnueModelId?: string;
+  /** Alpha transformer model ID to use for the Alpha tier. */
+  alphaModelId?: string;
   /** Deterministic base seed used by Engine search sampling. */
   baseSeed?: number;
   /** Number of deterministic rollout samples to average per searched action. */
   rolloutCount?: number;
   /** Soft maximum iterative-deepening depth for the Engine tier. */
   maxDepthSoft?: number;
+  /** Hard simulation cap used by the Alpha tier. */
+  maxSimulations?: number;
   /** Emit per-decision diagnostics for observers and the UI. */
   diagnosticsEnabled?: boolean;
+  /** Optional Alpha shadow-mode sidecar for non-Alpha live seats. */
+  shadowAlpha?: ShadowAlphaConfig | null;
   /** Whether the AI is enabled */
   enabled: boolean;
 }
@@ -156,19 +179,43 @@ export interface MacroAction {
   reasons: string[];
 }
 
+export interface AlphaDiagnosticSummary {
+  tier: AIStrategyTier.Alpha;
+  modelId?: string;
+  selectedMacroActionId?: string;
+  selectedMacroActionLabel?: string;
+  selectedCommandType?: GameCommand['type'];
+  valueEstimate?: number;
+  rootVisits?: number;
+  nodesExpanded?: number;
+  policyEntropy?: number;
+  searchTimeMs?: number;
+  principalVariation: string[];
+  error?: string;
+}
+
 export interface AIDiagnostics {
   tier: AIStrategyTier;
   modelId?: string;
   selectedMacroActionId?: string;
   selectedMacroActionLabel?: string;
   selectedCommandType?: GameCommand['type'];
+  shadowAlphaDiagnostics?: AlphaDiagnosticSummary;
+  searchTimeMs?: number;
   score?: number;
   depthCompleted?: number;
   nodesVisited?: number;
-  searchTimeMs?: number;
   rolloutCount?: number;
   principalVariation: string[];
   error?: string;
+}
+
+export interface AlphaAIDiagnostics extends AIDiagnostics {
+  tier: AIStrategyTier.Alpha;
+  valueEstimate?: number;
+  rootVisits?: number;
+  nodesExpanded?: number;
+  policyEntropy?: number;
 }
 
 export interface SearchConfig {
@@ -193,6 +240,127 @@ export interface SearchResult {
   principalVariation: string[];
   diagnostics: AIDiagnostics;
   queuedPlan: QueuedCommandStep[];
+}
+
+export type AlphaStateTokenType = 'global' | 'unit' | 'objective' | 'terrain' | 'context';
+
+export interface AlphaEncodedStateToken {
+  tokenType: AlphaStateTokenType;
+  stableId: string;
+  position: Position | null;
+  features: number[];
+}
+
+export interface AlphaEncodedAction {
+  macroActionId: string;
+  label: string;
+  actorIds: string[];
+  targetIds: string[];
+  features: number[];
+}
+
+export interface AlphaTransformerHyperparameters {
+  stateFeatureDimension: number;
+  actionFeatureDimension: number;
+  coordinateFeatureDimension: number;
+  tokenTypeCount: number;
+  modelWidth: number;
+  layerCount: number;
+  attentionHeads: number;
+  feedForwardWidth: number;
+  dropoutRate: number;
+  maxStateTokens: number;
+  maxActionTokens: number;
+}
+
+export interface AlphaTrainingMetadata {
+  trainedAt: string;
+  datasetName: string;
+  datasetSize: number;
+  epochs: number;
+  optimizer: string;
+  learningRate: number;
+  teacherModelId?: string | null;
+  selfPlayGames?: number;
+  notes?: string;
+}
+
+export interface SerializedAlphaTensor {
+  shape: number[];
+  dataBase64: string;
+}
+
+export interface SerializedAlphaModelManifest {
+  modelFamily: 'alpha-transformer';
+  schemaVersion: number;
+  tokenSchemaVersion: number;
+  actionSchemaVersion: number;
+  modelId: string;
+  weightsChecksum: string;
+  trainingMetadata: AlphaTrainingMetadata;
+  hyperparameters: AlphaTransformerHyperparameters;
+  tokenSortingRules: string[];
+  tokenTruncationRules: string[];
+}
+
+export interface SerializedAlphaModel {
+  manifest: SerializedAlphaModelManifest;
+  tensors: Record<string, SerializedAlphaTensor>;
+}
+
+export interface AlphaTensor {
+  shape: number[];
+  data: Float32Array;
+}
+
+export interface AlphaModel {
+  manifest: SerializedAlphaModelManifest;
+  tensors: Record<string, AlphaTensor>;
+}
+
+export interface AlphaSearchConfig {
+  timeBudgetMs: number;
+  maxSimulations: number;
+  alphaModelId: string;
+  baseSeed: number;
+  diagnosticsEnabled: boolean;
+  batchSize: number;
+  maxRootActions: number;
+  maxActionsPerUnit: number;
+  maxAutoAdvanceSteps: number;
+  puctExploration: number;
+  dirichletAlpha: number;
+  dirichletEpsilon: number;
+  policyPriorBlend: number;
+  valueBlend: number;
+  rootTemperature: number;
+  reuseRoots: boolean;
+}
+
+export interface AlphaSearchResult {
+  bestAction: MacroAction | null;
+  valueEstimate: number;
+  rootVisits: number;
+  nodesExpanded: number;
+  searchTimeMs: number;
+  policyEntropy: number;
+  principalVariation: string[];
+  diagnostics: AlphaAIDiagnostics;
+  queuedPlan: QueuedCommandStep[];
+}
+
+export interface AlphaReplayBufferEntry {
+  state: GameState;
+  rootPlayerIndex: number;
+  actions: MacroAction[];
+  policyTarget: number[];
+  valueTarget: number;
+  vpDeltaTarget: number;
+  tacticalSwingTarget: number;
+  source: 'distill' | 'selfplay' | 'shadow';
+  sourceModelId?: string;
+  sourceMatchId?: string;
+  sourceStep?: number;
 }
 
 export interface QuantizedLayer {

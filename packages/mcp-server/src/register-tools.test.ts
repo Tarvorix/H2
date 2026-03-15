@@ -50,6 +50,7 @@ describe('registerTools', () => {
     expect(createMatch).toBeDefined();
     const submitAction = result.tools.find((tool) => tool.name === 'submit_action');
     expect(submitAction).toBeDefined();
+    expect(JSON.stringify(createMatch!.inputSchema)).toContain('"Alpha"');
 
     const inputSchema = createMatch!.inputSchema as {
       properties: {

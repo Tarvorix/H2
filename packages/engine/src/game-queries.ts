@@ -16,11 +16,13 @@ import {
   Phase,
   SubPhase,
   LegionFaction,
+  ModelSubType,
 } from '@hh/types';
 import type { ModelShape } from '@hh/geometry';
 import { distanceShapes, hasLOS } from '@hh/geometry';
 import {
   unitProfileHasSpecialRule,
+  unitProfileHasSubType,
   isVehicleUnitState,
 } from './profile-lookup';
 import { hasActiveCharacteristicModifier } from './characteristic-modifiers';
@@ -159,6 +161,7 @@ export function canUnitMove(unit: UnitState): boolean {
  */
 export function canUnitRush(unit: UnitState): boolean {
   if (!canUnitMove(unit)) return false;
+  if (unitProfileHasSubType(unit.profileId, ModelSubType.Flyer)) return false;
   // Cannot rush if already moved or rushed
   if (unit.movementState !== UnitMovementState.Stationary) return false;
   if (hasActiveCharacteristicModifier(unit, undefined, 'NoRush', (modifier) => modifier.value > 0)) return false;
@@ -175,6 +178,7 @@ export function canUnitReact(unit: UnitState): boolean {
   if (unit.hasReactedThisTurn) return false;
   if (unit.statuses.includes(TacticalStatus.Stunned)) return false;
   if (unit.statuses.includes(TacticalStatus.Routed)) return false;
+  if (unitProfileHasSubType(unit.profileId, ModelSubType.Flyer)) return false;
   if (unit.isLockedInCombat) return false;
   if (!unit.isDeployed) return false;
   if (unit.embarkedOnId !== null) return false;
@@ -219,6 +223,14 @@ export function getUnitsInReserves(army: ArmyState): UnitState[] {
   return army.units.filter(u => u.isInReserves);
 }
 
+export function getUnitsAwaitingReservesTest(army: ArmyState): UnitState[] {
+  return army.units.filter((unit) => unit.isInReserves && unit.reserveReadyToEnter !== true);
+}
+
+export function getUnitsReadyToEnterFromReserves(army: ArmyState): UnitState[] {
+  return army.units.filter((unit) => unit.isInReserves && unit.reserveReadyToEnter === true);
+}
+
 /**
  * Get all deployed, alive units.
  */
@@ -246,6 +258,7 @@ export function getEnemyModelShapes(
   const enemyIndex = playerIndex === 0 ? 1 : 0;
   const shapes: ModelShape[] = [];
   for (const unit of state.armies[enemyIndex].units) {
+    if (unitProfileHasSubType(unit.profileId, ModelSubType.Flyer)) continue;
     if (!unit.isDeployed || unit.embarkedOnId !== null) continue;
     for (const model of unit.models) {
       if (!model.isDestroyed) {
@@ -293,6 +306,9 @@ export function getInterveningVehicleShapes(
         continue;
       }
       if (!isVehicleUnitState(unit)) {
+        continue;
+      }
+      if (unitProfileHasSubType(unit.profileId, ModelSubType.Flyer)) {
         continue;
       }
 

@@ -14,6 +14,12 @@
     "nnue:gate": "node --loader ./tools/esm-js-extension-loader.mjs tools/nnue/gate-gameplay-model.mjs",
     "nnue:promote": "node --loader ./tools/esm-js-extension-loader.mjs tools/nnue/promote-gameplay-model.mjs",
     "nnue:roster:gate": "node --loader ./tools/esm-js-extension-loader.mjs tools/nnue/gate-roster-model.mjs",
+    "alpha:distill": "node --loader ./tools/esm-js-extension-loader.mjs tools/alpha/distill-engine.mjs",
+    "alpha:selfplay": "node tools/alpha/run-with-compatible-node.mjs tools/alpha/self-play.mjs",
+    "alpha:train": "node tools/alpha/run-with-compatible-node.mjs tools/alpha/train.mjs",
+    "alpha:gate": "node tools/alpha/run-with-compatible-node.mjs tools/alpha/gate.mjs",
+    "alpha:promote": "node --loader ./tools/esm-js-extension-loader.mjs tools/alpha/promote-model.mjs",
+    "alpha:inspect": "node --loader ./tools/esm-js-extension-loader.mjs tools/alpha/inspect-buffer.mjs",
     "headless:build": "pnpm --filter @hh/headless build",
     "headless:run": "node --loader ./tools/esm-js-extension-loader.mjs packages/headless/dist/cli.js",
     "mcp:build": "pnpm --filter @hh/mcp-server build",
@@ -27,6 +33,7 @@
     "typecheck": "pnpm -r typecheck"
   },
   "devDependencies": {
+    "@tensorflow/tfjs-node": "^4.22.0",
     "@types/cors": "^2.8.19",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",

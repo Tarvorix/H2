@@ -5,7 +5,7 @@
  * Converts GameState data into the formats expected by the canvas renderers.
  */
 
-import type { GameState, TerrainPiece } from '@hh/types';
+import type { GameState, Position, TerrainPiece } from '@hh/types';
 import { getModelShape } from '@hh/engine';
 import { pointInShape } from '@hh/geometry';
 import type { VisualizerModel } from '../../state/types';
@@ -46,16 +46,19 @@ export interface GameCanvasData {
   selectedUnitId: string | null;
   /** Hovered unit ID */
   hoveredUnitId: string | null;
+  /** Preview model positions for in-progress placement flows */
+  positionOverrides: Map<string, Position>;
 }
 
 /**
  * Convert GameUIState into GameCanvasData for the canvas rendering pipeline.
  */
 export function extractGameCanvasData(state: GameUIState): GameCanvasData {
+  const positionOverrides = getPreviewPositionOverrides(state);
   let models: VisualizerModel[] = [];
 
   if (state.gameState) {
-    models = gameStateToVisualizerModels(state.gameState);
+    models = gameStateToVisualizerModels(state.gameState, positionOverrides);
   }
 
   return {
@@ -70,6 +73,7 @@ export function extractGameCanvasData(state: GameUIState): GameCanvasData {
     gameState: state.gameState,
     selectedUnitId: state.selectedUnitId,
     hoveredUnitId: state.hoveredUnitId,
+    positionOverrides,
   };
 }
 
@@ -79,6 +83,13 @@ export function extractGameCanvasData(state: GameUIState): GameCanvasData {
  * the first alive model of the selected unit.
  */
 function findSelectedModelId(state: GameUIState): string | null {
+  if (
+    state.flowState.type === 'reaction' &&
+    state.flowState.step.step === 'placeModels'
+  ) {
+    return state.flowState.step.currentModelId;
+  }
+
   if (!state.selectedUnitId || !state.gameState) return null;
 
   for (const army of state.gameState.armies) {
@@ -90,6 +101,19 @@ function findSelectedModelId(state: GameUIState): string | null {
     }
   }
   return null;
+}
+
+function getPreviewPositionOverrides(state: GameUIState): Map<string, Position> {
+  if (state.flowState.type !== 'reaction') {
+    return new Map();
+  }
+
+  const step = state.flowState.step;
+  if (step.step !== 'placeModels' && step.step !== 'confirmMove') {
+    return new Map();
+  }
+
+  return new Map(step.modelPositions.map((entry) => [entry.modelId, entry.position]));
 }
 
 /**
@@ -108,6 +132,7 @@ export function renderGameOverlays(
     data.selectedUnitId,
     data.hoveredUnitId,
     data.hoveredModelId,
+    data.positionOverrides,
   );
 
   // Render active unit glow (subtle highlight for units that can act)

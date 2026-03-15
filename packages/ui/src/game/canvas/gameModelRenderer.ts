@@ -12,10 +12,10 @@ import { getModelShape, getModelWounds } from '@hh/engine';
 import type { VisualizerModel } from '../../state/types';
 import type { ModelShape } from '@hh/geometry';
 
-/**
- * Convert all alive models from a GameState into VisualizerModel[] for canvas rendering.
- */
-export function gameStateToVisualizerModels(gameState: GameState): VisualizerModel[] {
+export function gameStateToVisualizerModels(
+  gameState: GameState,
+  positionOverrides: Map<string, Position> = new Map(),
+): VisualizerModel[] {
   const models: VisualizerModel[] = [];
 
   for (const army of gameState.armies) {
@@ -27,7 +27,8 @@ export function gameStateToVisualizerModels(gameState: GameState): VisualizerMod
       for (const model of unit.models) {
         if (model.isDestroyed) continue;
 
-        const shape = getModelShape(model);
+        const position = positionOverrides.get(model.id);
+        const shape = position ? getModelShape({ ...model, position }) : getModelShape(model);
 
         models.push({
           id: model.id,
@@ -70,6 +71,7 @@ export function buildGameModelVisualInfos(
   selectedUnitId: string | null,
   hoveredUnitId: string | null,
   hoveredModelId: string | null,
+  positionOverrides: Map<string, Position> = new Map(),
 ): GameModelVisualInfo[] {
   const infos: GameModelVisualInfo[] = [];
 
@@ -83,7 +85,8 @@ export function buildGameModelVisualInfos(
       for (const model of unit.models) {
         if (model.isDestroyed) continue;
 
-        const shape = getModelShape(model);
+        const position = positionOverrides.get(model.id) ?? model.position;
+        const shape = getModelShape({ ...model, position });
         const baseRadius = shape.kind === 'circle'
           ? shape.radius
           : Math.max(shape.width, shape.height) / 2;
@@ -92,7 +95,7 @@ export function buildGameModelVisualInfos(
           modelId: model.id,
           unitId: unit.id,
           playerIndex: army.playerIndex,
-          position: model.position,
+          position,
           shape,
           baseRadius,
           isSelected: isUnitSelected,

@@ -6,7 +6,7 @@
  */
 
 import type { Position, TerrainPiece, ModelState } from '@hh/types';
-import { TerrainType } from '@hh/types';
+import { ModelSubType, TerrainType } from '@hh/types';
 import {
   closestPointOnRect,
   getRectCorners,
@@ -24,6 +24,7 @@ import {
 import type { CircleBase, ModelShape, CoherencyResult, RectHull } from '@hh/geometry';
 import type { ValidationError } from '../types';
 import { getModelShapeAtPosition } from '../model-shapes';
+import { modelHasSubType } from '../profile-lookup';
 
 // ─── Terrain Penalty ─────────────────────────────────────────────────────────
 
@@ -247,6 +248,11 @@ export function validateModelMove(
 ): ValidationError[] {
   const errors: ValidationError[] = [];
   const startPosition = model.position;
+  const isFlyer = modelHasSubType(
+    model.unitProfileId,
+    model.profileModelName,
+    ModelSubType.Flyer,
+  );
 
   // 1. Check battlefield bounds
   if (
@@ -263,7 +269,7 @@ export function validateModelMove(
   }
 
   // 2. Check movement range (accounting for terrain penalty)
-  const terrainPenalty = computeTerrainPenalty(targetPosition, terrain);
+  const terrainPenalty = isFlyer ? 0 : computeTerrainPenalty(targetPosition, terrain);
   const effectiveMove = Math.max(0, maxMoveDistance - terrainPenalty);
   const moveDistance = vec2Distance(startPosition, targetPosition);
 
@@ -284,7 +290,7 @@ export function validateModelMove(
   }
 
   // 4. Check path through impassable terrain
-  if (pathCrossesImpassable(startPosition, targetPosition, terrain)) {
+  if (!isFlyer && pathCrossesImpassable(startPosition, targetPosition, terrain)) {
     errors.push({
       code: 'PATH_CROSSES_IMPASSABLE',
       message: 'Movement path crosses impassable terrain',

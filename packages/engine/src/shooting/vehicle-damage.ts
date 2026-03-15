@@ -43,6 +43,33 @@ export interface VehicleDamageResult {
   events: GameEvent[];
 }
 
+export function accumulateHullPointLossesFromGlancingHits(
+  glancingHits: GlancingHit[],
+): VehicleDamageResult['hullPointsToRemove'] {
+  const hullPointsToRemove: VehicleDamageResult['hullPointsToRemove'] = [];
+
+  for (const hit of glancingHits) {
+    const existingEntry = hullPointsToRemove.find(
+      (entry) =>
+        entry.vehicleModelId === hit.vehicleModelId &&
+        entry.vehicleUnitId === hit.vehicleUnitId,
+    );
+
+    if (existingEntry) {
+      existingEntry.hullPointsLost += 1;
+      continue;
+    }
+
+    hullPointsToRemove.push({
+      vehicleModelId: hit.vehicleModelId,
+      vehicleUnitId: hit.vehicleUnitId,
+      hullPointsLost: 1,
+    });
+  }
+
+  return hullPointsToRemove;
+}
+
 // ─── Vehicle Damage Table Lookup ────────────────────────────────────────────
 
 /**

@@ -7,7 +7,7 @@
 
 import type { GameState, GameCommand } from '@hh/types';
 import { SubPhase } from '@hh/types';
-import { getAliveModels } from '@hh/engine';
+import { getAliveModels, getEligibleAcceptors, getEligibleChallengers } from '@hh/engine';
 import type { AITurnContext, StrategyMode } from '../types';
 import { getChargeableUnits, getValidChargeTargets } from '../helpers/unit-queries';
 
@@ -36,6 +36,16 @@ export function generateAssaultCommand(
     default:
       return null;
   }
+}
+
+function modelBelongsToPlayer(
+  state: GameState,
+  modelId: string,
+  playerIndex: number,
+): boolean {
+  return state.armies[playerIndex]?.units.some((unit) =>
+    unit.models.some((model) => model.id === modelId),
+  ) ?? false;
 }
 
 // ─── Charge ──────────────────────────────────────────────────────────────────
@@ -160,11 +170,38 @@ function generateChallengeCommand(
   playerIndex: number,
   strategy: StrategyMode,
 ): GameCommand | null {
+  if (
+    state.pendingHeroicInterventionState &&
+    state.pendingHeroicInterventionState.reactingPlayerIndex === playerIndex &&
+    state.activeCombats
+  ) {
+    const combat = state.activeCombats.find(
+      (candidate) => candidate.combatId === state.pendingHeroicInterventionState?.combatId,
+    );
+    if (combat) {
+      const challengerUnitId = state.pendingHeroicInterventionState.reactingUnitId;
+      const challengerId = getEligibleChallengers(state, challengerUnitId).eligibleChallengerIds[0];
+      const targetModelId = combat.activePlayerUnitIds.flatMap((unitId) => getEligibleAcceptors(state, unitId))[0];
+      if (challengerId && targetModelId) {
+        return {
+          type: 'declareChallenge',
+          challengerModelId: challengerId,
+          targetModelId,
+        };
+      }
+    }
+    return null;
+  }
+
   // If there are active combats with a challenge state, respond
   if (state.activeCombats) {
     for (const combat of state.activeCombats) {
       if (combat.challengeState) {
         const cs = combat.challengeState;
+
+        if (cs.currentStep === 'DECLARE' && modelBelongsToPlayer(state, cs.challengedId, playerIndex)) {
+          return { type: 'acceptChallenge', challengedModelId: cs.challengedId };
+        }
 
         // If waiting for gambit selection (FACE_OFF step)
         if (cs.currentStep === 'FACE_OFF') {
@@ -190,22 +227,29 @@ function generateChallengeCommand(
     }
   }
 
-  // Check if we can declare a challenge
-  // For simplicity: in the Challenge sub-phase, if no challenge exists yet,
-  // try to declare one or skip
-  if (strategy === 'basic') {
-    // Basic: 40% chance to declare a challenge, otherwise skip
-    if (Math.random() < 0.4 && state.activeCombats && state.activeCombats.length > 0) {
-      // Find a combat with units we own that has character models
-      const combat = state.activeCombats[0];
-      const playerUnits = state.activePlayerIndex === playerIndex
-        ? combat.activePlayerUnitIds
-        : combat.reactivePlayerUnitIds;
-      if (playerUnits.length > 0) {
-        // Would need character model IDs — for now just skip
-        return null;
-      }
+  if (playerIndex !== state.activePlayerIndex || !state.activeCombats) {
+    return null;
+  }
+
+  const processedCombatIds = new Set(state.processedChallengeCombatIds ?? []);
+  for (const combat of state.activeCombats) {
+    if (combat.challengeState || processedCombatIds.has(combat.combatId)) {
+      continue;
     }
+
+    const challengerModelId = combat.activePlayerUnitIds
+      .flatMap((unitId) => getEligibleChallengers(state, unitId).eligibleChallengerIds)[0];
+    const targetModelId = combat.reactivePlayerUnitIds
+      .flatMap((unitId) => getEligibleAcceptors(state, unitId))[0];
+    if (!challengerModelId || !targetModelId) {
+      continue;
+    }
+
+    if (strategy === 'basic' && Math.random() >= 0.4) {
+      return { type: 'passChallenge', combatId: combat.combatId };
+    }
+
+    return { type: 'declareChallenge', challengerModelId, targetModelId };
   }
 
   // No challenge state — skip

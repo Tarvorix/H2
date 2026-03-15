@@ -416,6 +416,10 @@ export function getPendingAftermathUnitIds(
 export function getChallengeDecisionPlayerIndex(
   state: GameState,
 ): 0 | 1 | null {
+  if (state.pendingHeroicInterventionState) {
+    return state.pendingHeroicInterventionState.reactingPlayerIndex as 0 | 1;
+  }
+
   const combats = state.activeCombats as CombatState[] | undefined;
   if (!combats || combats.length === 0) {
     return state.activePlayerIndex as 0 | 1;

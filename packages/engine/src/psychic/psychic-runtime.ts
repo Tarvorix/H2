@@ -599,6 +599,26 @@ export function modelHasLOSToUnit(
   );
 }
 
+export function modelHasLOSToModel(
+  state: GameState,
+  modelId: string,
+  targetModelId: string,
+): boolean {
+  const source = findModel(state, modelId);
+  const target = findModel(state, targetModelId);
+  if (!source || !target || !source.unit.isDeployed || !target.unit.isDeployed) {
+    return false;
+  }
+
+  const blockingVehicles = getInterveningVehicleShapes(state, new Set<string>([source.unit.id, target.unit.id]));
+  return hasLOS(
+    getModelShape(source.model),
+    getModelShape(target.model),
+    state.terrain,
+    blockingVehicles,
+  );
+}
+
 export function modelIsWithinRangeOfUnit(
   state: GameState,
   modelId: string,

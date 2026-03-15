@@ -6,7 +6,7 @@
 
 import { describe, it, expect } from 'vitest';
 import type { GameState, UnitState, ModelState, ArmyState } from '@hh/types';
-import { UnitMovementState } from '@hh/types';
+import { TerrainType, UnitMovementState } from '@hh/types';
 import { selectWeaponsForAttack, hasWeaponsInRange, estimateExpectedDamage } from './weapon-selection';
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
@@ -169,6 +169,32 @@ describe('selectWeaponsForAttack', () => {
     expect(result[0].modelId).toBe('m1');
   });
 
+  it('only assigns weapons to models with line of sight', () => {
+    const m0 = createModel({ id: 'm0', position: { x: 0, y: 0 }, equippedWargear: ['bolter'] });
+    const m1 = createModel({ id: 'm1', position: { x: 0, y: 6 }, equippedWargear: ['bolter'] });
+    const attacker = createUnit({ id: 'attacker', models: [m0, m1] });
+    const target = createUnit({
+      id: 'target',
+      models: [createModel({ id: 't1', position: { x: 10, y: 0 }, equippedWargear: [] })],
+    });
+    const state = createGameState();
+    state.terrain = [{
+      id: 'heavy-1',
+      name: 'Heavy Area',
+      type: TerrainType.HeavyArea,
+      shape: { kind: 'rectangle', topLeft: { x: 4, y: -2 }, width: 2, height: 4 },
+      isDifficult: false,
+      isDangerous: false,
+    }];
+    state.armies[0].units = [attacker];
+    state.armies[1].units = [target];
+
+    const result = selectWeaponsForAttack(state, attacker, target, 'basic');
+    expect(result).toHaveLength(1);
+    expect(result[0].modelId).toBe('m1');
+    expect(result[0].weaponId).toBe('bolter');
+  });
+
   it('skips models when all ranged weapons are out of range', () => {
     const m1 = createModel({
       id: 'm1',
@@ -198,6 +224,44 @@ describe('selectWeaponsForAttack', () => {
 
     const result = selectWeaponsForAttack(state, attacker, target, 'basic');
     expect(result.length).toBe(0);
+  });
+
+  it('picks a legal parent-weapon profile when the model is armed with a missile launcher', () => {
+    const attacker = createUnit({
+      id: 'attacker',
+      models: [createModel({ id: 'm1', position: { x: 10, y: 10 }, equippedWargear: ['missile-launcher'] })],
+    });
+    const target = createUnit({
+      id: 'target',
+      models: [createModel({ id: 't1', position: { x: 30, y: 10 }, equippedWargear: [] })],
+    });
+    const state = createGameState();
+    state.armies[0].units = [attacker];
+    state.armies[1].units = [target];
+
+    const result = selectWeaponsForAttack(state, attacker, target, 'basic');
+    expect(result).toHaveLength(1);
+    expect(result[0].weaponId).toBe('missile-launcher');
+    expect(result[0].profileName).toBe('Frag');
+  });
+
+  it('uses the stronger parent-weapon profile for tactical shooting choices', () => {
+    const attacker = createUnit({
+      id: 'attacker',
+      models: [createModel({ id: 'm1', position: { x: 10, y: 10 }, equippedWargear: ['missile-launcher'] })],
+    });
+    const target = createUnit({
+      id: 'target',
+      models: [createModel({ id: 't1', position: { x: 30, y: 10 }, equippedWargear: [] })],
+    });
+    const state = createGameState();
+    state.armies[0].units = [attacker];
+    state.armies[1].units = [target];
+
+    const result = selectWeaponsForAttack(state, attacker, target, 'tactical');
+    expect(result).toHaveLength(1);
+    expect(result[0].weaponId).toBe('missile-launcher');
+    expect(result[0].profileName).toBe('Krak');
   });
 });
 
@@ -232,6 +296,46 @@ describe('hasWeaponsInRange', () => {
     state.armies[1].units = [target];
 
     expect(hasWeaponsInRange(state, attacker, target.id)).toBe(false);
+  });
+
+  it('returns false when only blocked models have ranged weapons in range', () => {
+    const attacker = createUnit({
+      id: 'attacker',
+      models: [createModel({ id: 'm1', position: { x: 0, y: 0 }, equippedWargear: ['bolter'] })],
+    });
+    const target = createUnit({
+      id: 'target',
+      models: [createModel({ id: 't1', position: { x: 10, y: 0 }, equippedWargear: [] })],
+    });
+    const state = createGameState();
+    state.terrain = [{
+      id: 'heavy-1',
+      name: 'Heavy Area',
+      type: TerrainType.HeavyArea,
+      shape: { kind: 'rectangle', topLeft: { x: 4, y: -2 }, width: 2, height: 4 },
+      isDifficult: false,
+      isDangerous: false,
+    }];
+    state.armies[0].units = [attacker];
+    state.armies[1].units = [target];
+
+    expect(hasWeaponsInRange(state, attacker, target.id)).toBe(false);
+  });
+
+  it('returns true for a range-band weapon when the target sits in the matching band', () => {
+    const attacker = createUnit({
+      id: 'attacker',
+      models: [createModel({ id: 'm1', position: { x: 0, y: 0 }, equippedWargear: ['conversion-beam-cannon'] })],
+    });
+    const target = createUnit({
+      id: 'target',
+      models: [createModel({ id: 't1', position: { x: 20, y: 0 }, equippedWargear: [] })],
+    });
+    const state = createGameState();
+    state.armies[0].units = [attacker];
+    state.armies[1].units = [target];
+
+    expect(hasWeaponsInRange(state, attacker, target.id)).toBe(true);
   });
 });
 

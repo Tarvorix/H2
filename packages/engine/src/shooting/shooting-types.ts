@@ -77,6 +77,8 @@ export interface ResolvedWeaponProfile {
   specialRules: SpecialRuleRef[];
   /** Weapon traits (Bolt, Assault, Heavy, etc.) */
   traits: string[];
+  /** Optional minimum/maximum range band for profile-specific weapons. */
+  rangeBand?: RangedWeaponProfile['rangeBand'];
 }
 
 export interface WeaponProfileModifierContext {
@@ -381,5 +383,6 @@ export function resolveWeaponFromData(weapon: RangedWeaponProfile): ResolvedWeap
     damage: weapon.damage,
     specialRules: [...weapon.specialRules],
     traits: [...weapon.traits],
+    rangeBand: weapon.rangeBand,
   };
 }

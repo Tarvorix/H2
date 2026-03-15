@@ -22,8 +22,10 @@ import {
   getModelToughness,
   getObjectiveController,
   getUnitSpecialRules,
+  getWeaponSelectionOptions,
   getModelWS,
   getVehicleArmour,
+  isWeaponProfileInRange,
   isVehicleUnit,
   lookupUnitProfile,
   meleeHitTable,
@@ -682,17 +684,23 @@ export function estimateUnitRangedDamagePotential(
   for (const model of aliveModels) {
     let bestForModel = 0;
     for (const weaponId of model.equippedWargear) {
-      const profile = resolveWeaponAssignment({ modelId: model.id, weaponId }, attackerUnit);
-      if (!profile) continue;
+      const options = getWeaponSelectionOptions(
+        { modelId: model.id, weaponId },
+        attackerUnit,
+        state,
+        distance,
+      );
+      for (const option of options) {
+        const profile = option.weaponProfile;
+        const inRange = profile.hasTemplate
+          ? distance <= DEFAULT_TEMPLATE_RANGE
+          : isWeaponProfileInRange(profile, distance);
+        if (!inRange) continue;
 
-      const inRange = profile.hasTemplate
-        ? distance <= DEFAULT_TEMPLATE_RANGE
-        : distance <= profile.range;
-      if (!inRange) continue;
-
-      const attackerBS = getModelBS(model.unitProfileId, model.profileModelName);
-      const expected = estimateRangedWeaponDamageAgainstUnit(attackerBS, targetUnit, profile);
-      bestForModel = Math.max(bestForModel, expected);
+        const attackerBS = getModelBS(model.unitProfileId, model.profileModelName);
+        const expected = estimateRangedWeaponDamageAgainstUnit(attackerBS, targetUnit, profile);
+        bestForModel = Math.max(bestForModel, expected);
+      }
     }
     totalDamage += bestForModel;
   }

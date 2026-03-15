@@ -24,14 +24,28 @@ interface CliOptions {
   player1TimeBudget: number | null;
   player0ModelId: string | null;
   player1ModelId: string | null;
+  player0AlphaModelId: string | null;
+  player1AlphaModelId: string | null;
   player0BaseSeed: number | null;
   player1BaseSeed: number | null;
   player0RolloutCount: number | null;
   player1RolloutCount: number | null;
   player0MaxDepthSoft: number | null;
   player1MaxDepthSoft: number | null;
+  player0MaxSimulations: number | null;
+  player1MaxSimulations: number | null;
   player0Diagnostics: boolean;
   player1Diagnostics: boolean;
+  player0ShadowAlphaEnabled: boolean;
+  player1ShadowAlphaEnabled: boolean;
+  player0ShadowAlphaModelId: string | null;
+  player1ShadowAlphaModelId: string | null;
+  player0ShadowAlphaTimeBudget: number | null;
+  player1ShadowAlphaTimeBudget: number | null;
+  player0ShadowAlphaMaxSimulations: number | null;
+  player1ShadowAlphaMaxSimulations: number | null;
+  player0ShadowAlphaSeed: number | null;
+  player1ShadowAlphaSeed: number | null;
 }
 
 function parseTier(raw: string): AIStrategyTier {
@@ -39,7 +53,8 @@ function parseTier(raw: string): AIStrategyTier {
   if (normalized === 'basic') return AIStrategyTier.Basic;
   if (normalized === 'tactical') return AIStrategyTier.Tactical;
   if (normalized === 'engine') return AIStrategyTier.Engine;
-  throw new Error(`Unsupported AI tier "${raw}". Use "basic", "tactical", or "engine".`);
+  if (normalized === 'alpha') return AIStrategyTier.Alpha;
+  throw new Error(`Unsupported AI tier "${raw}". Use "basic", "tactical", "engine", or "alpha".`);
 }
 
 function parseArgs(argv: string[]): CliOptions {
@@ -56,14 +71,28 @@ function parseArgs(argv: string[]): CliOptions {
     player1TimeBudget: null,
     player0ModelId: null,
     player1ModelId: null,
+    player0AlphaModelId: null,
+    player1AlphaModelId: null,
     player0BaseSeed: null,
     player1BaseSeed: null,
     player0RolloutCount: null,
     player1RolloutCount: null,
     player0MaxDepthSoft: null,
     player1MaxDepthSoft: null,
+    player0MaxSimulations: null,
+    player1MaxSimulations: null,
     player0Diagnostics: false,
     player1Diagnostics: false,
+    player0ShadowAlphaEnabled: false,
+    player1ShadowAlphaEnabled: false,
+    player0ShadowAlphaModelId: null,
+    player1ShadowAlphaModelId: null,
+    player0ShadowAlphaTimeBudget: null,
+    player1ShadowAlphaTimeBudget: null,
+    player0ShadowAlphaMaxSimulations: null,
+    player1ShadowAlphaMaxSimulations: null,
+    player0ShadowAlphaSeed: null,
+    player1ShadowAlphaSeed: null,
   };
 
   for (let i = 0; i < argv.length; i++) {
@@ -105,6 +134,12 @@ function parseArgs(argv: string[]): CliOptions {
       case '--player1-model':
         options.player1ModelId = argv[++i] ?? null;
         break;
+      case '--player0-alpha-model':
+        options.player0AlphaModelId = argv[++i] ?? null;
+        break;
+      case '--player1-alpha-model':
+        options.player1AlphaModelId = argv[++i] ?? null;
+        break;
       case '--player0-seed':
         options.player0BaseSeed = Number(argv[++i] ?? '0');
         break;
@@ -123,11 +158,47 @@ function parseArgs(argv: string[]): CliOptions {
       case '--player1-depth':
         options.player1MaxDepthSoft = Number(argv[++i] ?? '0');
         break;
+      case '--player0-alpha-sims':
+        options.player0MaxSimulations = Number(argv[++i] ?? '0');
+        break;
+      case '--player1-alpha-sims':
+        options.player1MaxSimulations = Number(argv[++i] ?? '0');
+        break;
       case '--player0-diagnostics':
         options.player0Diagnostics = true;
         break;
       case '--player1-diagnostics':
         options.player1Diagnostics = true;
+        break;
+      case '--player0-shadow-alpha':
+        options.player0ShadowAlphaEnabled = true;
+        break;
+      case '--player1-shadow-alpha':
+        options.player1ShadowAlphaEnabled = true;
+        break;
+      case '--player0-shadow-alpha-model':
+        options.player0ShadowAlphaModelId = argv[++i] ?? null;
+        break;
+      case '--player1-shadow-alpha-model':
+        options.player1ShadowAlphaModelId = argv[++i] ?? null;
+        break;
+      case '--player0-shadow-alpha-budget':
+        options.player0ShadowAlphaTimeBudget = Number(argv[++i] ?? '0');
+        break;
+      case '--player1-shadow-alpha-budget':
+        options.player1ShadowAlphaTimeBudget = Number(argv[++i] ?? '0');
+        break;
+      case '--player0-shadow-alpha-sims':
+        options.player0ShadowAlphaMaxSimulations = Number(argv[++i] ?? '0');
+        break;
+      case '--player1-shadow-alpha-sims':
+        options.player1ShadowAlphaMaxSimulations = Number(argv[++i] ?? '0');
+        break;
+      case '--player0-shadow-alpha-seed':
+        options.player0ShadowAlphaSeed = Number(argv[++i] ?? '0');
+        break;
+      case '--player1-shadow-alpha-seed':
+        options.player1ShadowAlphaSeed = Number(argv[++i] ?? '0');
         break;
       case '--help':
         printHelp();
@@ -161,20 +232,34 @@ function printHelp(): void {
       '  --out <path>              Optional. Write result JSON to this path.',
       '  --replay-out <path>       Optional. Write replay artifact JSON to this path.',
       '  --max-commands <number>   Optional. Default: 2000.',
-      '  --player0-tier <tier>     Optional. basic|tactical|engine (default: tactical).',
-      '  --player1-tier <tier>     Optional. basic|tactical|engine (default: tactical).',
+      '  --player0-tier <tier>     Optional. basic|tactical|engine|alpha (default: tactical).',
+      '  --player1-tier <tier>     Optional. basic|tactical|engine|alpha (default: tactical).',
       '  --player0-time-budget <n> Optional. Engine search budget in ms for player 0.',
       '  --player1-time-budget <n> Optional. Engine search budget in ms for player 1.',
       '  --player0-model <id>      Optional. NNUE model ID for player 0 Engine.',
       '  --player1-model <id>      Optional. NNUE model ID for player 1 Engine.',
+      '  --player0-alpha-model <id> Optional. Alpha model ID for player 0 Alpha/shadow Alpha.',
+      '  --player1-alpha-model <id> Optional. Alpha model ID for player 1 Alpha/shadow Alpha.',
       '  --player0-seed <n>        Optional. Deterministic Engine seed for player 0.',
       '  --player1-seed <n>        Optional. Deterministic Engine seed for player 1.',
       '  --player0-rollouts <n>    Optional. Deterministic rollout count for player 0 Engine.',
       '  --player1-rollouts <n>    Optional. Deterministic rollout count for player 1 Engine.',
       '  --player0-depth <n>       Optional. Soft search depth for player 0 Engine.',
       '  --player1-depth <n>       Optional. Soft search depth for player 1 Engine.',
+      '  --player0-alpha-sims <n>  Optional. Alpha simulation cap for player 0.',
+      '  --player1-alpha-sims <n>  Optional. Alpha simulation cap for player 1.',
       '  --player0-diagnostics     Optional. Emit player 0 Engine diagnostics.',
       '  --player1-diagnostics     Optional. Emit player 1 Engine diagnostics.',
+      '  --player0-shadow-alpha    Optional. Run shadow Alpha for player 0 live seat.',
+      '  --player1-shadow-alpha    Optional. Run shadow Alpha for player 1 live seat.',
+      '  --player0-shadow-alpha-model <id> Optional. Override player 0 shadow Alpha model.',
+      '  --player1-shadow-alpha-model <id> Optional. Override player 1 shadow Alpha model.',
+      '  --player0-shadow-alpha-budget <n> Optional. Shadow Alpha time budget in ms for player 0.',
+      '  --player1-shadow-alpha-budget <n> Optional. Shadow Alpha time budget in ms for player 1.',
+      '  --player0-shadow-alpha-sims <n> Optional. Shadow Alpha simulation cap for player 0.',
+      '  --player1-shadow-alpha-sims <n> Optional. Shadow Alpha simulation cap for player 1.',
+      '  --player0-shadow-alpha-seed <n> Optional. Shadow Alpha deterministic seed for player 0.',
+      '  --player1-shadow-alpha-seed <n> Optional. Shadow Alpha deterministic seed for player 1.',
       '  --disable-player0-ai      Optional. Disable AI control for player 0.',
       '  --disable-player1-ai      Optional. Disable AI control for player 1.',
       '  --help                    Show this message.',
@@ -205,10 +290,24 @@ function main(): void {
       strategyTier: options.player0Tier,
       ...(options.player0TimeBudget !== null ? { timeBudgetMs: options.player0TimeBudget } : {}),
       ...(options.player0ModelId ? { nnueModelId: options.player0ModelId } : {}),
+      ...(options.player0AlphaModelId ? { alphaModelId: options.player0AlphaModelId } : {}),
       ...(options.player0BaseSeed !== null ? { baseSeed: options.player0BaseSeed } : {}),
       ...(options.player0RolloutCount !== null ? { rolloutCount: options.player0RolloutCount } : {}),
       ...(options.player0MaxDepthSoft !== null ? { maxDepthSoft: options.player0MaxDepthSoft } : {}),
+      ...(options.player0MaxSimulations !== null ? { maxSimulations: options.player0MaxSimulations } : {}),
       ...(options.player0Diagnostics ? { diagnosticsEnabled: true } : {}),
+      ...(options.player0ShadowAlphaEnabled
+        ? {
+          shadowAlpha: {
+            enabled: true,
+            ...(options.player0ShadowAlphaModelId ? { alphaModelId: options.player0ShadowAlphaModelId } : {}),
+            ...(options.player0ShadowAlphaTimeBudget !== null ? { timeBudgetMs: options.player0ShadowAlphaTimeBudget } : {}),
+            ...(options.player0ShadowAlphaMaxSimulations !== null ? { maxSimulations: options.player0ShadowAlphaMaxSimulations } : {}),
+            ...(options.player0ShadowAlphaSeed !== null ? { baseSeed: options.player0ShadowAlphaSeed } : {}),
+            diagnosticsEnabled: true,
+          },
+        }
+        : {}),
     },
     {
       enabled: options.player1Enabled,
@@ -216,10 +315,24 @@ function main(): void {
       strategyTier: options.player1Tier,
       ...(options.player1TimeBudget !== null ? { timeBudgetMs: options.player1TimeBudget } : {}),
       ...(options.player1ModelId ? { nnueModelId: options.player1ModelId } : {}),
+      ...(options.player1AlphaModelId ? { alphaModelId: options.player1AlphaModelId } : {}),
       ...(options.player1BaseSeed !== null ? { baseSeed: options.player1BaseSeed } : {}),
       ...(options.player1RolloutCount !== null ? { rolloutCount: options.player1RolloutCount } : {}),
       ...(options.player1MaxDepthSoft !== null ? { maxDepthSoft: options.player1MaxDepthSoft } : {}),
+      ...(options.player1MaxSimulations !== null ? { maxSimulations: options.player1MaxSimulations } : {}),
       ...(options.player1Diagnostics ? { diagnosticsEnabled: true } : {}),
+      ...(options.player1ShadowAlphaEnabled
+        ? {
+          shadowAlpha: {
+            enabled: true,
+            ...(options.player1ShadowAlphaModelId ? { alphaModelId: options.player1ShadowAlphaModelId } : {}),
+            ...(options.player1ShadowAlphaTimeBudget !== null ? { timeBudgetMs: options.player1ShadowAlphaTimeBudget } : {}),
+            ...(options.player1ShadowAlphaMaxSimulations !== null ? { maxSimulations: options.player1ShadowAlphaMaxSimulations } : {}),
+            ...(options.player1ShadowAlphaSeed !== null ? { baseSeed: options.player1ShadowAlphaSeed } : {}),
+            diagnosticsEnabled: true,
+          },
+        }
+        : {}),
     },
   ];
 

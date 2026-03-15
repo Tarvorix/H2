@@ -19,7 +19,8 @@
     "@hh/types": "workspace:*",
     "@hh/engine": "workspace:*",
     "@hh/geometry": "workspace:*",
-    "@hh/data": "workspace:*"
+    "@hh/data": "workspace:*",
+    "@tensorflow/tfjs": "^4.22.0"
   },
   "files": ["dist"]
 }

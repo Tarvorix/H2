@@ -23,7 +23,14 @@ export { ShootingStep, resolveWeaponFromData } from './shooting-types';
 export { validateShootingTarget, validateAttackerEligibility, filterModelsWithLOS, checkWeaponRange, determineTargetFacing } from './shooting-validator';
 
 // Weapon Declaration
-export { validateWeaponAssignments, determineSnapShots, resolveWeaponAssignment } from './weapon-declaration';
+export {
+  validateWeaponAssignments,
+  determineSnapShots,
+  resolveWeaponAssignment,
+  getWeaponSelectionOptions,
+  isTargetDistanceWithinRangeBand,
+  isWeaponProfileInRange,
+} from './weapon-declaration';
 
 // Fire Groups
 export { formFireGroups, splitPrecisionHits } from './fire-groups';

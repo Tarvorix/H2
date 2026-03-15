@@ -8,7 +8,11 @@
 
 import { useCallback, useState } from 'react';
 import { LegionFaction, Allegiance } from '@hh/types';
-import { AIStrategyTier, DEFAULT_GAMEPLAY_NNUE_MODEL_ID } from '@hh/ai';
+import {
+  AIStrategyTier,
+  DEFAULT_ALPHA_MODEL_ID,
+  DEFAULT_GAMEPLAY_NNUE_MODEL_ID,
+} from '@hh/ai';
 import type { AIDeploymentFormation } from '@hh/ai';
 import type { GameUIState, GameUIAction, PresetArmy } from '../types';
 import { AI_DEPLOYMENT_FORMATION_LABELS } from './deployment-formations';
@@ -20,10 +24,22 @@ interface ArmyLoadScreenProps {
 }
 
 type EngineBudgetPreset = 'normal' | 'turbo';
+type AlphaBudgetPreset = 'balanced' | 'tournament';
 
 const ENGINE_BUDGETS: Record<EngineBudgetPreset, number> = {
   normal: 500,
   turbo: 1000,
+};
+
+const ALPHA_BUDGETS: Record<AlphaBudgetPreset, { timeBudgetMs: number; maxSimulations: number }> = {
+  balanced: {
+    timeBudgetMs: 600,
+    maxSimulations: 256,
+  },
+  tournament: {
+    timeBudgetMs: 1500,
+    maxSimulations: 640,
+  },
 };
 
 /**
@@ -136,6 +152,9 @@ export function ArmyLoadScreen({ state, dispatch, onReturnToMenu }: ArmyLoadScre
   const [aiTier, setAiTier] = useState<AIStrategyTier>(AIStrategyTier.Tactical);
   const [aiDeploymentFormation, setAiDeploymentFormation] = useState<AIDeploymentFormation>('auto');
   const [aiEngineBudgetPreset, setAiEngineBudgetPreset] = useState<EngineBudgetPreset>('normal');
+  const [aiAlphaBudgetPreset, setAiAlphaBudgetPreset] = useState<AlphaBudgetPreset>('balanced');
+  const [shadowAlphaEnabled, setShadowAlphaEnabled] = useState(false);
+  const [shadowAlphaBudgetPreset, setShadowAlphaBudgetPreset] = useState<AlphaBudgetPreset>('balanced');
 
   const handleSelectPreset = useCallback(
     (playerIndex: number, preset: PresetArmy) => {
@@ -153,6 +172,8 @@ export function ArmyLoadScreen({ state, dispatch, onReturnToMenu }: ArmyLoadScre
 
   const handleConfirm = useCallback(() => {
     if (aiEnabled) {
+      const alphaBudget = ALPHA_BUDGETS[aiAlphaBudgetPreset];
+      const shadowBudget = ALPHA_BUDGETS[shadowAlphaBudgetPreset];
       dispatch({
         type: 'SET_AI_CONFIG',
         config: {
@@ -169,6 +190,26 @@ export function ArmyLoadScreen({ state, dispatch, onReturnToMenu }: ArmyLoadScre
               maxDepthSoft: 4,
               diagnosticsEnabled: true,
             }
+            : aiTier === AIStrategyTier.Alpha
+              ? {
+                timeBudgetMs: alphaBudget.timeBudgetMs,
+                maxSimulations: alphaBudget.maxSimulations,
+                alphaModelId: DEFAULT_ALPHA_MODEL_ID,
+                baseSeed: 7331,
+                diagnosticsEnabled: true,
+              }
+            : {}),
+          ...(shadowAlphaEnabled && aiTier !== AIStrategyTier.Alpha
+            ? {
+              shadowAlpha: {
+                enabled: true,
+                alphaModelId: DEFAULT_ALPHA_MODEL_ID,
+                timeBudgetMs: shadowBudget.timeBudgetMs,
+                maxSimulations: shadowBudget.maxSimulations,
+                baseSeed: 9001,
+                diagnosticsEnabled: true,
+              },
+            }
             : {}),
           enabled: true,
         },
@@ -177,7 +218,16 @@ export function ArmyLoadScreen({ state, dispatch, onReturnToMenu }: ArmyLoadScre
       dispatch({ type: 'SET_AI_CONFIG', config: null });
     }
     dispatch({ type: 'CONFIRM_ARMIES' });
-  }, [dispatch, aiEnabled, aiTier, aiDeploymentFormation, aiEngineBudgetPreset]);
+  }, [
+    dispatch,
+    aiEnabled,
+    aiTier,
+    aiDeploymentFormation,
+    aiEngineBudgetPreset,
+    aiAlphaBudgetPreset,
+    shadowAlphaEnabled,
+    shadowAlphaBudgetPreset,
+  ]);
 
   const handlePlayerNameChange = useCallback(
     (playerIndex: number, name: string) => {
@@ -267,6 +317,7 @@ export function ArmyLoadScreen({ state, dispatch, onReturnToMenu }: ArmyLoadScre
                 <option value={AIStrategyTier.Basic}>Basic</option>
                 <option value={AIStrategyTier.Tactical}>Tactical</option>
                 <option value={AIStrategyTier.Engine}>Engine</option>
+                <option value={AIStrategyTier.Alpha}>Alpha</option>
               </select>
               {aiTier === AIStrategyTier.Engine && (
                 <select
@@ -276,6 +327,16 @@ export function ArmyLoadScreen({ state, dispatch, onReturnToMenu }: ArmyLoadScre
                 >
                   <option value="normal">Engine: Normal (500ms)</option>
                   <option value="turbo">Engine: Turbo (1000ms)</option>
+                </select>
+              )}
+              {aiTier === AIStrategyTier.Alpha && (
+                <select
+                  className="ai-tier-select"
+                  value={aiAlphaBudgetPreset}
+                  onChange={(e) => setAiAlphaBudgetPreset(e.target.value as AlphaBudgetPreset)}
+                >
+                  <option value="balanced">Alpha: Balanced (600ms / 256 sims)</option>
+                  <option value="tournament">Alpha: Tournament (1500ms / 640 sims)</option>
                 </select>
               )}
               <select
@@ -289,6 +350,29 @@ export function ArmyLoadScreen({ state, dispatch, onReturnToMenu }: ArmyLoadScre
                     </option>
                   ))}
                 </select>
+                {aiTier !== AIStrategyTier.Alpha && (
+                  <>
+                    <label className="ai-toggle-label">
+                      <input
+                        type="checkbox"
+                        className="ai-toggle-checkbox"
+                        checked={shadowAlphaEnabled}
+                        onChange={(e) => setShadowAlphaEnabled(e.target.checked)}
+                      />
+                      <span>Shadow Alpha</span>
+                    </label>
+                    {shadowAlphaEnabled && (
+                      <select
+                        className="ai-tier-select"
+                        value={shadowAlphaBudgetPreset}
+                        onChange={(e) => setShadowAlphaBudgetPreset(e.target.value as AlphaBudgetPreset)}
+                      >
+                        <option value="balanced">Shadow Alpha: Balanced</option>
+                        <option value="tournament">Shadow Alpha: Tournament</option>
+                      </select>
+                    )}
+                  </>
+                )}
               </>
             )}
           </div>

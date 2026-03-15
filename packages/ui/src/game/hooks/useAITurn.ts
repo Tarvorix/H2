@@ -26,6 +26,11 @@ import type { AITurnContext } from '@hh/ai';
 import type { GameUIState, GameUIAction } from '../types';
 import { GameUIPhase } from '../types';
 import type { EngineAIWorkerRequest, EngineAIWorkerResponse } from './engine-ai-worker.types';
+import type { AlphaAIWorkerRequest, AlphaAIWorkerResponse } from './alpha-ai-worker.types';
+
+type AIWorkerKind = 'engine' | 'alpha';
+type AnyAIWorkerRequest = EngineAIWorkerRequest | AlphaAIWorkerRequest;
+type AnyAIWorkerResponse = EngineAIWorkerResponse | AlphaAIWorkerResponse;
 
 function buildFallbackCommand(
   gameState: NonNullable<GameUIState['gameState']>,
@@ -83,9 +88,13 @@ export function useAITurn(
   const isProcessingRef = useRef(false);
   const latestStateKeyRef = useRef('');
   const latestStateRef = useRef(state);
-  const workerRef = useRef<Worker | null>(null);
+  const engineWorkerRef = useRef<Worker | null>(null);
+  const alphaWorkerRef = useRef<Worker | null>(null);
   const workerRequestIdRef = useRef(0);
-  const workerUnavailableRef = useRef(false);
+  const workerUnavailableRef = useRef<Record<AIWorkerKind, boolean>>({
+    engine: false,
+    alpha: false,
+  });
   const aiStateKey = state.gameState ? buildAiStateKey(state.gameState) : '';
 
   useEffect(() => {
@@ -114,22 +123,23 @@ export function useAITurn(
     }
   }, [dispatch]);
 
-  const ensureWorker = useCallback((): Worker | null => {
-    if (workerUnavailableRef.current) return null;
-    if (workerRef.current) return workerRef.current;
+  const ensureWorker = useCallback((kind: AIWorkerKind): Worker | null => {
+    const currentRef = kind === 'engine' ? engineWorkerRef : alphaWorkerRef;
+    if (workerUnavailableRef.current[kind]) return null;
+    if (currentRef.current) return currentRef.current;
     if (typeof Worker === 'undefined') {
-      workerUnavailableRef.current = true;
+      workerUnavailableRef.current[kind] = true;
       return null;
     }
 
     try {
-      workerRef.current = new Worker(
-        new URL('./engine-ai.worker.ts', import.meta.url),
+      currentRef.current = new Worker(
+        new URL(kind === 'engine' ? './engine-ai.worker.ts' : './alpha-ai.worker.ts', import.meta.url),
         { type: 'module' },
       );
-      return workerRef.current;
+      return currentRef.current;
     } catch {
-      workerUnavailableRef.current = true;
+      workerUnavailableRef.current[kind] = true;
       return null;
     }
   }, []);
@@ -175,7 +185,7 @@ export function useAITurn(
     isProcessingRef.current = false;
   }, [dispatch]);
 
-  const handleWorkerResponse = useCallback((response: EngineAIWorkerResponse) => {
+  const handleWorkerResponse = useCallback((response: AnyAIWorkerResponse) => {
     if (response.requestId !== workerRequestIdRef.current) {
       return;
     }
@@ -204,10 +214,23 @@ export function useAITurn(
   }, [dispatch, dispatchResolvedCommand, setAIError, setDiagnostics]);
 
   useEffect(() => {
-    const worker = ensureWorker();
+    const worker = ensureWorker('engine');
     if (!worker) return;
 
     const onMessage = (event: MessageEvent<EngineAIWorkerResponse>) => {
+      handleWorkerResponse(event.data);
+    };
+    worker.addEventListener('message', onMessage);
+    return () => {
+      worker.removeEventListener('message', onMessage);
+    };
+  }, [ensureWorker, handleWorkerResponse]);
+
+  useEffect(() => {
+    const worker = ensureWorker('alpha');
+    if (!worker) return;
+
+    const onMessage = (event: MessageEvent<AlphaAIWorkerResponse>) => {
       handleWorkerResponse(event.data);
     };
     worker.addEventListener('message', onMessage);
@@ -237,10 +260,16 @@ export function useAITurn(
     isProcessingRef.current = true;
     const scheduledStateKey = buildAiStateKey(state.gameState);
 
-    if (config.strategyTier === AIStrategyTier.Engine) {
-      const worker = ensureWorker();
+    const workerKind = config.strategyTier === AIStrategyTier.Engine
+      ? 'engine'
+      : config.strategyTier === AIStrategyTier.Alpha
+        ? 'alpha'
+        : null;
+
+    if (workerKind) {
+      const worker = ensureWorker(workerKind);
       if (worker) {
-        const request: EngineAIWorkerRequest = {
+        const request: AnyAIWorkerRequest = {
           requestId: ++workerRequestIdRef.current,
           stateKey: scheduledStateKey,
           state: state.gameState,
@@ -300,8 +329,10 @@ export function useAITurn(
       if (timerRef.current) {
         clearTimeout(timerRef.current);
       }
-      workerRef.current?.terminate();
-      workerRef.current = null;
+      engineWorkerRef.current?.terminate();
+      engineWorkerRef.current = null;
+      alphaWorkerRef.current?.terminate();
+      alphaWorkerRef.current = null;
     };
   }, []);
 }

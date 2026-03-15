@@ -12,7 +12,8 @@ import {
   canUnitShoot,
   canUnitCharge,
   getDeployedUnits,
-  getUnitsInReserves,
+  getUnitsAwaitingReservesTest,
+  getUnitsReadyToEnterFromReserves,
   getAliveModels,
   findUnit,
   findUnitPlayerIndex,
@@ -54,7 +55,16 @@ export function getReservesUnits(
   actedIds: Set<string>,
 ): UnitState[] {
   const army = state.armies[playerIndex];
-  return getUnitsInReserves(army).filter((unit) => !actedIds.has(unit.id));
+  return getUnitsAwaitingReservesTest(army).filter((unit) => !actedIds.has(unit.id));
+}
+
+export function getReservesReadyUnits(
+  state: GameState,
+  playerIndex: number,
+  actedIds: Set<string>,
+): UnitState[] {
+  const army = state.armies[playerIndex];
+  return getUnitsReadyToEnterFromReserves(army).filter((unit) => !actedIds.has(unit.id));
 }
 
 // ─── Shooting Queries ────────────────────────────────────────────────────────

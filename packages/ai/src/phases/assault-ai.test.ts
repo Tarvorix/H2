@@ -150,6 +150,49 @@ describe('generateAssaultCommand — Challenge sub-phase', () => {
     expect(result).toBeNull();
   });
 
+  it('accepts a pending challenge during the DECLARE step', () => {
+    const challengedUnit = createUnit({
+      id: 'unit-a',
+      models: [createModel({ id: 'model-b' })],
+    });
+    const state = createGameState({
+      currentSubPhase: SubPhase.Challenge,
+      armies: [
+        createArmy({ playerIndex: 0, units: [challengedUnit] }),
+        createArmy({
+          playerIndex: 1,
+          playerName: 'Player 2',
+          faction: 'Sons of Horus' as ArmyState['faction'],
+          allegiance: 'Traitor' as ArmyState['allegiance'],
+          units: [],
+        }),
+      ],
+      activeCombats: [
+        {
+          combatId: 'combat-1',
+          activePlayerUnitIds: ['unit-a'],
+          reactivePlayerUnitIds: ['unit-b'],
+          challengeState: {
+            currentStep: 'DECLARE',
+            challengerId: 'model-a',
+            challengedId: 'model-b',
+            challengerPlayerIndex: 1,
+            challengedPlayerIndex: 0,
+            challengerGambit: null,
+            challengedGambit: null,
+          },
+        },
+      ] as any,
+    });
+    const ctx = createContext();
+    const result = generateAssaultCommand(state, 0, ctx, 'basic');
+
+    expect(result).toEqual({
+      type: 'acceptChallenge',
+      challengedModelId: 'model-b',
+    });
+  });
+
   it('selects gambit when challenge in FACE_OFF step', () => {
     const state = createGameState({
       currentSubPhase: SubPhase.Challenge,
@@ -203,6 +246,70 @@ describe('generateAssaultCommand — Challenge sub-phase', () => {
       expect(result.type).toBe('selectGambit');
       expect((result as any).gambit).toBe('PressTheAttack');
     }
+  });
+
+  it('declares Heroic Intervention when that reaction is pending', () => {
+    const activeUnit = createUnit({
+      id: 'unit-a',
+      profileId: 'praetorian-command-squad',
+      isLockedInCombat: true,
+      engagedWithUnitIds: ['unit-b'],
+      models: [
+        createModel({
+          id: 'active-champion',
+          profileModelName: 'Chosen Champion',
+          unitProfileId: 'praetorian-command-squad',
+        }),
+      ],
+    });
+    const reactiveUnit = createUnit({
+      id: 'unit-b',
+      profileId: 'praetorian-command-squad',
+      isLockedInCombat: true,
+      engagedWithUnitIds: ['unit-a'],
+      models: [
+        createModel({
+          id: 'reactive-champion',
+          profileModelName: 'Chosen Champion',
+          unitProfileId: 'praetorian-command-squad',
+        }),
+      ],
+    });
+    const state = createGameState({
+      currentSubPhase: SubPhase.Challenge,
+      armies: [
+        createArmy({ playerIndex: 0, units: [activeUnit] }),
+        createArmy({
+          playerIndex: 1,
+          playerName: 'Player 2',
+          faction: 'Sons of Horus' as ArmyState['faction'],
+          allegiance: 'Traitor' as ArmyState['allegiance'],
+          units: [reactiveUnit],
+        }),
+      ],
+      activeCombats: [
+        {
+          combatId: 'combat-1',
+          activePlayerUnitIds: ['unit-a'],
+          reactivePlayerUnitIds: ['unit-b'],
+          challengeState: null,
+        },
+      ] as any,
+      pendingHeroicInterventionState: {
+        combatId: 'combat-1',
+        reactingPlayerIndex: 1,
+        activePlayerIndex: 0,
+        reactingUnitId: 'unit-b',
+      },
+    });
+    const ctx = createContext();
+    const result = generateAssaultCommand(state, 1, ctx, 'tactical');
+
+    expect(result).toEqual({
+      type: 'declareChallenge',
+      challengerModelId: 'reactive-champion',
+      targetModelId: 'active-champion',
+    });
   });
 });
 

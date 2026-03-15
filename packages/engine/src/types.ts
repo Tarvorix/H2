@@ -8,6 +8,7 @@ import type {
   GameState,
   Position,
   ShootingFireGroup,
+  ReserveEntryMethod,
 } from '@hh/types';
 import { Phase, SubPhase, TacticalStatus, VehicleFacing, SecondaryObjectiveType } from '@hh/types';
 
@@ -69,6 +70,7 @@ export type GameEvent =
   | StatusRemovedEvent
   | LeadershipCheckEvent
   | CoolCheckEvent
+  | RepairTestEvent
   | UnitDestroyedEvent
   | GameOverEvent
   // Shooting Phase Events
@@ -162,7 +164,7 @@ export interface ReservesTestEvent {
 export interface ReservesEntryEvent {
   type: 'reservesEntry';
   unitId: string;
-  entryMethod: 'edge' | 'deepStrike' | 'outflank';
+  entryMethod: ReserveEntryMethod;
   modelPositions: { modelId: string; position: Position }[];
 }
 
@@ -260,6 +262,14 @@ export interface LeadershipCheckEvent {
 
 export interface CoolCheckEvent {
   type: 'coolCheck';
+  unitId: string;
+  roll: number;
+  target: number;
+  passed: boolean;
+}
+
+export interface RepairTestEvent {
+  type: 'repairTest';
   unitId: string;
   roll: number;
   target: number;

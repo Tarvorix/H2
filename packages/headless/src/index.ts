@@ -6,6 +6,7 @@ import {
 } from '@hh/engine';
 import {
   AIStrategyTier,
+  DEFAULT_ALPHA_MODEL_ID,
   DEFAULT_GAMEPLAY_NNUE_MODEL_ID,
   createTurnContext,
   generateNextCommand,
@@ -98,10 +99,13 @@ export interface HeadlessAIPlayerConfig {
   strategyTier: AIStrategyTier;
   timeBudgetMs?: number;
   nnueModelId?: string;
+  alphaModelId?: string;
   baseSeed?: number;
   rolloutCount?: number;
   maxDepthSoft?: number;
+  maxSimulations?: number;
   diagnosticsEnabled?: boolean;
+  shadowAlpha?: AIPlayerConfig['shadowAlpha'];
 }
 
 export interface HeadlessRunOptions {
@@ -207,6 +211,7 @@ function defaultAIPlayers(): HeadlessAIPlayerConfig[] {
 
 function toAIPlayerConfig(config: HeadlessAIPlayerConfig): AIPlayerConfig {
   const isEngine = config.strategyTier === AIStrategyTier.Engine;
+  const isAlpha = config.strategyTier === AIStrategyTier.Alpha;
   return {
     enabled: config.enabled,
     playerIndex: config.playerIndex,
@@ -215,10 +220,13 @@ function toAIPlayerConfig(config: HeadlessAIPlayerConfig): AIPlayerConfig {
     commandDelayMs: 0,
     timeBudgetMs: config.timeBudgetMs,
     nnueModelId: isEngine ? (config.nnueModelId ?? DEFAULT_GAMEPLAY_NNUE_MODEL_ID) : undefined,
+    alphaModelId: isAlpha ? (config.alphaModelId ?? DEFAULT_ALPHA_MODEL_ID) : undefined,
     baseSeed: config.baseSeed,
     rolloutCount: config.rolloutCount,
     maxDepthSoft: config.maxDepthSoft,
+    maxSimulations: config.maxSimulations,
     diagnosticsEnabled: config.diagnosticsEnabled,
+    shadowAlpha: config.shadowAlpha,
   };
 }
 

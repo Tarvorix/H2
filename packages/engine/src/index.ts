@@ -171,6 +171,8 @@ export {
   isUnitDestroyed,
   getUnitsWithStatus,
   getUnitsInReserves,
+  getUnitsAwaitingReservesTest,
+  getUnitsReadyToEnterFromReserves,
   getDeployedUnits,
   getModelShape,
   getEnemyModelShapes,
@@ -272,6 +274,12 @@ export {
   handleRepositionReaction,
   REPOSITION_TRIGGER_RANGE,
   REPOSITION_DEFAULT_INITIATIVE,
+  detectVehicleMoveThroughTriggers,
+  getDeathOrGloryEligibleModelIds,
+  getDeathOrGloryEligibleUnitIds,
+  getDeathOrGloryWeaponOptions,
+  resolveDeathOrGloryReaction,
+  resolveVehicleMoveThroughHits,
 } from './movement';
 
 // ─── Psychic ────────────────────────────────────────────────────────────────
@@ -336,6 +344,9 @@ export {
   validateWeaponAssignments,
   determineSnapShots,
   resolveWeaponAssignment,
+  getWeaponSelectionOptions,
+  isTargetDistanceWithinRangeBand,
+  isWeaponProfileInRange,
   // Fire Groups
   formFireGroups,
   splitPrecisionHits,
@@ -653,6 +664,7 @@ export {
   isVehicleUnitState,
   getUnitSpecialRules,
   unitProfileHasSpecialRule,
+  unitProfileHasSubType,
   modelHasSpecialRule,
   getModelBaseSizeMM,
   getModelStateBaseSizeMM,

@@ -118,6 +118,7 @@ export function declareChallenge(
 ): ChallengeDeclareResult {
   const preparedState = prepareChallengeState(state);
   const events: GameEvent[] = [];
+  const pendingHeroicIntervention = preparedState.pendingHeroicInterventionState;
 
   const challengerInfo = findModel(preparedState, challengerModelId);
   if (!challengerInfo || challengerInfo.model.isDestroyed) {
@@ -129,11 +130,6 @@ export function declareChallenge(
     return invalidDeclare(preparedState, events, `Target model '${targetModelId}' not found`);
   }
 
-  const challengerPlayerIndex = findUnitPlayerIndex(preparedState, challengerInfo.unit.id);
-  if (challengerPlayerIndex !== preparedState.activePlayerIndex) {
-    return invalidDeclare(preparedState, events, 'Challenger must belong to the active player');
-  }
-
   const combatInfo = findCombatByUnits(
     preparedState,
     challengerInfo.unit.id,
@@ -143,14 +139,48 @@ export function declareChallenge(
     return invalidDeclare(preparedState, events, 'Challenger and target units are not engaged in combat');
   }
 
+  const isHeroicInterventionDeclare = (
+    pendingHeroicIntervention !== undefined &&
+    pendingHeroicIntervention.combatId === combatInfo.combat.combatId &&
+    pendingHeroicIntervention.reactingUnitId === challengerInfo.unit.id
+  );
+
+  if (
+    preparedState.processedChallengeCombatIds?.includes(combatInfo.combat.combatId) &&
+    !isHeroicInterventionDeclare
+  ) {
+    return invalidDeclare(
+      preparedState,
+      events,
+      'This combat has already been processed in the current Challenge sub-phase',
+    );
+  }
+
   if (combatInfo.combat.challengeState) {
     return invalidDeclare(preparedState, events, 'A challenge is already active in this combat');
   }
 
   const challengerSide = getCombatSideForUnit(combatInfo.combat, challengerInfo.unit.id);
   const targetSide = getCombatSideForUnit(combatInfo.combat, targetInfo.unit.id);
-  if (challengerSide !== 'active' || targetSide !== 'reactive') {
+  if (
+    (!isHeroicInterventionDeclare && (challengerSide !== 'active' || targetSide !== 'reactive')) ||
+    (isHeroicInterventionDeclare && (challengerSide !== 'reactive' || targetSide !== 'active'))
+  ) {
     return invalidDeclare(preparedState, events, 'Challenge must target an opposing unit in the active combat');
+  }
+
+  const expectedChallengerPlayerIndex = isHeroicInterventionDeclare
+    ? pendingHeroicIntervention.reactingPlayerIndex
+    : preparedState.activePlayerIndex;
+  const challengerPlayerIndex = findUnitPlayerIndex(preparedState, challengerInfo.unit.id);
+  if (challengerPlayerIndex === undefined || challengerPlayerIndex !== expectedChallengerPlayerIndex) {
+    return invalidDeclare(
+      preparedState,
+      events,
+      isHeroicInterventionDeclare
+        ? 'Heroic Intervention challenger must belong to the reactive player'
+        : 'Challenger must belong to the active player',
+    );
   }
 
   const eligibility = buildChallengeEligibilityForSides(
@@ -158,10 +188,14 @@ export function declareChallenge(
     combatInfo.combat.activePlayerUnitIds,
     combatInfo.combat.reactivePlayerUnitIds,
   );
-  const activeEligibleModels = eligibility.leftEligibleModels;
-  const reactiveEligibleModels = eligibility.rightEligibleModels;
+  const challengerEligibleModels = isHeroicInterventionDeclare
+    ? eligibility.rightEligibleModels
+    : eligibility.leftEligibleModels;
+  const targetEligibleModels = isHeroicInterventionDeclare
+    ? eligibility.leftEligibleModels
+    : eligibility.rightEligibleModels;
 
-  if (!activeEligibleModels.some((model) => model.id === challengerModelId)) {
+  if (!challengerEligibleModels.some((model) => model.id === challengerModelId)) {
     return invalidDeclare(
       preparedState,
       events,
@@ -169,12 +203,12 @@ export function declareChallenge(
     );
   }
 
-  if (reactiveEligibleModels.length === 0) {
+  if (targetEligibleModels.length === 0) {
     return invalidDeclare(preparedState, events, 'No opposing eligible models can take part in this challenge');
   }
 
   const mandatoryChallengerIds = getMandatoryModelIds(
-    activeEligibleModels,
+    challengerEligibleModels,
     (model) => getMandatoryChallengerPriority(model),
   );
   if (
@@ -189,7 +223,7 @@ export function declareChallenge(
   }
 
   if (modelHasTargetSelectionOverride(challengerInfo.model)) {
-    const eligibleTargetIds = new Set(reactiveEligibleModels.map((model) => model.id));
+    const eligibleTargetIds = new Set(targetEligibleModels.map((model) => model.id));
     if (!eligibleTargetIds.has(targetModelId)) {
       return invalidDeclare(
         preparedState,
@@ -253,6 +287,9 @@ export function declareChallenge(
     state: {
       ...preparedState,
       activeCombats: updatedCombats,
+      pendingHeroicInterventionState: isHeroicInterventionDeclare
+        ? undefined
+        : preparedState.pendingHeroicInterventionState,
     },
     events,
     valid: true,
@@ -440,6 +477,13 @@ export function declineChallenge(
     state: {
       ...newState,
       activeCombats: updatedCombats,
+      processedChallengeCombatIds: [
+        ...new Set([
+          ...(newState.processedChallengeCombatIds ?? []),
+          combatInfo.combat.combatId,
+        ]),
+      ],
+      pendingHeroicInterventionState: undefined,
     },
     events,
     valid: true,

@@ -13,14 +13,43 @@
  * implemented as part of the full turn cycle integration.
  */
 
-import type { GameState } from '@hh/types';
-import { TacticalStatus, UnitMovementState } from '@hh/types';
+import type { GameState, UnitState } from '@hh/types';
+import { ModelSubType, TacticalStatus, UnitMovementState } from '@hh/types';
 import type { CommandResult, DiceProvider, GameEvent } from '../types';
-import type { CoolCheckEvent, StatusRemovedEvent } from '../types';
+import type { CoolCheckEvent, RepairTestEvent, StatusRemovedEvent } from '../types';
 import { updateUnitInGameState, removeStatus, setMovementState } from '../state-helpers';
-import { getActiveArmy, getAliveModels, getUnitsWithStatus } from '../game-queries';
+import { getActiveArmy, getAliveModels, getUnitsWithStatus, isVehicleUnit } from '../game-queries';
 import { handleVictorySubPhase } from '../missions/victory-handler';
-import { getModelCool } from '../profile-lookup';
+import { getModelCool, getUnitSpecialRuleValue, unitProfileHasSubType } from '../profile-lookup';
+
+const COOL_CHECK_STATUSES: TacticalStatus[] = [
+  TacticalStatus.Pinned,
+  TacticalStatus.Suppressed,
+  TacticalStatus.Stunned,
+  TacticalStatus.Stupefied,
+];
+
+const VEHICLE_STATUS_REMOVAL_PRIORITY: TacticalStatus[] = [
+  TacticalStatus.Stunned,
+  TacticalStatus.Pinned,
+  TacticalStatus.Suppressed,
+  TacticalStatus.Stupefied,
+];
+
+function getRepairTargetNumber(unit: UnitState): number {
+  const autoRepair = getUnitSpecialRuleValue(unit.profileId, 'Auto-repair');
+  return autoRepair !== null ? autoRepair : 6;
+}
+
+function getHighestPriorityVehicleStatus(unit: UnitState): TacticalStatus | null {
+  for (const status of VEHICLE_STATUS_REMOVAL_PRIORITY) {
+    if (unit.statuses.includes(status)) {
+      return status;
+    }
+  }
+
+  return unit.statuses[0] ?? null;
+}
 
 /**
  * Process the End Phase Effects sub-phase.
@@ -89,11 +118,11 @@ export function handleEndEffects(
 
 /**
  * Process the End Phase Statuses sub-phase.
- * Handles Cool Checks for Pinned and Suppressed units.
+ * Handles per-status Cool Checks for non-vehicle units and Repair Tests for vehicles.
  *
  * Reference: HH_Rules_Battle.md — "End Phase: Status Cleanup"
- * - Pinned units take a Cool Check (2d6 <= CL). Pass = remove Pinned.
- * - Suppressed units automatically lose Suppressed at end of turn.
+ * - Non-vehicle units make a Cool Check for each non-Routed status affecting them.
+ * - Vehicle units make Repair Tests instead of Cool Checks.
  *
  * @param state - Current game state
  * @param dice - Dice provider for Cool Checks
@@ -108,80 +137,84 @@ export function handleStatusCleanup(
 
   const activeArmy = getActiveArmy(state);
 
-  // Remove Suppressed status from all units (automatic)
-  const suppressedUnits = getUnitsWithStatus(activeArmy, TacticalStatus.Suppressed);
-  for (const unit of suppressedUnits) {
-    newState = updateUnitInGameState(newState, unit.id, (u) =>
-      removeStatus(u, TacticalStatus.Suppressed),
-    );
-    const event: StatusRemovedEvent = {
-      type: 'statusRemoved',
-      unitId: unit.id,
-      status: TacticalStatus.Suppressed,
-    };
-    events.push(event);
-  }
+  for (const unit of activeArmy.units) {
+    if (unit.statuses.length === 0) {
+      continue;
+    }
 
-  // Pinned units take a Cool Check
-  const pinnedUnits = getUnitsWithStatus(activeArmy, TacticalStatus.Pinned);
+    if (unitProfileHasSubType(unit.profileId, ModelSubType.Flyer)) {
+      continue;
+    }
 
-  for (const unit of pinnedUnits) {
-    const rolls = dice.rollMultipleD6(2);
-    const total = rolls[0] + rolls[1];
+    if (isVehicleUnit(unit)) {
+      let pendingStatuses = [...unit.statuses];
+      const attempts = getAliveModels(unit).length;
+      const targetNumber = getRepairTargetNumber(unit);
+
+      for (let attempt = 0; attempt < attempts && pendingStatuses.length > 0; attempt++) {
+        const roll = dice.rollD6();
+        const passed = roll >= targetNumber;
+        events.push({
+          type: 'repairTest',
+          unitId: unit.id,
+          roll,
+          target: targetNumber,
+          passed,
+        } satisfies RepairTestEvent);
+
+        if (!passed) {
+          continue;
+        }
+
+        const statusToRemove = getHighestPriorityVehicleStatus({ ...unit, statuses: pendingStatuses });
+        if (!statusToRemove) {
+          continue;
+        }
+
+        pendingStatuses = pendingStatuses.filter((status) => status !== statusToRemove);
+        newState = updateUnitInGameState(newState, unit.id, (currentUnit) =>
+          removeStatus(currentUnit, statusToRemove),
+        );
+        events.push({
+          type: 'statusRemoved',
+          unitId: unit.id,
+          status: statusToRemove,
+        } satisfies StatusRemovedEvent);
+      }
+
+      continue;
+    }
+
     const refModel = getAliveModels(unit)[0];
     const coolValue = refModel ? getModelCool(refModel.unitProfileId, refModel.profileModelName) : 7;
-    const passed = total <= coolValue;
+    for (const status of COOL_CHECK_STATUSES) {
+      if (!unit.statuses.includes(status)) {
+        continue;
+      }
 
-    const coolEvent: CoolCheckEvent = {
-      type: 'coolCheck',
-      unitId: unit.id,
-      roll: total,
-      target: coolValue,
-      passed,
-    };
-    events.push(coolEvent);
+      const [dieOne, dieTwo] = dice.roll2D6();
+      const total = dieOne + dieTwo;
+      const passed = total <= coolValue;
+      events.push({
+        type: 'coolCheck',
+        unitId: unit.id,
+        roll: total,
+        target: coolValue,
+        passed,
+      } satisfies CoolCheckEvent);
 
-    if (passed) {
-      newState = updateUnitInGameState(newState, unit.id, (u) =>
-        removeStatus(u, TacticalStatus.Pinned),
+      if (!passed) {
+        continue;
+      }
+
+      newState = updateUnitInGameState(newState, unit.id, (currentUnit) =>
+        removeStatus(currentUnit, status),
       );
-      const removedEvent: StatusRemovedEvent = {
+      events.push({
         type: 'statusRemoved',
         unitId: unit.id,
-        status: TacticalStatus.Pinned,
-      };
-      events.push(removedEvent);
-    }
-  }
-
-  // Stupefied units take a Cool Check to recover (EC Hereticus)
-  const stupefiedUnits = getUnitsWithStatus(activeArmy, TacticalStatus.Stupefied);
-  for (const unit of stupefiedUnits) {
-    const rolls = dice.rollMultipleD6(2);
-    const total = rolls[0] + rolls[1];
-    const stupRefModel = getAliveModels(unit)[0];
-    const stupCoolValue = stupRefModel ? getModelCool(stupRefModel.unitProfileId, stupRefModel.profileModelName) : 7;
-    const passed = total <= stupCoolValue;
-
-    const coolEvent: CoolCheckEvent = {
-      type: 'coolCheck',
-      unitId: unit.id,
-      roll: total,
-      target: stupCoolValue,
-      passed,
-    };
-    events.push(coolEvent);
-
-    if (passed) {
-      newState = updateUnitInGameState(newState, unit.id, (u) =>
-        removeStatus(u, TacticalStatus.Stupefied),
-      );
-      const removedEvent: StatusRemovedEvent = {
-        type: 'statusRemoved',
-        unitId: unit.id,
-        status: TacticalStatus.Stupefied,
-      };
-      events.push(removedEvent);
+        status,
+      } satisfies StatusRemovedEvent);
     }
   }
 
@@ -190,7 +223,7 @@ export function handleStatusCleanup(
   // If no enemies within 12", the status is automatically removed.
   const lostToNailsUnits = getUnitsWithStatus(activeArmy, TacticalStatus.LostToTheNails);
   for (const unit of lostToNailsUnits) {
-    const aliveModels = unit.models.filter(m => !m.isDestroyed);
+    const aliveModels = unit.models.filter((model) => !model.isDestroyed);
     if (aliveModels.length === 0) continue;
 
     // Check if any enemy model is within 12" of any model in this unit
