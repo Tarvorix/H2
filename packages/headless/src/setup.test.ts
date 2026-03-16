@@ -58,6 +58,34 @@ describe('headless mission setup integration', () => {
     { missionId: 'take-and-hold', objectivePosition: { x: 27, y: 24 } },
   ];
 
+  it('initializes Zone Mortalis missions with Zone battlefield defaults, terrain, and runtime state', () => {
+    const state = createHeadlessGameState({
+      missionId: 'sector-sweep',
+      armies: [
+        {
+          playerName: 'Player 1',
+          faction: LegionFaction.DarkAngels,
+          allegiance: Allegiance.Loyalist,
+          units: [{ profileId: 'techmarine', modelCount: 1, isWarlord: true }],
+        },
+        {
+          playerName: 'Player 2',
+          faction: LegionFaction.WorldEaters,
+          allegiance: Allegiance.Traitor,
+          units: [{ profileId: 'techmarine', modelCount: 1, isWarlord: true }],
+        },
+      ],
+    });
+
+    expect(state.gameMode).toBe('zone-mortalis');
+    expect(state.battlefield).toEqual({ width: 48, height: 48 });
+    expect(state.maxBattleTurns).toBe(5);
+    expect(state.terrain.length).toBeGreaterThan(0);
+    expect(state.zoneMortalisState?.sections).toHaveLength(16);
+    expect((state.zoneMortalisState?.doorways.length ?? 0)).toBeGreaterThan(0);
+    expect(state.missionState?.missionId).toBe('sector-sweep');
+  });
+
   it.each(missionCases)(
     'runs full mission flow through end-state scoring for $missionId',
     ({ missionId, objectivePosition }) => {

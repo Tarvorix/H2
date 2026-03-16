@@ -5,11 +5,20 @@
  * Handles charge declarations, challenges, gambit selection, fights, and aftermath.
  */
 
-import type { GameState, GameCommand } from '@hh/types';
+import type { GameState, GameCommand, UnitState } from '@hh/types';
 import { SubPhase } from '@hh/types';
 import { getAliveModels, getEligibleAcceptors, getEligibleChallengers } from '@hh/engine';
 import type { AITurnContext, StrategyMode } from '../types';
-import { getChargeableUnits, getValidChargeTargets } from '../helpers/unit-queries';
+import {
+  getChargeableUnits,
+  getValidChargeTargets,
+  getValidDoorwayChargeTargets,
+  type ZoneMortalisDoorwayTarget,
+} from '../helpers/unit-queries';
+
+type ChargeTargetCandidate =
+  | { kind: 'unit'; unit: UnitState }
+  | { kind: 'doorway'; doorway: ZoneMortalisDoorwayTarget };
 
 // ─── Main Entry ──────────────────────────────────────────────────────────────
 
@@ -67,7 +76,11 @@ function generateChargeCommand(
   }
 
   for (const unit of chargeableUnits) {
-    const targets = getValidChargeTargets(state, unit.id);
+    const unitTargets = getValidChargeTargets(state, unit.id)
+      .map((target) => ({ kind: 'unit', unit: target } as ChargeTargetCandidate));
+    const doorwayTargets = getValidDoorwayChargeTargets(state, unit.id)
+      .map((doorway) => ({ kind: 'doorway', doorway } as ChargeTargetCandidate));
+    const targets = [...unitTargets, ...doorwayTargets];
     if (targets.length === 0) {
       context.actedUnitIds.add(unit.id);
       continue;
@@ -96,7 +109,11 @@ function generateChargeCommand(
     return {
       type: 'declareCharge',
       chargingUnitId: unit.id,
-      targetUnitId: target.id,
+      targetUnitId: target.kind === 'unit' ? target.unit.id : target.doorway.doorwayId,
+      target: target.kind === 'doorway'
+        ? { kind: 'doorway', doorwayId: target.doorway.doorwayId }
+        : undefined,
+      targetDoorwayId: target.kind === 'doorway' ? target.doorway.doorwayId : undefined,
     };
   }
 
@@ -109,27 +126,27 @@ function generateChargeCommand(
  * Tactical: weakest target (fewest alive models)
  */
 function selectChargeTarget(
-  targets: import('@hh/types').UnitState[],
+  targets: ChargeTargetCandidate[],
   strategy: StrategyMode,
-): { id: string } {
+): ChargeTargetCandidate {
   if (strategy === 'basic' || targets.length === 1) {
     const idx = Math.floor(Math.random() * targets.length);
-    return { id: targets[idx].id };
+    return targets[idx];
   }
 
-  // Tactical: prefer targets with fewer models
+  // Tactical: prefer weakened doorways or smaller units
   let best = targets[0];
-  let bestCount = getAliveModels(targets[0]).length;
+  let bestScore = scoreChargeTarget(best);
 
   for (let i = 1; i < targets.length; i++) {
-    const count = getAliveModels(targets[i]).length;
-    if (count < bestCount) {
-      bestCount = count;
+    const score = scoreChargeTarget(targets[i]);
+    if (score > bestScore) {
+      bestScore = score;
       best = targets[i];
     }
   }
 
-  return { id: best.id };
+  return best;
 }
 
 /**
@@ -139,7 +156,7 @@ function selectChargeTarget(
 function evaluateChargeWorth(
   state: GameState,
   chargerUnitId: string,
-  targets: import('@hh/types').UnitState[],
+  targets: ChargeTargetCandidate[],
 ): boolean {
   // Find the charger
   const charger =
@@ -151,12 +168,30 @@ function evaluateChargeWorth(
 
   // Charge if we outnumber at least one target
   for (const target of targets) {
-    const targetModels = getAliveModels(target).length;
+    if (target.kind === 'doorway') {
+      if (target.doorway.hullPoints <= Math.max(1, Math.ceil(chargerModels / 3))) {
+        return true;
+      }
+      continue;
+    }
+
+    const targetModels = getAliveModels(target.unit).length;
     if (chargerModels >= targetModels) return true;
   }
 
   // Also charge if we have 5+ models (decent chance of winning)
   return chargerModels >= 5;
+}
+
+function scoreChargeTarget(target: ChargeTargetCandidate): number {
+  if (target.kind === 'doorway') {
+    return (
+      (target.doorway.state === 'closed' ? 10 : 4) +
+      ((3 - target.doorway.hullPoints) * 5)
+    );
+  }
+
+  return 20 - getAliveModels(target.unit).length;
 }
 
 // ─── Challenge ───────────────────────────────────────────────────────────────

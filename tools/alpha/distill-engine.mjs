@@ -551,6 +551,11 @@ function rerunTeacherMatches(args, outDir, shardSize) {
   const explicitSetupOptions = typeof args.setup === 'string'
     ? readJson(String(args.setup))
     : null;
+  const setupSelection = {
+    ...(typeof args.mode === 'string' ? { mode: String(args.mode) } : {}),
+    ...(typeof args['game-mode'] === 'string' ? { gameMode: String(args['game-mode']) } : {}),
+    ...(typeof args['mission-id'] === 'string' ? { missionId: String(args['mission-id']) } : {}),
+  };
 
   const allSamples = [];
   const matches = [];
@@ -569,6 +574,7 @@ function rerunTeacherMatches(args, outDir, shardSize) {
       : createDefaultSetupOptions({
         matchIndex,
         firstPlayerIndex: matchIndex % 2,
+        ...setupSelection,
       });
 
     const result = runFastDistillMatch({

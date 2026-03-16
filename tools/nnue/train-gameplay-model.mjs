@@ -5,6 +5,7 @@ import {
   GAMEPLAY_FEATURE_DIMENSION,
   buildPairedGameplayModel,
   parseArgs,
+  readJson,
   readJsonLines,
   saveSerializedModel,
   toFloat,
@@ -132,6 +133,35 @@ function splitSamples(samples, validationSplit, shuffleSeed) {
     validationSamples: shuffledSamples.slice(0, validationCount),
     trainingSamples: shuffledSamples.slice(validationCount),
   };
+}
+
+function expandInputSpecs(inputs) {
+  const expanded = [];
+
+  for (const spec of inputs) {
+    const normalized = String(spec).trim();
+    if (!normalized) {
+      continue;
+    }
+
+    if (normalized.endsWith('.jsonl')) {
+      expanded.push(normalized);
+      continue;
+    }
+
+    if (normalized.endsWith('.json')) {
+      const manifest = readJson(normalized);
+      if (!Array.isArray(manifest.shardPaths)) {
+        throw new Error(`Gameplay training manifest "${normalized}" is missing "shardPaths".`);
+      }
+      expanded.push(...manifest.shardPaths.map((entry) => String(entry)));
+      continue;
+    }
+
+    expanded.push(normalized);
+  }
+
+  return [...new Set(expanded)];
 }
 
 function validateGameplaySamples(samples) {
@@ -294,7 +324,7 @@ if ((outcomeTargetWeight + searchTargetWeight) <= 0) {
 }
 normalizedOutcomeTargetWeight = outcomeTargetWeight / (outcomeTargetWeight + searchTargetWeight);
 normalizedSearchTargetWeight = searchTargetWeight / (outcomeTargetWeight + searchTargetWeight);
-const samples = readJsonLines(inputs);
+const samples = readJsonLines(expandInputSpecs(inputs));
 const progress = createProgressReporter({
   label: 'train',
   total: epochs,

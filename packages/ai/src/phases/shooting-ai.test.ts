@@ -173,4 +173,68 @@ describe('generateShootingCommand', () => {
     const result = generateShootingCommand(state, 0, ctx, 'basic');
     expect(result).toBeNull();
   });
+
+  it('targets Zone Mortalis doorways when they are the only legal shooting target', () => {
+    const attacker = createUnit({
+      id: 'attacker-1',
+      models: [createModel({ id: 'a-m1', position: { x: 10, y: 12 }, equippedWargear: ['boltgun'] })],
+    });
+    const state = createGameState({
+      gameMode: 'zone-mortalis' as GameState['gameMode'],
+      terrain: [
+        {
+          id: 'door-1',
+          name: 'Doorway',
+          type: 'Impassable' as any,
+          shape: {
+            kind: 'rectangle',
+            topLeft: { x: 15, y: 11 },
+            width: 0.6,
+            height: 2,
+          },
+          isDifficult: false,
+          isDangerous: false,
+          zoneMortalis: {
+            id: 'door-1',
+            kind: 'doorway',
+            boundary: { orientation: 'vertical', row: 1, column: 1 },
+            width: 2,
+            state: 'closed',
+            armourValue: 12,
+            hullPoints: 3,
+            maxHullPoints: 3,
+          },
+        },
+      ],
+      zoneMortalisState: {
+        sections: [],
+        doorways: [
+          {
+            id: 'door-1',
+            kind: 'doorway',
+            boundary: { orientation: 'vertical', row: 1, column: 1 },
+            width: 2,
+            state: 'closed',
+            armourValue: 12,
+            hullPoints: 3,
+            maxHullPoints: 3,
+          },
+        ],
+        objectives: [],
+        doorwayOperationHistory: [],
+        pendingBlindPanicChecks: [],
+      },
+    });
+    state.armies[0] = createArmy({ playerIndex: 0, units: [attacker] });
+
+    const result = generateShootingCommand(state, 0, createContext(), 'tactical');
+
+    expect(result).not.toBeNull();
+    expect(result).toMatchObject({
+      type: 'declareShooting',
+      attackingUnitId: 'attacker-1',
+      targetUnitId: 'door-1',
+      targetDoorwayId: 'door-1',
+    });
+  });
 });

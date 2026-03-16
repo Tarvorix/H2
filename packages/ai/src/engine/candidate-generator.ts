@@ -66,10 +66,17 @@ import {
   getModelMovementCharacteristic,
   getShootableUnits,
   getUnitCentroid,
+  getValidDoorwayChargeTargets,
+  getValidDoorwayShootingTargets,
   getValidChargeTargets,
   getValidShootingTargets,
+  getZoneMortalisObjectiveInterfaceTargets,
+  getZoneMortalisOperableDoorways,
 } from '../helpers/unit-queries';
-import { selectWeaponsForAttack } from '../helpers/weapon-selection';
+import {
+  selectWeaponsForAttack,
+  selectWeaponsForDoorwayAttack,
+} from '../helpers/weapon-selection';
 import { getAvailableAftermathOptions } from '@hh/engine';
 import { TacticalStatus } from '@hh/types';
 import {
@@ -139,6 +146,99 @@ function areModelPositionsWithinBattlefield(
     position.x <= state.battlefield.width &&
     position.y <= state.battlefield.height,
   );
+}
+
+function simpleDistanceBetween(a: Position, b: Position): number {
+  const dx = a.x - b.x;
+  const dy = a.y - b.y;
+  return Math.sqrt((dx * dx) + (dy * dy));
+}
+
+function getZoneMovementFocusPoint(
+  state: GameState,
+  playerIndex: number,
+  currentPos: Position,
+): Position | null {
+  const objectives = state.missionState?.objectives?.filter((objective) => !objective.isRemoved) ?? [];
+  if (objectives.length > 0) {
+    return objectives.reduce((closest, objective) => (
+      simpleDistanceBetween(currentPos, objective.position) < simpleDistanceBetween(currentPos, closest)
+        ? objective.position
+        : closest
+    ), objectives[0].position);
+  }
+
+  const enemyCentroids = getEnemyDeployedUnits(state, playerIndex)
+    .map((unit) => getUnitCentroid(unit))
+    .filter((centroid): centroid is Position => centroid !== null);
+  if (enemyCentroids.length === 0) {
+    return null;
+  }
+
+  return enemyCentroids.reduce((closest, centroid) => (
+    simpleDistanceBetween(currentPos, centroid) < simpleDistanceBetween(currentPos, closest)
+      ? centroid
+      : closest
+  ), enemyCentroids[0]);
+}
+
+function buildMovementCandidatePositions(
+  state: GameState,
+  currentPos: Position,
+  maxDistance: number,
+  battlefieldWidth: number,
+  battlefieldHeight: number,
+  preferredTarget: Position | null = null,
+): Position[] {
+  if (state.gameMode !== 'zone-mortalis') {
+    return generateCandidatePositions(currentPos, maxDistance, battlefieldWidth, battlefieldHeight);
+  }
+
+  const candidates: Position[] = [];
+  const directions = [
+    { x: 1, y: 0 },
+    { x: 0, y: 1 },
+    { x: -1, y: 0 },
+    { x: 0, y: -1 },
+  ];
+  const seen = new Set<string>();
+  const addPosition = (x: number, y: number): void => {
+    const position = {
+      x: Math.max(0.5, Math.min(battlefieldWidth - 0.5, x)),
+      y: Math.max(0.5, Math.min(battlefieldHeight - 0.5, y)),
+    };
+    const key = `${position.x.toFixed(2)}:${position.y.toFixed(2)}`;
+    if (seen.has(key)) {
+      return;
+    }
+    seen.add(key);
+    candidates.push(position);
+  };
+
+  addPosition(currentPos.x, currentPos.y);
+
+  if (preferredTarget) {
+    const dx = preferredTarget.x - currentPos.x;
+    const dy = preferredTarget.y - currentPos.y;
+    if (Math.abs(dx) > 0.01) {
+      addPosition(currentPos.x + (Math.sign(dx) * maxDistance), currentPos.y);
+    }
+    if (Math.abs(dy) > 0.01) {
+      addPosition(currentPos.x, currentPos.y + (Math.sign(dy) * maxDistance));
+    }
+    if (candidates.length > 1) {
+      return candidates;
+    }
+  }
+
+  for (const direction of directions) {
+    addPosition(
+      currentPos.x + (direction.x * maxDistance),
+      currentPos.y + (direction.y * maxDistance),
+    );
+  }
+
+  return candidates;
 }
 
 function isLegalMoveFormation(
@@ -1232,6 +1332,69 @@ function generateTransportActions(
   return actions;
 }
 
+function generateZoneMortalisUtilityActions(
+  node: SearchNodeState,
+  playerIndex: number,
+  config: SearchConfig,
+): MacroAction[] {
+  const actions: MacroAction[] = [];
+  const candidateUnits = node.state.armies[playerIndex].units.filter((unit) =>
+    !node.actedUnitIds.has(unit.id) &&
+    unit.isDeployed &&
+    unit.embarkedOnId === null &&
+    !unit.isLockedInCombat &&
+    getAliveModels(unit).length > 0,
+  );
+
+  for (const unit of candidateUnits) {
+    const interfaceTargets = getZoneMortalisObjectiveInterfaceTargets(node.state, unit.id)
+      .slice(0, Math.max(1, config.maxActionsPerUnit - 1));
+    for (const target of interfaceTargets) {
+      const score =
+        18 +
+        (target.objective.currentVpValue * 6) +
+        Math.max(0, 4 - target.measuredDistance);
+      actions.push(
+        makeAction(
+          `zm:interface:${unit.id}:${target.objective.id}`,
+          `Interface ${target.objective.id} with ${unit.id}`,
+          [{
+            type: 'interfaceObjective',
+            unitId: unit.id,
+            objectiveId: target.objective.id,
+          }],
+          score,
+          [unit.id],
+          ['zone mortalis utility', 'objective interface'],
+        ),
+      );
+    }
+
+    const doorwayTargets = getZoneMortalisOperableDoorways(node.state, unit.id)
+      .slice(0, Math.max(1, config.maxActionsPerUnit - 1));
+    for (const target of doorwayTargets) {
+      const score = 12 + (target.currentState === 'closed' ? 6 : 2);
+      actions.push(
+        makeAction(
+          `zm:doorway:${unit.id}:${target.doorwayId}:${target.desiredState}`,
+          `${target.desiredState === 'open' ? 'Open' : 'Close'} doorway ${target.doorwayId} with ${unit.id}`,
+          [{
+            type: 'operateDoorway',
+            unitId: unit.id,
+            doorwayId: target.doorwayId,
+            desiredState: target.desiredState,
+          }],
+          score,
+          [unit.id],
+          ['zone mortalis utility', 'doorway operation'],
+        ),
+      );
+    }
+  }
+
+  return actions;
+}
+
 function generateMoveActions(
   node: SearchNodeState,
   playerIndex: number,
@@ -1258,10 +1421,23 @@ function generateMoveActions(
     const aliveModels = getAliveModels(unit);
     const centroid = getUnitCentroid(unit);
     if (!centroid || aliveModels.length === 0) continue;
+    const isCompactZoneSearch =
+      node.state.gameMode === 'zone-mortalis' &&
+      config.timeBudgetMs <= 100;
 
     const buildDestinations = (isRush: boolean): Array<MovementDestinationCandidate & { lane: MovementLane; selectedScore: number }> => {
       const maxMove = getUnitMaxTranslation(unit, isRush);
-      const destinations = generateCandidatePositions(centroid, maxMove, battlefieldWidth, battlefieldHeight)
+      const preferredTarget = isCompactZoneSearch
+        ? getZoneMovementFocusPoint(node.state, playerIndex, centroid)
+        : null;
+      const destinations = buildMovementCandidatePositions(
+        node.state,
+        centroid,
+        maxMove,
+        battlefieldWidth,
+        battlefieldHeight,
+        preferredTarget,
+      )
         .map((position) => {
           const modelPositions = translateUnitToCentroid(unit, position);
           if (!modelPositions) return null;
@@ -1284,25 +1460,82 @@ function generateMoveActions(
     if (unit.movementState === UnitMovementState.Stationary) {
       const selectedDestinations = buildDestinations(false);
       for (const destination of selectedDestinations) {
+        const moveCommand: GameCommand = {
+          type: 'moveUnit',
+          unitId: unit.id,
+          modelPositions: destination.modelPositions,
+        };
         actions.push(
           makeAction(
             `move:${unit.id}:${destination.position.x.toFixed(1)}:${destination.position.y.toFixed(1)}`,
             `Move ${unit.id}`,
-            [{
-              type: 'moveUnit',
-              unitId: unit.id,
-              modelPositions: destination.modelPositions,
-            }],
+            [moveCommand],
             destination.selectedScore,
             [unit.id],
             [laneReason(destination.lane)],
           ),
         );
+
+        const movedState = handleMoveUnit(
+          node.state,
+          unit.id,
+          destination.modelPositions,
+          new FixedDiceProvider(Array.from({ length: 128 }, () => 6)),
+        );
+        if (!movedState.accepted) {
+          continue;
+        }
+
+        const interfaceTargets = getZoneMortalisObjectiveInterfaceTargets(movedState.state, unit.id)
+          .slice(0, 1);
+        for (const target of interfaceTargets) {
+          actions.push(
+            makeAction(
+              `move-interface:${unit.id}:${target.objective.id}:${destination.position.x.toFixed(1)}:${destination.position.y.toFixed(1)}`,
+              `Move ${unit.id} and interface ${target.objective.id}`,
+              [
+                moveCommand,
+                {
+                  type: 'interfaceObjective',
+                  unitId: unit.id,
+                  objectiveId: target.objective.id,
+                },
+              ],
+              destination.selectedScore + 14 + (target.objective.currentVpValue * 6),
+              [unit.id],
+              [laneReason(destination.lane), 'objective interface'],
+            ),
+          );
+        }
+
+        const doorwayTargets = getZoneMortalisOperableDoorways(movedState.state, unit.id)
+          .slice(0, 1);
+        for (const target of doorwayTargets) {
+          actions.push(
+            makeAction(
+              `move-doorway:${unit.id}:${target.doorwayId}:${target.desiredState}:${destination.position.x.toFixed(1)}:${destination.position.y.toFixed(1)}`,
+              `Move ${unit.id} and ${target.desiredState} doorway ${target.doorwayId}`,
+              [
+                moveCommand,
+                {
+                  type: 'operateDoorway',
+                  unitId: unit.id,
+                  doorwayId: target.doorwayId,
+                  desiredState: target.desiredState,
+                },
+              ],
+              destination.selectedScore + 8 + (target.currentState === 'closed' ? 4 : 1),
+              [unit.id],
+              [laneReason(destination.lane), 'doorway operation'],
+            ),
+          );
+        }
       }
     }
 
     const canGenerateRushMoves =
-      unit.movementState === UnitMovementState.RushDeclared || canUnitRush(unit);
+      unit.movementState === UnitMovementState.RushDeclared ||
+      (!isCompactZoneSearch && canUnitRush(unit));
     if (canGenerateRushMoves) {
       const selectedRushDestinations = buildDestinations(true);
       for (const destination of selectedRushDestinations) {
@@ -1333,6 +1566,39 @@ function generateMoveActions(
             ['rush move', laneReason(destination.lane)],
           ),
         );
+
+        const rushedState = handleMoveUnit(
+          node.state,
+          unit.id,
+          destination.modelPositions,
+          new FixedDiceProvider(Array.from({ length: 128 }, () => 6)),
+          unit.movementState === UnitMovementState.RushDeclared ? { isRush: true } : { isRush: true },
+        );
+        if (!rushedState.accepted) {
+          continue;
+        }
+
+        const interfaceTargets = getZoneMortalisObjectiveInterfaceTargets(rushedState.state, unit.id)
+          .slice(0, 1);
+        for (const target of interfaceTargets) {
+          actions.push(
+            makeAction(
+              `rush-interface:${unit.id}:${target.objective.id}:${destination.position.x.toFixed(1)}:${destination.position.y.toFixed(1)}`,
+              `Rush ${unit.id} and interface ${target.objective.id}`,
+              [
+                ...rushCommands,
+                {
+                  type: 'interfaceObjective',
+                  unitId: unit.id,
+                  objectiveId: target.objective.id,
+                },
+              ],
+              destination.selectedScore + 13 + (target.objective.currentVpValue * 6),
+              [unit.id],
+              ['rush move', laneReason(destination.lane), 'objective interface'],
+            ),
+          );
+        }
       }
     }
   }
@@ -1522,6 +1788,47 @@ function generateShootingActions(
       }
     }
 
+    const doorwayTargets = getValidDoorwayShootingTargets(node.state, unit.id)
+      .slice(0, Math.max(1, config.maxActionsPerUnit));
+    for (const doorway of doorwayTargets) {
+      const weaponSelections = selectWeaponsForDoorwayAttack(
+        node.state,
+        unit,
+        doorway.doorwayId,
+        'tactical',
+      );
+      if (weaponSelections.length === 0) continue;
+
+      const doorwayScore =
+        18 +
+        (doorway.state === 'closed' ? 10 : 4) +
+        ((3 - doorway.hullPoints) * 8) +
+        doorway.width;
+
+      const reasons = [
+        'zone mortalis doorway target',
+        doorway.state === 'closed' ? 'blocking bulkhead' : 'weakened doorway',
+      ];
+
+      scoredActions.push(
+        makeAction(
+          `shoot:${unit.id}:doorway:${doorway.doorwayId}`,
+          `Shoot doorway ${doorway.doorwayId} with ${unit.id}`,
+          [{
+            type: 'declareShooting',
+            attackingUnitId: unit.id,
+            targetUnitId: doorway.doorwayId,
+            target: { kind: 'doorway', doorwayId: doorway.doorwayId },
+            targetDoorwayId: doorway.doorwayId,
+            weaponSelections,
+          }],
+          doorwayScore,
+          [unit.id],
+          reasons,
+        ),
+      );
+    }
+
     actions.push(
       ...scoredActions
         .sort((left, right) => right.orderingScore - left.orderingScore)
@@ -1581,6 +1888,59 @@ function generateChargeActions(
             targetScore.score + 5,
             [unit.id],
             [...targetScore.reasons, 'psychic assault buff'],
+          ),
+        );
+      }
+    }
+
+    const doorwayTargets = getValidDoorwayChargeTargets(node.state, unit.id)
+      .slice(0, Math.max(1, config.maxActionsPerUnit));
+    for (const doorway of doorwayTargets) {
+      const doorwayScore =
+        14 +
+        (doorway.state === 'closed' ? 8 : 3) +
+        ((3 - doorway.hullPoints) * 7);
+
+      actions.push(
+        makeAction(
+          `charge:${unit.id}:doorway:${doorway.doorwayId}`,
+          `Charge doorway ${doorway.doorwayId} with ${unit.id}`,
+          [{
+            type: 'declareCharge',
+            chargingUnitId: unit.id,
+            targetUnitId: doorway.doorwayId,
+            target: { kind: 'doorway', doorwayId: doorway.doorwayId },
+            targetDoorwayId: doorway.doorwayId,
+          }],
+          doorwayScore,
+          [unit.id],
+          ['zone mortalis doorway charge', doorway.state === 'closed' ? 'breach bulkhead' : 'finish damaged doorway'],
+        ),
+      );
+
+      const declaredPsychicPower = selectDeclaredPsychicPower(
+        node.state,
+        playerIndex,
+        unit.id,
+        'biomantic-rage',
+        'Biomancer',
+      );
+      if (declaredPsychicPower) {
+        actions.push(
+          makeAction(
+            `charge:${unit.id}:doorway:${doorway.doorwayId}:biomantic-rage:${declaredPsychicPower.focusModelId}`,
+            `Charge doorway ${doorway.doorwayId} with ${unit.id} using Biomantic Rage`,
+            [{
+              type: 'declareCharge',
+              chargingUnitId: unit.id,
+              targetUnitId: doorway.doorwayId,
+              target: { kind: 'doorway', doorwayId: doorway.doorwayId },
+              targetDoorwayId: doorway.doorwayId,
+              psychicPower: declaredPsychicPower,
+            }],
+            doorwayScore + 5,
+            [unit.id],
+            ['zone mortalis doorway charge', 'psychic assault buff'],
           ),
         );
       }
@@ -1912,6 +2272,7 @@ export function generateMacroActions(
             case SubPhase.Move:
               return [
                 ...generateStandalonePsychicActions(node, playerIndex, config),
+                ...generateZoneMortalisUtilityActions(node, playerIndex, config),
                 ...generateTransportActions(node, playerIndex, config),
                 ...generateMoveActions(node, playerIndex, config),
               ];

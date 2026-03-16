@@ -295,3 +295,107 @@ describe('generateMovementCommand — Tactical strategy', () => {
     expect(result).toBeNull();
   });
 });
+
+describe('generateMovementCommand — Zone Mortalis utility actions', () => {
+  it('interfaces Terminal Control objectives before issuing a move', () => {
+    const unit = createUnit({
+      id: 'interface-unit',
+      models: [createModel({ id: 'interface-model', position: { x: 12, y: 12 } })],
+    });
+    const state = createGameState({
+      gameMode: 'zone-mortalis' as GameState['gameMode'],
+      missionState: {
+        missionId: 'terminal-control',
+        objectives: [
+          {
+            id: 'obj-1',
+            position: { x: 13, y: 12 },
+            vpValue: 1,
+            currentVpValue: 1,
+            isRemoved: false,
+            label: 'Terminal',
+          },
+        ],
+      } as GameState['missionState'],
+      zoneMortalisState: {
+        sections: [],
+        doorways: [],
+        objectives: [{ objectiveId: 'obj-1', currentValue: 1, isActive: true, isInterfaced: false }],
+        doorwayOperationHistory: [],
+        pendingBlindPanicChecks: [],
+      },
+    });
+    state.armies[0] = createArmy({ playerIndex: 0, units: [unit] });
+
+    const result = generateMovementCommand(state, 0, createContext(), 'tactical');
+
+    expect(result).toEqual({
+      type: 'interfaceObjective',
+      unitId: 'interface-unit',
+      objectiveId: 'obj-1',
+    });
+  });
+
+  it('operates doorways in Zone Mortalis when a unit is in base contact', () => {
+    const unit = createUnit({
+      id: 'door-unit',
+      models: [createModel({ id: 'door-model', position: { x: 12, y: 12 } })],
+    });
+    const state = createGameState({
+      gameMode: 'zone-mortalis' as GameState['gameMode'],
+      terrain: [
+        {
+          id: 'door-1',
+          name: 'Doorway',
+          type: 'Impassable' as any,
+          shape: {
+            kind: 'rectangle',
+            topLeft: { x: 11.7, y: 11 },
+            width: 0.6,
+            height: 2,
+          },
+          isDifficult: false,
+          isDangerous: false,
+          zoneMortalis: {
+            id: 'door-1',
+            kind: 'doorway',
+            boundary: { orientation: 'vertical', row: 1, column: 1 },
+            width: 2,
+            state: 'closed',
+            armourValue: 12,
+            hullPoints: 3,
+            maxHullPoints: 3,
+          },
+        },
+      ],
+      zoneMortalisState: {
+        sections: [],
+        doorways: [
+          {
+            id: 'door-1',
+            kind: 'doorway',
+            boundary: { orientation: 'vertical', row: 1, column: 1 },
+            width: 2,
+            state: 'closed',
+            armourValue: 12,
+            hullPoints: 3,
+            maxHullPoints: 3,
+          },
+        ],
+        objectives: [],
+        doorwayOperationHistory: [],
+        pendingBlindPanicChecks: [],
+      },
+    });
+    state.armies[0] = createArmy({ playerIndex: 0, units: [unit] });
+
+    const result = generateMovementCommand(state, 0, createContext(), 'tactical');
+
+    expect(result).toEqual({
+      type: 'operateDoorway',
+      unitId: 'door-unit',
+      doorwayId: 'door-1',
+      desiredState: 'open',
+    });
+  });
+});

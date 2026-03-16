@@ -206,7 +206,21 @@ function getDeploymentAxes(
             depth: { x: -diagonal, y: -diagonal },
           };
     }
+    case DeploymentMap.ConfigurationPrimus: {
+      const diagonal = Math.SQRT1_2;
+      return playerIndex === 0
+        ? {
+            lateral: { x: diagonal, y: -diagonal },
+            depth: { x: diagonal, y: diagonal },
+          }
+        : {
+            lateral: { x: -diagonal, y: diagonal },
+            depth: { x: -diagonal, y: -diagonal },
+          };
+    }
+    case DeploymentMap.ConfigurationTertius:
     case DeploymentMap.HammerAndAnvil:
+    case DeploymentMap.ConfigurationSecundus:
     default:
       return {
         lateral: { x: 1, y: 0 },

@@ -5,11 +5,25 @@
  * Handles target selection, weapon assignment, and casualty resolution.
  */
 
-import type { GameState, GameCommand } from '@hh/types';
+import type { GameState, GameCommand, UnitState } from '@hh/types';
 import { getAliveModels } from '@hh/engine';
 import type { AITurnContext, StrategyMode } from '../types';
-import { getShootableUnits, getValidShootingTargets } from '../helpers/unit-queries';
-import { selectWeaponsForAttack, hasWeaponsInRange } from '../helpers/weapon-selection';
+import {
+  getShootableUnits,
+  getValidDoorwayShootingTargets,
+  getValidShootingTargets,
+  type ZoneMortalisDoorwayTarget,
+} from '../helpers/unit-queries';
+import {
+  hasWeaponsInRange,
+  hasWeaponsInRangeToDoorway,
+  selectWeaponsForAttack,
+  selectWeaponsForDoorwayAttack,
+} from '../helpers/weapon-selection';
+
+type ShootingTargetCandidate =
+  | { kind: 'unit'; unit: UnitState }
+  | { kind: 'doorway'; doorway: ZoneMortalisDoorwayTarget };
 
 // ─── Main Entry ──────────────────────────────────────────────────────────────
 
@@ -37,38 +51,30 @@ export function generateShootingCommand(
 
   // Try each shootable unit until we find one with valid targets
   for (const unit of shootableUnits) {
-    const targets = getValidShootingTargets(state, unit.id);
+    const unitTargets = getValidShootingTargets(state, unit.id)
+      .filter((target) => hasWeaponsInRange(state, unit, target.id))
+      .map((target) => ({ kind: 'unit', unit: target } as ShootingTargetCandidate));
+    const doorwayTargets = getValidDoorwayShootingTargets(state, unit.id)
+      .filter((target) => hasWeaponsInRangeToDoorway(state, unit, target.doorwayId))
+      .map((doorway) => ({ kind: 'doorway', doorway } as ShootingTargetCandidate));
+    const targets = [...unitTargets, ...doorwayTargets];
+
     if (targets.length === 0) {
       // No valid targets for this unit — mark as acted and try next
       context.actedUnitIds.add(unit.id);
       continue;
     }
 
-    // Filter to targets with weapons in range
-    const inRangeTargets = targets.filter((target) =>
-      hasWeaponsInRange(state, unit, target.id),
-    );
-
-    if (inRangeTargets.length === 0) {
-      context.actedUnitIds.add(unit.id);
-      continue;
-    }
-
     // Select a target
-    const target = selectTarget(state, unit.id, inRangeTargets, strategy);
+    const target = selectTarget(state, unit.id, targets, strategy);
     if (!target) {
       context.actedUnitIds.add(unit.id);
       continue;
     }
 
-    // Select weapons for each model
-    const targetUnit = inRangeTargets.find((t) => t.id === target.id);
-    if (!targetUnit) {
-      context.actedUnitIds.add(unit.id);
-      continue;
-    }
-
-    const weaponSelections = selectWeaponsForAttack(state, unit, targetUnit, strategy);
+    const weaponSelections = target.kind === 'unit'
+      ? selectWeaponsForAttack(state, unit, target.unit, strategy)
+      : selectWeaponsForDoorwayAttack(state, unit, target.doorway.doorwayId, strategy);
     if (weaponSelections.length === 0) {
       context.actedUnitIds.add(unit.id);
       continue;
@@ -80,7 +86,11 @@ export function generateShootingCommand(
     return {
       type: 'declareShooting',
       attackingUnitId: unit.id,
-      targetUnitId: target.id,
+      targetUnitId: target.kind === 'unit' ? target.unit.id : target.doorway.doorwayId,
+      target: target.kind === 'doorway'
+        ? { kind: 'doorway', doorwayId: target.doorway.doorwayId }
+        : undefined,
+      targetDoorwayId: target.kind === 'doorway' ? target.doorway.doorwayId : undefined,
       weaponSelections,
     };
   }
@@ -100,15 +110,15 @@ export function generateShootingCommand(
 function selectTarget(
   state: GameState,
   _attackerUnitId: string,
-  validTargets: import('@hh/types').UnitState[],
+  validTargets: ShootingTargetCandidate[],
   strategy: StrategyMode,
-): { id: string } | null {
+): ShootingTargetCandidate | null {
   if (validTargets.length === 0) return null;
 
   if (strategy === 'basic') {
     // Random target
     const idx = Math.floor(Math.random() * validTargets.length);
-    return { id: validTargets[idx].id };
+    return validTargets[idx];
   }
 
   // Tactical: score each target and pick the best
@@ -123,7 +133,7 @@ function selectTarget(
     }
   }
 
-  return { id: bestTarget.id };
+  return bestTarget;
 }
 
 /**
@@ -132,10 +142,19 @@ function selectTarget(
  */
 function scoreShootingTarget(
   _state: GameState,
-  target: import('@hh/types').UnitState,
+  target: ShootingTargetCandidate,
 ): number {
+  if (target.kind === 'doorway') {
+    return (
+      (target.doorway.state === 'closed' ? 14 : 6) +
+      ((3 - target.doorway.hullPoints) * 4) +
+      target.doorway.width
+    );
+  }
+
+  const targetUnit = target.unit;
   let score = 0;
-  const aliveModels = getAliveModels(target);
+  const aliveModels = getAliveModels(targetUnit);
 
   // Prefer targets with fewer alive models (easier to finish off)
   if (aliveModels.length > 0 && aliveModels.length <= 3) {
@@ -158,7 +177,7 @@ function scoreShootingTarget(
   }
 
   // Prefer targets that are locked in combat (can't react)
-  if (target.isLockedInCombat) {
+  if (targetUnit.isLockedInCombat) {
     score -= 5; // Actually penalize — shooting into combat is risky
   }
 

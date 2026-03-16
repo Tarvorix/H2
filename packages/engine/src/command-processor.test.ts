@@ -3185,6 +3185,20 @@ describe('getValidCommands', () => {
     expect(commands).toContain('endPhase');
   });
 
+  it('should return Zone Mortalis utility commands during Move sub-phase', () => {
+    const state = createGameState({
+      gameMode: GameMode.ZoneMortalis,
+      currentPhase: Phase.Movement,
+      currentSubPhase: SubPhase.Move,
+      missionState: {
+        missionId: 'terminal-control',
+      } as GameState['missionState'],
+    });
+    const commands = getValidCommands(state);
+    expect(commands).toContain('operateDoorway');
+    expect(commands).toContain('interfaceObjective');
+  });
+
   it('should return reserves commands during Reserves sub-phase', () => {
     const state = createGameState({
       currentPhase: Phase.Movement,

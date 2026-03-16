@@ -2,6 +2,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   createProgressReporter,
+  createMirroredGateSetupOptions,
   DEFAULT_GAMEPLAY_NNUE_MODEL_ID,
   loadSerializedModel,
   parseArgs,
@@ -63,6 +64,7 @@ export function runGameplayGate(argv = process.argv.slice(2)) {
   const threshold = toFloat(args.threshold, 0.55);
   const previousThreshold = toFloat(args['previous-threshold'], 0.5);
   const timeBudgetMs = toInt(args['time-budget-ms'], 100);
+  const maxCommands = toInt(args['max-commands'], 1500);
   const maxDepthSoft = args['max-depth-soft'] !== undefined
     ? toInt(args['max-depth-soft'], 4)
     : undefined;
@@ -73,6 +75,11 @@ export function runGameplayGate(argv = process.argv.slice(2)) {
   const explicitSetupOptions = typeof args.setup === 'string'
     ? readJson(String(args.setup))
     : null;
+  const setupSelection = {
+    ...(typeof args.mode === 'string' ? { mode: String(args.mode) } : {}),
+    ...(typeof args['game-mode'] === 'string' ? { gameMode: String(args['game-mode']) } : {}),
+    ...(typeof args['mission-id'] === 'string' ? { missionId: String(args['mission-id']) } : {}),
+  };
   const setupOptions = explicitSetupOptions
     ? {
       setupFactory: (matchIndex) => ({
@@ -80,7 +87,12 @@ export function runGameplayGate(argv = process.argv.slice(2)) {
         firstPlayerIndex: matchIndex % 2,
       }),
     }
-    : {};
+    : {
+      setupFactory: (matchIndex) => createMirroredGateSetupOptions(matchIndex, {
+        firstPlayerIndex: matchIndex % 2,
+        ...setupSelection,
+      }),
+    };
 
   const tacticalProgress = createProgressReporter({
     label: 'gate:tactical',
@@ -89,6 +101,7 @@ export function runGameplayGate(argv = process.argv.slice(2)) {
   const tacticalSummary = runGateMatches({
     matches,
     timeBudgetMs,
+    maxCommands,
     candidateModelId,
     ...(maxDepthSoft !== undefined ? { maxDepthSoft } : {}),
     ...(rolloutCount !== undefined ? { rolloutCount } : {}),
@@ -112,6 +125,7 @@ export function runGameplayGate(argv = process.argv.slice(2)) {
     previousVersionSummary = runModelGateMatches({
       matches,
       timeBudgetMs,
+      maxCommands,
       candidateModelId,
       opponentModelId: DEFAULT_GAMEPLAY_NNUE_MODEL_ID,
       ...(maxDepthSoft !== undefined ? { maxDepthSoft } : {}),

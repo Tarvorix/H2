@@ -31,6 +31,8 @@ import {
   getModelMovementCharacteristic,
   getUnitCentroid,
   getEnemyDeployedUnits,
+  getZoneMortalisObjectiveInterfaceTargets,
+  getZoneMortalisOperableDoorways,
 } from '../helpers/unit-queries';
 import {
   calculateRandomMovePosition,
@@ -161,6 +163,16 @@ function generateMoveCommand(
   context: AITurnContext,
   strategy: StrategyMode,
 ): GameCommand | null {
+  const zoneMortalisUtilityCommand = generateZoneMortalisUtilityCommand(
+    state,
+    playerIndex,
+    context,
+    strategy,
+  );
+  if (zoneMortalisUtilityCommand) {
+    return zoneMortalisUtilityCommand;
+  }
+
   const bfWidth = state.battlefield?.width ?? DEFAULT_BATTLEFIELD_WIDTH;
   const bfHeight = state.battlefield?.height ?? DEFAULT_BATTLEFIELD_HEIGHT;
 
@@ -185,6 +197,86 @@ function generateMoveCommand(
     context.currentMovingUnitId = null;
     context.movedModelIds.clear();
     return command;
+  }
+
+  return null;
+}
+
+function generateZoneMortalisUtilityCommand(
+  state: GameState,
+  playerIndex: number,
+  context: AITurnContext,
+  strategy: StrategyMode,
+): GameCommand | null {
+  const candidateUnits = state.armies[playerIndex].units.filter((unit) =>
+    !context.actedUnitIds.has(unit.id) &&
+    unit.isDeployed &&
+    unit.embarkedOnId === null &&
+    !unit.isLockedInCombat &&
+    getAliveModels(unit).length > 0,
+  );
+
+  let bestInterface:
+    | {
+        unitId: string;
+        objectiveId: string;
+        score: number;
+      }
+    | null = null;
+  for (const unit of candidateUnits) {
+    const targets = getZoneMortalisObjectiveInterfaceTargets(state, unit.id);
+    for (const target of targets) {
+      const score = (target.objective.currentVpValue * 4) + Math.max(0, 4 - target.measuredDistance);
+      if (!bestInterface || score > bestInterface.score) {
+        bestInterface = {
+          unitId: unit.id,
+          objectiveId: target.objective.id,
+          score,
+        };
+      }
+    }
+  }
+
+  if (bestInterface) {
+    context.actedUnitIds.add(bestInterface.unitId);
+    return {
+      type: 'interfaceObjective',
+      unitId: bestInterface.unitId,
+      objectiveId: bestInterface.objectiveId,
+    };
+  }
+
+  let bestDoorway:
+    | {
+        unitId: string;
+        doorwayId: string;
+        desiredState: 'open' | 'closed';
+        score: number;
+      }
+    | null = null;
+  for (const unit of candidateUnits) {
+    const targets = getZoneMortalisOperableDoorways(state, unit.id);
+    for (const target of targets) {
+      const score = target.currentState === 'closed' ? 8 : (strategy === 'tactical' ? 5 : 3);
+      if (!bestDoorway || score > bestDoorway.score) {
+        bestDoorway = {
+          unitId: unit.id,
+          doorwayId: target.doorwayId,
+          desiredState: target.desiredState,
+          score,
+        };
+      }
+    }
+  }
+
+  if (bestDoorway) {
+    context.actedUnitIds.add(bestDoorway.unitId);
+    return {
+      type: 'operateDoorway',
+      unitId: bestDoorway.unitId,
+      doorwayId: bestDoorway.doorwayId,
+      desiredState: bestDoorway.desiredState,
+    };
   }
 
   return null;

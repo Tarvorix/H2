@@ -2,6 +2,74 @@
 
 Last Updated: 2026-03-16
 
+## Execution Plan (Zone-Compatible Self-Play / Training / Gating - 2026-03-16)
+- [ ] Patch headless setup so core and Zone Mortalis games initialize the correct battlefield defaults, root `gameMode`, terrain, and runtime state for self-play and tooling.
+- [ ] Add a reusable default Zone Mortalis terrain preset for headless/tooling runs when no explicit setup JSON is provided.
+- [ ] Extend deployment, tactical AI, and engine search candidate generation for Zone Mortalis deployment maps, doorway targets, doorway operation, and Terminal Control interfacing.
+- [ ] Add first-class tooling setup selection so NNUE and Alpha self-play / gate flows can target either core missions or Zone Mortalis without custom JSON.
+- [ ] Add focused regressions for headless initialization, deployment AI, tactical AI, search candidate generation, and tooling interoperability, then run verification.
+- Progress:
+  - Scope locked before edits:
+    - keep existing core self-play, training, and gating behavior working exactly as it does now unless a Zone-aware path is explicitly selected
+    - make Zone Mortalis work through the same headless and AI/tooling entry points used by NNUE and Alpha pipelines
+    - preserve existing explicit `--setup` JSON workflows and layer the new defaults/flags around them instead of replacing them
+  - Planned dependency order:
+    - headless setup/runtime parity first
+    - Zone-aware deployment and tactical/search command generation second
+    - NNUE/Alpha CLI setup selection third
+    - regressions and verification last
+  - 2026-03-16 headless Zone setup parity patch:
+    - extended `HeadlessGameSetupOptions` with explicit terrain support so tooling can pass custom Zone Mortalis layouts without relying on UI state
+    - changed headless mission defaults to use the selected mission battlefield dimensions and turn limit instead of always falling back to core 72"x48"/4-turn values
+    - added a reusable default Zone Mortalis terrain preset for headless/tooling runs, including perimeter bulkheads, segmented doorway walls, barricades, and light areas
+    - initialized root `gameMode`, `terrain`, and `zoneMortalisState` directly in headless game creation so Zone self-play/gating starts from a fully valid runtime state
+  - 2026-03-16 Zone AI/tooling action-surface patch:
+    - exported engine doorway query helpers needed by the AI packages so doorway LOS/range evaluation uses the same gameplay logic as the live engine
+    - extended shared AI unit/weapon helpers with Zone Mortalis doorway shooting/charge queries, doorway operation eligibility, and Terminal Control interfacing eligibility
+    - taught deployment AI about `Configuration Primus`, `Configuration Secundus`, and `Configuration Tertius` so pre-game formation axes no longer fall back to the wrong core map
+    - added Zone Mortalis doorway shooting/charge support plus doorway/objective utility commands to tactical movement, shooting, and assault AI flows
+    - added Zone Mortalis macro actions to engine search, including doorway attacks, standalone doorway/objective utilities, and move-plus-interface / move-plus-doorway follow-up lines
+    - added first-class `--mode` / `--game-mode` / `--mission-id` setup selection plumbing to NNUE and Alpha self-play/gate/distill tooling, with Zone-safe default armies when no explicit roster/setup file is supplied
+    - expanded Alpha state encoding with Zone Mortalis global, objective, and terrain signals so Zone training data carries doorway/objective runtime context instead of only core-mission tokens
+  - 2026-03-16 regression-fixture correction patch:
+    - replaced the hand-built Terminal Control mission fixture in `candidate-generator.test.ts` with real `findMission` + `findDeploymentMapByType` + `initializeMissionState` setup so the Zone utility macro test exercises the same mission/runtime shape as self-play
+    - increased that candidate-generator test's root-action budget so the assertion checks Zone interface-macro generation instead of being brittle against search-action truncation
+    - increased the direct Alpha self-play tooling interop test from a 1-command degenerate run to a 16-command run and asserted non-zero sample capture, matching the real expectation for replay-buffer generation
+  - 2026-03-16 engine valid-command surface fix:
+    - fixed `getValidCommands()` so Zone Mortalis Movement/Move phases now advertise `operateDoorway`, plus `interfaceObjective` for Terminal Control, instead of hiding legal utility commands from engine-search and other valid-command consumers
+    - added command-processor regression coverage so the Zone valid-command surface cannot silently regress again
+  - 2026-03-16 tooling default-roster runtime fix:
+    - reduced the default no-setup Zone tooling armies to compact legal command-unit rosters so NNUE and Alpha self-play/gate runs stay practical under Zone Mortalis pathing costs instead of bogging down on oversized fallback rosters
+    - kept explicit `--setup`, `armies`, and `armyLists` workflows untouched so larger custom Zone corpora can still be generated intentionally
+  - 2026-03-16 Zone search-branch runtime fix:
+    - reduced Zone Mortalis engine-search movement expansion to corridor-oriented candidate centers instead of the full open-board radial set, so self-play and gating spend time on legal Zone decisions instead of exploding on high-cost path-validation fanout
+    - added a low-budget Zone movement focus path so engine-search follows the nearest objective/enemy axis instead of brute-forcing the wider move lattice
+    - disabled proactive rush exploration for low-budget Zone engine-search runs while preserving already-declared rush resolution
+    - kept core-mission search movement generation unchanged
+  - 2026-03-16 headless default terrain runtime fix:
+    - simplified the fallback Zone Mortalis headless/tooling board to a lighter corridor-and-door layout so no-setup self-play and gate runs still exercise real Zone topology without paying the old obstacle-graph cost of the denser labyrinth preset
+    - left explicit custom terrain/setup workflows unchanged for full-density Zone boards
+  - 2026-03-16 NNUE trainer workflow fix:
+    - fixed `tools/nnue/train-gameplay-model.mjs` so it accepts self-play `manifest.json` inputs directly instead of only raw `.jsonl` shard paths, restoring the normal self-play -> train workflow for both core and Zone corpora
+  - 2026-03-16 NNUE gate smoke-control fix:
+    - added `maxCommands` plumbing through the gameplay gate helpers and CLI so Zone and core gate runs can be smoke-tested or budget-capped without editing the scripts
+  - 2026-03-16 live tooling verification:
+    - `pnpm --filter @hh/engine typecheck`: PASS
+    - `pnpm --filter @hh/headless typecheck`: PASS
+    - `pnpm --filter @hh/ai typecheck`: PASS
+    - `pnpm --filter @hh/engine build`: PASS
+    - `pnpm --filter @hh/headless build`: PASS
+    - `pnpm --filter @hh/ai build`: PASS
+    - `pnpm test -- packages/engine/src/command-processor.test.ts packages/headless/src/setup.test.ts packages/ai/src/deployment/deployment-ai.test.ts packages/ai/src/phases/movement-ai.test.ts packages/ai/src/phases/shooting-ai.test.ts packages/ai/src/phases/assault-ai.test.ts packages/ai/src/engine/candidate-generator.test.ts packages/ai/src/alpha/tooling-interop.test.ts`: PASS (`215` tests)
+    - `pnpm nnue:selfplay -- --mode core --mission-id heart-of-battle --matches 1 --time-budget-ms 5 --max-commands 16 --max-depth-soft 1 --rollout-count 1 --out-dir tmp/nnue/core-smoke --shard-size 32`: PASS (`16` samples)
+    - `pnpm nnue:selfplay -- --mode zone --mission-id terminal-control --matches 1 --time-budget-ms 5 --max-commands 4 --max-depth-soft 1 --rollout-count 1 --out-dir tmp/nnue/zone-smoke --shard-size 32`: PASS (`4` samples)
+    - `pnpm nnue:train -- --input tmp/nnue/zone-smoke/manifest.json --out tmp/nnue/zone-smoke/zone-candidate.json --epochs 1 --validation-split 0`: PASS
+    - `pnpm nnue:gate -- --model tmp/nnue/zone-smoke/zone-candidate.json --mode zone --mission-id terminal-control --matches 1 --time-budget-ms 5 --max-depth-soft 1 --rollout-count 1 --max-commands 1 --threshold -1 --previous-threshold -1 --out tmp/nnue/zone-smoke/zone-gate.json`: PASS
+    - `pnpm alpha:selfplay -- --mode core --mission-id heart-of-battle --matches 1 --curriculum mirror --time-budget-ms 5 --max-simulations 2 --max-commands 4 --out-dir tmp/alpha/core-smoke --shard-size 32`: PASS (`1` sample)
+    - `pnpm alpha:selfplay -- --mode zone --mission-id terminal-control --matches 1 --curriculum mirror --time-budget-ms 5 --max-simulations 2 --max-commands 4 --out-dir tmp/alpha/zone-smoke --shard-size 32`: PASS (`1` sample)
+    - `pnpm alpha:train -- --input tmp/alpha/zone-smoke/manifest.json --out-dir tmp/alpha/train-zone-smoke --epochs 1 --batch-size 1 --model-id alpha-zone-smoke`: PASS
+    - `pnpm alpha:gate -- --model tmp/alpha/train-zone-smoke/alpha-zone-smoke.json --mode zone --mission-id terminal-control --matches 1 --time-budget-ms 5 --max-simulations 2 --max-commands 1 --threshold -1 --out tmp/alpha/train-zone-smoke/alpha-zone-gate.json`: PASS
+
 ## Execution Plan (Generated Artifact Cleanup - 2026-03-16)
 - [ ] Add the missing ignore rules for `packages/ui/dist-types/` and generated `tools/alpha` / `tools/nnue` test build output so they stop reappearing in git.
 - [ ] Remove the already-tracked generated artifacts from git index only, preserving the local working files.

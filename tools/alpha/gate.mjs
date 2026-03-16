@@ -103,6 +103,11 @@ const outDir = args['out-dir']
 const explicitOut = typeof args.out === 'string'
   ? path.resolve(process.cwd(), String(args.out))
   : null;
+const setupSelection = {
+  ...(typeof args.mode === 'string' ? { mode: String(args.mode) } : {}),
+  ...(typeof args['game-mode'] === 'string' ? { gameMode: String(args['game-mode']) } : {}),
+  ...(typeof args['mission-id'] === 'string' ? { missionId: String(args['mission-id']) } : {}),
+};
 
 const defaultAlphaModel = candidateModelId === DEFAULT_ALPHA_MODEL_ID
   ? null
@@ -140,6 +145,7 @@ for (let opponentIndex = 0; opponentIndex < opponents.length; opponentIndex++) {
     const opponentPlayerIndex = candidatePlayerIndex === 0 ? 1 : 0;
     const setupOptions = createMirroredGateSetupOptions(globalMatchIndex, {
       firstPlayerIndex: candidatePlayerIndex,
+      ...setupSelection,
     });
 
     let aiPlayers;

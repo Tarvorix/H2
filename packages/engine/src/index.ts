@@ -686,6 +686,15 @@ export {
 
 // ─── Zone Mortalis ─────────────────────────────────────────────────────────
 export {
+  findDoorwayTerrain,
+  getDoorwayDistanceForModel,
+  getModelsWithLOSToDoorway,
+  handleZoneMortalisDoorwayShootingAttack,
+} from './zone-mortalis/doorway-shooting';
+export {
+  handleZoneMortalisDoorwayCharge,
+} from './zone-mortalis/doorway-charge';
+export {
   isZoneMortalisGame,
   initializeZoneMortalisState,
   ensureZoneMortalisState,

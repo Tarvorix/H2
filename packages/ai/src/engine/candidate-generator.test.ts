@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   Allegiance,
   CoreReaction,
+  DeploymentMap,
   LegionFaction,
   Phase,
   SubPhase,
@@ -14,7 +15,14 @@ import type {
   PendingReaction,
   UnitState,
 } from '@hh/types';
-import { FixedDiceProvider, handleMoveUnit, processCommand } from '@hh/engine';
+import { findDeploymentMapByType, findMission } from '@hh/data';
+import {
+  FixedDiceProvider,
+  handleMoveUnit,
+  initializeMissionState,
+  initializeZoneMortalisState,
+  processCommand,
+} from '@hh/engine';
 import type { SearchConfig } from '../types';
 import { generateMacroActions } from './candidate-generator';
 
@@ -1063,5 +1071,129 @@ describe('generateMacroActions', () => {
       unitId: 'p0-unit-1',
       isRush: true,
     });
+  });
+
+  it('generates Zone Mortalis utility actions for Terminal Control interfacing', () => {
+    const mission = findMission('terminal-control');
+    const deploymentMap = findDeploymentMapByType(DeploymentMap.ConfigurationSecundus);
+    if (!mission || !deploymentMap) {
+      throw new Error('Zone Mortalis mission fixtures are unavailable.');
+    }
+
+    const missionState = initializeMissionState(mission, deploymentMap, 48, 48);
+    const state = createGameState({
+      gameMode: 'zone-mortalis' as GameState['gameMode'],
+      missionState,
+      zoneMortalisState: initializeZoneMortalisState([], missionState),
+      armies: [
+        createArmy({
+          playerIndex: 0,
+          units: [createUnit({
+            id: 'p0-unit-1',
+            models: [createModel({ id: 'p0-m1', position: { x: 21.5, y: 12 } })],
+          })],
+        }),
+        createArmy({
+          playerIndex: 1,
+          playerName: 'Player 2',
+          faction: LegionFaction.WorldEaters,
+          allegiance: Allegiance.Traitor,
+          units: [createUnit({
+            id: 'p1-unit-1',
+            models: [createModel({ id: 'p1-m1', position: { x: 40, y: 40 } })],
+          })],
+        }),
+      ],
+    });
+
+    const actions = generateMacroActions(
+      { state, actedUnitIds: new Set() },
+      0,
+      createSearchConfig({ maxRootActions: 64 }),
+      { includeAdvanceCommands: false },
+    );
+
+    expect(actions.some((action) => action.commands.some((command) =>
+      command.type === 'interfaceObjective' &&
+      command.objectiveId === missionState.objectives[0]?.id,
+    ))).toBe(true);
+  });
+
+  it('generates Zone Mortalis doorway shooting and charge actions', () => {
+    const doorwayTerrain = {
+      id: 'door-1',
+      name: 'Doorway',
+      type: 'Impassable' as any,
+      shape: {
+        kind: 'rectangle' as const,
+        topLeft: { x: 15, y: 11 },
+        width: 0.6,
+        height: 2,
+      },
+      isDifficult: false,
+      isDangerous: false,
+      zoneMortalis: {
+        id: 'door-1',
+        kind: 'doorway' as const,
+        boundary: { orientation: 'vertical' as const, row: 1, column: 1 },
+        width: 2,
+        state: 'closed' as const,
+        armourValue: 12,
+        hullPoints: 3,
+        maxHullPoints: 3,
+      },
+    };
+    const baseState = createGameState({
+      gameMode: 'zone-mortalis' as GameState['gameMode'],
+      terrain: [doorwayTerrain],
+      zoneMortalisState: {
+        sections: [],
+        doorways: [doorwayTerrain.zoneMortalis],
+        objectives: [],
+        doorwayOperationHistory: [],
+        pendingBlindPanicChecks: [],
+      },
+      armies: [
+        createArmy({
+          playerIndex: 0,
+          units: [createUnit({
+            id: 'p0-unit-1',
+            models: [createModel({ id: 'p0-m1', position: { x: 10, y: 12 }, equippedWargear: ['boltgun'] })],
+          })],
+        }),
+        createArmy({
+          playerIndex: 1,
+          playerName: 'Player 2',
+          faction: LegionFaction.WorldEaters,
+          allegiance: Allegiance.Traitor,
+          units: [createUnit({
+            id: 'p1-unit-1',
+            models: [createModel({ id: 'p1-m1', position: { x: 40, y: 40 } })],
+          })],
+        }),
+      ],
+    });
+
+    const shootingActions = generateMacroActions(
+      { state: { ...baseState, currentPhase: Phase.Shooting, currentSubPhase: SubPhase.Attack }, actedUnitIds: new Set() },
+      0,
+      createSearchConfig(),
+      { includeAdvanceCommands: false },
+    );
+    expect(shootingActions.some((action) => action.commands.some((command) =>
+      command.type === 'declareShooting' &&
+      command.targetDoorwayId === 'door-1',
+    ))).toBe(true);
+
+    const chargeActions = generateMacroActions(
+      { state: { ...baseState, currentPhase: Phase.Assault, currentSubPhase: SubPhase.Charge }, actedUnitIds: new Set() },
+      0,
+      createSearchConfig(),
+      { includeAdvanceCommands: false },
+    );
+    expect(chargeActions.some((action) => action.commands.some((command) =>
+      command.type === 'declareCharge' &&
+      command.targetDoorwayId === 'door-1',
+    ))).toBe(true);
   });
 });

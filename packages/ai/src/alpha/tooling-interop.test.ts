@@ -22,6 +22,23 @@ afterEach(() => {
 });
 
 describe('alpha tooling interop', () => {
+  it('builds Zone Mortalis setup defaults through the shared tooling helper', () => {
+    const setupOptions = createDefaultSetupOptions({
+      mode: 'zone',
+      missionId: 'terminal-control',
+      matchIndex: 0,
+      firstPlayerIndex: 0,
+    });
+    const state = Array.isArray((setupOptions as { armyLists?: unknown[] }).armyLists)
+      ? createHeadlessGameStateFromArmyLists(setupOptions)
+      : createHeadlessGameState(setupOptions);
+
+    expect(state.gameMode).toBe('zone-mortalis');
+    expect(state.missionState?.missionId).toBe('terminal-control');
+    expect(state.battlefield).toEqual({ width: 48, height: 48 });
+    expect((state.zoneMortalisState?.doorways.length ?? 0)).toBeGreaterThan(0);
+  });
+
   it('reruns fresh alpha distill matches without failing the rerun path', () => {
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hh-alpha-distill-rerun-'));
     tempDirs.push(tempDir);
@@ -160,7 +177,7 @@ describe('alpha tooling interop', () => {
       '--max-simulations',
       '2',
       '--max-commands',
-      '1',
+      '16',
       '--out-dir',
       outDir,
       '--shard-size',
@@ -176,6 +193,7 @@ describe('alpha tooling interop', () => {
 
     expect(summary.modelId).toBe('alpha-model-file-test');
     expect(summary.modelFilePath).toBe(candidateModelPath);
+    expect(summary.sampleCount).toBeGreaterThan(0);
     expect(outputManifest.modelId).toBe('alpha-model-file-test');
     expect(outputManifest.modelFilePath).toBe(candidateModelPath);
     expect(outputManifest.sampleCount).toBeGreaterThan(0);

@@ -30,6 +30,11 @@ const rolloutCount = args['rollout-count'] !== undefined
 const explicitSetupOptions = typeof args.setup === 'string'
   ? readJson(String(args.setup))
   : null;
+const setupSelection = {
+  ...(typeof args.mode === 'string' ? { mode: String(args.mode) } : {}),
+  ...(typeof args['game-mode'] === 'string' ? { gameMode: String(args['game-mode']) } : {}),
+  ...(typeof args['mission-id'] === 'string' ? { missionId: String(args['mission-id']) } : {}),
+};
 
 ensureDir(outDir);
 ensureDir(path.join(outDir, 'replays'));
@@ -51,6 +56,7 @@ for (let matchIndex = 0; matchIndex < matchCount; matchIndex++) {
     : createDefaultSetupOptions({
       matchIndex,
       firstPlayerIndex: matchIndex % 2,
+      ...setupSelection,
     });
   const result = runInstrumentedMatch({
     matchId,

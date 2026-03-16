@@ -41,6 +41,10 @@ export {
   GAMEPLAY_FEATURE_VERSION,
 };
 
+const CORE_DEFAULT_MISSION_ID = 'heart-of-battle';
+const ZONE_DEFAULT_MISSION_ID = 'sector-sweep';
+const ZONE_MISSION_IDS = new Set(['sector-sweep', 'terminal-control', 'signal-influx']);
+
 export function parseArgs(argv) {
   const args = {};
   for (let index = 0; index < argv.length; index++) {
@@ -204,19 +208,101 @@ function createInitialStateFromSetupOptions(setupOptions) {
   return createHeadlessGameState(setupOptions);
 }
 
+function normalizeSetupMode(value, missionId = null) {
+  const normalized = typeof value === 'string'
+    ? value.trim().toLowerCase()
+    : null;
+
+  if (normalized === 'zone' || normalized === 'zone-mortalis' || normalized === 'zm') {
+    return 'zone';
+  }
+  if (normalized === 'core' || normalized === 'core-missions' || normalized === 'full' || normalized === 'full-game') {
+    return 'core';
+  }
+  if (missionId && ZONE_MISSION_IDS.has(missionId)) {
+    return 'zone';
+  }
+  return 'core';
+}
+
+function createZoneDefaultArmies(matchIndex = 0) {
+  const templates = [
+    {
+      playerName: 'Zone Alpha',
+      faction: LegionFaction.DarkAngels,
+      allegiance: Allegiance.Loyalist,
+      pointsLimit: 1500,
+      units: [
+        { profileId: 'praetor', modelCount: 1, isWarlord: true },
+        { profileId: 'librarian', modelCount: 1 },
+        { profileId: 'techmarine', modelCount: 1 },
+        { profileId: 'vigilator', modelCount: 1 },
+      ],
+    },
+    {
+      playerName: 'Zone Beta',
+      faction: LegionFaction.WorldEaters,
+      allegiance: Allegiance.Traitor,
+      pointsLimit: 1500,
+      units: [
+        { profileId: 'praetor', modelCount: 1, isWarlord: true },
+        { profileId: 'librarian', modelCount: 1 },
+        { profileId: 'techmarine', modelCount: 1 },
+        { profileId: 'vigilator', modelCount: 1 },
+      ],
+    },
+    {
+      playerName: 'Zone Gamma',
+      faction: LegionFaction.AlphaLegion,
+      allegiance: Allegiance.Traitor,
+      pointsLimit: 1500,
+      units: [
+        { profileId: 'praetor', modelCount: 1, isWarlord: true },
+        { profileId: 'librarian', modelCount: 1 },
+        { profileId: 'techmarine', modelCount: 1 },
+        { profileId: 'vigilator', modelCount: 1 },
+      ],
+    },
+  ];
+
+  return [
+    templates[matchIndex % templates.length],
+    templates[(matchIndex + 1) % templates.length],
+  ];
+}
+
 export function createDefaultSetupOptions(overrides = {}) {
   const {
     matchIndex = 0,
+    mode,
+    gameMode,
+    missionId: requestedMissionId,
     ...restOverrides
   } = overrides;
+  const resolvedMissionId = typeof requestedMissionId === 'string'
+    ? requestedMissionId
+    : normalizeSetupMode(mode ?? gameMode, null) === 'zone'
+      ? ZONE_DEFAULT_MISSION_ID
+      : CORE_DEFAULT_MISSION_ID;
+  const resolvedMode = normalizeSetupMode(mode ?? gameMode, resolvedMissionId);
+  const hasExplicitRoster = Array.isArray(restOverrides.armyLists) || Array.isArray(restOverrides.armies);
   const curatedArmyLists = getCurated2000PointArmyLists();
 
-  if (curatedArmyLists.length >= 2) {
+  if (resolvedMode === 'zone' && !hasExplicitRoster) {
+    return {
+      missionId: resolvedMissionId,
+      maxBattleTurns: 5,
+      armies: createZoneDefaultArmies(matchIndex),
+      ...restOverrides,
+    };
+  }
+
+  if (curatedArmyLists.length >= 2 && !hasExplicitRoster) {
     const left = curatedArmyLists[matchIndex % curatedArmyLists.length];
     const right = curatedArmyLists[(matchIndex + 1) % curatedArmyLists.length];
 
     return {
-      missionId: 'heart-of-battle',
+      missionId: resolvedMissionId,
       maxBattleTurns: 4,
       armyLists: [left.armyList, right.armyList],
       ...restOverrides,
@@ -224,7 +310,7 @@ export function createDefaultSetupOptions(overrides = {}) {
   }
 
   return {
-    missionId: 'heart-of-battle',
+    missionId: resolvedMissionId,
     maxBattleTurns: 4,
     armies: [
       {
@@ -254,11 +340,32 @@ export function createMirroredGateSetupOptions(matchIndex, overrides = {}) {
   const {
     pairIndex = Math.floor(matchIndex / 2),
     swapSides = (matchIndex % 2) === 1,
+    mode,
+    gameMode,
+    missionId: requestedMissionId,
     ...restOverrides
   } = overrides;
+  const resolvedMissionId = typeof requestedMissionId === 'string'
+    ? requestedMissionId
+    : normalizeSetupMode(mode ?? gameMode, null) === 'zone'
+      ? ZONE_DEFAULT_MISSION_ID
+      : CORE_DEFAULT_MISSION_ID;
+  const resolvedMode = normalizeSetupMode(mode ?? gameMode, resolvedMissionId);
+  const hasExplicitRoster = Array.isArray(restOverrides.armyLists) || Array.isArray(restOverrides.armies);
   const curatedArmyLists = getCurated2000PointArmyLists();
 
-  if (curatedArmyLists.length >= 2) {
+  if (resolvedMode === 'zone' && !hasExplicitRoster) {
+    const [left, right] = createZoneDefaultArmies(pairIndex);
+    const ordered = swapSides ? [right, left] : [left, right];
+    return {
+      missionId: resolvedMissionId,
+      maxBattleTurns: 5,
+      armies: ordered,
+      ...restOverrides,
+    };
+  }
+
+  if (curatedArmyLists.length >= 2 && !hasExplicitRoster) {
     const leftBase = curatedArmyLists[pairIndex % curatedArmyLists.length];
     const rightBase = curatedArmyLists[(pairIndex + 1) % curatedArmyLists.length];
     const [left, right] = swapSides
@@ -266,7 +373,7 @@ export function createMirroredGateSetupOptions(matchIndex, overrides = {}) {
       : [leftBase, rightBase];
 
     return {
-      missionId: 'heart-of-battle',
+      missionId: resolvedMissionId,
       maxBattleTurns: 4,
       armyLists: [left.armyList, right.armyList],
       ...restOverrides,
@@ -275,6 +382,8 @@ export function createMirroredGateSetupOptions(matchIndex, overrides = {}) {
 
   const fallback = createDefaultSetupOptions({
     matchIndex: pairIndex,
+    mode: resolvedMode,
+    missionId: resolvedMissionId,
     ...restOverrides,
   });
 
@@ -701,6 +810,7 @@ export function runGateMatches({
   candidateModelId,
   maxDepthSoft,
   rolloutCount,
+  maxCommands = 1500,
   setupFactory = (matchIndex) => createMirroredGateSetupOptions(matchIndex, {
     firstPlayerIndex: matchIndex % 2,
   }),
@@ -708,6 +818,7 @@ export function runGateMatches({
 }) {
   return runHeadToHeadGateMatches({
     matches,
+    maxCommands,
     setupFactory,
     onMatchComplete,
     favoredPlayerFactory: (playerIndex, matchIndex) => createEnginePlayerConfig(playerIndex, {
@@ -755,6 +866,7 @@ export function runModelGateMatches({
   opponentModelId,
   maxDepthSoft,
   rolloutCount,
+  maxCommands = 1500,
   setupFactory = (matchIndex) => createMirroredGateSetupOptions(matchIndex, {
     firstPlayerIndex: matchIndex % 2,
   }),
@@ -762,6 +874,7 @@ export function runModelGateMatches({
 }) {
   return runHeadToHeadGateMatches({
     matches,
+    maxCommands,
     setupFactory,
     onMatchComplete,
     favoredPlayerFactory: (playerIndex, matchIndex) => createEnginePlayerConfig(playerIndex, {
@@ -810,6 +923,7 @@ export function runModelGateMatches({
 
 function runHeadToHeadGateMatches({
   matches,
+  maxCommands = 1500,
   setupFactory,
   onMatchComplete,
   favoredPlayerFactory,
@@ -838,7 +952,7 @@ function runHeadToHeadGateMatches({
     const result = runHeadlessMatch(
       createInitialStateFromSetupOptions(setupFactory(matchIndex)),
       {
-        maxCommands: 1500,
+        maxCommands,
         aiPlayers,
       },
     );

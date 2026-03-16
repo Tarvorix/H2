@@ -9,7 +9,7 @@ import { describe, it, expect } from 'vitest';
 import { DeploymentMap, Phase, SubPhase, UnitMovementState } from '@hh/types';
 import type { GameState, UnitState, ModelState, ArmyState } from '@hh/types';
 import { pointInPolygon } from '@hh/geometry';
-import { SEARCH_AND_DESTROY } from '@hh/data';
+import { SEARCH_AND_DESTROY, findDeploymentMapByType } from '@hh/data';
 import { generateDeploymentPlacement } from './deployment-ai';
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
@@ -496,5 +496,55 @@ describe('generateDeploymentPlacement — tactical', () => {
 
     expect(result).not.toBeNull();
     expect(countFormationRows(result!.modelPositions)).toEqual([4, 4, 2]);
+  });
+});
+
+describe('generateDeploymentPlacement — Zone Mortalis deployment maps', () => {
+  function createZoneDeploymentState(deploymentMap: DeploymentMap, playerIndex: 0 | 1): GameState {
+    const definition = findDeploymentMapByType(deploymentMap);
+    expect(definition).toBeTruthy();
+    const zones = definition!.getZones(48, 48);
+    const unit = createUnit({
+      id: 'zone-unit',
+      models: [
+        createModel({ id: 'zone-model-1' }),
+        createModel({ id: 'zone-model-2' }),
+        createModel({ id: 'zone-model-3' }),
+      ],
+    });
+    const state = createGameState({
+      battlefield: { width: 48, height: 48 },
+      missionState: {
+        deploymentMap,
+        deploymentZones: zones,
+      } as GameState['missionState'],
+    });
+    state.armies[playerIndex] = createArmy({ playerIndex, units: [unit] });
+    return state;
+  }
+
+  it('deploys inside Configuration Primus mission zones', () => {
+    const state = createZoneDeploymentState(DeploymentMap.ConfigurationPrimus, 0);
+    const zone = state.missionState!.deploymentZones[0];
+
+    const result = generateDeploymentPlacement(state, 0, [], 12, 'tactical');
+
+    expect(result).not.toBeNull();
+    expect(result!.modelPositions.every((entry) =>
+      isPointInDeploymentZone(entry.position, zone.vertices),
+    )).toBe(true);
+  });
+
+  it('deploys inside Configuration Tertius split-corner mission zones', () => {
+    const state = createZoneDeploymentState(DeploymentMap.ConfigurationTertius, 1);
+    const zone = state.missionState!.deploymentZones[1];
+    const areas = zone.areas ?? [zone.vertices];
+
+    const result = generateDeploymentPlacement(state, 1, [], 12, 'tactical');
+
+    expect(result).not.toBeNull();
+    expect(result!.modelPositions.every((entry) =>
+      areas.some((vertices) => isPointInDeploymentZone(entry.position, vertices)),
+    )).toBe(true);
   });
 });

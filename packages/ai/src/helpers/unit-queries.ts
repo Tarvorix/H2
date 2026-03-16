@@ -5,8 +5,8 @@
  * These filter units by ownership, eligibility, and acted status.
  */
 
-import type { GameState, UnitState, ModelState, Position } from '@hh/types';
-import { UnitMovementState } from '@hh/types';
+import type { GameState, UnitState, ModelState, Position, ObjectiveMarker } from '@hh/types';
+import { GameMode, UnitMovementState } from '@hh/types';
 import {
   canUnitMove,
   canUnitShoot,
@@ -15,13 +15,48 @@ import {
   getUnitsAwaitingReservesTest,
   getUnitsReadyToEnterFromReserves,
   getAliveModels,
+  getDoorwayDistanceForModel,
   findUnit,
   findUnitPlayerIndex,
+  findDoorwayTerrain,
+  getModelStateBaseSizeMM,
+  getModelsWithLOSToDoorway,
+  getZoneMortalisMeasurementDistance,
   hasLOSToUnit,
   getClosestModelDistance,
   getModelMovement,
   getModelInitiative,
 } from '@hh/engine';
+import { EPSILON } from '@hh/geometry';
+
+export interface ZoneMortalisDoorwayTarget {
+  doorwayId: string;
+  state: 'open' | 'closed' | 'destroyed';
+  hullPoints: number;
+  width: number;
+}
+
+export interface ZoneMortalisObjectiveTarget {
+  objective: ObjectiveMarker;
+  measuredDistance: number;
+}
+
+export interface ZoneMortalisDoorwayOperationTarget {
+  doorwayId: string;
+  desiredState: 'open' | 'closed';
+  currentState: 'open' | 'closed';
+}
+
+function getDistanceFromPointToRectangle(
+  point: Position,
+  topLeft: Position,
+  width: number,
+  height: number,
+): number {
+  const dx = Math.max(topLeft.x - point.x, 0, point.x - (topLeft.x + width));
+  const dy = Math.max(topLeft.y - point.y, 0, point.y - (topLeft.y + height));
+  return Math.hypot(dx, dy);
+}
 
 // ─── Movement Queries ────────────────────────────────────────────────────────
 
@@ -109,6 +144,47 @@ export function getValidShootingTargets(
   });
 }
 
+export function getValidDoorwayShootingTargets(
+  state: GameState,
+  attackerUnitId: string,
+): ZoneMortalisDoorwayTarget[] {
+  if (state.gameMode !== GameMode.ZoneMortalis) {
+    return [];
+  }
+
+  const attackerUnit = findUnit(state, attackerUnitId);
+  if (!attackerUnit) {
+    return [];
+  }
+
+  return (state.zoneMortalisState?.doorways ?? []).filter((doorway) => {
+    if (doorway.state === 'destroyed' || doorway.hullPoints <= 0) {
+      return false;
+    }
+
+    const terrain = findDoorwayTerrain(state, doorway.id ?? '');
+    if (!terrain) {
+      return false;
+    }
+
+    const modelsWithLos = getModelsWithLOSToDoorway(state, attackerUnitId, doorway.id ?? '', terrain);
+    if (modelsWithLos.length === 0) {
+      return false;
+    }
+
+    const distance = getAliveModels(attackerUnit).reduce((closest, model) => (
+      Math.min(closest, getDoorwayDistanceForModel(state, model, doorway.id ?? '', terrain))
+    ), Number.POSITIVE_INFINITY);
+
+    return Number.isFinite(distance);
+  }).map((doorway) => ({
+    doorwayId: doorway.id ?? '',
+    state: doorway.state,
+    hullPoints: doorway.hullPoints,
+    width: doorway.width,
+  }));
+}
+
 // ─── Assault Queries ─────────────────────────────────────────────────────────
 
 /**
@@ -150,6 +226,147 @@ export function getValidChargeTargets(
     if (!hasLOSToUnit(state, chargerUnitId, enemyUnit.id)) return false;
     return true;
   });
+}
+
+export function getValidDoorwayChargeTargets(
+  state: GameState,
+  chargerUnitId: string,
+): ZoneMortalisDoorwayTarget[] {
+  if (state.gameMode !== GameMode.ZoneMortalis) {
+    return [];
+  }
+
+  const chargerUnit = findUnit(state, chargerUnitId);
+  if (!chargerUnit) {
+    return [];
+  }
+
+  return (state.zoneMortalisState?.doorways ?? []).filter((doorway) => {
+    if (doorway.state === 'destroyed' || doorway.hullPoints <= 0) {
+      return false;
+    }
+
+    const terrain = findDoorwayTerrain(state, doorway.id ?? '');
+    if (!terrain) {
+      return false;
+    }
+
+    const modelsWithLos = getModelsWithLOSToDoorway(state, chargerUnitId, doorway.id ?? '', terrain);
+    if (modelsWithLos.length === 0) {
+      return false;
+    }
+
+    const distance = getAliveModels(chargerUnit).reduce((closest, model) => (
+      Math.min(closest, getDoorwayDistanceForModel(state, model, doorway.id ?? '', terrain))
+    ), Number.POSITIVE_INFINITY);
+
+    return Number.isFinite(distance) && distance <= 12 + EPSILON;
+  }).map((doorway) => ({
+    doorwayId: doorway.id ?? '',
+    state: doorway.state,
+    hullPoints: doorway.hullPoints,
+    width: doorway.width,
+  }));
+}
+
+function isZoneMortalisUtilityEligibleUnit(unit: UnitState | null | undefined): unit is UnitState {
+  return Boolean(
+    unit &&
+    unit.isDeployed &&
+    unit.embarkedOnId === null &&
+    !unit.isLockedInCombat &&
+    getAliveModels(unit).length > 0,
+  );
+}
+
+export function getZoneMortalisObjectiveInterfaceTargets(
+  state: GameState,
+  unitId: string,
+): ZoneMortalisObjectiveTarget[] {
+  if (
+    state.gameMode !== GameMode.ZoneMortalis ||
+    state.missionState?.missionId !== 'terminal-control'
+  ) {
+    return [];
+  }
+
+  const unit = findUnit(state, unitId);
+  if (!isZoneMortalisUtilityEligibleUnit(unit)) {
+    return [];
+  }
+
+  return (state.missionState?.objectives ?? []).map((objective) => {
+    const measuredDistance = getAliveModels(unit).reduce((closest, model) => (
+      Math.min(
+        closest,
+        getZoneMortalisMeasurementDistance(state, model.position, objective.position) ?? Number.POSITIVE_INFINITY,
+      )
+    ), Number.POSITIVE_INFINITY);
+    return {
+      objective,
+      measuredDistance,
+    };
+  }).filter((candidate) => Number.isFinite(candidate.measuredDistance) && candidate.measuredDistance <= 3 + EPSILON);
+}
+
+export function getZoneMortalisOperableDoorways(
+  state: GameState,
+  unitId: string,
+): ZoneMortalisDoorwayOperationTarget[] {
+  if (state.gameMode !== GameMode.ZoneMortalis) {
+    return [];
+  }
+
+  const unit = findUnit(state, unitId);
+  if (!isZoneMortalisUtilityEligibleUnit(unit)) {
+    return [];
+  }
+
+  const history = new Set(state.zoneMortalisState?.doorwayOperationHistory ?? []);
+  const aliveModels = getAliveModels(unit);
+
+  return (state.zoneMortalisState?.doorways ?? []).filter((doorway) => {
+    if (!doorway.id || doorway.state === 'destroyed') {
+      return false;
+    }
+
+    const terrain = findDoorwayTerrain(state, doorway.id);
+    if (!terrain) {
+      return false;
+    }
+
+    const historyKey = `${state.currentBattleTurn}:${state.activePlayerIndex}:${unitId}:${doorway.id}`;
+    if (history.has(historyKey)) {
+      return false;
+    }
+
+    const hasBaseContact = aliveModels.some((model) => {
+      const radius = (getModelStateBaseSizeMM(model) / 25.4) / 2;
+      return getDistanceFromPointToRectangle(
+        model.position,
+        terrain.shape.topLeft,
+        terrain.shape.width,
+        terrain.shape.height,
+      ) <= radius + EPSILON;
+    });
+    if (!hasBaseContact) {
+      return false;
+    }
+
+    return aliveModels.some((model) => {
+      const radius = (getModelStateBaseSizeMM(model) / 25.4) / 2;
+      return getDistanceFromPointToRectangle(
+        model.position,
+        terrain.shape.topLeft,
+        terrain.shape.width,
+        terrain.shape.height,
+      ) <= radius + 2 + EPSILON;
+    });
+  }).map((doorway) => ({
+    doorwayId: doorway.id ?? '',
+    desiredState: doorway.state === 'open' ? 'closed' : 'open',
+    currentState: doorway.state === 'open' ? 'open' : 'closed',
+  }));
 }
 
 // ─── Utility Queries ─────────────────────────────────────────────────────────

@@ -138,6 +138,70 @@ describe('generateAssaultCommand — Charge sub-phase', () => {
     const result = generateAssaultCommand(state, 0, ctx, 'basic');
     expect(result).toBeNull();
   });
+
+  it('declares charges against Zone Mortalis doorways when no unit target exists', () => {
+    const charger = createUnit({
+      id: 'charger-1',
+      models: [createModel({ id: 'charge-model', position: { x: 10, y: 12 } })],
+    });
+    const state = createGameState({
+      gameMode: 'zone-mortalis' as GameState['gameMode'],
+      terrain: [
+        {
+          id: 'door-1',
+          name: 'Doorway',
+          type: 'Impassable' as any,
+          shape: {
+            kind: 'rectangle',
+            topLeft: { x: 15, y: 11 },
+            width: 0.6,
+            height: 2,
+          },
+          isDifficult: false,
+          isDangerous: false,
+          zoneMortalis: {
+            id: 'door-1',
+            kind: 'doorway',
+            boundary: { orientation: 'vertical', row: 1, column: 1 },
+            width: 2,
+            state: 'closed',
+            armourValue: 12,
+            hullPoints: 1,
+            maxHullPoints: 3,
+          },
+        },
+      ],
+      zoneMortalisState: {
+        sections: [],
+        doorways: [
+          {
+            id: 'door-1',
+            kind: 'doorway',
+            boundary: { orientation: 'vertical', row: 1, column: 1 },
+            width: 2,
+            state: 'closed',
+            armourValue: 12,
+            hullPoints: 1,
+            maxHullPoints: 3,
+          },
+        ],
+        objectives: [],
+        doorwayOperationHistory: [],
+        pendingBlindPanicChecks: [],
+      },
+    });
+    state.armies[0] = createArmy({ playerIndex: 0, units: [charger] });
+
+    const result = generateAssaultCommand(state, 0, createContext(), 'tactical');
+
+    expect(result).toEqual({
+      type: 'declareCharge',
+      chargingUnitId: 'charger-1',
+      targetUnitId: 'door-1',
+      target: { kind: 'doorway', doorwayId: 'door-1' },
+      targetDoorwayId: 'door-1',
+    });
+  });
 });
 
 // ─── Challenge Sub-Phase Tests ─────────────────────────────────────────────

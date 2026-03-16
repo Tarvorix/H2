@@ -255,9 +255,18 @@ function createGlobalToken(state: GameState, rootPlayerIndex: number): SortableT
   const pendingReactionType = pendingReaction?.reactionType ?? null;
   const shootingState = state.shootingAttackState;
   const assaultState = state.assaultAttackState;
+  const zoneDoorways = state.zoneMortalisState?.doorways ?? [];
+  const zoneObjectives = state.zoneMortalisState?.objectives ?? [];
+  const closedDoorways = zoneDoorways.filter((doorway) => doorway.state === 'closed').length;
+  const openDoorways = zoneDoorways.filter((doorway) => doorway.state === 'open').length;
+  const destroyedDoorways = zoneDoorways.filter((doorway) => doorway.state === 'destroyed').length;
+  const activeZoneObjectives = zoneObjectives.filter((objective) => objective.isActive).length;
+  const interfacedZoneObjectives = zoneObjectives.filter((objective) => objective.isInterfaced).length;
+  const blindPanicQueue = state.zoneMortalisState?.pendingBlindPanicChecks?.length ?? 0;
 
   return createToken('global', 'global', 1_000_000, null, [
     getTokenTypeIndex('global'),
+    Number(state.gameMode === 'zone-mortalis'),
     Number(state.activePlayerIndex === rootPlayerIndex),
     Number(state.awaitingReaction),
     safeDivide(state.currentBattleTurn, state.maxBattleTurns, 0),
@@ -277,6 +286,13 @@ function createGlobalToken(state: GameState, rootPlayerIndex: number): SortableT
     values.value,
     values.vpDelta,
     values.tacticalSwing,
+    zoneDoorways.length / 24,
+    closedDoorways / 24,
+    openDoorways / 24,
+    destroyedDoorways / 24,
+    activeZoneObjectives / 12,
+    interfacedZoneObjectives / 12,
+    blindPanicQueue / 12,
     ...encodeOneHot(state.currentPhase, PHASES),
     ...encodeOneHot(state.currentSubPhase, SUB_PHASES),
     ...encodeOneHot(pendingReactionType as CoreReaction | null, REACTION_TYPES),
@@ -284,6 +300,7 @@ function createGlobalToken(state: GameState, rootPlayerIndex: number): SortableT
     ...buildHashedFeatureSlice(String(shootingState?.currentStep ?? 'none'), 4, 'global:shooting-step'),
     ...buildHashedFeatureSlice(String(assaultState?.chargeStep ?? 'none'), 4, 'global:assault-step'),
     ...buildHashedFeatureSlice(state.missionState?.missionId ?? 'no-mission', 4, 'global:mission'),
+    ...buildHashedFeatureSlice(String(state.missionState?.deploymentMap ?? 'no-deployment'), 4, 'global:deployment'),
   ]);
 }
 
@@ -398,6 +415,9 @@ function createObjectiveToken(
   const enemyStrength = rootPlayerIndex === 0 ? control.player1Strength : control.player0Strength;
   const nearestFriendly = getNearestArmyDistance(state, rootPlayerIndex, objective.position);
   const nearestEnemy = getNearestArmyDistance(state, rootPlayerIndex === 0 ? 1 : 0, objective.position);
+  const zoneObjectiveState = state.zoneMortalisState?.objectives.find(
+    (candidate) => candidate.objectiveId === objective.id,
+  ) ?? null;
 
   return createToken('objective', objective.id, 2500 + (objective.currentVpValue * 100), normalizeTokenPosition(objective.position, state.battlefield, rootPlayerIndex), [
     getTokenTypeIndex('objective'),
@@ -405,8 +425,11 @@ function createObjectiveToken(
     Number(control.controllerPlayerIndex === (rootPlayerIndex === 0 ? 1 : 0)),
     Number(control.isContested),
     Number(objective.isRemoved),
+    Number(zoneObjectiveState?.isActive === true),
+    Number(zoneObjectiveState?.isInterfaced === true),
     objective.vpValue / 6,
     objective.currentVpValue / 6,
+    (zoneObjectiveState?.currentValue ?? objective.currentVpValue) / 6,
     tanhScaled(friendlyStrength - enemyStrength, 6),
     tanhScaled(friendlyStrength, 6),
     tanhScaled(enemyStrength, 6),
@@ -427,17 +450,31 @@ function createTerrainToken(
   const nearestEnemy = position ? getNearestArmyDistance(state, rootPlayerIndex === 0 ? 1 : 0, position) : Number.POSITIVE_INFINITY;
   const size = getTerrainSizeEstimate(terrain, state.battlefield);
   const priority = 1000 + (size * 100) - Math.min(nearestFriendly, nearestEnemy);
+  const zoneTerrain = terrain.zoneMortalis ?? null;
+  const isDoorway = zoneTerrain?.kind === 'doorway';
+  const isWall = zoneTerrain?.kind === 'wall';
+  const isBarricade = zoneTerrain?.kind === 'barricade';
 
   return createToken('terrain', terrain.id, priority, normalizeTokenPosition(position, state.battlefield, rootPlayerIndex), [
     getTokenTypeIndex('terrain'),
     Number(terrain.isDifficult),
     Number(terrain.isDangerous),
+    Number(isWall),
+    Number(isDoorway),
+    Number(isBarricade),
+    Number(zoneTerrain?.kind === 'wall' && zoneTerrain.isPerimeter === true),
+    Number(isDoorway && zoneTerrain.state === 'closed'),
+    Number(isDoorway && zoneTerrain.state === 'open'),
+    Number(isDoorway && zoneTerrain.state === 'destroyed'),
+    (isDoorway ? zoneTerrain.width : 0) / 6,
+    (isDoorway ? zoneTerrain.hullPoints : 0) / 3,
     size,
     clamp(nearestFriendly / Math.hypot(state.battlefield.width, state.battlefield.height), 0, 1),
     clamp(nearestEnemy / Math.hypot(state.battlefield.width, state.battlefield.height), 0, 1),
     ...encodeOneHot(terrain.type, TERRAIN_TYPES),
     ...encodePosition(position, state.battlefield, rootPlayerIndex),
     ...buildHashedFeatureSlice(terrain.name, 6, 'terrain:name'),
+    ...buildHashedFeatureSlice(zoneTerrain?.kind ?? 'none', 4, 'terrain:zone-kind'),
   ]);
 }
 

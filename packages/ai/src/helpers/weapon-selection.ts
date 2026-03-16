@@ -7,8 +7,11 @@
 
 import type { GameState, UnitState } from '@hh/types';
 import {
+  findDoorwayTerrain,
+  getDoorwayDistanceForModel,
   getAliveModels,
   getClosestModelDistance,
+  getModelsWithLOSToDoorway,
   getModelsWithLOSToUnit,
   getModelPsychicDisciplines,
   getWeaponSelectionOptions,
@@ -108,6 +111,57 @@ export function selectWeaponsForAttack(
   return assignments;
 }
 
+export function selectWeaponsForDoorwayAttack(
+  state: GameState,
+  attackerUnit: UnitState,
+  doorwayId: string,
+  strategy: StrategyMode,
+): WeaponAssignment[] {
+  const assignments: WeaponAssignment[] = [];
+  const doorwayTerrain = findDoorwayTerrain(state, doorwayId);
+  if (!doorwayTerrain) {
+    return assignments;
+  }
+
+  const aliveModels = getAliveModels(attackerUnit);
+  const modelsWithLos = new Set(getModelsWithLOSToDoorway(
+    state,
+    attackerUnit.id,
+    doorwayId,
+    doorwayTerrain,
+  ));
+  if (modelsWithLos.size === 0) {
+    return assignments;
+  }
+
+  const targetDistance = aliveModels.reduce((closest, model) => (
+    Math.min(closest, getDoorwayDistanceForModel(state, model, doorwayId, doorwayTerrain))
+  ), Number.POSITIVE_INFINITY);
+  if (!Number.isFinite(targetDistance)) {
+    return assignments;
+  }
+
+  for (const model of aliveModels) {
+    if (!modelsWithLos.has(model.id)) continue;
+
+    const inRangeWeapons = getInRangeWeaponOptions(
+      state,
+      attackerUnit,
+      model.id,
+      targetDistance,
+    );
+    if (inRangeWeapons.length === 0) continue;
+
+    assignments.push(
+      strategy === 'basic'
+        ? inRangeWeapons[0].assignment
+        : selectBestWeaponForTarget(inRangeWeapons),
+    );
+  }
+
+  return assignments;
+}
+
 /**
  * Select the best weapon from a list for a given target.
  * Tactical heuristic: score each valid in-range profile and pick the highest.
@@ -172,15 +226,43 @@ export function hasWeaponsInRange(
   const aliveModels = getAliveModels(attackerUnit);
   return aliveModels.some((model) =>
     modelsWithLos.has(model.id) &&
-    getAvailableRangedWeaponIdsForModel(model).some((weaponId) =>
-      getWeaponSelectionOptions(
-        { modelId: model.id, weaponId },
-        attackerUnit,
-        state,
-        distance,
-      ).some((option) => option.weaponProfile.hasTemplate || isWeaponProfileInRange(option.weaponProfile, distance)),
-    ),
+    getInRangeWeaponOptions(state, attackerUnit, model.id, distance).length > 0,
   );
+}
+
+export function hasWeaponsInRangeToDoorway(
+  state: GameState,
+  attackerUnit: UnitState,
+  doorwayId: string,
+): boolean {
+  const doorwayTerrain = findDoorwayTerrain(state, doorwayId);
+  if (!doorwayTerrain) {
+    return false;
+  }
+
+  const aliveModels = getAliveModels(attackerUnit);
+  const modelsWithLos = new Set(getModelsWithLOSToDoorway(
+    state,
+    attackerUnit.id,
+    doorwayId,
+    doorwayTerrain,
+  ));
+  if (modelsWithLos.size === 0) {
+    return false;
+  }
+
+  return aliveModels.some((model) => {
+    if (!modelsWithLos.has(model.id)) {
+      return false;
+    }
+
+    const distance = getDoorwayDistanceForModel(state, model, doorwayId, doorwayTerrain);
+    if (!Number.isFinite(distance)) {
+      return false;
+    }
+
+    return getInRangeWeaponOptions(state, attackerUnit, model.id, distance).length > 0;
+  });
 }
 
 /**
@@ -209,6 +291,44 @@ function getEstimatedTargetDistance(
   if (closestDistance === null) return firstModelDistance;
   if (firstModelDistance === null) return closestDistance;
   return Math.max(closestDistance, firstModelDistance);
+}
+
+function getInRangeWeaponOptions(
+  state: GameState,
+  attackerUnit: UnitState,
+  modelId: string,
+  targetDistance: number,
+): {
+  assignment: WeaponAssignment;
+  profile: NonNullable<ReturnType<typeof resolveWeaponAssignment>>;
+}[] {
+  const model = attackerUnit.models.find((candidate) => candidate.id === modelId);
+  if (!model) {
+    return [];
+  }
+
+  return getAvailableRangedWeaponIdsForModel(model)
+    .flatMap((weaponId) =>
+      getWeaponSelectionOptions(
+        { modelId, weaponId },
+        attackerUnit,
+        state,
+        targetDistance,
+      ).map((option) => ({
+        assignment: option.assignment,
+        profile: option.weaponProfile,
+      })),
+    )
+    .filter(
+      (
+        candidate,
+      ): candidate is {
+        assignment: WeaponAssignment;
+        profile: NonNullable<ReturnType<typeof resolveWeaponAssignment>>;
+      } =>
+        candidate.profile !== undefined &&
+        (candidate.profile.hasTemplate || isWeaponProfileInRange(candidate.profile, targetDistance)),
+    );
 }
 
 /**

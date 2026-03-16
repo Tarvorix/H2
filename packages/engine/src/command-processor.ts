@@ -3807,6 +3807,12 @@ export function getValidCommands(state: GameState): string[] {
           if (hasAvailableManifestPsychicPower(state)) {
             validCommands.push('manifestPsychicPower');
           }
+          if (state.gameMode === 'zone-mortalis') {
+            validCommands.push('operateDoorway');
+            if (state.missionState?.missionId === 'terminal-control') {
+              validCommands.push('interfaceObjective');
+            }
+          }
           break;
         case SubPhase.Rout:
           // Rout is auto-processed, just endSubPhase

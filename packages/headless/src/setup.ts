@@ -8,9 +8,10 @@ import type {
   ObjectiveMarker,
   Position,
   ReserveType,
+  TerrainPiece,
   UnitState,
 } from '@hh/types';
-import { LegionFaction, ModelSubType, Phase, SubPhase, UnitMovementState } from '@hh/types';
+import { GameMode, LegionFaction, ModelSubType, Phase, SubPhase, UnitMovementState } from '@hh/types';
 import {
   STANDARD_BATTLEFIELD_HEIGHT,
   STANDARD_BATTLEFIELD_WIDTH,
@@ -19,7 +20,12 @@ import {
   findMission,
   getProfileById,
 } from '@hh/data';
-import { getModelWounds, initializeMissionState } from '@hh/engine';
+import {
+  getModelWounds,
+  initializeMissionState,
+  initializeZoneMortalisState,
+} from '@hh/engine';
+import { createDefaultZoneMortalisTerrain } from './zone-mortalis-defaults';
 
 export interface HeadlessUnitSetup {
   profileId: string;
@@ -46,6 +52,7 @@ export interface HeadlessGameSetupOptions {
   missionId: string;
   armies: [HeadlessArmySetup, HeadlessArmySetup];
   objectives?: ObjectiveMarker[];
+  terrain?: TerrainPiece[];
   gameId?: string;
   battlefieldWidth?: number;
   battlefieldHeight?: number;
@@ -343,15 +350,21 @@ function defaultObjectivesForMission(
  * This is UI-independent and intended for test scenarios and CLI workflows.
  */
 export function createHeadlessGameState(options: HeadlessGameSetupOptions): GameState {
-  const battlefieldWidth = options.battlefieldWidth ?? STANDARD_BATTLEFIELD_WIDTH;
-  const battlefieldHeight = options.battlefieldHeight ?? STANDARD_BATTLEFIELD_HEIGHT;
-  const maxBattleTurns = options.maxBattleTurns ?? STANDARD_GAME_LENGTH;
-  const firstPlayerIndex = options.firstPlayerIndex ?? 0;
-
   const mission = findMission(options.missionId);
   if (!mission) {
     throw new Error(`Unknown mission "${options.missionId}" in headless setup.`);
   }
+
+  const battlefieldWidth = options.battlefieldWidth
+    ?? mission.battlefield?.width
+    ?? STANDARD_BATTLEFIELD_WIDTH;
+  const battlefieldHeight = options.battlefieldHeight
+    ?? mission.battlefield?.height
+    ?? STANDARD_BATTLEFIELD_HEIGHT;
+  const maxBattleTurns = options.maxBattleTurns
+    ?? mission.maxBattleTurns
+    ?? STANDARD_GAME_LENGTH;
+  const firstPlayerIndex = options.firstPlayerIndex ?? 0;
 
   const deploymentMapDef = findDeploymentMapByType(mission.deploymentMap);
   if (!deploymentMapDef) {
@@ -370,6 +383,14 @@ export function createHeadlessGameState(options: HeadlessGameSetupOptions): Game
     battlefieldHeight,
     objectiveOverrides,
   );
+  const terrain = options.terrain ?? (
+    mission.gameMode === GameMode.ZoneMortalis
+      ? createDefaultZoneMortalisTerrain()
+      : []
+  );
+  const zoneMortalisState = mission.gameMode === GameMode.ZoneMortalis
+    ? initializeZoneMortalisState(terrain, missionState)
+    : undefined;
 
   assertUniqueConfiguredUnitIds(options.armies);
 
@@ -380,8 +401,9 @@ export function createHeadlessGameState(options: HeadlessGameSetupOptions): Game
 
   return {
     gameId: options.gameId ?? generateGameId(),
+    gameMode: mission.gameMode,
     battlefield: { width: battlefieldWidth, height: battlefieldHeight },
-    terrain: [],
+    terrain,
     armies,
     currentBattleTurn: 1,
     maxBattleTurns,
@@ -400,5 +422,6 @@ export function createHeadlessGameState(options: HeadlessGameSetupOptions): Game
       { reactionDiscountUsedThisTurn: false, movementBonusActiveThisTurn: false, perTurnFlags: {} },
     ],
     missionState,
+    zoneMortalisState,
   };
 }
