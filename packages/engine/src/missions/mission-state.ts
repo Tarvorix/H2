@@ -79,6 +79,7 @@ export function initializeMissionState(
 
   return {
     missionId: mission.id,
+    gameMode: mission.gameMode,
     deploymentMap: mission.deploymentMap,
     deploymentZones: zones,
     objectives: missionObjectives,

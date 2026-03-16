@@ -7,14 +7,10 @@
 
 import { useCallback, useMemo } from 'react';
 import type { MissionDefinition, DeploymentMapDefinition } from '@hh/types';
-import { DeploymentMap } from '@hh/types';
+import { DeploymentMap, GameMode } from '@hh/types';
 import {
-  HEART_OF_BATTLE,
-  CRUCIBLE_OF_WAR,
-  TAKE_AND_HOLD,
-  SEARCH_AND_DESTROY,
-  HAMMER_AND_ANVIL,
-  DAWN_OF_WAR,
+  ALL_DEPLOYMENT_MAPS,
+  findMissionsByGameMode,
 } from '@hh/data';
 import type { GameUIState, GameUIAction } from '../types';
 
@@ -23,18 +19,6 @@ interface MissionSelectScreenProps {
   dispatch: React.Dispatch<GameUIAction>;
   onReturnToMenu: () => void;
 }
-
-const MISSIONS: MissionDefinition[] = [
-  HEART_OF_BATTLE,
-  CRUCIBLE_OF_WAR,
-  TAKE_AND_HOLD,
-];
-
-const DEPLOYMENT_MAPS: DeploymentMapDefinition[] = [
-  SEARCH_AND_DESTROY,
-  HAMMER_AND_ANVIL,
-  DAWN_OF_WAR,
-];
 
 function getMissionDescription(mission: MissionDefinition): string {
   const objCount = mission.objectivePlacement.kind === 'fixed'
@@ -60,6 +44,12 @@ function getDeploymentMapDescription(map: DeploymentMapDefinition): string {
       return 'Long edges — players deploy along the long table edges (12" deep).';
     case DeploymentMap.DawnOfWar:
       return 'Short edges — players deploy along the short table edges (12" deep).';
+    case DeploymentMap.ConfigurationPrimus:
+      return 'Zone Mortalis diagonal deployment with opposing corner zones.';
+    case DeploymentMap.ConfigurationSecundus:
+      return 'Zone Mortalis long-edge deployment with 12" deployment bands.';
+    case DeploymentMap.ConfigurationTertius:
+      return 'Zone Mortalis split-corner deployment with 18" corner zones.';
     default:
       return '';
   }
@@ -67,6 +57,11 @@ function getDeploymentMapDescription(map: DeploymentMapDefinition): string {
 
 export function MissionSelectScreen({ state, dispatch, onReturnToMenu }: MissionSelectScreenProps) {
   const { missionSelect } = state;
+  const gameMode = state.gameMode ?? GameMode.CoreMissions;
+  const missions = useMemo<MissionDefinition[]>(
+    () => findMissionsByGameMode(gameMode),
+    [gameMode],
+  );
 
   const handleSelectMission = useCallback(
     (missionId: string) => {
@@ -86,18 +81,39 @@ export function MissionSelectScreen({ state, dispatch, onReturnToMenu }: Mission
     dispatch({ type: 'CONFIRM_MISSION' });
   }, [dispatch]);
 
+  const selectedMission = useMemo<MissionDefinition | undefined>(
+    () => missions.find((mission: MissionDefinition) => mission.id === missionSelect.selectedMissionId),
+    [missions, missionSelect.selectedMissionId],
+  );
+
+  const deploymentMaps = useMemo<DeploymentMapDefinition[]>(() => {
+    const modeMaps = ALL_DEPLOYMENT_MAPS.filter((map: DeploymentMapDefinition) => map.gameMode === gameMode);
+    if (!selectedMission?.allowedDeploymentMaps?.length) {
+      return modeMaps;
+    }
+    return modeMaps.filter((map: DeploymentMapDefinition) => selectedMission.allowedDeploymentMaps?.includes(map.type));
+  }, [gameMode, selectedMission]);
+
   const canConfirm = missionSelect.selectedMissionId !== null && missionSelect.selectedDeploymentMap !== null;
 
-  const selectedMission = useMemo(
-    () => MISSIONS.find((m) => m.id === missionSelect.selectedMissionId),
-    [missionSelect.selectedMissionId],
+  const subtitle = gameMode === GameMode.ZoneMortalis
+    ? 'Choose a Zone Mortalis mission and deployment configuration'
+    : 'Choose a mission and deployment map';
+
+  const title = gameMode === GameMode.ZoneMortalis
+    ? 'Zone Mortalis Mission Selection'
+    : 'Mission Selection';
+
+  const selectedDeploymentLabel = useMemo(
+    () => deploymentMaps.find((m) => m.type === missionSelect.selectedDeploymentMap)?.name ?? 'Not selected',
+    [deploymentMaps, missionSelect.selectedDeploymentMap],
   );
 
   return (
     <div className="setup-screen mission-select-screen">
       <div className="setup-header">
-        <h1 className="setup-title">Mission Selection</h1>
-        <p className="setup-subtitle">Choose a mission and deployment map</p>
+        <h1 className="setup-title">{title}</h1>
+        <p className="setup-subtitle">{subtitle}</p>
         <button className="toolbar-btn" onClick={onReturnToMenu}>
           Back to Menu
         </button>
@@ -108,7 +124,7 @@ export function MissionSelectScreen({ state, dispatch, onReturnToMenu }: Mission
         <div className="mission-select-section">
           <h2 className="mission-select-section-title">Missions</h2>
           <div className="mission-select-grid">
-            {MISSIONS.map((mission) => (
+            {missions.map((mission) => (
               <div
                 key={mission.id}
                 className={`mission-card ${missionSelect.selectedMissionId === mission.id ? 'selected' : ''}`}
@@ -121,7 +137,7 @@ export function MissionSelectScreen({ state, dispatch, onReturnToMenu }: Mission
                   {getMissionDescription(mission)}
                 </div>
                 <div className="mission-card-secondaries">
-                  {mission.secondaryObjectives.map((sec, i) => (
+                  {mission.secondaryObjectives.map((sec: MissionDefinition['secondaryObjectives'][number], i: number) => (
                     <span key={i} className="mission-card-secondary">
                       {sec.type} ({sec.vpValue}VP)
                     </span>
@@ -136,7 +152,7 @@ export function MissionSelectScreen({ state, dispatch, onReturnToMenu }: Mission
         <div className="mission-select-section">
           <h2 className="mission-select-section-title">Deployment Map</h2>
           <div className="mission-select-grid">
-            {DEPLOYMENT_MAPS.map((map) => (
+            {deploymentMaps.map((map) => (
               <div
                 key={map.id}
                 className={`deployment-map-card ${missionSelect.selectedDeploymentMap === map.type ? 'selected' : ''}`}
@@ -164,9 +180,7 @@ export function MissionSelectScreen({ state, dispatch, onReturnToMenu }: Mission
               <div>Objectives: {getMissionDescription(selectedMission)}</div>
               <div>
                 Deployment:{' '}
-                {missionSelect.selectedDeploymentMap
-                  ? DEPLOYMENT_MAPS.find((m) => m.type === missionSelect.selectedDeploymentMap)?.name
-                  : 'Not selected'}
+                {selectedDeploymentLabel}
               </div>
             </div>
           </div>

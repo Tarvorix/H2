@@ -42,11 +42,13 @@ import { getTacticaEffectsForLegion } from '@hh/data';
 import type { CommandResult, GameEvent, DiceProvider } from '../types';
 import type {
   DangerousTerrainTestEvent,
+  HazardTestEvent,
   ModelMovedEvent,
   UnitRushedEvent,
   StatusAppliedEvent,
   SavingThrowRollEvent,
   DamageAppliedEvent,
+  CasualtyRemovedEvent,
 } from '../types';
 import {
   updateUnitInGameState,
@@ -80,6 +82,10 @@ import {
 } from '../profile-lookup';
 import { getCurrentModelInitiative, getCurrentModelMovement } from '../runtime-characteristics';
 import { ModelSubType } from '@hh/types';
+import {
+  getZoneMortalisMovementDistance,
+  isZoneMortalisGame,
+} from '../zone-mortalis/zone-mortalis';
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -284,6 +290,47 @@ function getCannotRushReason(unit: UnitState): string {
   return 'Unknown';
 }
 
+function resolveZoneMortalisHazardCheck(
+  state: GameState,
+  unitId: string,
+  modelId: string,
+  distanceMoved: number,
+  dice: DiceProvider,
+): { state: GameState; events: GameEvent[] } {
+  if (!isZoneMortalisGame(state) || distanceMoved <= 9 + EPSILON) {
+    return { state, events: [] };
+  }
+
+  const roll = dice.rollD6();
+  const passed = roll !== 1;
+  const events: GameEvent[] = [{
+    type: 'hazardTest',
+    unitId,
+    modelId,
+    roll,
+    passed,
+  } satisfies HazardTestEvent];
+
+  if (passed) {
+    return { state, events };
+  }
+
+  const newState = updateUnitInGameState(state, unitId, (unit) =>
+    updateModelInUnit(unit, modelId, (model) => ({
+      ...model,
+      isDestroyed: true,
+      currentWounds: 0,
+    })),
+  );
+  events.push({
+    type: 'casualtyRemoved',
+    unitId,
+    modelId,
+  } satisfies CasualtyRemovedEvent);
+
+  return { state: newState, events };
+}
+
 // ─── handleMoveModel ────────────────────────────────────────────────────────
 
 /**
@@ -403,6 +450,7 @@ export function handleMoveModel(
     friendlyShapes,
     state.battlefield.width,
     state.battlefield.height,
+    state,
   );
 
   if (moveErrors.length > 0) {
@@ -454,7 +502,9 @@ export function handleMoveModel(
   // ── Step 5: Update model position ─────────────────────────────────────
 
   const fromPosition = model.position;
-  const distanceMoved = vec2Distance(fromPosition, targetPosition);
+  const distanceMoved = isZoneMortalisGame(newState)
+    ? (getZoneMortalisMovementDistance(newState, model, fromPosition, targetPosition, 'movement').distance ?? vec2Distance(fromPosition, targetPosition))
+    : vec2Distance(fromPosition, targetPosition);
 
   newState = updateUnitInGameState(newState, unitId, (u) =>
     updateModelInUnit(u, modelId, (m) => moveModel(m, targetPosition)),
@@ -470,6 +520,10 @@ export function handleMoveModel(
     distanceMoved,
   };
   events.push(movedEvent);
+
+  const hazardResult = resolveZoneMortalisHazardCheck(newState, unitId, modelId, distanceMoved, dice);
+  newState = hazardResult.state;
+  events.push(...hazardResult.events);
 
   // ── Step 6: Track that the unit has moved ─────────────────────────────
 
@@ -760,6 +814,7 @@ export function handleMoveUnit(
       friendlyShapes,
       state.battlefield.width,
       state.battlefield.height,
+      state,
     );
 
     if (moveErrors.length > 0) {
@@ -798,7 +853,9 @@ export function handleMoveUnit(
     }
 
     const fromPosition = model.position;
-    const distanceMoved = vec2Distance(fromPosition, targetPosition);
+    const distanceMoved = isZoneMortalisGame(newState)
+      ? (getZoneMortalisMovementDistance(newState, model, fromPosition, targetPosition, 'movement').distance ?? vec2Distance(fromPosition, targetPosition))
+      : vec2Distance(fromPosition, targetPosition);
 
     newState = updateUnitInGameState(newState, unitId, (u) =>
       updateModelInUnit(u, model.id, (m) => moveModel(m, targetPosition)),
@@ -813,6 +870,10 @@ export function handleMoveUnit(
       distanceMoved,
     };
     events.push(movedEvent);
+
+    const hazardResult = resolveZoneMortalisHazardCheck(newState, unitId, model.id, distanceMoved, dice);
+    newState = hazardResult.state;
+    events.push(...hazardResult.events);
   }
 
   // ── Step 6: Track that the unit has moved ────────────────────────────

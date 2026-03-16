@@ -7,6 +7,7 @@
  */
 
 import type {
+  AttackTargetRef,
   GameState,
   GameCommand,
   Position,
@@ -26,6 +27,7 @@ import {
   AftermathOption,
   Allegiance,
   DeploymentMap,
+  GameMode,
 } from '@hh/types';
 import type { ArmyDoctrine, ArmyFaction, LegionFaction } from '@hh/types';
 import type { GameEvent, CommandResult, ValidationError } from '@hh/engine';
@@ -39,6 +41,8 @@ import type { AIPlayerConfig, AIDiagnostics } from '@hh/ai';
  * This is separate from the engine's Phase/SubPhase which tracks the turn sequence.
  */
 export enum GameUIPhase {
+  /** Choose the battle ruleset */
+  ModeSelect = 'ModeSelect',
   /** Full army construction with detachments, validation, and wargear */
   ArmyBuilder = 'ArmyBuilder',
   /** Selecting/loading armies for both players (legacy preset mode) */
@@ -214,28 +218,34 @@ export type UIFlowState =
 export type MovementFlowStep =
   | { step: 'selectUnit' }
   | { step: 'selectDestination'; unitId: string; isRush: boolean }
-  | { step: 'confirmMove'; unitId: string; modelPositions: { modelId: string; position: Position }[]; isRush: boolean };
+  | {
+      step: 'confirmMove';
+      unitId: string;
+      modelPositions: { modelId: string; position: Position }[];
+      isRush: boolean;
+      measuredDistance: number;
+    };
 
 // ── Shooting Flow ───────────────────────────────────────────────────────────
 
 export type ShootingFlowStep =
   | { step: 'selectAttacker' }
   | { step: 'selectTarget'; attackerUnitId: string }
-  | { step: 'selectWeapons'; attackerUnitId: string; targetUnitId: string; weaponSelections: WeaponSelection[] }
+  | { step: 'selectWeapons'; attackerUnitId: string; target: AttackTargetRef; weaponSelections: WeaponSelection[] }
   | {
       step: 'placeSpecial';
       attackerUnitId: string;
-      targetUnitId: string;
+      target: AttackTargetRef;
       weaponSelections: WeaponSelection[];
       requirements: SpecialShotRequirement[];
       currentIndex: number;
       blastPlacements: BlastPlacement[];
       templatePlacements: TemplatePlacement[];
     }
-  | { step: 'confirmAttack'; attackerUnitId: string; targetUnitId: string; weaponSelections: WeaponSelection[] }
-  | { step: 'resolving'; attackerUnitId: string; targetUnitId: string }
-  | { step: 'showResults'; attackerUnitId: string; targetUnitId: string; events: GameEvent[] }
-  | { step: 'resolveMorale'; attackerUnitId: string; targetUnitId: string };
+  | { step: 'confirmAttack'; attackerUnitId: string; target: AttackTargetRef; weaponSelections: WeaponSelection[] }
+  | { step: 'resolving'; attackerUnitId: string; target: AttackTargetRef }
+  | { step: 'showResults'; attackerUnitId: string; target: AttackTargetRef; events: GameEvent[] }
+  | { step: 'resolveMorale'; attackerUnitId: string; target: AttackTargetRef };
 
 export interface WeaponSelection {
   modelId: string;
@@ -264,11 +274,11 @@ export type SpecialShotRequirement =
 export type AssaultFlowStep =
   | { step: 'selectCharger' }
   | { step: 'selectTarget'; chargingUnitId: string }
-  | { step: 'confirmCharge'; chargingUnitId: string; targetUnitId: string }
-  | { step: 'resolving'; chargingUnitId: string; targetUnitId: string }
-  | { step: 'volleyAttacks'; chargingUnitId: string; targetUnitId: string }
-  | { step: 'chargeRoll'; chargingUnitId: string; targetUnitId: string }
-  | { step: 'chargeMove'; chargingUnitId: string; targetUnitId: string }
+  | { step: 'confirmCharge'; chargingUnitId: string; target: AttackTargetRef; measuredDistance: number }
+  | { step: 'resolving'; chargingUnitId: string; target: AttackTargetRef }
+  | { step: 'volleyAttacks'; chargingUnitId: string; target: AttackTargetRef }
+  | { step: 'chargeRoll'; chargingUnitId: string; target: AttackTargetRef }
+  | { step: 'chargeMove'; chargingUnitId: string; target: AttackTargetRef }
   | { step: 'fightPhase'; combatId: string }
   | { step: 'resolution'; combatId: string }
   | { step: 'selectAftermath'; combatId: string; unitId: string; availableOptions: AftermathOption[] }
@@ -388,6 +398,8 @@ export interface GameUIState {
   // ── Pre-Game / Post-Game ──────────────────────────────────────────────────
   /** Current UI phase (army builder → mission → terrain → deployment → playing → game over) */
   uiPhase: GameUIPhase;
+  /** Which battle ruleset is being configured */
+  gameMode: GameMode | null;
   /** Army configurations for both players (set during Army Load or Army Builder) */
   armyConfigs: [ArmyConfig | null, ArmyConfig | null];
   /** Deployment tracking state */
@@ -492,6 +504,7 @@ export interface GhostTrailEntry {
 export type GameUIAction =
   // ── Pre-Game Flow ─────────────────────────────────────────────────────────
   | { type: 'SET_UI_PHASE'; phase: GameUIPhase }
+  | { type: 'SELECT_GAME_MODE'; gameMode: GameMode }
   | { type: 'SET_ARMY_CONFIG'; playerIndex: number; config: ArmyConfig }
   | { type: 'LOAD_PRESET_ARMY'; playerIndex: number; preset: PresetArmy }
   | { type: 'CONFIRM_ARMIES' }
@@ -548,7 +561,7 @@ export type GameUIAction =
   | { type: 'CANCEL_MOVE' }
   // ── Shooting Flow ─────────────────────────────────────────────────────────
   | { type: 'START_SHOOTING_FLOW' }
-  | { type: 'SELECT_SHOOTING_TARGET'; targetUnitId: string }
+  | { type: 'SELECT_SHOOTING_TARGET'; target: AttackTargetRef }
   | { type: 'SET_WEAPON_SELECTION'; selection: WeaponSelection }
   | { type: 'CLEAR_WEAPON_SELECTION'; modelId: string }
   | { type: 'CONFIRM_SHOOTING' }
@@ -558,7 +571,7 @@ export type GameUIAction =
   // ── Assault Flow ──────────────────────────────────────────────────────────
   | { type: 'START_CHARGE_FLOW' }
   | { type: 'START_CHALLENGE_FLOW' }
-  | { type: 'SELECT_CHARGE_TARGET'; targetUnitId: string }
+  | { type: 'SELECT_CHARGE_TARGET'; target: AttackTargetRef }
   | { type: 'CONFIRM_CHARGE' }
   | { type: 'CANCEL_CHARGE' }
   | { type: 'RESOLVE_FIGHT'; combatId: string }
@@ -798,7 +811,8 @@ export function createDefaultObjectivePlacementState(): ObjectivePlacementUIStat
  */
 export function createInitialGameUIState(): GameUIState {
   return {
-    uiPhase: GameUIPhase.ArmyBuilder,
+    uiPhase: GameUIPhase.ModeSelect,
+    gameMode: null,
     armyConfigs: [null, null],
     deployment: createDefaultDeploymentState(),
     armyBuilder: createDefaultArmyBuilderState(),

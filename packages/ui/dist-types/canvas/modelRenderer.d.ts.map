@@ -1,0 +1,1 @@
+{"version":3,"file":"modelRenderer.d.ts","sourceRoot":"","sources":["../../src/canvas/modelRenderer.ts"],"names":[],"mappings":"AAAA;;;GAGG;AAGH,OAAO,KAAK,EAAE,eAAe,EAAE,MAAM,gBAAgB,CAAC;AAOtD,OAAO,KAAK,EAAE,aAAa,EAAE,MAAM,UAAU,CAAC;AAW9C,wBAAgB,YAAY,CAC1B,GAAG,EAAE,wBAAwB,EAC7B,MAAM,EAAE,eAAe,EAAE,EACzB,IAAI,EAAE,MAAM,EACZ,aAAa,CAAC,EAAE,aAAa,GAC5B,IAAI,CAmFN"}

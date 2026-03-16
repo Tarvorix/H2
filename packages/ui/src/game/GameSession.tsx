@@ -89,6 +89,7 @@ export function GameSession({ onReturnToMenu }: GameSessionProps) {
 
   // Pre-game setup phases
   if (
+    state.uiPhase === GameUIPhase.ModeSelect ||
     state.uiPhase === GameUIPhase.ArmyBuilder ||
     state.uiPhase === GameUIPhase.ArmyLoad ||
     state.uiPhase === GameUIPhase.MissionSelect ||

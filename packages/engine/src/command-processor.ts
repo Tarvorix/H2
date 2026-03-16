@@ -28,6 +28,7 @@ import {
   advanceSubPhase,
   advancePhase,
 } from './state-machine';
+import { EPSILON } from '@hh/geometry';
 import {
   setAwaitingReaction,
   clearAssaultAttackState,
@@ -36,6 +37,7 @@ import {
   updateArmyByIndex,
   updateModelInUnit,
   updateUnitInGameState,
+  applyWoundsToModel,
 } from './state-helpers';
 import {
   resolveAdvancedReaction,
@@ -48,6 +50,7 @@ import {
 import { handleMoveModel, handleMoveUnit, handleRushUnit } from './movement/move-handler';
 import { handleReservesTest, handleReservesEntry } from './movement/reserves-handler';
 import { handleEmbark, handleDisembark } from './movement/embark-disembark-handler';
+import { resolvePendingZoneMortalisBlindPanicChecks } from './movement/rout-handler';
 import { checkRepositionTrigger, handleRepositionReaction } from './movement/reposition-handler';
 import {
   detectVehicleMoveThroughTriggers,
@@ -112,8 +115,18 @@ import {
   canUnitReact,
   getAliveModels,
 } from './game-queries';
-import { getModelMovement, getModelType, lookupUnitProfile, modelHasSubType, unitProfileHasTrait, unitProfileHasSubType } from './profile-lookup';
+import { getModelMovement, getModelStateBaseSizeMM, getModelType, lookupUnitProfile, modelHasSubType, unitProfileHasTrait, unitProfileHasSubType } from './profile-lookup';
 import { MAX_CHARGE_RANGE } from './assault/charge-validator';
+import { getCurrentModelIntelligence } from './runtime-characteristics';
+import {
+  ensureZoneMortalisState,
+  getZoneMortalisDoorway,
+  getZoneMortalisMeasurementDistance,
+  updateZoneMortalisDoorway,
+  updateZoneMortalisObjectives,
+} from './zone-mortalis/zone-mortalis';
+import { handleZoneMortalisDoorwayCharge } from './zone-mortalis/doorway-charge';
+import { handleZoneMortalisDoorwayShootingAttack } from './zone-mortalis/doorway-shooting';
 
 let advancedReactionHandlersInitialized = false;
 const PSYCHIC_DISCIPLINE_IDS = new Set(getDisciplineIds());
@@ -828,6 +841,12 @@ export function processCommand(
     case 'disembark':
       return processDisembark(state, command, dice);
 
+    case 'operateDoorway':
+      return processOperateDoorway(state, command, dice);
+
+    case 'interfaceObjective':
+      return processInterfaceObjective(state, command, dice);
+
     case 'manifestPsychicPower':
       return processManifestPsychicPower(state, command, dice);
 
@@ -1513,6 +1532,307 @@ function processDisembark(
   return handleDisembark(state, command.unitId, command.modelPositions, dice);
 }
 
+function getDistanceFromPointToRectangle(point: Position, topLeft: Position, width: number, height: number): number {
+  const dx = Math.max(topLeft.x - point.x, 0, point.x - (topLeft.x + width));
+  const dy = Math.max(topLeft.y - point.y, 0, point.y - (topLeft.y + height));
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+function resolveCrushedDoorway(
+  state: GameState,
+  doorwayId: string,
+  doorwayShape: { topLeft: Position; width: number; height: number },
+): { state: GameState; events: GameEvent[] } | null {
+  const affectedUnits = new Map<string, string>();
+
+  for (const army of state.armies) {
+    for (const unit of army.units) {
+      if (!unit.isDeployed || unit.embarkedOnId !== null) {
+        continue;
+      }
+
+      for (const model of getAliveModels(unit)) {
+        const radius = (getModelStateBaseSizeMM(model) / 25.4) / 2;
+        const overlapsDoorway = getDistanceFromPointToRectangle(
+          model.position,
+          doorwayShape.topLeft,
+          doorwayShape.width,
+          doorwayShape.height,
+        ) <= radius + EPSILON;
+        if (!overlapsDoorway) {
+          continue;
+        }
+
+        affectedUnits.set(unit.id, model.id);
+        break;
+      }
+    }
+  }
+
+  if (affectedUnits.size === 0) {
+    return null;
+  }
+
+  let newState = updateZoneMortalisDoorway(state, doorwayId, (doorway) => ({
+    ...doorway,
+    id: doorwayId,
+    state: 'destroyed',
+  }));
+  const events: GameEvent[] = [{
+    type: 'doorwayStateChanged',
+    doorwayId,
+    previousState: 'open',
+    newState: 'destroyed',
+  }];
+
+  for (const [unitId, modelId] of affectedUnits) {
+    newState = updateUnitInGameState(newState, unitId, (unit) =>
+      updateModelInUnit(unit, modelId, (model) => applyWoundsToModel(model, 2)),
+    );
+
+    const updatedModel = findUnit(newState, unitId)?.models.find((model) => model.id === modelId);
+    events.push({
+      type: 'damageApplied',
+      modelId,
+      unitId,
+      woundsLost: 2,
+      remainingWounds: updatedModel?.currentWounds ?? 0,
+      destroyed: updatedModel?.isDestroyed ?? false,
+      damageSource: 'crushedDoorway',
+    });
+  }
+
+  return { state: newState, events };
+}
+
+function processOperateDoorway(
+  state: GameState,
+  command: { type: 'operateDoorway'; unitId: string; doorwayId: string; desiredState: 'open' | 'closed' },
+  dice: DiceProvider,
+): CommandResult {
+  if (state.currentPhase !== Phase.Movement || state.currentSubPhase !== SubPhase.Move) {
+    return reject(state, 'WRONG_PHASE', 'operateDoorway requires Movement/Move phase');
+  }
+
+  const ensuredState = ensureZoneMortalisState(state);
+  if (ensuredState.gameMode !== 'zone-mortalis') {
+    return reject(state, 'WRONG_GAME_MODE', 'Doorway operations are only available in Zone Mortalis games.');
+  }
+
+  const unit = findUnit(ensuredState, command.unitId);
+  if (!unit) {
+    return reject(ensuredState, 'UNIT_NOT_FOUND', `Unit "${command.unitId}" was not found.`);
+  }
+  const playerIndex = findUnitPlayerIndex(ensuredState, command.unitId);
+  if (playerIndex !== ensuredState.activePlayerIndex) {
+    return reject(ensuredState, 'NOT_ACTIVE_PLAYER', 'Only the active player may operate a doorway.');
+  }
+  if (!unit.isDeployed || unit.embarkedOnId !== null || unit.isLockedInCombat) {
+    return reject(ensuredState, 'UNIT_CANNOT_OPERATE_DOORWAY', 'This unit cannot operate a doorway right now.');
+  }
+
+  const doorway = getZoneMortalisDoorway(ensuredState, command.doorwayId);
+  const doorwayTerrain = ensuredState.terrain.find((piece) => piece.id === command.doorwayId);
+  if (!doorway || !doorwayTerrain || doorwayTerrain.shape.kind !== 'rectangle') {
+    return reject(ensuredState, 'DOORWAY_NOT_FOUND', `Doorway "${command.doorwayId}" was not found.`);
+  }
+  const doorwayShape = doorwayTerrain.shape;
+  if (doorway.state === 'destroyed') {
+    return reject(ensuredState, 'DOORWAY_DESTROYED', 'Destroyed doorways cannot be operated.');
+  }
+  if (doorway.state === command.desiredState) {
+    return reject(ensuredState, 'DOORWAY_ALREADY_IN_STATE', `Doorway is already ${command.desiredState}.`);
+  }
+
+  const historyKey = `${ensuredState.currentBattleTurn}:${ensuredState.activePlayerIndex}:${command.unitId}:${command.doorwayId}`;
+  if (ensuredState.zoneMortalisState?.doorwayOperationHistory?.includes(historyKey)) {
+    return reject(ensuredState, 'DOORWAY_ALREADY_OPERATED', 'This unit has already attempted to operate this doorway this turn.');
+  }
+
+  const aliveModels = getAliveModels(unit);
+  const baseContactModels = aliveModels.filter((model) => {
+    const radius = (getModelStateBaseSizeMM(model) / 25.4) / 2;
+    return getDistanceFromPointToRectangle(
+      model.position,
+      doorwayShape.topLeft,
+      doorwayShape.width,
+      doorwayShape.height,
+    ) <= radius + EPSILON;
+  });
+  if (baseContactModels.length === 0) {
+    return reject(ensuredState, 'DOORWAY_NOT_IN_BASE_CONTACT', 'A model in the unit must be in base contact with the doorway.');
+  }
+
+  const operator = aliveModels
+    .filter((model) => {
+      const radius = (getModelStateBaseSizeMM(model) / 25.4) / 2;
+      return getDistanceFromPointToRectangle(
+        model.position,
+        doorwayShape.topLeft,
+        doorwayShape.width,
+        doorwayShape.height,
+      ) <= radius + 2 + EPSILON;
+    })
+    .sort((left, right) => getCurrentModelIntelligence(unit, right) - getCurrentModelIntelligence(unit, left))[0];
+  if (!operator) {
+    return reject(ensuredState, 'DOORWAY_NO_OPERATOR', 'No model in the unit is within 2" of the doorway.');
+  }
+
+  const target = getCurrentModelIntelligence(unit, operator);
+  const [dieOne, dieTwo] = dice.roll2D6();
+  const roll = dieOne + dieTwo;
+  const passed = roll <= target;
+
+  let newState = ensuredState;
+  const events: GameEvent[] = [];
+
+  if (passed) {
+    if (doorway.state === 'open' && command.desiredState === 'closed') {
+      const crushedResult = resolveCrushedDoorway(newState, command.doorwayId, doorwayShape);
+      if (crushedResult) {
+        newState = crushedResult.state;
+        events.push(...crushedResult.events);
+      } else {
+        newState = updateZoneMortalisDoorway(newState, command.doorwayId, (currentDoorway) => ({
+          ...currentDoorway,
+          id: command.doorwayId,
+          state: command.desiredState,
+        }));
+        events.push({
+          type: 'doorwayStateChanged',
+          doorwayId: command.doorwayId,
+          previousState: doorway.state,
+          newState: command.desiredState,
+        });
+      }
+    } else {
+      newState = updateZoneMortalisDoorway(newState, command.doorwayId, (currentDoorway) => ({
+        ...currentDoorway,
+        id: command.doorwayId,
+        state: command.desiredState,
+      }));
+      events.push({
+        type: 'doorwayStateChanged',
+        doorwayId: command.doorwayId,
+        previousState: doorway.state,
+        newState: command.desiredState,
+      });
+    }
+  }
+
+  newState = {
+    ...newState,
+    zoneMortalisState: newState.zoneMortalisState
+      ? {
+          ...newState.zoneMortalisState,
+          doorwayOperationHistory: [
+            ...(newState.zoneMortalisState.doorwayOperationHistory ?? []),
+            historyKey,
+          ],
+        }
+      : newState.zoneMortalisState,
+  };
+
+  return {
+    state: newState,
+    events,
+    errors: [],
+    accepted: true,
+  };
+}
+
+function processInterfaceObjective(
+  state: GameState,
+  command: { type: 'interfaceObjective'; unitId: string; objectiveId: string },
+  dice: DiceProvider,
+): CommandResult {
+  if (state.currentPhase !== Phase.Movement || state.currentSubPhase !== SubPhase.Move) {
+    return reject(state, 'WRONG_PHASE', 'interfaceObjective requires Movement/Move phase');
+  }
+
+  const ensuredState = ensureZoneMortalisState(state);
+  const missionState = ensuredState.missionState;
+  if (ensuredState.gameMode !== 'zone-mortalis' || !missionState || missionState.missionId !== 'terminal-control') {
+    return reject(ensuredState, 'WRONG_MISSION', 'Objective interfacing is only available in Terminal Control.');
+  }
+
+  const unit = findUnit(ensuredState, command.unitId);
+  if (!unit) {
+    return reject(ensuredState, 'UNIT_NOT_FOUND', `Unit "${command.unitId}" was not found.`);
+  }
+  const playerIndex = findUnitPlayerIndex(ensuredState, command.unitId);
+  if (playerIndex !== ensuredState.activePlayerIndex) {
+    return reject(ensuredState, 'NOT_ACTIVE_PLAYER', 'Only the active player may interface with an objective.');
+  }
+  if (!unit.isDeployed || unit.embarkedOnId !== null || unit.isLockedInCombat) {
+    return reject(ensuredState, 'UNIT_CANNOT_INTERFACE', 'This unit cannot interface with an objective right now.');
+  }
+
+  const objective = missionState.objectives.find((candidate) => candidate.id === command.objectiveId);
+  if (!objective) {
+    return reject(ensuredState, 'OBJECTIVE_NOT_FOUND', `Objective "${command.objectiveId}" was not found.`);
+  }
+
+  const operator = getAliveModels(unit)
+    .filter((model) => (getZoneMortalisMeasurementDistance(ensuredState, model.position, objective.position) ?? Infinity) <= 3 + EPSILON)
+    .sort((left, right) => getCurrentModelIntelligence(unit, right) - getCurrentModelIntelligence(unit, left))[0];
+  if (!operator) {
+    return reject(ensuredState, 'OBJECTIVE_OUT_OF_RANGE', 'A model in the unit must be within 3" of the objective to interface with it.');
+  }
+
+  const target = getCurrentModelIntelligence(unit, operator);
+  const [dieOne, dieTwo] = dice.roll2D6();
+  const roll = dieOne + dieTwo;
+  const passed = roll <= target;
+  const newValue = passed ? Math.min(3, target - roll) : 0;
+  const previousValue = objective.currentVpValue;
+
+  const updatedObjectives = missionState.objectives.map((candidate) =>
+    candidate.id === command.objectiveId
+      ? {
+          ...candidate,
+          currentVpValue: newValue,
+        }
+      : candidate,
+  );
+
+  let newState = updateZoneMortalisObjectives(
+    {
+      ...ensuredState,
+      missionState: {
+        ...missionState,
+        objectives: updatedObjectives,
+      },
+    },
+    (objectiveStates) => objectiveStates.map((objectiveState) =>
+      objectiveState.objectiveId === command.objectiveId
+        ? {
+            ...objectiveState,
+            currentValue: newValue,
+            isInterfaced: passed,
+            isActive: true,
+          }
+        : objectiveState,
+    ),
+  );
+
+  return {
+    state: newState,
+    events: [{
+      type: 'objectiveInterfaced',
+      objectiveId: command.objectiveId,
+      unitId: command.unitId,
+      roll,
+      target,
+      passed,
+      previousValue,
+      newValue,
+    }],
+    errors: [],
+    accepted: true,
+  };
+}
+
 function processManifestPsychicPower(
   state: GameState,
   command: ManifestPsychicPowerCommand,
@@ -1538,15 +1858,28 @@ function processDeclareShooting(
   }
 
   const attackerUnit = findUnit(state, command.attackingUnitId);
+  const doorwayTargetId = command.targetDoorwayId ?? (
+    command.target?.kind === 'doorway' ? command.target.doorwayId : undefined
+  );
   if (attackerUnit) {
     const flyerShooting = getFlyerCombatAssignmentShootingOptions(state, attackerUnit, command);
     if (flyerShooting.error) {
       return reject(state, flyerShooting.error.code, flyerShooting.error.message);
     }
 
+    if (doorwayTargetId) {
+      return handleZoneMortalisDoorwayShootingAttack(state, command, dice, {
+        weaponProfileModifier: flyerShooting.weaponProfileModifier,
+      });
+    }
+
     return handleShootingAttack(state, command, dice, {
       weaponProfileModifier: flyerShooting.weaponProfileModifier,
     });
+  }
+
+  if (doorwayTargetId) {
+    return handleZoneMortalisDoorwayShootingAttack(state, command, dice);
   }
 
   return handleShootingAttack(state, command, dice);
@@ -1585,13 +1918,21 @@ function processResolveShootingCasualties(
   const casualtiesPerUnit = countCasualtiesPerUnit(state, attackState.accumulatedCasualties);
 
   // Resolve morale and clear attack state
-  return handleShootingMorale(
+  const shootingMoraleResult = handleShootingMorale(
     state,
     pendingChecks,
     attackState.unitSizesAtStart,
     casualtiesPerUnit,
     dice,
   );
+
+  const blindPanic = resolvePendingZoneMortalisBlindPanicChecks(shootingMoraleResult.state, dice);
+  return {
+    state: blindPanic.state,
+    events: [...shootingMoraleResult.events, ...blindPanic.events],
+    errors: [],
+    accepted: true,
+  };
 }
 
 // ─── Assault Phase Commands ─────────────────────────────────────────────────
@@ -1603,6 +1944,13 @@ function processDeclareCharge(
 ): CommandResult {
   if (state.currentPhase !== Phase.Assault || state.currentSubPhase !== SubPhase.Charge) {
     return reject(state, 'WRONG_PHASE', `declareCharge requires Assault/Charge phase`);
+  }
+
+  const doorwayTargetId = command.targetDoorwayId ?? (
+    command.target?.kind === 'doorway' ? command.target.doorwayId : undefined
+  );
+  if (doorwayTargetId) {
+    return handleZoneMortalisDoorwayCharge(state, command, dice);
   }
 
   return handleCharge(state, command, dice);
@@ -1794,6 +2142,14 @@ function autoProcessSubPhase(
     case SubPhase.Victory:
       result = handleVictoryCheck(state, dice);
       return { state: result.state, events: result.events };
+
+    case SubPhase.ShootingMorale: {
+      if (state.shootingAttackState) {
+        return { state, events: [] };
+      }
+
+      return resolvePendingZoneMortalisBlindPanicChecks(state, dice);
+    }
 
     case SubPhase.Resolution: {
       let currentState = state;

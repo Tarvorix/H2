@@ -31,6 +31,7 @@ import {
 } from '@hh/geometry';
 import type { CommandResult, GameEvent, DiceProvider } from '../types';
 import type {
+  BlindPanicTriggeredEvent,
   RoutMoveEvent,
   LeadershipCheckEvent,
   StatusAppliedEvent,
@@ -52,6 +53,10 @@ import {
 } from '../game-queries';
 import { computeTerrainPenalty } from './movement-validator';
 import { getModelInitiative, getModelLeadership } from '../profile-lookup';
+import {
+  clearZoneMortalisBlindPanicChecks,
+  queueZoneMortalisBlindPanicChecks,
+} from '../zone-mortalis/zone-mortalis';
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -123,6 +128,109 @@ export function handleRoutSubPhase(
   };
 }
 
+function distancePointToSegment(point: Position, from: Position, to: Position): number {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const lengthSquared = dx * dx + dy * dy;
+  if (lengthSquared === 0) {
+    const offsetX = point.x - from.x;
+    const offsetY = point.y - from.y;
+    return Math.sqrt(offsetX * offsetX + offsetY * offsetY);
+  }
+
+  const t = Math.max(
+    0,
+    Math.min(1, ((point.x - from.x) * dx + (point.y - from.y) * dy) / lengthSquared),
+  );
+  const closestX = from.x + dx * t;
+  const closestY = from.y + dy * t;
+  const offsetX = point.x - closestX;
+  const offsetY = point.y - closestY;
+  return Math.sqrt(offsetX * offsetX + offsetY * offsetY);
+}
+
+function getBlindPanicAffectedUnitIds(
+  state: GameState,
+  sourceUnitId: string,
+  modelMoves: { modelId: string; from: Position; to: Position }[],
+): string[] {
+  if (state.gameMode !== 'zone-mortalis') {
+    return [];
+  }
+
+  const activeArmy = state.armies[state.activePlayerIndex];
+  return activeArmy.units
+    .filter((unit) =>
+      unit.id !== sourceUnitId &&
+      !unit.statuses.includes(TacticalStatus.Routed) &&
+      (
+        unit.statuses.includes(TacticalStatus.Pinned) ||
+        unit.statuses.includes(TacticalStatus.Stunned) ||
+        unit.statuses.includes(TacticalStatus.Suppressed)
+      ),
+    )
+    .filter((unit) => getAliveModels(unit).some((model) =>
+      modelMoves.some((move) => distancePointToSegment(model.position, move.from, move.to) <= 2),
+    ))
+    .map((unit) => unit.id);
+}
+
+export function resolvePendingZoneMortalisBlindPanicChecks(
+  state: GameState,
+  dice: DiceProvider,
+): { state: GameState; events: GameEvent[] } {
+  const pendingChecks = state.zoneMortalisState?.pendingBlindPanicChecks ?? [];
+  if (state.gameMode !== 'zone-mortalis' || pendingChecks.length === 0) {
+    return { state, events: [] };
+  }
+
+  let newState = state;
+  const events: GameEvent[] = [];
+
+  for (const check of pendingChecks) {
+    const unit = findUnit(newState, check.unitId);
+    if (!unit || unit.statuses.includes(TacticalStatus.Routed)) {
+      continue;
+    }
+
+    const refModel = getAliveModels(unit)[0];
+    if (!refModel) {
+      continue;
+    }
+
+    const [dieOne, dieTwo] = dice.rollMultipleD6(2);
+    const roll = dieOne + dieTwo;
+    const target = getModelLeadership(refModel.unitProfileId, refModel.profileModelName);
+    const passed = roll <= target;
+
+    events.push({
+      type: 'leadershipCheck',
+      unitId: unit.id,
+      roll,
+      target,
+      passed,
+    } satisfies LeadershipCheckEvent);
+
+    if (passed) {
+      continue;
+    }
+
+    newState = updateUnitInGameState(newState, unit.id, (currentUnit) =>
+      addStatus(currentUnit, TacticalStatus.Routed),
+    );
+    events.push({
+      type: 'statusApplied',
+      unitId: unit.id,
+      status: TacticalStatus.Routed,
+    } satisfies StatusAppliedEvent);
+  }
+
+  return {
+    state: clearZoneMortalisBlindPanicChecks(newState),
+    events,
+  };
+}
+
 // ─── processRoutedUnit ──────────────────────────────────────────────────────
 
 /**
@@ -149,6 +257,22 @@ function processRoutedUnit(
     reachedEdge: fallBackMove.reachedEdge,
   };
   events.push(routEvent);
+
+  const blindPanicAffectedUnitIds = getBlindPanicAffectedUnitIds(newState, unit.id, fallBackMove.modelMoves);
+  if (blindPanicAffectedUnitIds.length > 0) {
+    newState = queueZoneMortalisBlindPanicChecks(
+      newState,
+      blindPanicAffectedUnitIds.map((affectedUnitId) => ({
+        sourceUnitId: unit.id,
+        unitId: affectedUnitId,
+      })),
+    );
+    events.push({
+      type: 'blindPanicTriggered',
+      sourceUnitId: unit.id,
+      affectedUnitIds: blindPanicAffectedUnitIds,
+    } satisfies BlindPanicTriggeredEvent);
+  }
 
   // If any model reached the edge, take a Leadership Check
   if (fallBackMove.reachedEdge) {

@@ -21,6 +21,7 @@ import {
   findUnit,
   findUnitPlayerIndex,
   getAliveModels,
+  getClosestModelDistance,
   getModelShape,
   getUnitMajorityToughness,
   getInterveningVehicleShapes,
@@ -135,15 +136,6 @@ export interface ShootingAttackExecutionOptions {
  */
 function rejectShooting(state: GameState, code: string, message: string): CommandResult {
   return { state, events: [], errors: [{ code, message }], accepted: false };
-}
-
-/**
- * Calculate Euclidean distance between two positions.
- */
-function euclideanDistance(a: { x: number; y: number }, b: { x: number; y: number }): number {
-  const dx = a.x - b.x;
-  const dy = a.y - b.y;
-  return Math.sqrt(dx * dx + dy * dy);
 }
 
 /**
@@ -892,6 +884,7 @@ export function handleShootingAttack(
     targetAliveModels,
     state.terrain,
     getInterveningVehicleShapes(state, new Set<string>([attackerUnitId, targetUnitId])),
+    state,
   );
 
   if (modelsWithLOS.length === 0) {
@@ -899,9 +892,7 @@ export function handleShootingAttack(
   }
 
   // ---- Calculate distance (centroid-based, first alive model each) ----
-  const attackerPos = attackerAliveModels[0].position;
-  const targetPos = targetAliveModels[0].position;
-  const targetDistance = euclideanDistance(attackerPos, targetPos);
+  const targetDistance = getClosestModelDistance(state, attackerUnitId, targetUnitId);
 
   // ---- Step 3: Validate weapon assignments ----
   // Convert from command's weaponSelections to internal WeaponAssignment[]
@@ -921,6 +912,7 @@ export function handleShootingAttack(
     modelsWithLOS,
     targetDistance,
     targetAliveModels,
+    state,
   );
 
   if (!weaponValidation.valid) {

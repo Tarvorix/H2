@@ -208,6 +208,16 @@ export enum TerrainType {
   Impassable = 'Impassable',
 }
 
+// ─── Game Modes ──────────────────────────────────────────────────────────────
+
+/**
+ * Supported battle rulesets.
+ */
+export enum GameMode {
+  CoreMissions = 'core-missions',
+  ZoneMortalis = 'zone-mortalis',
+}
+
 // ─── Game Phases ──────────────────────────────────────────────────────────────
 
 /**

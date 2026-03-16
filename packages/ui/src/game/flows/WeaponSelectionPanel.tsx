@@ -7,8 +7,14 @@
  */
 
 import { useCallback } from 'react';
+import type { AttackTargetRef } from '@hh/types';
+import { checkWeaponRange, getWeaponSelectionOptions, TEMPLATE_EFFECTIVE_RANGE_INCHES } from '@hh/engine';
 import type { GameUIState, GameUIAction, WeaponSelection } from '../types';
-import { checkWeaponRange, getClosestModelDistance, getWeaponSelectionOptions, TEMPLATE_EFFECTIVE_RANGE_INCHES } from '@hh/engine';
+import {
+  getAttackTargetLabel,
+  getClosestAttackTargetDistance,
+  getDoorwayDistanceForModel,
+} from '../attack-targets';
 
 /**
  * Format a weapon's stats for display.
@@ -37,14 +43,14 @@ interface WeaponSelectionPanelProps {
   state: GameUIState;
   dispatch: React.Dispatch<GameUIAction>;
   attackerUnitId: string;
-  targetUnitId: string;
+  target: AttackTargetRef;
 }
 
 export function WeaponSelectionPanel({
   state,
   dispatch,
   attackerUnitId,
-  targetUnitId,
+  target,
 }: WeaponSelectionPanelProps) {
   const gs = state.gameState;
   if (!gs) return null;
@@ -60,19 +66,11 @@ export function WeaponSelectionPanel({
   }
   if (!attackingUnit) return null;
 
-  // Find the target unit
-  let targetUnit = null;
-  for (const army of gs.armies) {
-    for (const unit of army.units) {
-      if (unit.id === targetUnitId) {
-        targetUnit = unit;
-      }
-    }
-  }
-  if (!targetUnit) return null;
-
-  const targetAliveModels = targetUnit.models.filter(m => !m.isDestroyed);
-  const closestDistance = getClosestModelDistance(gs, attackerUnitId, targetUnitId);
+  const targetUnit = target.kind === 'unit'
+    ? gs.armies.flatMap((army) => army.units).find((unit) => unit.id === target.unitId) ?? null
+    : null;
+  const targetAliveModels = targetUnit?.models.filter(m => !m.isDestroyed) ?? [];
+  const closestDistance = getClosestAttackTargetDistance(gs, attackerUnitId, target);
 
   // Get current weapon selections from the flow state
   const currentSelections: WeaponSelection[] =
@@ -102,7 +100,7 @@ export function WeaponSelectionPanel({
   return (
     <div className="weapon-selection-panel">
       <div className="panel-row" style={{ padding: '2px 0 8px 0' }}>
-        <span className="panel-row-label">Closest Distance</span>
+        <span className="panel-row-label">{getAttackTargetLabel(gs, target)}</span>
         <span className="panel-row-value">
           {Number.isFinite(closestDistance) ? `${closestDistance.toFixed(1)}"` : '—'}
         </span>
@@ -140,12 +138,20 @@ export function WeaponSelectionPanel({
                   ? TEMPLATE_EFFECTIVE_RANGE_INCHES
                   : option.weaponProfile.range;
                 const stats = formatWeaponStats(option.weaponProfile);
-                const canShootWithWeapon = effectiveRange > 0 && checkWeaponRange(
-                  model,
-                  targetAliveModels,
-                  effectiveRange,
-                  option.weaponProfile.rangeBand?.min ?? 0,
-                );
+                const minimumRange = option.weaponProfile.rangeBand?.min ?? 0;
+                const canShootWithWeapon = target.kind === 'unit'
+                  ? effectiveRange > 0 && checkWeaponRange(
+                    model,
+                    targetAliveModels,
+                    effectiveRange,
+                    minimumRange,
+                    0,
+                    state.gameState,
+                  )
+                  : (() => {
+                    const doorwayDistance = getDoorwayDistanceForModel(gs, model, target.doorwayId);
+                    return effectiveRange > 0 && doorwayDistance > minimumRange && doorwayDistance <= effectiveRange;
+                  })();
                 const isDisabled = !canShootWithWeapon;
                 return (
                   <div key={`${option.assignment.weaponId}|${option.assignment.profileName ?? ''}`} className="weapon-option">

@@ -1,4 +1,4 @@
-import type { BlastPlacement, GameState, Position, TemplatePlacement } from '@hh/types';
+import type { AttackTargetRef, BlastPlacement, GameState, Position, TemplatePlacement } from '@hh/types';
 import { TEMPLATE_EFFECTIVE_RANGE_INCHES, findUnit, formFireGroups, getBlastSizeInches, getClosestModelDistance, getModelShape, getModelsWithLOSToUnit } from '@hh/engine';
 import { closestPointOnShape, createStandardTemplate } from '@hh/geometry';
 import type { TemplateShape } from '@hh/geometry';
@@ -15,14 +15,18 @@ function buildWeaponAssignments(weaponSelections: WeaponSelection[]) {
 export function buildSpecialShotRequirements(
   gameState: GameState,
   attackerUnitId: string,
-  targetUnitId: string,
+  target: AttackTargetRef,
   weaponSelections: WeaponSelection[],
 ): SpecialShotRequirement[] {
+  if (target.kind === 'doorway') {
+    return [];
+  }
+
   const attackerUnit = findUnit(gameState, attackerUnitId);
   if (!attackerUnit) return [];
 
-  const modelsWithLos = getModelsWithLOSToUnit(gameState, attackerUnitId, targetUnitId).map((model) => model.id);
-  const targetDistance = getClosestModelDistance(gameState, attackerUnitId, targetUnitId);
+  const modelsWithLos = getModelsWithLOSToUnit(gameState, attackerUnitId, target.unitId).map((model) => model.id);
+  const targetDistance = getClosestModelDistance(gameState, attackerUnitId, target.unitId);
   const fireGroups = formFireGroups(
     buildWeaponAssignments(weaponSelections),
     attackerUnit,

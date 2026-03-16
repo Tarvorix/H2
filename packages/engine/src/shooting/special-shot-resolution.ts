@@ -12,12 +12,20 @@ import {
   blastOverlap,
   blastSizeToRadius,
   closestPointOnShape,
+  createCircleBaseInches,
   createStandardTemplate,
+  hasLOS,
   pointInShape,
+  pointInTerrainShape,
+  terrainChordLength,
   templateOverlap,
 } from '@hh/geometry';
 import { findModel, findUnit, findUnitPlayerIndex, getAliveModels, getModelShape } from '../game-queries';
 import type { FireGroup, HitResult } from './shooting-types';
+import {
+  getZoneMortalisBlockingTerrainPieces,
+  isZoneMortalisGame,
+} from '../zone-mortalis/zone-mortalis';
 
 export const TEMPLATE_EFFECTIVE_RANGE_INCHES = 8;
 
@@ -80,6 +88,9 @@ function getModelsTouchedByBlast(
 ): UnitHitMap {
   const radius = blastSizeToRadius(sizeInches);
   const hitMap: UnitHitMap = new Map();
+  const zoneMortalisBlockingTerrain = isZoneMortalisGame(state)
+    ? getZoneMortalisBlockingTerrainPieces(state)
+    : [];
 
   for (const army of state.armies) {
     for (const unit of army.units) {
@@ -91,11 +102,23 @@ function getModelsTouchedByBlast(
         radius,
         aliveModels.map((model) => getModelShape(model)),
       );
-      if (hitIndices.length === 0) continue;
+      const validHitIndices = hitIndices.filter((index) => {
+        if (!isZoneMortalisGame(state)) {
+          return true;
+        }
+
+        return hasLOS(
+          createCircleBaseInches(center, 0.01),
+          getModelShape(aliveModels[index]),
+          zoneMortalisBlockingTerrain,
+          [],
+        );
+      });
+      if (validHitIndices.length === 0) continue;
 
       hitMap.set(unit.id, {
         unitId: unit.id,
-        modelIds: hitIndices.map((index) => aliveModels[index].id),
+        modelIds: validHitIndices.map((index) => aliveModels[index].id),
       });
     }
   }
@@ -119,6 +142,9 @@ function getModelsTouchedByTemplate(
   const templateOrigin = closestPointOnShape(sourceShape, farPoint);
   const template = createStandardTemplate(templateOrigin, directionRadians);
   const hitMap: UnitHitMap = new Map();
+  const zoneMortalisBlockingTerrain = isZoneMortalisGame(state)
+    ? getZoneMortalisBlockingTerrainPieces(state)
+    : [];
 
   for (const army of state.armies) {
     for (const unit of army.units) {
@@ -132,6 +158,18 @@ function getModelsTouchedByTemplate(
       if (hitIndices.length === 0) continue;
 
       const modelIds = hitIndices
+        .filter((index) => {
+          if (!isZoneMortalisGame(state)) {
+            return true;
+          }
+
+          return hasLOS(
+            createCircleBaseInches(templateOrigin, 0.01),
+            getModelShape(aliveModels[index]),
+            zoneMortalisBlockingTerrain,
+            [],
+          );
+        })
         .map((index) => aliveModels[index].id)
         .filter((modelId) => modelId !== sourceModelId);
       if (modelIds.length === 0) continue;
@@ -284,6 +322,53 @@ function rollScatterResult(dice: DiceProvider): { angle: number; distance: numbe
     distance: scatter.distance,
     isHit: false,
   };
+}
+
+function clampScatterPositionForZoneMortalis(
+  state: GameState,
+  origin: Position,
+  target: Position,
+): Position {
+  if (!isZoneMortalisGame(state)) {
+    return target;
+  }
+
+  const blockingTerrain = getZoneMortalisBlockingTerrainPieces(state);
+  const isBlocked = (position: Position): boolean => blockingTerrain.some((terrain) =>
+    terrainChordLength(origin, position, terrain) > 0.0001,
+  );
+
+  if (!isBlocked(target)) {
+    return target;
+  }
+
+  let low = 0;
+  let high = 1;
+  for (let iteration = 0; iteration < 24; iteration++) {
+    const mid = (low + high) / 2;
+    const point = {
+      x: origin.x + (target.x - origin.x) * mid,
+      y: origin.y + (target.y - origin.y) * mid,
+    };
+    if (isBlocked(point)) {
+      high = mid;
+    } else {
+      low = mid;
+    }
+  }
+
+  const clamped = {
+    x: origin.x + (target.x - origin.x) * low,
+    y: origin.y + (target.y - origin.y) * low,
+  };
+  const adjusted = blockingTerrain.some((terrain) => pointInTerrainShape(clamped, terrain.shape))
+    ? {
+        x: origin.x + (target.x - origin.x) * Math.max(0, low - 0.0005),
+        y: origin.y + (target.y - origin.y) * Math.max(0, low - 0.0005),
+      }
+    : clamped;
+
+  return adjusted;
 }
 
 export function resolveSpecialShotFireGroup(
@@ -464,7 +549,11 @@ export function resolveSpecialShotFireGroup(
 
   if (missedHits.length > 0) {
     const scatter = rollScatterResult(dice);
-    const scatteredPosition = applyScatter(blastPlacement.position, scatter);
+    const scatteredPosition = clampScatterPositionForZoneMortalis(
+      state,
+      blastPlacement.position,
+      applyScatter(blastPlacement.position, scatter),
+    );
     const scatteredHitMap = getModelsTouchedByBlast(state, scatteredPosition, blastSize);
 
     allEvents.push({

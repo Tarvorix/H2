@@ -12,6 +12,7 @@ import type {
   LegionFaction,
   TerrainType,
   CoreReaction,
+  GameMode,
 } from './enums';
 import { VehicleFacing } from './enums';
 import type {
@@ -67,12 +68,119 @@ export interface TerrainPiece {
   isDifficult: boolean;
   /** Whether this terrain also counts as Dangerous */
   isDangerous: boolean;
+  /** Optional Zone Mortalis metadata for walls, doorways, and barricades. */
+  zoneMortalis?: ZoneMortalisTerrainData;
 }
 
 export type TerrainShape =
   | { kind: 'polygon'; vertices: Position[] }
   | { kind: 'circle'; center: Position; radius: number }
   | { kind: 'rectangle'; topLeft: Position; width: number; height: number };
+
+export type ZoneMortalisBoundaryOrientation = 'horizontal' | 'vertical';
+
+export interface ZoneMortalisBoundaryRef {
+  /** Whether the boundary runs horizontally or vertically along the 4x4 section grid. */
+  orientation: ZoneMortalisBoundaryOrientation;
+  /** Boundary row index in section space. */
+  row: number;
+  /** Boundary column index in section space. */
+  column: number;
+}
+
+export interface ZoneMortalisWallTerrainData {
+  kind: 'wall';
+  boundary: ZoneMortalisBoundaryRef;
+  isPerimeter?: boolean;
+}
+
+export type ZoneMortalisDoorwayState = 'open' | 'closed' | 'destroyed';
+
+export interface ZoneMortalisDoorwayTerrainData {
+  /** Stable doorway identifier, mirrored from the terrain piece ID. */
+  id?: string;
+  kind: 'doorway';
+  boundary: ZoneMortalisBoundaryRef;
+  /** Width in inches for Doorway (X). */
+  width: number;
+  /** Current open/closed/destroyed state. */
+  state: ZoneMortalisDoorwayState;
+  /** Fortification armour value. */
+  armourValue: number;
+  /** Current hull points. */
+  hullPoints: number;
+  /** Maximum hull points. */
+  maxHullPoints: number;
+}
+
+export interface ZoneMortalisBarricadeTerrainData {
+  kind: 'barricade';
+  boundary: ZoneMortalisBoundaryRef;
+}
+
+export type ZoneMortalisTerrainData =
+  | ZoneMortalisWallTerrainData
+  | ZoneMortalisDoorwayTerrainData
+  | ZoneMortalisBarricadeTerrainData;
+
+export interface ZoneMortalisSectionState {
+  /** Stable section identifier (`section-r-c`). */
+  id: string;
+  /** Section row (0 = top). */
+  row: number;
+  /** Section column (0 = left). */
+  column: number;
+  /** Top-left point of the 12"x12" section. */
+  topLeft: Position;
+  /** Confined Space value for the section, if any. */
+  confinedSpace: number | null;
+  /** Whether the section currently has Abyssal Darkness. */
+  hasAbyssalDarkness: boolean;
+  /** Optional expiry for temporary Abyssal Darkness effects. */
+  abyssalDarknessExpiresAfterPlayerTurn?: {
+    battleTurn: number;
+    playerIndex: number;
+  } | null;
+  /** Optional official overlay label such as α or β. */
+  label?: string;
+}
+
+export interface ZoneMortalisObjectiveState {
+  /** Objective marker identifier. */
+  objectiveId: string;
+  /** Current VP value after interfacing or mission updates. */
+  currentValue: number;
+  /** Whether the objective is currently active for scoring. */
+  isActive: boolean;
+  /** Whether the objective has been successfully interfaced with. */
+  isInterfaced: boolean;
+}
+
+export interface ZoneMortalisBlindPanicCheck {
+  /** Routed unit that caused the panic test. */
+  sourceUnitId: string;
+  /** Friendly unit that must test in the next Shooting Morale sub-phase. */
+  unitId: string;
+}
+
+export interface ZoneMortalisState {
+  /** The 4x4 section grid for the battlefield. */
+  sections: ZoneMortalisSectionState[];
+  /** Stateful doorway records keyed by terrain ID. */
+  doorways: ZoneMortalisDoorwayTerrainData[];
+  /** Current per-objective runtime state for Zone Mortalis missions. */
+  objectives: ZoneMortalisObjectiveState[];
+  /** Per-unit declared objective control/contest assignments. */
+  unitObjectiveAssignments?: Record<string, string | null>;
+  /** Tracks doorway operations already attempted this player turn. */
+  doorwayOperationHistory?: string[];
+  /** Pending Blind Panic leadership checks to resolve in the next Shooting Morale sub-phase. */
+  pendingBlindPanicChecks?: ZoneMortalisBlindPanicCheck[];
+}
+
+export type AttackTargetRef =
+  | { kind: 'unit'; unitId: string }
+  | { kind: 'doorway'; doorwayId: string };
 
 // ─── Model State ──────────────────────────────────────────────────────────────
 
@@ -319,6 +427,8 @@ export type RollType =
 export interface GameState {
   /** Unique game identifier */
   gameId: string;
+  /** Active ruleset for this battle. */
+  gameMode: GameMode;
   /** Battlefield dimensions */
   battlefield: BattlefieldDimensions;
   /** Terrain pieces on the battlefield */
@@ -373,6 +483,8 @@ export interface GameState {
   pendingHeroicInterventionState?: PendingHeroicInterventionState;
   /** Mission state — objectives, scoring, special rules (null if no mission selected) */
   missionState: MissionState | null;
+  /** Zone Mortalis runtime state, when applicable. */
+  zoneMortalisState?: ZoneMortalisState;
 }
 
 // ─── Assault Attack State ────────────────────────────────────────────────────
@@ -836,6 +948,8 @@ export type GameCommand =
   | RushUnitCommand
   | EmbarkCommand
   | DisembarkCommand
+  | OperateDoorwayCommand
+  | InterfaceObjectiveCommand
   | SelectWargearOptionCommand
   | DeclareWeaponsCommand
   | SelectAftermathCommand
@@ -853,12 +967,20 @@ export interface MoveUnitCommand {
   modelPositions: { modelId: string; position: Position }[];
   /** Whether this move is a Rush (M+I) movement. */
   isRush?: boolean;
+  /** Optional ordered waypoints for Zone Mortalis path measurement. */
+  path?: Position[];
+  /** Optional pre-measured legal route length in inches. */
+  measuredDistance?: number;
 }
 
 export interface DeclareShootingCommand {
   type: 'declareShooting';
   attackingUnitId: string;
   targetUnitId: string;
+  /** Optional generic target reference used for Zone Mortalis doorway targeting. */
+  target?: AttackTargetRef;
+  /** Optional doorway target for Zone Mortalis fortification attacks. */
+  targetDoorwayId?: string;
   psychicPower?: DeclaredPsychicPower;
   /** Weapon selections per model — which weapon each model will fire */
   weaponSelections: { modelId: string; weaponId: string; profileName?: string }[];
@@ -876,7 +998,15 @@ export interface DeclareChargeCommand {
   type: 'declareCharge';
   chargingUnitId: string;
   targetUnitId: string;
+  /** Optional generic target reference used for Zone Mortalis doorway targeting. */
+  target?: AttackTargetRef;
+  /** Optional doorway target for Zone Mortalis fortification charges. */
+  targetDoorwayId?: string;
   psychicPower?: DeclaredPsychicPower;
+  /** Optional ordered waypoints for Zone Mortalis charge measurement. */
+  path?: Position[];
+  /** Optional pre-measured legal route length in inches. */
+  measuredDistance?: number;
 }
 
 export interface PassChallengeCommand {
@@ -967,6 +1097,19 @@ export interface DisembarkCommand {
   type: 'disembark';
   unitId: string;
   modelPositions: { modelId: string; position: Position }[];
+}
+
+export interface OperateDoorwayCommand {
+  type: 'operateDoorway';
+  unitId: string;
+  doorwayId: string;
+  desiredState: 'open' | 'closed';
+}
+
+export interface InterfaceObjectiveCommand {
+  type: 'interfaceObjective';
+  unitId: string;
+  objectiveId: string;
 }
 
 export interface SelectWargearOptionCommand {

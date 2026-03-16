@@ -16,6 +16,12 @@ import { findUnit, findUnitPlayerIndex, getAliveModels, getModelShape } from '..
 import { hasLOS, distanceShapes } from '@hh/geometry';
 import type { ModelShape, RectHull } from '@hh/geometry';
 import { determineVehicleFacing } from '@hh/geometry';
+import {
+  getZoneMortalisBlockingTerrainPieces,
+  getZoneMortalisMeasurementDistance,
+  hasZoneMortalisLineOfSight,
+  isZoneMortalisGame,
+} from '../zone-mortalis/zone-mortalis';
 
 // ─── Validation Result Type ───────────────────────────────────────────────────
 
@@ -286,6 +292,7 @@ export function filterModelsWithLOS(
   targetModels: ModelState[],
   terrain: TerrainPiece[],
   vehicleHulls: ReadonlyArray<ModelShape>,
+  state?: GameState,
 ): string[] {
   const modelsWithLOS: string[] = [];
 
@@ -300,7 +307,15 @@ export function filterModelsWithLOS(
     for (let i = 0; i < targetModels.length; i++) {
       const targetShape = targetShapes[i];
 
-      if (hasLOS(attackerShape, targetShape, terrain, vehicleHulls)) {
+      if (
+        (!state || !isZoneMortalisGame(state) || hasZoneMortalisLineOfSight(state, attackerModel.position, targetModels[i].position)) &&
+        hasLOS(
+          attackerShape,
+          targetShape,
+          state && isZoneMortalisGame(state) ? getZoneMortalisBlockingTerrainPieces(state) : terrain,
+          vehicleHulls,
+        )
+      ) {
         canSeeAnyTarget = true;
         break; // Only need to see one target model
       }
@@ -336,6 +351,7 @@ export function checkWeaponRange(
   weaponRange: number,
   minimumRange: number = 0,
   virtualRangeIncrease: number = 0,  // Legion tactica virtual range increase (e.g., Alpha Legion +2" treated as farther)
+  state?: GameState | null,
 ): boolean {
   // Apply legion tactica virtual range reduction (simulates target appearing farther away)
   const effectiveWeaponRange = weaponRange - virtualRangeIncrease;
@@ -345,7 +361,9 @@ export function checkWeaponRange(
 
   for (const targetModel of targetModels) {
     const targetShape = getModelShape(targetModel);
-    const distance = distanceShapes(attackerShape, targetShape);
+    const distance = state && isZoneMortalisGame(state)
+      ? (getZoneMortalisMeasurementDistance(state, attackerModel.position, targetModel.position) ?? Infinity)
+      : distanceShapes(attackerShape, targetShape);
 
     const aboveMinimum = minimumRange <= 0
       ? distance >= 0

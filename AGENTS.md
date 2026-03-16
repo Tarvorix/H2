@@ -46,6 +46,7 @@ git config user.email "Tarvorix@users.noreply.github.com"
 - Other Rules Documents for lookups if needed: HH_Core.md, HH_Principles.md, HH_Battle_AOD.md, HH_Armoury.md, HH_Rules_Battle.md, HH_Legiones_Astartes.md, HH_Tables.md
 - Reference Datasheets to use: HH_v2_units.md
 - Full datasheets to reference in future: legiones_astartes_clean.md
+- Zone Mortalis Rules: HH_Zone_Mortalis.pdf
 
 ## Project Rules
 - Always create plan

@@ -94,11 +94,7 @@ export function MovementFlow({ state, dispatch }: MovementFlowProps) {
     : null;
 
   const plannedDistance = step.step === 'confirmMove' && step.modelPositions.length > 0
-    ? (() => {
-        const first = step.modelPositions[0];
-        const origin = movingUnit.models.find(m => m.id === first.modelId)?.position;
-        return origin ? distanceInches(origin, first.position) : null;
-      })()
+    ? step.measuredDistance
     : null;
 
   const handleConfirmMove = useCallback(() => {

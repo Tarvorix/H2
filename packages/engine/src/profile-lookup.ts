@@ -393,6 +393,17 @@ export function getModelWillpower(profileId: string, modelName: string): number 
 }
 
 /**
+ * Get the Intelligence characteristic for a model.
+ * Returns 7 as default if not found.
+ */
+export function getModelIntelligence(profileId: string, modelName: string): number {
+  const chars = getModelCharacteristics(profileId, modelName);
+  if (!chars) return 7;
+  if (isVehicleCharacteristics(chars)) return 0;
+  return chars.IN;
+}
+
+/**
  * Get the Strength characteristic for a model (infantry-style only).
  * Returns 4 as default if not found.
  */

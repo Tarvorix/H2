@@ -7,7 +7,7 @@
  */
 
 import type { GameState } from '@hh/types';
-import { MissionSpecialRule, SecondaryObjectiveType } from '@hh/types';
+import { MissionSpecialRule, ModelSubType, SecondaryObjectiveType } from '@hh/types';
 import type {
   CommandResult,
   DiceProvider,
@@ -20,6 +20,12 @@ import type {
   SuddenDeathEvent,
 } from '../types';
 import { findUnit } from '../game-queries';
+import { unitProfileHasSubType } from '../profile-lookup';
+import {
+  setZoneMortalisObjectiveAssignments,
+  syncZoneMortalisMissionObjectives,
+  updateZoneMortalisSections,
+} from '../zone-mortalis/zone-mortalis';
 import {
   getObjectiveScoringValueForUnit,
   resolveObjectiveControlForScoring,
@@ -71,6 +77,20 @@ export function handleVictorySubPhase(
   const activePlayerIndex = state.activePlayerIndex;
   let vpScored = 0;
   const objectiveResolution = resolveObjectiveControlForScoring(newState, activePlayerIndex);
+  if (newState.gameMode === 'zone-mortalis') {
+    const mergedAssignments: Record<string, string | null> = {};
+    for (const [objectiveId, unitId] of Object.entries(objectiveResolution.playerAssignments[0])) {
+      if (unitId) {
+        mergedAssignments[unitId] = objectiveId;
+      }
+    }
+    for (const [objectiveId, unitId] of Object.entries(objectiveResolution.playerAssignments[1])) {
+      if (unitId) {
+        mergedAssignments[unitId] = objectiveId;
+      }
+    }
+    newState = setZoneMortalisObjectiveAssignments(newState, mergedAssignments);
+  }
 
   for (const objective of missionState.objectives) {
     if (objective.isRemoved) continue;
@@ -243,6 +263,46 @@ export function handleVictorySubPhase(
   // Update mission state on game state
   newState = { ...newState, missionState };
 
+  if (newState.gameMode === 'zone-mortalis' && newState.zoneMortalisState) {
+    const expiringSections = (state.zoneMortalisState?.sections ?? []).filter((section) =>
+      section.abyssalDarknessExpiresAfterPlayerTurn?.battleTurn === state.currentBattleTurn &&
+      section.abyssalDarknessExpiresAfterPlayerTurn.playerIndex === state.activePlayerIndex,
+    );
+
+    if (expiringSections.length > 0) {
+      const expiringSectionIds = new Set(expiringSections.map((section) => section.id));
+      newState = updateZoneMortalisSections(newState, (sections) => sections.map((section) =>
+        expiringSectionIds.has(section.id)
+          ? {
+              ...section,
+              hasAbyssalDarkness: false,
+              abyssalDarknessExpiresAfterPlayerTurn: null,
+            }
+          : section,
+      ));
+      const refreshedSections = (newState.zoneMortalisState?.sections ?? []).filter((section) =>
+        expiringSectionIds.has(section.id),
+      );
+      for (const section of refreshedSections) {
+        events.push({
+          type: 'zoneMortalisSectionChanged',
+          sectionId: section.id,
+          confinedSpace: section.confinedSpace,
+          hasAbyssalDarkness: section.hasAbyssalDarkness,
+        });
+      }
+    }
+
+    if (
+      !newState.isGameOver &&
+      missionState.missionId === 'signal-influx' &&
+      isEndOfBattleTurn
+    ) {
+      newState = syncZoneMortalisMissionObjectives(newState, []);
+      missionState = newState.missionState ?? missionState;
+    }
+  }
+
   return {
     state: newState,
     events,
@@ -295,6 +355,10 @@ function hasModelsOnBattlefield(state: GameState, playerIndex: number): boolean 
   const army = state.armies[playerIndex];
   for (const unit of army.units) {
     if (unit.isInReserves) continue;
+    if (!unit.isDeployed && unit.embarkedOnId === null) continue;
+    if (state.gameMode === 'zone-mortalis' && unitProfileHasSubType(unit.profileId, ModelSubType.Flyer)) {
+      continue;
+    }
     for (const model of unit.models) {
       if (!model.isDestroyed) return true;
     }

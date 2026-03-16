@@ -2,6 +2,117 @@
 
 Last Updated: 2026-03-14
 
+## Execution Plan (Implement Single-Level Zone Mortalis - 2026-03-15)
+- [ ] Add a top-level game mode selection flow before army building and persist `Core Missions` vs `Zone Mortalis` through setup and runtime state.
+- [ ] Extend shared mission/game state types and data definitions for Zone Mortalis missions, deployment configurations, battlefield defaults, section state, doorway state, and mission-specific runtime data.
+- [ ] Build a dedicated Zone Mortalis setup pipeline with snapped 4x4 section authoring, official deployment/mission overlays, and custom wall/doorway/barricade/light-area placement.
+- [ ] Add engine command/query/geometry support for Zone Mortalis targeting, doorway operations, objective interfacing, shortest-legal-path measurement, and mode-aware movement/range validation.
+- [ ] Implement Zone Mortalis battlefield rules, mission scoring, and army/deployment legality while preserving all existing core-mission behavior.
+- [ ] Add focused engine/UI tests and update this section with exact verification results before reporting back.
+- Progress:
+  - Scope locked before edits:
+    - implement the full single-level Zone Mortalis mode requested by the user
+    - preserve existing core mission flow and behavior unless a new `Zone Mortalis` branch is explicitly selected
+    - defer ladders, stairways, hatches, and full multi-level support; record that follow-up in this section during implementation
+  - Deferred follow-up after v1:
+    - add multi-level Zone Mortalis support, including ladders, stairways, and hatches, after single-level official missions are complete
+  - 2026-03-15 shared type surface patch:
+    - added `GameMode` to shared enums so UI, data, and engine can branch cleanly between core missions and Zone Mortalis
+    - extended shared mission types with the three Zone Mortalis deployment configurations, Zone Mortalis mission special rules, mission defaults, and official section-trait overlays
+    - extended shared game state with Zone Mortalis terrain metadata, section/objective runtime state, and doorway/objective command surfaces required by later engine/UI patches
+  - 2026-03-15 mission data patch:
+    - extended `packages/data/src/missions.ts` with the three official Zone Mortalis deployment configurations and mission definitions
+    - added explicit 48"x48", 5-turn, and 1500-point defaults for Zone Mortalis while preserving 72"x48" core defaults
+    - exported ruleset-aware mission and deployment lookup surfaces from `@hh/data` for the upcoming UI/reducer patch
+  - 2026-03-15 UI flow patch:
+    - added a dedicated pre-army-builder game mode screen for `Core Missions` vs `Zone Mortalis`
+    - switched mission selection to filter missions and deployment maps by ruleset and apply mission battlefield defaults on confirm
+    - added a snapped Zone Mortalis terrain authoring screen with boundary tools for walls, standard/wide doors, barricades, light-area toggles, and official deployment/section overlays
+    - hid AI opponent controls in Zone Mortalis mode and defaulted new army lists to the 1500-point Zone Mortalis limit
+  - 2026-03-15 validation checkpoint:
+    - rebuilt `@hh/types` so downstream packages consume the new emitted declarations instead of stale `dist` output
+    - fixed the first downstream compile issue in `packages/data/src/missions.ts` by importing the `Position` type used by the new split-zone deployment definitions
+  - 2026-03-15 downstream compile alignment:
+    - updated engine mission-state initialization so the new `MissionState.gameMode` field is populated everywhere
+    - rebuilt `@hh/data` so the UI can consume the new Zone Mortalis mission constants and lookup helpers
+    - aligned the UI reducer test fixture and mission-select/component typings with the new required game-mode and deployment-map surfaces
+    - corrected the reducer test fixture so the new `gameMode` field is supplied without duplicate object-literal keys during UI typecheck
+  - 2026-03-15 Zone Mortalis runtime-foundation patch in progress:
+    - extended shared Zone Mortalis runtime types so doorway records carry stable terrain IDs and temporary section darkness effects can expire cleanly
+    - added dedicated engine-side Zone Mortalis helpers to derive section/doorway/objective runtime state, update doorway/objective/section records immutably, and compute mode-aware measurement/path distances
+    - added engine event surfaces for Zone Mortalis hazards, doorway state changes, objective interfacing, section changes, and Blind Panic propagation so the next command/mission patches have typed outputs to emit
+    - updated the Zone Mortalis setup screen so walls, doorways, and barricades now persist explicit Zone Mortalis metadata instead of only generic rectangle terrain
+    - initialized `GameState.zoneMortalisState` when Zone Mortalis games are created and excluded Flyer units from manual deployment while still keeping them on the roster as unavailable models
+  - 2026-03-15 compile-alignment patch:
+    - corrected the new doorway-operation command helpers to use the narrowed rectangle doorway shape and shared geometry epsilon constant
+    - cleaned up stale unused locals in the updated Zone Mortalis objective and shooting query paths so engine typecheck can be re-established before the next rules batch
+    - corrected the remaining engine nullability and doorway-ID issues blocking the Zone Mortalis helper build/export surface
+  - 2026-03-15 mission/runtime rules patch in progress:
+    - applied Crumbling Superstructure as a one-time pre-battle Zone Mortalis section mutation when deployment completes and play begins
+    - enforced No Fly Zone and Impenetrable Area in the reserves flow so illegal flyer/deep-strike entries are rejected by the engine
+    - added Zone Mortalis hazard checks for movement over 9" and queued Blind Panic leadership tests from routed units passing nearby suppressed/pinned/stunned friendlies
+    - exposed the new doorway/objective engine commands through the Action Bar and added combat-log messages for the new Zone Mortalis event family
+    - exported the new Blind Panic queue type through `@hh/types` and tightened the Action Bar doorway shape narrowing so the downstream packages can consume the new runtime hooks cleanly
+    - updated special-shot resolution so blast/template casualties respect Zone Mortalis wall and closed-door blocking and blast scatter is clamped when the marker would cross a blocked bulkhead line
+    - added Zone Mortalis-specific army-builder warnings for Flyers and Deep Strike-capable units so setup warns before those units hit rules-enforced deployment/reserves limits
+  - 2026-03-15 Zone Mortalis regression test patch in progress:
+    - added reserve-handler regressions for Zone Mortalis flyer rejection and `Impenetrable Area` Deep Strike denial
+    - added move-handler regression coverage for long Zone Mortalis rush moves triggering hazard checks and casualties
+    - added rout-handler regression coverage for Blind Panic queue creation and next-step leadership resolution into `Routed`
+    - added victory-handler regression coverage for temporary Abyssal Darkness expiry and `Signal Influx` end-of-battle-turn objective cleanup
+    - corrected the Victory sub-phase expiry branch to derive temporary-Abyssal-Darkness event emission from the pre-update Zone Mortalis section state so expiry events are not lost when the runtime section grid has already been refreshed
+  - 2026-03-15 validation after Zone Mortalis regression patch:
+    - `pnpm test -- packages/engine/src/movement/reserves-handler.test.ts`
+      - passed: `1` file, `15` tests
+    - `pnpm test -- packages/engine/src/movement/move-handler.test.ts`
+      - passed: `1` file, `45` tests
+    - `pnpm test -- packages/engine/src/movement/rout-handler.test.ts`
+      - passed: `1` file, `27` tests
+    - `pnpm test -- packages/engine/src/missions/victory-handler.test.ts`
+      - passed: `1` file, `32` tests
+    - `pnpm --filter @hh/engine typecheck`
+      - passed
+  - 2026-03-15 remaining Zone Mortalis batch locked before edits:
+    - finish the live doorway combat path end-to-end instead of leaving doorway targets as type-only support
+    - add doorway target selection to the shooting and charge UI/reducer flow alongside unit targets
+    - route doorway targets through engine shooting first, then complete doorway charge/assault handling
+  - 2026-03-15 live doorway target UI patch:
+    - added shared UI doorway-target helpers for LOS, shortest-path range, and labels so the reducer and panels use the same Zone Mortalis targeting logic
+    - switched the live shooting and charge flow state from unit-only targets to `AttackTargetRef`, preserving normal unit targeting while exposing Zone Mortalis doorways in the same panels
+    - updated shooting special-shot preparation so doorway attacks skip the old unit-marker placement path and can be handled by the engine doorway branch
+    - validation:
+      - `pnpm --filter @hh/ui typecheck`
+        - passed
+  - 2026-03-15 doorway combat completion patch:
+    - completed the engine-side doorway assault branch and routed `declareCharge` doorway targets through a dedicated Zone Mortalis charge/melee handler
+    - aligned doorway assault melee stat resolution with the core assault `StatModifier` rules and ensured failed doorway charges preserve initialized `zoneMortalisState`
+    - added command-processor integration coverage for doorway charge success, failed-charge stun resolution, successful doorway operation, and Terminal Control objective interfacing
+    - validation:
+      - `pnpm test -- packages/engine/src/command-processor.test.ts packages/engine/src/movement/reserves-handler.test.ts packages/engine/src/movement/move-handler.test.ts packages/engine/src/movement/rout-handler.test.ts packages/engine/src/missions/victory-handler.test.ts`
+        - passed: `5` files, `244` tests
+      - `pnpm --filter @hh/engine typecheck`
+        - passed
+      - `pnpm --filter @hh/engine build`
+        - passed
+      - `pnpm --filter @hh/ui typecheck`
+        - passed
+      - `pnpm --filter @hh/ui build`
+        - passed
+  - 2026-03-16 Zone Mortalis UI command-surface completion patch:
+    - wired measured-distance data through the live movement and charge confirm flows so the UI now submits the approved Zone Mortalis move/charge measurement on the command surface instead of leaving those fields unused
+    - tightened translated Zone Mortalis move preview so destinations with no legal path are rejected in the UI before command submission
+    - added UI reducer regressions for Zone Mortalis doorway shooting target selection, doorway shooting command payloads, doorway charge command payloads, and measured-distance carry-through
+    - added an explicit Zone Mortalis objective-control regression covering the base-contact requirement
+    - validation:
+      - `pnpm test -- packages/engine/src/missions/objective-queries.test.ts packages/ui/src/game/reducer.test.ts packages/engine/src/command-processor.test.ts packages/engine/src/movement/reserves-handler.test.ts packages/engine/src/movement/move-handler.test.ts packages/engine/src/movement/rout-handler.test.ts packages/engine/src/missions/victory-handler.test.ts`
+        - passed: `7` files, `292` tests
+      - `pnpm --filter @hh/engine typecheck`
+        - passed
+      - `pnpm --filter @hh/ui typecheck`
+        - passed
+      - `pnpm --filter @hh/ui build`
+        - passed
+
 ## Execution Plan (Verify Engine Search Family - 2026-03-15)
 - [x] Inspect the live Engine search implementation and identify whether it uses negamax or a different alpha-beta search structure.
 - [x] Record the exact code-level answer in `todo.md` before reporting back.

@@ -662,6 +662,7 @@ export function validateWeaponAssignments(
   modelsWithLOS: string[],
   targetDistance: number,
   targetModels?: ModelState[],
+  state?: GameState,
 ): WeaponAssignmentValidationResult {
   const errors: ValidationError[] = [];
 
@@ -747,6 +748,8 @@ export function validateWeaponAssignments(
             targetModels,
             weaponProfile.range,
             weaponProfile.rangeBand?.min ?? 0,
+            0,
+            state,
           )
         : isWeaponProfileInRange(weaponProfile, targetDistance);
       if (!isInRange) {

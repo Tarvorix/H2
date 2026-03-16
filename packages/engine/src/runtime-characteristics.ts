@@ -3,6 +3,7 @@ import { getEffectiveNumericCharacteristic } from './characteristic-modifiers';
 import {
   getModelAttacks,
   getModelCool,
+  getModelIntelligence,
   getModelInitiative,
   getModelLeadership,
   getModelMovement,
@@ -87,6 +88,15 @@ export function getCurrentModelCool(unit: UnitState, model: ModelState): number 
   return getRoundedCharacteristic(
     getModelCool(model.unitProfileId, model.profileModelName),
     'CL',
+    unit,
+    model,
+  );
+}
+
+export function getCurrentModelIntelligence(unit: UnitState, model: ModelState): number {
+  return getRoundedCharacteristic(
+    getModelIntelligence(model.unitProfileId, model.profileModelName),
+    'IN',
     unit,
     model,
   );

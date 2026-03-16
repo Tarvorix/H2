@@ -17,6 +17,7 @@ import { MissionSelectScreen } from './screens/MissionSelectScreen';
 import { TerrainSetupScreen } from './screens/TerrainSetupScreen';
 import { ObjectivePlacementScreen } from './screens/ObjectivePlacementScreen';
 import { DeploymentScreen } from './screens/DeploymentScreen';
+import { ModeSelectScreen } from './screens/ModeSelectScreen';
 
 interface GameSetupProps {
   state: GameUIState;
@@ -26,6 +27,15 @@ interface GameSetupProps {
 
 export function GameSetup({ state, dispatch, onReturnToMenu }: GameSetupProps) {
   switch (state.uiPhase) {
+    case GameUIPhase.ModeSelect:
+      return (
+        <ModeSelectScreen
+          state={state}
+          dispatch={dispatch}
+          onReturnToMenu={onReturnToMenu}
+        />
+      );
+
     case GameUIPhase.ArmyBuilder:
       return (
         <ArmyBuilderScreen

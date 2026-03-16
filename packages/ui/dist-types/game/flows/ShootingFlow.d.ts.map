@@ -1,0 +1,1 @@
+{"version":3,"file":"ShootingFlow.d.ts","sourceRoot":"","sources":["../../../src/game/flows/ShootingFlow.tsx"],"names":[],"mappings":"AAAA;;;;;;;;GAQG;AAKH,OAAO,KAAK,EAAE,WAAW,EAAE,YAAY,EAAE,MAAM,UAAU,CAAC;AAU1D,UAAU,iBAAiB;IACzB,KAAK,EAAE,WAAW,CAAC;IACnB,QAAQ,EAAE,KAAK,CAAC,QAAQ,CAAC,YAAY,CAAC,CAAC;CACxC;AAmGD,wBAAgB,YAAY,CAAC,EAAE,KAAK,EAAE,QAAQ,EAAE,EAAE,iBAAiB,kDAiMlE"}

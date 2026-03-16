@@ -5,7 +5,7 @@
  * Reference: HH_Principles.md — "Terrain", "1" Exclusion Zone", "Coherency"
  */
 
-import type { Position, TerrainPiece, ModelState } from '@hh/types';
+import type { GameState, Position, TerrainPiece, ModelState } from '@hh/types';
 import { ModelSubType, TerrainType } from '@hh/types';
 import {
   closestPointOnRect,
@@ -25,6 +25,11 @@ import type { CircleBase, ModelShape, CoherencyResult, RectHull } from '@hh/geom
 import type { ValidationError } from '../types';
 import { getModelShapeAtPosition } from '../model-shapes';
 import { modelHasSubType } from '../profile-lookup';
+import {
+  getZoneMortalisBlockingTerrainPieces,
+  getZoneMortalisMovementDistance,
+  isZoneMortalisGame,
+} from '../zone-mortalis/zone-mortalis';
 
 // ─── Terrain Penalty ─────────────────────────────────────────────────────────
 
@@ -245,6 +250,7 @@ export function validateModelMove(
   friendlyShapes: ModelShape[],
   battlefieldWidth: number,
   battlefieldHeight: number,
+  gameState?: GameState,
 ): ValidationError[] {
   const errors: ValidationError[] = [];
   const startPosition = model.position;
@@ -269,20 +275,42 @@ export function validateModelMove(
   }
 
   // 2. Check movement range (accounting for terrain penalty)
+  const blockingTerrain = gameState && isZoneMortalisGame(gameState)
+    ? getZoneMortalisBlockingTerrainPieces(gameState, 'movement', model)
+    : terrain;
   const terrainPenalty = isFlyer ? 0 : computeTerrainPenalty(targetPosition, terrain);
-  const effectiveMove = Math.max(0, maxMoveDistance - terrainPenalty);
-  const moveDistance = vec2Distance(startPosition, targetPosition);
+  const zoneMortalisMove = gameState && isZoneMortalisGame(gameState)
+    ? getZoneMortalisMovementDistance(gameState, model, startPosition, targetPosition, 'movement')
+    : null;
+  const effectiveMove = Math.max(
+    0,
+    maxMoveDistance - terrainPenalty - (zoneMortalisMove?.doorwayPenalty ?? 0),
+  );
+  const moveDistance = zoneMortalisMove?.distance ?? vec2Distance(startPosition, targetPosition);
+
+  if (gameState && isZoneMortalisGame(gameState) && zoneMortalisMove?.distance === null) {
+    errors.push({
+      code: 'NO_LEGAL_PATH',
+      message: 'No legal movement path exists around walls, closed doorways, or confined spaces.',
+    });
+  }
 
   if (moveDistance > effectiveMove + MOVEMENT_RANGE_ROUNDING_EPSILON) {
     errors.push({
       code: 'EXCEEDS_MOVEMENT',
       message: `Move distance ${moveDistance.toFixed(2)}" exceeds effective movement ${effectiveMove.toFixed(2)}"`,
-      context: { moveDistance, maxMoveDistance, terrainPenalty, effectiveMove },
+      context: {
+        moveDistance,
+        maxMoveDistance,
+        terrainPenalty,
+        doorwayPenalty: zoneMortalisMove?.doorwayPenalty ?? 0,
+        effectiveMove,
+      },
     });
   }
 
   // 3. Check impassable terrain at target
-  if (isInImpassableTerrain(targetPosition, terrain)) {
+  if (isInImpassableTerrain(targetPosition, blockingTerrain)) {
     errors.push({
       code: 'IN_IMPASSABLE_TERRAIN',
       message: 'Cannot end move in impassable terrain',
@@ -290,7 +318,11 @@ export function validateModelMove(
   }
 
   // 4. Check path through impassable terrain
-  if (!isFlyer && pathCrossesImpassable(startPosition, targetPosition, terrain)) {
+  if (
+    !isFlyer &&
+    !(gameState && isZoneMortalisGame(gameState)) &&
+    pathCrossesImpassable(startPosition, targetPosition, terrain)
+  ) {
     errors.push({
       code: 'PATH_CROSSES_IMPASSABLE',
       message: 'Movement path crosses impassable terrain',

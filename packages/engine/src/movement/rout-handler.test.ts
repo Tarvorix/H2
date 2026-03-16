@@ -13,6 +13,7 @@ import {
   TacticalStatus,
   UnitMovementState,
   Allegiance,
+  GameMode,
   LegionFaction,
   TerrainType,
 } from '@hh/types';
@@ -29,6 +30,7 @@ import {
   handleRoutSubPhase,
   computeFallBackDirection,
   computeFallBackDistance,
+  resolvePendingZoneMortalisBlindPanicChecks,
   DEFAULT_INITIATIVE,
   DEFAULT_LEADERSHIP,
   EDGE_THRESHOLD,
@@ -98,6 +100,7 @@ function createGameState(overrides?: Partial<GameState>): GameState {
 
   return {
     gameId: 'test-game',
+    gameMode: GameMode.CoreMissions,
     battlefield: { width: 72, height: 48 },
     terrain: [],
     armies: [
@@ -116,6 +119,12 @@ function createGameState(overrides?: Partial<GameState>): GameState {
     winnerPlayerIndex: null,
     log: [],
     turnHistory: [],
+    advancedReactionsUsed: [],
+    legionTacticaState: [
+      { reactionDiscountUsedThisTurn: false, movementBonusActiveThisTurn: false, perTurnFlags: {} },
+      { reactionDiscountUsedThisTurn: false, movementBonusActiveThisTurn: false, perTurnFlags: {} },
+    ],
+    missionState: null,
     ...overrides,
   };
 }
@@ -564,6 +573,88 @@ describe('handleRoutSubPhase', () => {
     expect(state.armies[0].units[0].models[0].position.x).toBe(originalX);
     // New state different
     expect(result.state.armies[0].units[0].models[0].position.x).not.toBe(originalX);
+  });
+
+  it('should queue Blind Panic checks in Zone Mortalis when a routed unit passes nearby suppressed allies', () => {
+    const routedUnit = createUnit('routed-1', [
+      createModel('r-m0', 10, 24),
+      createModel('r-m1', 12, 24),
+    ], {
+      statuses: [TacticalStatus.Routed],
+    });
+    const nearbySuppressed = createUnit('support-1', [
+      createModel('s-m0', 8.5, 24),
+    ], {
+      statuses: [TacticalStatus.Suppressed],
+    });
+
+    const state = createGameState({
+      gameMode: GameMode.ZoneMortalis,
+      battlefield: { width: 48, height: 48 },
+      armies: [
+        createArmy(0, [routedUnit, nearbySuppressed]),
+        createArmy(1, [createUnit('u3', [createModel('u3-m0', 40, 40)])]),
+      ],
+    });
+
+    const result = handleRoutSubPhase(state, new FixedDiceProvider([3]));
+
+    expect(result.accepted).toBe(true);
+    expect(result.events).toContainEqual({
+      type: 'blindPanicTriggered',
+      sourceUnitId: 'routed-1',
+      affectedUnitIds: ['support-1'],
+    });
+    expect(result.state.zoneMortalisState?.pendingBlindPanicChecks).toEqual([
+      {
+        sourceUnitId: 'routed-1',
+        unitId: 'support-1',
+      },
+    ]);
+  });
+
+  it('should resolve queued Blind Panic checks and rout failed units', () => {
+    const supportUnit = createUnit('support-1', [
+      createModel('s-m0', 20, 20),
+    ], {
+      statuses: [TacticalStatus.Suppressed],
+    });
+    const state = createGameState({
+      gameMode: GameMode.ZoneMortalis,
+      battlefield: { width: 48, height: 48 },
+      armies: [
+        createArmy(0, [supportUnit]),
+        createArmy(1, [createUnit('u3', [createModel('u3-m0', 40, 40)])]),
+      ],
+      zoneMortalisState: {
+        sections: [],
+        doorways: [],
+        objectives: [],
+        pendingBlindPanicChecks: [
+          {
+            sourceUnitId: 'routed-1',
+            unitId: 'support-1',
+          },
+        ],
+      },
+    });
+
+    const result = resolvePendingZoneMortalisBlindPanicChecks(state, new FixedDiceProvider([6, 6]));
+
+    expect(result.events).toContainEqual({
+      type: 'leadershipCheck',
+      unitId: 'support-1',
+      roll: 12,
+      target: DEFAULT_LEADERSHIP,
+      passed: false,
+    });
+    expect(result.events).toContainEqual({
+      type: 'statusApplied',
+      unitId: 'support-1',
+      status: TacticalStatus.Routed,
+    });
+    expect(result.state.armies[0].units[0].statuses).toContain(TacticalStatus.Routed);
+    expect(result.state.zoneMortalisState?.pendingBlindPanicChecks ?? []).toHaveLength(0);
   });
 });
 

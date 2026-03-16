@@ -679,9 +679,34 @@ export {
   getVehicleArmour,
   getModelLeadership,
   getModelCool,
+  getModelIntelligence,
   getModelStrength,
   getModelAttacks,
 } from './profile-lookup';
+
+// ─── Zone Mortalis ─────────────────────────────────────────────────────────
+export {
+  isZoneMortalisGame,
+  initializeZoneMortalisState,
+  ensureZoneMortalisState,
+  getZoneMortalisDoorway,
+  updateZoneMortalisDoorway,
+  setZoneMortalisObjectiveAssignments,
+  updateZoneMortalisSections,
+  updateZoneMortalisObjectives,
+  queueZoneMortalisBlindPanicChecks,
+  clearZoneMortalisBlindPanicChecks,
+  applyZoneMortalisCrumblingSuperstructure,
+  getZoneMortalisSectionAtPosition,
+  getZoneMortalisMeasurementDistance,
+  getZoneMortalisMeasurementDistanceIgnoringTerrain,
+  getZoneMortalisMovementDistance,
+  getZoneMortalisBlockingTerrainPieces,
+  hasZoneMortalisLineOfSight,
+  hasZoneMortalisLineOfSightIgnoringTerrain,
+  syncZoneMortalisMissionObjectives,
+} from './zone-mortalis/zone-mortalis';
+export { getCurrentModelIntelligence } from './runtime-characteristics';
 
 // ─── Missions ───────────────────────────────────────────────────────────────
 export {

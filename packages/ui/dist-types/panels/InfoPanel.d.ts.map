@@ -1,0 +1,1 @@
+{"version":3,"file":"InfoPanel.d.ts","sourceRoot":"","sources":["../../src/panels/InfoPanel.tsx"],"names":[],"mappings":"AAAA;;;;GAIG;AAEH,OAAO,KAAK,EAAE,oBAAoB,EAAE,qBAAqB,EAAE,MAAM,gBAAgB,CAAC;AAIlF,UAAU,cAAc;IACtB,KAAK,EAAE,oBAAoB,CAAC;IAC5B,QAAQ,EAAE,KAAK,CAAC,QAAQ,CAAC,qBAAqB,CAAC,CAAC;CACjD;AAED,wBAAgB,SAAS,CAAC,EAAE,KAAK,EAAE,QAAQ,EAAE,EAAE,cAAc,2CA+R5D"}

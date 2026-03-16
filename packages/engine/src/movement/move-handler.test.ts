@@ -13,6 +13,7 @@ import {
   TacticalStatus,
   UnitMovementState,
   Allegiance,
+  GameMode,
   LegionFaction,
   TerrainType,
 } from '@hh/types';
@@ -104,6 +105,7 @@ function createGameState(overrides?: Partial<GameState>): GameState {
 
   return {
     gameId: 'test-game',
+    gameMode: GameMode.CoreMissions,
     battlefield: { width: 72, height: 48 },
     terrain: [],
     armies: [
@@ -122,6 +124,12 @@ function createGameState(overrides?: Partial<GameState>): GameState {
     winnerPlayerIndex: null,
     log: [],
     turnHistory: [],
+    advancedReactionsUsed: [],
+    legionTacticaState: [
+      { reactionDiscountUsedThisTurn: false, movementBonusActiveThisTurn: false, perTurnFlags: {} },
+      { reactionDiscountUsedThisTurn: false, movementBonusActiveThisTurn: false, perTurnFlags: {} },
+    ],
+    missionState: null,
     ...overrides,
   };
 }
@@ -335,6 +343,45 @@ describe('handleMoveModel', () => {
     const movedModel = result.state.armies[0].units[0].models[0];
     expect(movedModel.currentWounds).toBe(1);
     expect(movedModel.isDestroyed).toBe(false);
+  });
+
+  it('should trigger Zone Mortalis hazard checks after a rush move over 9 inches', () => {
+    state = createGameState({
+      gameMode: GameMode.ZoneMortalis,
+      battlefield: { width: 48, height: 48 },
+    });
+    dice = new FixedDiceProvider([1, 4, 5]);
+
+    const result = handleMoveUnit(
+      state,
+      'u1',
+      [
+        { modelId: 'u1-m0', position: { x: 20, y: 24 } },
+        { modelId: 'u1-m1', position: { x: 22, y: 24 } },
+        { modelId: 'u1-m2', position: { x: 24, y: 24 } },
+      ],
+      dice,
+      { isRush: true },
+    );
+
+    expect(result.accepted).toBe(true);
+
+    const hazardEvents = result.events.filter((event) => event.type === 'hazardTest');
+    expect(hazardEvents).toHaveLength(3);
+    expect(hazardEvents[0]).toMatchObject({
+      type: 'hazardTest',
+      unitId: 'u1',
+      modelId: 'u1-m0',
+      roll: 1,
+      passed: false,
+    });
+    expect(result.events).toContainEqual({
+      type: 'casualtyRemoved',
+      unitId: 'u1',
+      modelId: 'u1-m0',
+    });
+    expect(result.state.armies[0].units[0].models[0]?.isDestroyed).toBe(true);
+    expect(result.state.armies[0].units[0].movementState).toBe(UnitMovementState.Rushed);
   });
 
   it('should wound model on failed dangerous terrain test (roll of 1)', () => {

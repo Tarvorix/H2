@@ -28,6 +28,12 @@ import {
 import { hasActiveCharacteristicModifier } from './characteristic-modifiers';
 import { getModelShape as getRuntimeModelShape } from './model-shapes';
 import { getCurrentModelToughness, getCurrentModelWS } from './runtime-characteristics';
+import {
+  getZoneMortalisBlockingTerrainPieces,
+  getZoneMortalisMeasurementDistance,
+  hasZoneMortalisLineOfSight,
+  isZoneMortalisGame,
+} from './zone-mortalis/zone-mortalis';
 
 // ─── Army Queries ────────────────────────────────────────────────────────────
 
@@ -680,7 +686,9 @@ export function getClosestModelDistance(
   let minDist = Infinity;
   for (const modelA of aliveA) {
     for (const modelB of aliveB) {
-      const dist = distanceShapes(getModelShape(modelA), getModelShape(modelB));
+      const dist = isZoneMortalisGame(state)
+        ? (getZoneMortalisMeasurementDistance(state, modelA.position, modelB.position) ?? Infinity)
+        : distanceShapes(getModelShape(modelA), getModelShape(modelB));
       if (dist < minDist) minDist = dist;
     }
   }
@@ -706,11 +714,17 @@ export function hasLOSToUnit(
 
   const excludedUnitIds = new Set<string>([unitId, targetUnitId]);
   const blockingVehicleShapes = getInterveningVehicleShapes(state, excludedUnitIds);
+  const blockingTerrain = isZoneMortalisGame(state)
+    ? getZoneMortalisBlockingTerrainPieces(state)
+    : state.terrain;
 
   for (const attacker of aliveAttackers) {
     const attackerShape = getModelShape(attacker);
     for (const targetModel of aliveTargets) {
-      if (hasLOS(attackerShape, getModelShape(targetModel), state.terrain, blockingVehicleShapes)) {
+      if (
+        (!isZoneMortalisGame(state) || hasZoneMortalisLineOfSight(state, attacker.position, targetModel.position)) &&
+        hasLOS(attackerShape, getModelShape(targetModel), blockingTerrain, blockingVehicleShapes)
+      ) {
         return true;
       }
     }
@@ -738,11 +752,15 @@ export function getModelsWithLOSToUnit(
     state,
     new Set<string>([unitId, targetUnitId]),
   );
+  const blockingTerrain = isZoneMortalisGame(state)
+    ? getZoneMortalisBlockingTerrainPieces(state)
+    : state.terrain;
 
   return getAliveModels(unit).filter((attacker) => {
     const attackerShape = getModelShape(attacker);
     return aliveTargets.some((targetModel) =>
-      hasLOS(attackerShape, getModelShape(targetModel), state.terrain, blockingVehicleShapes),
+      (!isZoneMortalisGame(state) || hasZoneMortalisLineOfSight(state, attacker.position, targetModel.position)) &&
+      hasLOS(attackerShape, getModelShape(targetModel), blockingTerrain, blockingVehicleShapes),
     );
   });
 }

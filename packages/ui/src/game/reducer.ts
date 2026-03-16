@@ -10,18 +10,27 @@
  * The reducer translates UI actions → engine commands → updated state.
  */
 
-import type { Position, ArmyList, GameState } from '@hh/types';
-import { ChallengeGambit, CoreReaction, Phase, SubPhase } from '@hh/types';
+import type { AttackTargetRef, Position, ArmyList, GameState } from '@hh/types';
+import { ChallengeGambit, CoreReaction, GameMode, Phase, SubPhase } from '@hh/types';
 import type { CommandResult } from '@hh/engine';
 import {
+  applyZoneMortalisCrumblingSuperstructure,
   getModelInitiative,
   getModelMovement,
+  getZoneMortalisMovementDistance,
   canUnitShoot,
   getEligibleAcceptors,
   getEligibleChallengers,
+  RandomDiceProvider,
 } from '@hh/engine';
-import { checkWeaponRange, getClosestModelDistance, getWeaponSelectionOptions, hasLOSToUnit, TEMPLATE_EFFECTIVE_RANGE_INCHES } from '@hh/engine';
-import { findMission, getProfileById } from '@hh/data';
+import {
+  findMission,
+  getProfileById,
+  STANDARD_BATTLEFIELD_HEIGHT,
+  STANDARD_BATTLEFIELD_WIDTH,
+  ZONE_MORTALIS_BATTLEFIELD_HEIGHT,
+  ZONE_MORTALIS_BATTLEFIELD_WIDTH,
+} from '@hh/data';
 import type { ArmyConfig, UnitSelection } from './types';
 import {
   executeCommand,
@@ -52,6 +61,7 @@ import {
   GameUIPhase,
   createInitialGameUIState,
   createDefaultDeploymentState,
+  createDefaultObjectivePlacementState,
 } from './types';
 import { rollDeploymentFirstPlayerIndex } from './deployment-order';
 import {
@@ -65,6 +75,11 @@ import {
 } from './objective-placement';
 import { validateSetupDeploymentPlacement } from './deployment-rules';
 import { buildSpecialShotRequirements } from './special-shots';
+import {
+  canAnyWeaponReachAttackTarget,
+  getClosestAttackTargetDistance,
+  hasLineOfSightToAttackTarget,
+} from './attack-targets';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -85,6 +100,18 @@ function clampZoom(zoom: number): number {
 
 const MOVE_DISTANCE_EPSILON = 0.005;
 
+function getGameModeBattlefieldDimensions(gameMode: GameMode): { width: number; height: number } {
+  return gameMode === GameMode.ZoneMortalis
+    ? {
+        width: ZONE_MORTALIS_BATTLEFIELD_WIDTH,
+        height: ZONE_MORTALIS_BATTLEFIELD_HEIGHT,
+      }
+    : {
+        width: STANDARD_BATTLEFIELD_WIDTH,
+        height: STANDARD_BATTLEFIELD_HEIGHT,
+      };
+}
+
 function getDeploymentFacingRotation(
   gameState: GameState,
   playerIndex: number,
@@ -92,11 +119,12 @@ function getDeploymentFacingRotation(
   const zone = gameState.missionState?.deploymentZones.find(
     (candidate) => candidate.playerIndex === playerIndex,
   );
-  if (!zone || zone.vertices.length === 0) {
+  const zoneVertices = zone?.areas?.flat() ?? zone?.vertices ?? [];
+  if (!zone || zoneVertices.length === 0) {
     return playerIndex === 0 ? 0 : Math.PI;
   }
 
-  const centroid = zone.vertices.reduce(
+  const centroid = zoneVertices.reduce(
     (acc, vertex) => ({
       x: acc.x + vertex.x,
       y: acc.y + vertex.y,
@@ -104,8 +132,8 @@ function getDeploymentFacingRotation(
     { x: 0, y: 0 },
   );
   const zoneCenter = {
-    x: centroid.x / zone.vertices.length,
-    y: centroid.y / zone.vertices.length,
+    x: centroid.x / zoneVertices.length,
+    y: centroid.y / zoneVertices.length,
   };
   const battlefieldCenter = {
     x: gameState.battlefield.width / 2,
@@ -137,52 +165,6 @@ function findCombatByUnitId(
   return gameState.activeCombats?.find((combat) =>
     combat.activePlayerUnitIds.includes(unitId) || combat.reactivePlayerUnitIds.includes(unitId),
   ) ?? null;
-}
-
-function getRangedWeaponIdsForModel(model: GameState['armies'][number]['units'][number]['models'][number]): string[] {
-  if (model.equippedWargear.length > 0) {
-    return model.equippedWargear;
-  }
-  // Preset fallback: no explicit wargear loaded, treat as bolter-armed.
-  return ['bolter'];
-}
-
-function canAnyWeaponReachTarget(
-  gameState: GameState,
-  attackerUnitId: string,
-  targetUnitId: string,
-): boolean {
-  const attacker = findUnitById(gameState, attackerUnitId);
-  const target = findUnitById(gameState, targetUnitId);
-  if (!attacker || !target) return false;
-
-  const aliveAttackers = attacker.models.filter(model => !model.isDestroyed);
-  const aliveTargets = target.models.filter(model => !model.isDestroyed);
-  if (aliveAttackers.length === 0 || aliveTargets.length === 0) return false;
-
-  return aliveAttackers.some((attackerModel) =>
-    getRangedWeaponIdsForModel(attackerModel).some((weaponId) => {
-      const closestDistance = getClosestModelDistance(gameState, attackerUnitId, targetUnitId);
-      const options = getWeaponSelectionOptions(
-        { modelId: attackerModel.id, weaponId },
-        attacker,
-        gameState,
-        closestDistance,
-      );
-      return options.some((option) => {
-        const effectiveRange = option.weaponProfile.hasTemplate
-          ? TEMPLATE_EFFECTIVE_RANGE_INCHES
-          : option.weaponProfile.range;
-        if (effectiveRange <= 0) return false;
-        return checkWeaponRange(
-          attackerModel,
-          aliveTargets,
-          effectiveRange,
-          option.weaponProfile.rangeBand?.min ?? 0,
-        );
-      });
-    }),
-  );
 }
 
 function reactionRequiresPlacement(
@@ -226,7 +208,7 @@ function getAliveUnitModelIds(
 function resolvePreparedShootingAttack(
   state: GameUIState,
   attackerUnitId: string,
-  targetUnitId: string,
+  target: AttackTargetRef,
   weaponSelections: import('./types').WeaponSelection[],
   blastPlacements: import('@hh/types').BlastPlacement[] = [],
   templatePlacements: import('@hh/types').TemplatePlacement[] = [],
@@ -235,7 +217,7 @@ function resolvePreparedShootingAttack(
     state,
     buildShootingCommand(
       attackerUnitId,
-      targetUnitId,
+      target,
       weaponSelections,
       blastPlacements,
       templatePlacements,
@@ -258,7 +240,7 @@ function resolvePreparedShootingAttack(
         step: {
           step: 'showResults',
           attackerUnitId,
-          targetUnitId,
+          target,
           events: newState.lastCommandResult?.events ?? [],
         },
       },
@@ -381,7 +363,11 @@ function buildTranslatedUnitMovePositions(
   unitId: string,
   destination: Position,
   isRush: boolean,
-): { modelPositions: { modelId: string; position: Position }[] | null; error: string | null } {
+): {
+  modelPositions: { modelId: string; position: Position }[] | null;
+  measuredDistance: number | null;
+  error: string | null;
+} {
   for (const army of gameState.armies) {
     const unit = army.units.find(u => u.id === unitId);
     if (!unit) continue;
@@ -390,6 +376,7 @@ function buildTranslatedUnitMovePositions(
     if (aliveModels.length === 0) {
       return {
         modelPositions: null,
+        measuredDistance: null,
         error: `Move failed: unit "${unitId}" has no alive models.`,
       };
     }
@@ -416,7 +403,28 @@ function buildTranslatedUnitMovePositions(
     if (intendedDistance > maxDistance + MOVE_DISTANCE_EPSILON) {
       return {
         modelPositions: null,
+        measuredDistance: null,
         error: `Destination is out of range (${intendedDistance.toFixed(2)}" / ${maxDistance.toFixed(2)}").`,
+      };
+    }
+
+    const measuredDistance = gameState.gameMode === GameMode.ZoneMortalis
+      ? getZoneMortalisMovementDistance(
+        gameState,
+        refModel,
+        refModel.position,
+        {
+          x: refModel.position.x + dx,
+          y: refModel.position.y + dy,
+        },
+        'movement',
+      ).distance
+      : intendedDistance;
+    if (measuredDistance === null) {
+      return {
+        modelPositions: null,
+        measuredDistance: null,
+        error: 'No legal Zone Mortalis movement path exists to that destination.',
       };
     }
 
@@ -428,12 +436,14 @@ function buildTranslatedUnitMovePositions(
           y: model.position.y + dy,
         },
       })),
+      measuredDistance,
       error: null,
     };
   }
 
   return {
     modelPositions: null,
+    measuredDistance: null,
     error: `Move failed: unit "${unitId}" was not found.`,
   };
 }
@@ -639,6 +649,17 @@ export function gameReducer(
     // ── Pre-Game Flow ─────────────────────────────────────────────────────
     case 'SET_UI_PHASE':
       return { ...state, uiPhase: action.phase };
+
+    case 'SELECT_GAME_MODE': {
+      const battlefield = getGameModeBattlefieldDimensions(action.gameMode);
+      return {
+        ...createInitialGameUIState(),
+        uiPhase: GameUIPhase.ArmyBuilder,
+        gameMode: action.gameMode,
+        battlefieldWidth: battlefield.width,
+        battlefieldHeight: battlefield.height,
+      };
+    }
 
     case 'SET_ARMY_CONFIG':
       return {
@@ -850,14 +871,22 @@ export function gameReducer(
     }
 
     // ── Mission Select ────────────────────────────────────────────────────
-    case 'SELECT_MISSION':
+    case 'SELECT_MISSION': {
+      const mission = findMission(action.missionId);
+      const nextDeploymentMap = mission
+        ? state.missionSelect.selectedDeploymentMap && mission.allowedDeploymentMaps?.includes(state.missionSelect.selectedDeploymentMap)
+          ? state.missionSelect.selectedDeploymentMap
+          : mission.deploymentMap
+        : state.missionSelect.selectedDeploymentMap;
       return {
         ...state,
         missionSelect: {
           ...state.missionSelect,
           selectedMissionId: action.missionId,
+          selectedDeploymentMap: nextDeploymentMap,
         },
       };
+    }
 
     case 'SELECT_DEPLOYMENT_MAP':
       return {
@@ -872,12 +901,21 @@ export function gameReducer(
       if (!state.missionSelect.selectedMissionId || !state.missionSelect.selectedDeploymentMap) {
         return state;
       }
+      const mission = findMission(state.missionSelect.selectedMissionId);
+      if (!mission) {
+        return state;
+      }
       return {
         ...state,
         missionSelect: {
           ...state.missionSelect,
           confirmed: true,
         },
+        battlefieldWidth: mission.battlefield.width,
+        battlefieldHeight: mission.battlefield.height,
+        terrain: [],
+        objectivePlacement: createDefaultObjectivePlacementState(),
+        deployment: createDefaultDeploymentState(),
         uiPhase: GameUIPhase.TerrainSetup,
       };
     }
@@ -1192,9 +1230,14 @@ export function gameReducer(
         };
       }
 
+      const gameState = state.gameMode === GameMode.ZoneMortalis
+        ? applyZoneMortalisCrumblingSuperstructure(state.gameState, new RandomDiceProvider())
+        : state.gameState;
+
       return {
         ...state,
         deployment: nextDeploymentState,
+        gameState,
         uiPhase: GameUIPhase.Playing,
       };
     }
@@ -1374,6 +1417,7 @@ export function gameReducer(
             unitId: moveStep.unitId,
             modelPositions: translatedMove.modelPositions,
             isRush: moveStep.isRush,
+            measuredDistance: translatedMove.measuredDistance ?? 0,
           },
         },
       };
@@ -1386,7 +1430,12 @@ export function gameReducer(
         // Execute movement atomically for normal moves and Rush moves.
         const newState = applyEngineCommand(
           state,
-          buildMoveUnitCommand(moveStep.unitId, moveStep.modelPositions, moveStep.isRush),
+          buildMoveUnitCommand(
+            moveStep.unitId,
+            moveStep.modelPositions,
+            moveStep.isRush,
+            moveStep.measuredDistance,
+          ),
         );
         if (newState.lastErrors.length > 0) {
           return newState;
@@ -1446,8 +1495,8 @@ export function gameReducer(
       if (shootStep.step !== 'selectTarget') return state;
       if (!state.gameState) return state;
 
-      const hasLOS = hasLOSToUnit(state.gameState, shootStep.attackerUnitId, action.targetUnitId);
-      const inRange = canAnyWeaponReachTarget(state.gameState, shootStep.attackerUnitId, action.targetUnitId);
+      const hasLOS = hasLineOfSightToAttackTarget(state.gameState, shootStep.attackerUnitId, action.target);
+      const inRange = canAnyWeaponReachAttackTarget(state.gameState, shootStep.attackerUnitId, action.target);
       if (!hasLOS || !inRange) {
         return {
           ...state,
@@ -1472,7 +1521,7 @@ export function gameReducer(
           step: {
             step: 'selectWeapons',
             attackerUnitId: shootStep.attackerUnitId,
-            targetUnitId: action.targetUnitId,
+            target: action.target,
             weaponSelections: [],
           },
         },
@@ -1523,7 +1572,7 @@ export function gameReducer(
       const requirements = buildSpecialShotRequirements(
         state.gameState,
         shootStep.attackerUnitId,
-        shootStep.targetUnitId,
+        shootStep.target,
         shootStep.weaponSelections,
       );
 
@@ -1535,7 +1584,7 @@ export function gameReducer(
             step: {
               step: 'placeSpecial',
               attackerUnitId: shootStep.attackerUnitId,
-              targetUnitId: shootStep.targetUnitId,
+              target: shootStep.target,
               weaponSelections: shootStep.weaponSelections,
               requirements,
               currentIndex: 0,
@@ -1549,7 +1598,7 @@ export function gameReducer(
       return resolvePreparedShootingAttack(
         state,
         shootStep.attackerUnitId,
-        shootStep.targetUnitId,
+        shootStep.target,
         shootStep.weaponSelections,
       );
     }
@@ -1585,7 +1634,7 @@ export function gameReducer(
               },
             },
             shootStep.attackerUnitId,
-            shootStep.targetUnitId,
+            shootStep.target,
             shootStep.weaponSelections,
             nextBlastPlacements,
             shootStep.templatePlacements,
@@ -1636,12 +1685,12 @@ export function gameReducer(
                 templatePlacements: nextTemplatePlacements,
               },
             },
-          },
-          shootStep.attackerUnitId,
-          shootStep.targetUnitId,
-          shootStep.weaponSelections,
-          shootStep.blastPlacements,
-          nextTemplatePlacements,
+            },
+            shootStep.attackerUnitId,
+            shootStep.target,
+            shootStep.weaponSelections,
+            shootStep.blastPlacements,
+            nextTemplatePlacements,
         );
       }
 
@@ -1802,11 +1851,11 @@ export function gameReducer(
       if (assaultStep.step !== 'selectTarget') return state;
       if (!state.gameState) return state;
 
-      const hasLOS = hasLOSToUnit(state.gameState, assaultStep.chargingUnitId, action.targetUnitId);
-      const closestDistance = getClosestModelDistance(
+      const hasLOS = hasLineOfSightToAttackTarget(state.gameState, assaultStep.chargingUnitId, action.target);
+      const closestDistance = getClosestAttackTargetDistance(
         state.gameState,
         assaultStep.chargingUnitId,
-        action.targetUnitId,
+        action.target,
       );
       if (!hasLOS || closestDistance > 12.001) {
         return {
@@ -1832,7 +1881,8 @@ export function gameReducer(
           step: {
             step: 'confirmCharge',
             chargingUnitId: assaultStep.chargingUnitId,
-            targetUnitId: action.targetUnitId,
+            target: action.target,
+            measuredDistance: closestDistance,
           },
         },
       };
@@ -1845,7 +1895,11 @@ export function gameReducer(
 
       const newState = applyEngineCommand(
         state,
-        buildChargeCommand(assaultStep.chargingUnitId, assaultStep.targetUnitId),
+        buildChargeCommand(
+          assaultStep.chargingUnitId,
+          assaultStep.target,
+          assaultStep.measuredDistance,
+        ),
       );
 
       if (newState.lastCommandResult && !newState.lastCommandResult.accepted) {

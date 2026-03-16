@@ -19,6 +19,7 @@ import {
   LegionFaction,
   UnitMovementState,
   DeploymentMap,
+  GameMode,
   MissionSpecialRule,
 } from '@hh/types';
 import {
@@ -96,6 +97,7 @@ function makeObjective(id: string, x: number, y: number, vpValue: number = 3): O
 function makeMissionState(objectives: ObjectiveMarker[]): MissionState {
   return {
     missionId: 'test-mission',
+    gameMode: GameMode.CoreMissions,
     deploymentMap: DeploymentMap.SearchAndDestroy,
     deploymentZones: [
       { playerIndex: 0, vertices: [{ x: 0, y: 0 }, { x: 24, y: 0 }, { x: 0, y: 24 }] },
@@ -470,6 +472,31 @@ describe('getControlledObjectives', () => {
     const controlled = getControlledObjectives(state, 0);
     expect(controlled).toHaveLength(1);
     expect(controlled[0].id).toBe('obj1');
+  });
+
+  it('requires base contact to control objectives in Zone Mortalis', () => {
+    const obj1 = makeObjective('obj1', 10, 10, 3);
+    const mission = {
+      ...makeMissionState([obj1]),
+      gameMode: GameMode.ZoneMortalis,
+      deploymentMap: DeploymentMap.ConfigurationPrimus,
+    };
+    const state = makeState(
+      [makeUnit('u0', [makeModel('m1', 12, 10)])],
+      [],
+      mission,
+    );
+    state.gameMode = GameMode.ZoneMortalis;
+    state.battlefield = { width: 48, height: 48 };
+    state.zoneMortalisState = {
+      sections: [],
+      doorways: [],
+      objectives: [],
+      doorwayOperationHistory: [],
+      pendingBlindPanicChecks: [],
+    };
+
+    expect(getControlledObjectives(state, 0)).toHaveLength(0);
   });
 });
 

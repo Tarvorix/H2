@@ -1,0 +1,1 @@
+{"version":3,"file":"UnitCard.d.ts","sourceRoot":"","sources":["../../../src/game/panels/UnitCard.tsx"],"names":[],"mappings":"AAAA;;;;;;;;;;;GAWG;AAEH,OAAO,KAAK,EAAE,SAAS,EAAyB,MAAM,WAAW,CAAC;AAUlE,UAAU,aAAa;IACrB,SAAS,EAAE,SAAS,CAAC;IACrB,cAAc,EAAE,MAAM,CAAC;CACxB;AAuBD,wBAAgB,QAAQ,CAAC,EAAE,SAAS,EAAE,cAAc,EAAE,EAAE,aAAa,2CA6FpE"}

@@ -9,11 +9,17 @@
  */
 
 import { useCallback } from 'react';
+import { getWeaponSelectionOptions, TEMPLATE_EFFECTIVE_RANGE_INCHES } from '@hh/engine';
+import type { AttackTargetRef, GameState, UnitState } from '@hh/types';
 import type { GameUIState, GameUIAction } from '../types';
+import {
+  canAnyWeaponReachAttackTarget,
+  getAttackTargetLabel,
+  getClosestAttackTargetDistance,
+  hasLineOfSightToAttackTarget,
+} from '../attack-targets';
 import { WeaponSelectionPanel } from './WeaponSelectionPanel';
 import { FireGroupDisplay } from './FireGroupDisplay';
-import { checkWeaponRange, getClosestModelDistance, getWeaponSelectionOptions, hasLOSToUnit, TEMPLATE_EFFECTIVE_RANGE_INCHES } from '@hh/engine';
-import type { GameState, UnitState } from '@hh/types';
 
 interface ShootingFlowProps {
   state: GameUIState;
@@ -21,7 +27,9 @@ interface ShootingFlowProps {
 }
 
 interface ShootingTargetInfo {
-  target: UnitState;
+  target: AttackTargetRef;
+  label: string;
+  description: string;
   closestDistance: number;
   maxAttackerRange: number;
   hasLOS: boolean;
@@ -69,39 +77,18 @@ function getShootingTargetInfo(
     return Math.max(maxRange, modelMaxRange);
   }, 0);
 
-  return gs.armies[1 - gs.activePlayerIndex].units
+  const unitTargets = gs.armies[1 - gs.activePlayerIndex].units
     .filter(unit => unit.isDeployed && !unit.models.every(m => m.isDestroyed))
     .map((target): ShootingTargetInfo => {
-      const targetAliveModels = target.models.filter(m => !m.isDestroyed);
-      const closestDistance = getClosestModelDistance(gs, attacker.id, target.id);
-      const hasLOS = hasLOSToUnit(gs, attacker.id, target.id);
-
-      const hasAnyWeaponInRange = aliveAttackers.some((attackerModel) => {
-        return getRangedWeaponIdsForModel(attackerModel).some((weaponId) => {
-          const options = getWeaponSelectionOptions(
-            { modelId: attackerModel.id, weaponId },
-            attacker,
-            gs,
-            closestDistance,
-          );
-          return options.some((option) => {
-            const effectiveRange = option.weaponProfile.hasTemplate
-              ? TEMPLATE_EFFECTIVE_RANGE_INCHES
-              : option.weaponProfile.range;
-            if (effectiveRange <= 0) return false;
-            return checkWeaponRange(
-              attackerModel,
-              targetAliveModels,
-              effectiveRange,
-              option.weaponProfile.rangeBand?.min ?? 0,
-            );
-          });
-        });
-      });
-
+      const attackTarget: AttackTargetRef = { kind: 'unit', unitId: target.id };
+      const closestDistance = getClosestAttackTargetDistance(gs, attacker.id, attackTarget);
+      const hasLOS = hasLineOfSightToAttackTarget(gs, attacker.id, attackTarget);
+      const hasAnyWeaponInRange = canAnyWeaponReachAttackTarget(gs, attacker.id, attackTarget);
       const canTarget = hasLOS && hasAnyWeaponInRange;
       return {
-        target,
+        target: attackTarget,
+        label: target.profileId,
+        description: `${target.models.filter(m => !m.isDestroyed).length} models alive`,
         closestDistance,
         maxAttackerRange,
         hasLOS,
@@ -109,6 +96,31 @@ function getShootingTargetInfo(
         canTarget,
       };
     });
+
+  const doorwayTargets = gs.gameMode === 'zone-mortalis'
+    ? (gs.zoneMortalisState?.doorways ?? [])
+      .filter((doorway) => doorway.state !== 'destroyed' && doorway.id)
+      .map((doorway): ShootingTargetInfo => {
+        const attackTarget: AttackTargetRef = { kind: 'doorway', doorwayId: doorway.id! };
+        const closestDistance = getClosestAttackTargetDistance(gs, attacker.id, attackTarget);
+        const hasLOS = hasLineOfSightToAttackTarget(gs, attacker.id, attackTarget);
+        const hasAnyWeaponInRange = canAnyWeaponReachAttackTarget(gs, attacker.id, attackTarget);
+        const canTarget = hasLOS && hasAnyWeaponInRange;
+
+        return {
+          target: attackTarget,
+          label: getAttackTargetLabel(gs, attackTarget),
+          description: `${doorway.state} • ${doorway.hullPoints}/${doorway.maxHullPoints} HP • AV${doorway.armourValue}`,
+          closestDistance,
+          maxAttackerRange,
+          hasLOS,
+          hasAnyWeaponInRange,
+          canTarget,
+        };
+      })
+    : [];
+
+  return [...unitTargets, ...doorwayTargets];
 }
 
 export function ShootingFlow({ state, dispatch }: ShootingFlowProps) {
@@ -123,19 +135,11 @@ export function ShootingFlow({ state, dispatch }: ShootingFlowProps) {
     ? getShootingTargetInfo(gs, step.attackerUnitId)
     : [];
 
-  // Look up unit names
-  const findUnitName = (unitId: string): string => {
-    for (const army of gs.armies) {
-      for (const unit of army.units) {
-        if (unit.id === unitId) return unit.profileId;
-      }
-    }
-    return 'Unknown';
-  };
+  const findTargetName = (target: AttackTargetRef): string => getAttackTargetLabel(gs, target);
 
   const handleSelectTarget = useCallback(
-    (targetUnitId: string) => {
-      dispatch({ type: 'SELECT_SHOOTING_TARGET', targetUnitId });
+    (target: AttackTargetRef) => {
+      dispatch({ type: 'SELECT_SHOOTING_TARGET', target });
     },
     [dispatch],
   );
@@ -161,18 +165,21 @@ export function ShootingFlow({ state, dispatch }: ShootingFlowProps) {
         {step.step === 'selectTarget' && (
           <>
             <div className="flow-panel-step">
-              Attacker: {findUnitName(step.attackerUnitId)}
+              Attacker: {findTargetName({ kind: 'unit', unitId: step.attackerUnitId })}
             </div>
             <div className="flow-panel-step">
-              Choose an enemy unit in range. Distances are measured now (before attack confirmation).
+              Choose an enemy unit or doorway in range.
             </div>
             {/* Show eligible targets */}
             <div style={{ marginTop: 8 }}>
               {shootingTargetInfo.map((targetInfo) => (
-                <div key={targetInfo.target.id} style={{ marginBottom: 6 }}>
+                <div
+                  key={targetInfo.target.kind === 'unit' ? targetInfo.target.unitId : targetInfo.target.doorwayId}
+                  style={{ marginBottom: 6 }}
+                >
                   <button
                     className="reaction-modal-unit-btn"
-                    onClick={() => handleSelectTarget(targetInfo.target.id)}
+                    onClick={() => handleSelectTarget(targetInfo.target)}
                     disabled={!targetInfo.canTarget}
                     title={!targetInfo.canTarget
                       ? !targetInfo.hasLOS
@@ -180,7 +187,7 @@ export function ShootingFlow({ state, dispatch }: ShootingFlowProps) {
                         : 'No ranged weapons can reach this target'
                       : undefined}
                   >
-                    {targetInfo.target.profileId} ({targetInfo.target.models.filter(m => !m.isDestroyed).length} models alive)
+                    {targetInfo.label} ({targetInfo.description})
                   </button>
                   <div className="panel-row" style={{ padding: '2px 4px' }}>
                     <span className="panel-row-label">
@@ -204,7 +211,7 @@ export function ShootingFlow({ state, dispatch }: ShootingFlowProps) {
         {step.step === 'selectWeapons' && (
           <>
             <div className="flow-panel-step">
-              Attacker: {findUnitName(step.attackerUnitId)} → Target: {findUnitName(step.targetUnitId)}
+              Attacker: {findTargetName({ kind: 'unit', unitId: step.attackerUnitId })} → Target: {findTargetName(step.target)}
             </div>
             <div className="flow-panel-step" style={{ color: '#60a5fa' }}>
               Assign weapons for each model.
@@ -213,7 +220,7 @@ export function ShootingFlow({ state, dispatch }: ShootingFlowProps) {
               state={state}
               dispatch={dispatch}
               attackerUnitId={step.attackerUnitId}
-              targetUnitId={step.targetUnitId}
+              target={step.target}
             />
             <div className="panel-row" style={{ marginTop: 8 }}>
               <span className="panel-row-label">Weapons assigned</span>
@@ -225,7 +232,7 @@ export function ShootingFlow({ state, dispatch }: ShootingFlowProps) {
         {step.step === 'placeSpecial' && (
           <>
             <div className="flow-panel-step">
-              Attacker: {findUnitName(step.attackerUnitId)} → Target: {findUnitName(step.targetUnitId)}
+              Attacker: {findTargetName({ kind: 'unit', unitId: step.attackerUnitId })} → Target: {findTargetName(step.target)}
             </div>
             <div className="flow-panel-step" style={{ color: '#fbbf24' }}>
               {step.requirements[step.currentIndex]?.label}
@@ -246,7 +253,7 @@ export function ShootingFlow({ state, dispatch }: ShootingFlowProps) {
         {step.step === 'resolving' && (
           <>
             <div className="flow-panel-step">
-              Resolving: {findUnitName(step.attackerUnitId)} → {findUnitName(step.targetUnitId)}
+              Resolving: {findTargetName({ kind: 'unit', unitId: step.attackerUnitId })} → {findTargetName(step.target)}
             </div>
             <div className="flow-panel-step" style={{ color: '#fbbf24' }}>
               Processing hit tests, wound tests, and saves...
@@ -267,7 +274,7 @@ export function ShootingFlow({ state, dispatch }: ShootingFlowProps) {
         {step.step === 'showResults' && (
           <>
             <div className="flow-panel-step">
-              Attack Complete: {findUnitName(step.attackerUnitId)} → {findUnitName(step.targetUnitId)}
+              Attack Complete: {findTargetName({ kind: 'unit', unitId: step.attackerUnitId })} → {findTargetName(step.target)}
             </div>
             <div className="flow-panel-step" style={{ color: '#22c55e' }}>
               Results are shown in the combat log.
@@ -285,7 +292,7 @@ export function ShootingFlow({ state, dispatch }: ShootingFlowProps) {
         {step.step === 'resolveMorale' && (
           <>
             <div className="flow-panel-step">
-              Morale Checks: {findUnitName(step.attackerUnitId)} → {findUnitName(step.targetUnitId)}
+              Morale Checks: {findTargetName({ kind: 'unit', unitId: step.attackerUnitId })} → {findTargetName(step.target)}
             </div>
             <div className="flow-panel-step" style={{ color: '#a78bfa' }}>
               Resolving panic/pinning checks...

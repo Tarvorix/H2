@@ -1,0 +1,1 @@
+{"version":3,"file":"FireGroupDisplay.d.ts","sourceRoot":"","sources":["../../../src/game/flows/FireGroupDisplay.tsx"],"names":[],"mappings":"AAAA;;;;;GAKG;AAEH,OAAO,KAAK,EAAE,iBAAiB,EAAE,MAAM,WAAW,CAAC;AAEnD,UAAU,qBAAqB;IAC7B,UAAU,EAAE,iBAAiB,EAAE,CAAC;IAChC,YAAY,EAAE,MAAM,CAAC;CACtB;AAED,wBAAgB,gBAAgB,CAAC,EAAE,UAAU,EAAE,YAAY,EAAE,EAAE,qBAAqB,2CA4FnF"}

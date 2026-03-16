@@ -15,6 +15,7 @@ import {
   SubPhase,
   TacticalStatus,
   Allegiance,
+  GameMode,
   LegionFaction,
   UnitMovementState,
   DeploymentMap,
@@ -85,6 +86,7 @@ function makeArmy(playerIndex: number, units: UnitState[], vp: number = 0): Army
 function makeMissionState(overrides: Partial<MissionState> = {}): MissionState {
   return {
     missionId: 'test',
+    gameMode: GameMode.CoreMissions,
     deploymentMap: DeploymentMap.SearchAndDestroy,
     deploymentZones: [
       { playerIndex: 0, vertices: [] },
@@ -128,6 +130,7 @@ function makeState(
 ): GameState {
   return {
     gameId: 'test',
+    gameMode: GameMode.CoreMissions,
     battlefield: { width: 72, height: 48 },
     terrain: [],
     armies: [makeArmy(0, army0Units), makeArmy(1, army1Units)],
@@ -693,5 +696,100 @@ describe('handleVictorySubPhase', () => {
     expect(result.state.missionState!.scoringHistory.length).toBeGreaterThanOrEqual(1);
     expect(result.state.missionState!.scoringHistory[0].playerIndex).toBe(0);
     expect(result.state.missionState!.scoringHistory[0].vpScored).toBe(5);
+  });
+
+  it('expires temporary Abyssal Darkness at the matching Zone Mortalis player-turn', () => {
+    const state = makeState(
+      [makeUnit('u1', [makeModel('m1')])],
+      [makeUnit('u2', [makeModel('m2')])],
+      {
+        gameMode: GameMode.ZoneMortalis,
+        currentBattleTurn: 2,
+        activePlayerIndex: 1,
+        missionState: makeMissionState({
+          missionId: 'sector-sweep',
+          gameMode: GameMode.ZoneMortalis,
+        }),
+        zoneMortalisState: {
+          sections: [
+            {
+              id: 'section-0-0',
+              row: 0,
+              column: 0,
+              topLeft: { x: 0, y: 0 },
+              confinedSpace: null,
+              hasAbyssalDarkness: true,
+              abyssalDarknessExpiresAfterPlayerTurn: {
+                battleTurn: 2,
+                playerIndex: 1,
+              },
+            },
+          ],
+          doorways: [],
+          objectives: [],
+        },
+      },
+    );
+
+    const result = handleVictorySubPhase(state, makeDice([]));
+
+    expect(result.accepted).toBe(true);
+    expect(result.state.zoneMortalisState?.sections[0]).toMatchObject({
+      id: 'section-0-0',
+      hasAbyssalDarkness: false,
+      abyssalDarknessExpiresAfterPlayerTurn: null,
+    });
+    expect(result.events).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        type: 'zoneMortalisSectionChanged',
+        sectionId: 'section-0-0',
+        hasAbyssalDarkness: false,
+      }),
+    ]));
+  });
+
+  it('clears Signal Influx objectives at the end of a full battle turn in Zone Mortalis', () => {
+    const state = makeState(
+      [makeUnit('u1', [makeModel('m1')])],
+      [makeUnit('u2', [makeModel('m2')])],
+      {
+        gameMode: GameMode.ZoneMortalis,
+        currentBattleTurn: 2,
+        activePlayerIndex: 1,
+        missionState: makeMissionState({
+          missionId: 'signal-influx',
+          gameMode: GameMode.ZoneMortalis,
+          objectives: [
+            {
+              id: 'obj-signal',
+              position: { x: 18, y: 18 },
+              vpValue: 2,
+              currentVpValue: 2,
+              isRemoved: false,
+              label: 'Signal Alpha',
+            },
+          ],
+        }),
+        zoneMortalisState: {
+          sections: [],
+          doorways: [],
+          objectives: [
+            {
+              objectiveId: 'obj-signal',
+              currentValue: 2,
+              isActive: true,
+              isInterfaced: false,
+            },
+          ],
+        },
+      },
+    );
+
+    const result = handleVictorySubPhase(state, makeDice([]));
+
+    expect(result.accepted).toBe(true);
+    expect(result.state.isGameOver).toBe(false);
+    expect(result.state.missionState?.objectives).toEqual([]);
+    expect(result.state.zoneMortalisState?.objectives).toEqual([]);
   });
 });

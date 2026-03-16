@@ -15,10 +15,20 @@ import type {
 } from '@hh/types';
 import { ModelType } from '@hh/types';
 import {
+  createCircleBase,
+  distanceShapes,
+  EPSILON,
+} from '@hh/geometry';
+import {
   getUnitSpecialRules,
   lookupModelDefinition,
   lookupUnitProfile,
 } from '../profile-lookup';
+import {
+  getZoneMortalisMeasurementDistance,
+  isZoneMortalisGame,
+} from '../zone-mortalis/zone-mortalis';
+import { getModelShape } from '../game-queries';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -194,7 +204,9 @@ export function getModelsWithinObjectiveRange(
 
       const dx = model.position.x - objective.position.x;
       const dy = model.position.y - objective.position.y;
-      const distance = Math.sqrt(dx * dx + dy * dy);
+      const distance = isZoneMortalisGame(state)
+        ? (getZoneMortalisMeasurementDistance(state, model.position, objective.position) ?? Infinity)
+        : Math.sqrt(dx * dx + dy * dy);
 
       if (distance <= OBJECTIVE_CONTROL_RANGE) {
         result.push({ model, unit });
@@ -235,7 +247,29 @@ export interface ObjectiveScoringResolution {
   totalVictoryPoints: number;
 }
 
+function isModelInZoneMortalisObjectiveBaseContact(
+  model: ModelState,
+  objective: ObjectiveMarker,
+): boolean {
+  const objectiveShape = createCircleBase(objective.position, 32);
+  return distanceShapes(getModelShape(model), objectiveShape) <= EPSILON;
+}
+
+function isWithinObjectiveContestRange(
+  state: GameState,
+  model: ModelState,
+  objective: ObjectiveMarker,
+): boolean {
+  const dx = model.position.x - objective.position.x;
+  const dy = model.position.y - objective.position.y;
+  const distance = isZoneMortalisGame(state)
+    ? (getZoneMortalisMeasurementDistance(state, model.position, objective.position) ?? Infinity)
+    : Math.sqrt(dx * dx + dy * dy);
+  return distance <= OBJECTIVE_CONTROL_RANGE;
+}
+
 export function getUnitTacticalStrengthAtObjective(
+  state: GameState,
   unit: UnitState,
   objective: ObjectiveMarker,
 ): number {
@@ -243,11 +277,7 @@ export function getUnitTacticalStrengthAtObjective(
 
   for (const model of unit.models) {
     if (!canModelHoldObjective(model, unit)) continue;
-
-    const dx = model.position.x - objective.position.x;
-    const dy = model.position.y - objective.position.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    if (distance > OBJECTIVE_CONTROL_RANGE) continue;
+    if (!isWithinObjectiveContestRange(state, model, objective)) continue;
 
     strength += 1 + Math.max(0, getModelRuleValue(unit, model, 'Line') ?? 0);
   }
@@ -264,14 +294,17 @@ export function getContestingUnitsAtObjective(
   const result: ObjectiveContestingUnit[] = [];
 
   for (const unit of army.units) {
-    const tacticalStrength = getUnitTacticalStrengthAtObjective(unit, objective);
+    const hasBaseContact = !isZoneMortalisGame(state) || unit.models.some((model) =>
+      canModelHoldObjective(model, unit) && isModelInZoneMortalisObjectiveBaseContact(model, objective),
+    );
+    if (!hasBaseContact) continue;
+
+    const tacticalStrength = getUnitTacticalStrengthAtObjective(state, unit, objective);
     if (tacticalStrength <= 0) continue;
 
     const eligibleModelCount = unit.models.filter((model) => {
       if (!canModelHoldObjective(model, unit)) return false;
-      const dx = model.position.x - objective.position.x;
-      const dy = model.position.y - objective.position.y;
-      return Math.sqrt(dx * dx + dy * dy) <= OBJECTIVE_CONTROL_RANGE;
+      return isWithinObjectiveContestRange(state, model, objective);
     }).length;
 
     const rules = summarizeUnitObjectiveRules(unit);

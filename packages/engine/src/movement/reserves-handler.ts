@@ -22,6 +22,7 @@ import type {
   FlyerCombatAssignment,
 } from '@hh/types';
 import {
+  MissionSpecialRule,
   ModelSubType,
   UnitMovementState,
 } from '@hh/types';
@@ -164,6 +165,22 @@ export function handleReservesTest(
     };
   }
 
+  if (
+    state.gameMode === 'zone-mortalis' &&
+    unitProfileHasSubType(unit.profileId, ModelSubType.Flyer)
+  ) {
+    return {
+      state,
+      events: [],
+      errors: [{
+        code: 'NO_FLY_ZONE',
+        message: `Flyer unit "${unitId}" cannot be used in Zone Mortalis missions.`,
+        context: { unitId },
+      }],
+      accepted: false,
+    };
+  }
+
   // ── Step 2: Roll the reserves test ──────────────────────────────────
 
   const targetNumber = getReservesTargetNumber(unit);
@@ -288,6 +305,22 @@ export function handleReservesEntry(
     };
   }
 
+  if (
+    state.gameMode === 'zone-mortalis' &&
+    unitProfileHasSubType(unit.profileId, ModelSubType.Flyer)
+  ) {
+    return {
+      state,
+      events: [],
+      errors: [{
+        code: 'NO_FLY_ZONE',
+        message: `Flyer unit "${unitId}" cannot enter play in Zone Mortalis missions.`,
+        context: { unitId },
+      }],
+      accepted: false,
+    };
+  }
+
   // ── Step 2: Determine entry method (edge, deep strike, outflank) ────
 
   const entryMethod = determineEntryMethod(state, unit, modelPositions, combatAssignment);
@@ -306,6 +339,19 @@ export function handleReservesEntry(
 
   const activeArmy = getActiveArmy(state);
   if (entryMethod === 'deepStrike') {
+    if (state.missionState?.activeSpecialRules.includes(MissionSpecialRule.ImpenetrableArea)) {
+      return {
+        state,
+        events: [],
+        errors: [{
+          code: 'IMPENETRABLE_AREA',
+          message: 'Deep Strike reserves are forbidden while the Impenetrable Area mission special rule is active.',
+          context: { unitId },
+        }],
+        accepted: false,
+      };
+    }
+
     if (state.currentBattleTurn <= 1) {
       return {
         state,

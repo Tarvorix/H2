@@ -9,7 +9,10 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   Allegiance,
+  DeploymentMap,
+  GameMode,
   LegionFaction,
+  MissionSpecialRule,
   Phase,
   SubPhase,
   UnitMovementState,
@@ -18,6 +21,7 @@ import type {
   ArmyState,
   GameState,
   ModelState,
+  MissionState,
   UnitState,
 } from '@hh/types';
 import { FixedDiceProvider } from '../dice';
@@ -100,6 +104,7 @@ function createArmy(
 function createGameState(overrides: Partial<GameState> = {}): GameState {
   return {
     gameId: 'test-game',
+    gameMode: GameMode.CoreMissions,
     battlefield: { width: 72, height: 48 },
     terrain: [],
     armies: [
@@ -118,6 +123,41 @@ function createGameState(overrides: Partial<GameState> = {}): GameState {
     winnerPlayerIndex: null,
     log: [],
     turnHistory: [],
+    advancedReactionsUsed: [],
+    legionTacticaState: [
+      { reactionDiscountUsedThisTurn: false, movementBonusActiveThisTurn: false, perTurnFlags: {} },
+      { reactionDiscountUsedThisTurn: false, movementBonusActiveThisTurn: false, perTurnFlags: {} },
+    ],
+    missionState: null,
+    ...overrides,
+  };
+}
+
+function createMissionState(
+  specialRules: MissionSpecialRule[],
+  overrides: Partial<MissionState> = {},
+): MissionState {
+  return {
+    missionId: 'zone-mortalis-test',
+    gameMode: GameMode.ZoneMortalis,
+    deploymentMap: DeploymentMap.ConfigurationPrimus,
+    deploymentZones: [
+      { playerIndex: 0, vertices: [{ x: 0, y: 0 }, { x: 24, y: 0 }, { x: 24, y: 24 }, { x: 0, y: 24 }] },
+      { playerIndex: 1, vertices: [{ x: 24, y: 24 }, { x: 48, y: 24 }, { x: 48, y: 48 }, { x: 24, y: 48 }] },
+    ],
+    objectives: [],
+    secondaryObjectives: [],
+    activeSpecialRules: specialRules,
+    firstStrikeTracking: {
+      player0FirstTurnCompleted: false,
+      player1FirstTurnCompleted: false,
+      player0Achieved: false,
+      player1Achieved: false,
+    },
+    scoringHistory: [],
+    vpAtTurnStart: [],
+    vanguardBonusHistory: [],
+    assaultPhaseObjectiveSnapshot: null,
     ...overrides,
   };
 }
@@ -254,6 +294,35 @@ describe('handleReservesTest', () => {
       passed: false,
     });
     expect(result.state.armies[0].units[0].reserveReadyToEnter).toBe(false);
+  });
+
+  it('rejects flyer reserve tests in Zone Mortalis', () => {
+    const aerialUnit = createUnit(
+      'xiphon-1',
+      [createModel('xiphon-m0', 0, 0, {
+        profileModelName: 'Xiphon',
+        unitProfileId: 'xiphon-interceptor',
+      })],
+      {
+        profileId: 'xiphon-interceptor',
+        isInReserves: true,
+        isDeployed: false,
+        reserveType: 'aerial',
+      },
+    );
+    const zoneMortalisState = createGameState({
+      gameMode: GameMode.ZoneMortalis,
+      battlefield: { width: 48, height: 48 },
+      armies: [
+        createArmy(0, [aerialUnit]),
+        createArmy(1, [createUnit('enemy-u1', [createModel('enemy-m0', 36, 36)])]),
+      ],
+    });
+
+    const result = handleReservesTest(zoneMortalisState, 'xiphon-1', new FixedDiceProvider([6]));
+
+    expect(result.accepted).toBe(false);
+    expect(result.errors[0]?.code).toBe('NO_FLY_ZONE');
   });
 });
 
@@ -521,5 +590,38 @@ describe('handleReservesEntry', () => {
     expect(unitState.movementState).toBe(UnitMovementState.Stationary);
     expect(unitState.flyerCombatAssignment).toBe('strike-mission');
     expect(unitState.reserveEntryMethodThisTurn).toBe('strike-mission');
+  });
+
+  it('rejects Deep Strike reserves while Impenetrable Area is active in Zone Mortalis', () => {
+    const unit = createUnit(
+      'deep-u1',
+      [createModel('deep-m0', 0, 0, {
+        profileModelName: 'Praetor',
+        unitProfileId: 'praetor',
+      })],
+      {
+        profileId: 'praetor',
+        isInReserves: true,
+        isDeployed: false,
+        reserveReadyToEnter: true,
+      },
+    );
+    const state = createGameState({
+      gameMode: GameMode.ZoneMortalis,
+      battlefield: { width: 48, height: 48 },
+      currentBattleTurn: 2,
+      missionState: createMissionState([MissionSpecialRule.ImpenetrableArea]),
+      armies: [
+        createArmy(0, [unit]),
+        createArmy(1, [createUnit('enemy-u1', [createModel('enemy-m0', 40, 40)])]),
+      ],
+    });
+
+    const result = handleReservesEntry(state, 'deep-u1', [
+      { modelId: 'deep-m0', position: { x: 24, y: 24 } },
+    ], new FixedDiceProvider([]));
+
+    expect(result.accepted).toBe(false);
+    expect(result.errors[0]?.code).toBe('IMPENETRABLE_AREA');
   });
 });

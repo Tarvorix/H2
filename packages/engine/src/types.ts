@@ -56,6 +56,7 @@ export type GameEvent =
   | ReservesTestEvent
   | ReservesEntryEvent
   | DangerousTerrainTestEvent
+  | HazardTestEvent
   | RoutMoveEvent
   | EmbarkEvent
   | DisembarkEvent
@@ -126,11 +127,16 @@ export type GameEvent =
   | AdvancedReactionResolvedEvent
   // Mission / Victory Events
   | ObjectiveScoredEvent
+  | ObjectiveInterfacedEvent
   | SecondaryAchievedEvent
   | CounterOffensiveActivatedEvent
   | SeizeTheInitiativeEvent
   | WindowOfOpportunityEvent
   | SuddenDeathEvent
+  | DoorwayStateChangedEvent
+  | DoorwayDamagedEvent
+  | ZoneMortalisSectionChangedEvent
+  | BlindPanicTriggeredEvent
   // Command Events
   | TargetModelSelectedEvent
   | TerrainPlacedEvent
@@ -175,6 +181,14 @@ export interface DangerousTerrainTestEvent {
   roll: number;
   passed: boolean;
   woundsCaused: number;
+}
+
+export interface HazardTestEvent {
+  type: 'hazardTest';
+  modelId: string;
+  unitId: string;
+  roll: number;
+  passed: boolean;
 }
 
 export interface RoutMoveEvent {
@@ -717,6 +731,17 @@ export interface ObjectiveScoredEvent {
   objectiveLabel: string;
 }
 
+export interface ObjectiveInterfacedEvent {
+  type: 'objectiveInterfaced';
+  objectiveId: string;
+  unitId: string;
+  roll: number;
+  target: number;
+  passed: boolean;
+  previousValue: number;
+  newValue: number;
+}
+
 export interface SecondaryAchievedEvent {
   type: 'secondaryAchieved';
   secondaryType: SecondaryObjectiveType;
@@ -751,6 +776,33 @@ export interface SuddenDeathEvent {
   type: 'suddenDeath';
   survivingPlayerIndex: number;
   bonusVP: number;
+}
+
+export interface DoorwayStateChangedEvent {
+  type: 'doorwayStateChanged';
+  doorwayId: string;
+  previousState: 'open' | 'closed' | 'destroyed';
+  newState: 'open' | 'closed' | 'destroyed';
+}
+
+export interface DoorwayDamagedEvent {
+  type: 'doorwayDamaged';
+  doorwayId: string;
+  hullPointsRemaining: number;
+  destroyed: boolean;
+}
+
+export interface ZoneMortalisSectionChangedEvent {
+  type: 'zoneMortalisSectionChanged';
+  sectionId: string;
+  confinedSpace: number | null;
+  hasAbyssalDarkness: boolean;
+}
+
+export interface BlindPanicTriggeredEvent {
+  type: 'blindPanicTriggered';
+  sourceUnitId: string;
+  affectedUnitIds: string[];
 }
 
 // ─── Command Result ──────────────────────────────────────────────────────────

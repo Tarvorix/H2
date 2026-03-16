@@ -7,8 +7,13 @@
  */
 
 import { useCallback, useMemo } from 'react';
-import { canUnitShoot, getPhaseUxStatus } from '@hh/engine';
-import { Phase, SubPhase } from '@hh/types';
+import {
+  canUnitShoot,
+  getModelStateBaseSizeMM,
+  getPhaseUxStatus,
+  getZoneMortalisMeasurementDistance,
+} from '@hh/engine';
+import { GameMode, Phase, SubPhase } from '@hh/types';
 import type { GameUIState, GameUIAction, AvailableAction } from '../types';
 
 interface ActionBarProps {
@@ -29,6 +34,147 @@ function findUnitById(state: GameUIState, unitId: string) {
   return null;
 }
 
+function getDistanceFromPointToRectangle(
+  x: number,
+  y: number,
+  topLeft: { x: number; y: number },
+  width: number,
+  height: number,
+): number {
+  const dx = Math.max(topLeft.x - x, 0, x - (topLeft.x + width));
+  const dy = Math.max(topLeft.y - y, 0, y - (topLeft.y + height));
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+function getZoneMortalisActionTargets(
+  state: GameUIState,
+  selectedUnit: NonNullable<ReturnType<typeof findUnitById>>,
+): {
+  doorwayToOpenId: string | null;
+  doorwayToCloseId: string | null;
+  objectiveToInterfaceId: string | null;
+} {
+  const gs = state.gameState;
+  if (
+    !gs ||
+    gs.gameMode !== GameMode.ZoneMortalis ||
+    !gs.zoneMortalisState ||
+    gs.currentPhase !== Phase.Movement ||
+    gs.currentSubPhase !== SubPhase.Move
+  ) {
+    return {
+      doorwayToOpenId: null,
+      doorwayToCloseId: null,
+      objectiveToInterfaceId: null,
+    };
+  }
+
+  const isActivePlayersUnit = gs.armies[gs.activePlayerIndex].units.some((unit) => unit.id === selectedUnit.id);
+  if (
+    !isActivePlayersUnit ||
+    !selectedUnit.isDeployed ||
+    selectedUnit.embarkedOnId !== null ||
+    selectedUnit.isLockedInCombat
+  ) {
+    return {
+      doorwayToOpenId: null,
+      doorwayToCloseId: null,
+      objectiveToInterfaceId: null,
+    };
+  }
+
+  const aliveModels = selectedUnit.models.filter((model) => !model.isDestroyed);
+  const doorwayCandidates = gs.zoneMortalisState.doorways
+    .map((doorway) => {
+      if (doorway.state === 'destroyed') {
+        return null;
+      }
+
+      const terrain = gs.terrain.find((piece) => piece.id === doorway.id);
+      if (!terrain || terrain.shape.kind !== 'rectangle') {
+        return null;
+      }
+      const terrainShape = terrain.shape;
+
+      const hasBaseContactModel = aliveModels.some((model) => {
+        const radius = (getModelStateBaseSizeMM(model) / 25.4) / 2;
+        return getDistanceFromPointToRectangle(
+          model.position.x,
+          model.position.y,
+          terrainShape.topLeft,
+          terrainShape.width,
+          terrainShape.height,
+        ) <= radius + 0.0001;
+      });
+      if (!hasBaseContactModel) {
+        return null;
+      }
+
+      const hasOperator = aliveModels.some((model) => {
+        const radius = (getModelStateBaseSizeMM(model) / 25.4) / 2;
+        return getDistanceFromPointToRectangle(
+          model.position.x,
+          model.position.y,
+          terrainShape.topLeft,
+          terrainShape.width,
+          terrainShape.height,
+        ) <= radius + 2.0001;
+      });
+      if (!hasOperator) {
+        return null;
+      }
+
+      const minDistance = Math.min(...aliveModels.map((model) =>
+        getDistanceFromPointToRectangle(
+          model.position.x,
+          model.position.y,
+          terrainShape.topLeft,
+          terrainShape.width,
+          terrainShape.height,
+        ),
+      ));
+
+      return {
+        doorwayId: doorway.id ?? terrain.id,
+        state: doorway.state,
+        minDistance,
+      };
+    })
+    .filter((candidate): candidate is { doorwayId: string; state: 'open' | 'closed'; minDistance: number } => candidate !== null)
+    .sort((left, right) => left.minDistance - right.minDistance);
+
+  const doorwayToOpenId = doorwayCandidates.find((candidate) => candidate.state === 'closed')?.doorwayId ?? null;
+  const doorwayToCloseId = doorwayCandidates.find((candidate) => candidate.state === 'open')?.doorwayId ?? null;
+
+  let objectiveToInterfaceId: string | null = null;
+  if (gs.missionState?.missionId === 'terminal-control') {
+    const objectiveCandidates = gs.missionState.objectives
+      .map((objective) => {
+        const minDistance = Math.min(...aliveModels.map((model) =>
+          getZoneMortalisMeasurementDistance(gs, model.position, objective.position) ?? Number.POSITIVE_INFINITY,
+        ));
+        if (!Number.isFinite(minDistance) || minDistance > 3.0001) {
+          return null;
+        }
+
+        return {
+          objectiveId: objective.id,
+          minDistance,
+        };
+      })
+      .filter((candidate): candidate is { objectiveId: string; minDistance: number } => candidate !== null)
+      .sort((left, right) => left.minDistance - right.minDistance);
+
+    objectiveToInterfaceId = objectiveCandidates[0]?.objectiveId ?? null;
+  }
+
+  return {
+    doorwayToOpenId,
+    doorwayToCloseId,
+    objectiveToInterfaceId,
+  };
+}
+
 function getAvailableActions(
   state: GameUIState,
   phaseAutomationPaused: boolean,
@@ -41,6 +187,13 @@ function getAvailableActions(
   const selectedUnit = state.selectedUnitId ? findUnitById(state, state.selectedUnitId) : null;
   const selectedUnitCanShoot = selectedUnit ? canUnitShoot(selectedUnit) : false;
   const phaseStatus = getPhaseUxStatus(gs);
+  const zoneMortalisTargets = selectedUnit
+    ? getZoneMortalisActionTargets(state, selectedUnit)
+    : {
+        doorwayToOpenId: null,
+        doorwayToCloseId: null,
+        objectiveToInterfaceId: null,
+      };
 
   // If awaiting reaction, only show reaction actions
   if (gs.awaitingReaction) {
@@ -92,6 +245,53 @@ function getAvailableActions(
           action: { type: 'START_RUSH_FLOW' },
           shortcut: 'R',
         });
+        if (zoneMortalisTargets.doorwayToOpenId) {
+          actions.push({
+            id: 'open-doorway',
+            label: 'Open Door',
+            enabled: true,
+            action: {
+              type: 'DISPATCH_ENGINE_COMMAND',
+              command: {
+                type: 'operateDoorway',
+                unitId: selectedUnit!.id,
+                doorwayId: zoneMortalisTargets.doorwayToOpenId,
+                desiredState: 'open',
+              },
+            },
+          });
+        }
+        if (zoneMortalisTargets.doorwayToCloseId) {
+          actions.push({
+            id: 'close-doorway',
+            label: 'Close Door',
+            enabled: true,
+            action: {
+              type: 'DISPATCH_ENGINE_COMMAND',
+              command: {
+                type: 'operateDoorway',
+                unitId: selectedUnit!.id,
+                doorwayId: zoneMortalisTargets.doorwayToCloseId,
+                desiredState: 'closed',
+              },
+            },
+          });
+        }
+        if (zoneMortalisTargets.objectiveToInterfaceId) {
+          actions.push({
+            id: 'interface-objective',
+            label: 'Interface',
+            enabled: true,
+            action: {
+              type: 'DISPATCH_ENGINE_COMMAND',
+              command: {
+                type: 'interfaceObjective',
+                unitId: selectedUnit!.id,
+                objectiveId: zoneMortalisTargets.objectiveToInterfaceId,
+              },
+            },
+          });
+        }
       }
       break;
 

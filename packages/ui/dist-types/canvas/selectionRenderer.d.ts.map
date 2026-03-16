@@ -1,0 +1,1 @@
+{"version":3,"file":"selectionRenderer.d.ts","sourceRoot":"","sources":["../../src/canvas/selectionRenderer.ts"],"names":[],"mappings":"AAAA;;;GAGG;AAGH,OAAO,KAAK,EAAE,eAAe,EAAE,MAAM,gBAAgB,CAAC;AAqCtD,wBAAgB,eAAe,CAC7B,GAAG,EAAE,wBAAwB,EAC7B,MAAM,EAAE,eAAe,EAAE,EACzB,eAAe,EAAE,MAAM,GAAG,IAAI,EAC9B,cAAc,EAAE,MAAM,GAAG,IAAI,EAC7B,IAAI,EAAE,MAAM,GACX,IAAI,CAkBN"}

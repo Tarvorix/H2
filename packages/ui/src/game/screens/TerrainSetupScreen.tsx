@@ -6,13 +6,14 @@
  */
 
 import { useCallback, useState } from 'react';
-import { TerrainType } from '@hh/types';
+import { GameMode, TerrainType } from '@hh/types';
 import type { TerrainPiece } from '@hh/types';
 import type { GameUIState, GameUIAction } from '../types';
 import {
   createRectTerrain,
   createCircleTerrain,
 } from '@hh/geometry';
+import { ZoneMortalisTerrainSetupScreen } from './ZoneMortalisTerrainSetupScreen';
 
 interface TerrainSetupScreenProps {
   state: GameUIState;
@@ -68,6 +69,16 @@ const TERRAIN_PRESETS: TerrainPreset[] = [
 ];
 
 export function TerrainSetupScreen({ state, dispatch, onReturnToMenu }: TerrainSetupScreenProps) {
+  if (state.gameMode === GameMode.ZoneMortalis) {
+    return (
+      <ZoneMortalisTerrainSetupScreen
+        state={state}
+        dispatch={dispatch}
+        onReturnToMenu={onReturnToMenu}
+      />
+    );
+  }
+
   const [placingType, setPlacingType] = useState<TerrainType>(TerrainType.MediumArea);
   const [placingShape, setPlacingShape] = useState<'rectangle' | 'circle'>('rectangle');
   const [isDifficult, setIsDifficult] = useState(true);

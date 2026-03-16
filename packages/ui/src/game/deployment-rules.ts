@@ -52,8 +52,14 @@ function isPointOnPolygonBoundary(point: Position, vertices: Position[]): boolea
   return false;
 }
 
+function getDeploymentZoneAreas(zone: DeploymentZone): Position[][] {
+  return zone.areas ?? [zone.vertices];
+}
+
 export function isPointInDeploymentZone(position: Position, zone: DeploymentZone): boolean {
-  return pointInPolygon(position, zone.vertices) || isPointOnPolygonBoundary(position, zone.vertices);
+  return getDeploymentZoneAreas(zone).some((vertices) =>
+    pointInPolygon(position, vertices) || isPointOnPolygonBoundary(position, vertices),
+  );
 }
 
 export function getDeploymentZoneForPlayer(
@@ -84,9 +90,23 @@ function getDeploymentAxes(
         : {
             lateral: { x: -diagonal, y: diagonal },
             depth: { x: -diagonal, y: -diagonal },
+        };
+    }
+    case DeploymentMap.ConfigurationPrimus: {
+      const diagonal = Math.SQRT1_2;
+      return playerIndex === 0
+        ? {
+            lateral: { x: diagonal, y: -diagonal },
+            depth: { x: diagonal, y: diagonal },
+          }
+        : {
+            lateral: { x: -diagonal, y: diagonal },
+            depth: { x: -diagonal, y: -diagonal },
           };
     }
+    case DeploymentMap.ConfigurationTertius:
     case DeploymentMap.HammerAndAnvil:
+    case DeploymentMap.ConfigurationSecundus:
     default:
       return {
         lateral: { x: 1, y: 0 },
@@ -131,7 +151,9 @@ function getProjectionRange(
   zone: DeploymentZone,
   axis: Position,
 ): { min: number; max: number } {
-  const projections = zone.vertices.map((vertex) => projectPointOntoAxis(vertex, axis));
+  const projections = getDeploymentZoneAreas(zone)
+    .flat()
+    .map((vertex) => projectPointOntoAxis(vertex, axis));
   return {
     min: Math.min(...projections),
     max: Math.max(...projections),

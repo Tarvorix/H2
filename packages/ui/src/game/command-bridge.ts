@@ -12,6 +12,7 @@
  */
 
 import type {
+  AttackTargetRef,
   BlastPlacement,
   FlyerCombatAssignment,
   GameState,
@@ -68,12 +69,14 @@ export function buildMoveUnitCommand(
   unitId: string,
   modelPositions: { modelId: string; position: Position }[],
   isRush: boolean = false,
+  measuredDistance?: number,
 ): GameCommand {
   return {
     type: 'moveUnit',
     unitId,
     modelPositions,
     isRush,
+    measuredDistance,
   };
 }
 
@@ -92,7 +95,7 @@ export function buildRushCommand(unitId: string): GameCommand {
  */
 export function buildShootingCommand(
   attackingUnitId: string,
-  targetUnitId: string,
+  target: AttackTargetRef,
   weaponSelections: WeaponSelection[],
   blastPlacements: BlastPlacement[] = [],
   templatePlacements: TemplatePlacement[] = [],
@@ -100,7 +103,9 @@ export function buildShootingCommand(
   return {
     type: 'declareShooting',
     attackingUnitId,
-    targetUnitId,
+    targetUnitId: target.kind === 'unit' ? target.unitId : '',
+    target,
+    targetDoorwayId: target.kind === 'doorway' ? target.doorwayId : undefined,
     weaponSelections: weaponSelections.map(ws => ({
       modelId: ws.modelId,
       weaponId: ws.weaponId,
@@ -116,12 +121,16 @@ export function buildShootingCommand(
  */
 export function buildChargeCommand(
   chargingUnitId: string,
-  targetUnitId: string,
+  target: AttackTargetRef,
+  measuredDistance?: number,
 ): GameCommand {
   return {
     type: 'declareCharge',
     chargingUnitId,
-    targetUnitId,
+    targetUnitId: target.kind === 'unit' ? target.unitId : '',
+    target,
+    targetDoorwayId: target.kind === 'doorway' ? target.doorwayId : undefined,
+    measuredDistance,
   };
 }
 
@@ -396,6 +405,26 @@ function eventToLogEntry(
             label: 'Dangerous Terrain',
             summary: event.passed ? 'Safe' : `${event.woundsCaused} wound(s)`,
           }],
+        },
+      );
+
+    case 'hazardTest':
+      return createLogEntry(
+        `Hazard check: rolled ${event.roll} — ${event.passed ? 'SAFE' : 'FAILED (casualty removed)'}`,
+        'movement',
+        gameState,
+        timestamp,
+        {
+          sourceUnitId: event.unitId,
+          diceRolls: [{
+            values: [event.roll],
+            targetNumber: 2,
+            passedIndices: event.passed ? [0] : [],
+            failedIndices: event.passed ? [] : [0],
+            label: 'Hazard Check',
+            summary: event.passed ? 'Safe' : 'Casualty removed',
+          }],
+          isImportant: !event.passed,
         },
       );
 
@@ -974,6 +1003,63 @@ function eventToLogEntry(
         gameState,
         timestamp,
         { isImportant: true },
+      );
+
+    case 'objectiveInterfaced':
+      return createLogEntry(
+        `Objective interfaced: rolled ${event.roll} vs IN ${event.target} — ${event.passed ? `${event.previousValue}VP -> ${event.newValue}VP` : 'terminal reset to 0VP'}`,
+        'system',
+        gameState,
+        timestamp,
+        {
+          sourceUnitId: event.unitId,
+          isImportant: true,
+          diceRolls: [{
+            values: [event.roll],
+            targetNumber: event.target,
+            passedIndices: event.passed ? [0] : [],
+            failedIndices: event.passed ? [] : [0],
+            label: `Interface Check (IN ${event.target})`,
+            summary: event.passed ? `${event.newValue}VP` : '0VP',
+          }],
+        },
+      );
+
+    case 'doorwayStateChanged':
+      return createLogEntry(
+        `Doorway ${event.doorwayId} changed ${event.previousState} -> ${event.newState}`,
+        'system',
+        gameState,
+        timestamp,
+      );
+
+    case 'doorwayDamaged':
+      return createLogEntry(
+        `Doorway ${event.doorwayId} damaged${event.destroyed ? ' and forced open' : ` (${event.hullPointsRemaining} HP remaining)`}`,
+        'system',
+        gameState,
+        timestamp,
+        { isImportant: event.destroyed },
+      );
+
+    case 'zoneMortalisSectionChanged':
+      return createLogEntry(
+        `${event.sectionId} now has ${event.hasAbyssalDarkness ? 'Abyssal Darkness' : `Confined Space (${event.confinedSpace ?? 'none'})`}`,
+        'system',
+        gameState,
+        timestamp,
+      );
+
+    case 'blindPanicTriggered':
+      return createLogEntry(
+        `Blind Panic: routed unit ${event.sourceUnitId} forced ${event.affectedUnitIds.length} nearby unit(s) to test in the next morale step`,
+        'morale',
+        gameState,
+        timestamp,
+        {
+          sourceUnitId: event.sourceUnitId,
+          isImportant: true,
+        },
       );
 
     // Events that don't need combat log entries

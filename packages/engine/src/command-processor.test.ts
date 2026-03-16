@@ -4,8 +4,23 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { Phase, SubPhase, UnitMovementState, TacticalStatus, Allegiance, LegionFaction, CoreReaction, ChallengeGambit } from '@hh/types';
-import type { GameState, ArmyState, UnitState, ModelState } from '@hh/types';
+import { createRectTerrain } from '@hh/geometry';
+import {
+  Phase,
+  SubPhase,
+  UnitMovementState,
+  TacticalStatus,
+  Allegiance,
+  LegionFaction,
+  CoreReaction,
+  ChallengeGambit,
+  GameMode,
+  TerrainType,
+  DeploymentMap,
+  MissionSpecialRule,
+  SecondaryObjectiveType,
+} from '@hh/types';
+import type { GameState, ArmyState, UnitState, ModelState, TerrainPiece } from '@hh/types';
 import { FixedDiceProvider } from './dice';
 import { processCommand, getValidCommands } from './command-processor';
 
@@ -110,6 +125,42 @@ function createGameState(overrides: Partial<GameState> = {}): GameState {
     ],
     missionState: null,
     ...overrides,
+  };
+}
+
+function createZoneMortalisDoorwayTerrain(
+  doorwayId: string,
+  topLeft: { x: number; y: number },
+  width: number,
+  height: number,
+  overrides: Partial<NonNullable<TerrainPiece['zoneMortalis']>> = {},
+) {
+  return {
+    ...createRectTerrain(
+      doorwayId,
+      `Doorway ${doorwayId}`,
+      TerrainType.Impassable,
+      topLeft,
+      width,
+      height,
+      false,
+      false,
+    ),
+    zoneMortalis: {
+      id: doorwayId,
+      kind: 'doorway' as const,
+      boundary: {
+        orientation: width >= height ? 'horizontal' : 'vertical',
+        row: 1,
+        column: 1,
+      },
+      width: Math.max(width, height),
+      state: 'closed' as const,
+      armourValue: 12,
+      hullPoints: 3,
+      maxHullPoints: 3,
+      ...overrides,
+    },
   };
 }
 
@@ -3352,6 +3403,392 @@ describe('phase handler auto-processing', () => {
       expect(result.accepted).toBe(true);
       expect(result.state.currentPhase).toBe(Phase.End);
       expect(result.state.currentSubPhase).toBe(SubPhase.Victory);
+    });
+  });
+
+  describe('Zone Mortalis doorway shooting', () => {
+    it('should resolve direct fire against a doorway and force it open when reduced to 0 HP', () => {
+      const doorway = createZoneMortalisDoorwayTerrain(
+        'door-1',
+        { x: 18, y: 9.7 },
+        2,
+        0.6,
+        { hullPoints: 1, maxHullPoints: 1, state: 'closed' },
+      );
+      const attacker = createUnit(
+        'attacker-unit',
+        [
+          createTacticalModel('attacker-m0', 10, 10, {
+            equippedWargear: ['meltagun'],
+          }),
+        ],
+        { profileId: 'tactical-squad' },
+      );
+      const state = createGameState({
+        gameMode: GameMode.ZoneMortalis,
+        battlefield: { width: 48, height: 48 },
+        currentPhase: Phase.Shooting,
+        currentSubPhase: SubPhase.Attack,
+        terrain: [doorway],
+        armies: [createArmy(0, [attacker]), createArmy(1, [])],
+      });
+
+      const dice = new FixedDiceProvider([5, 4]);
+      const result = processCommand(state, {
+        type: 'declareShooting',
+        attackingUnitId: 'attacker-unit',
+        targetUnitId: '',
+        target: { kind: 'doorway', doorwayId: 'door-1' },
+        targetDoorwayId: 'door-1',
+        weaponSelections: [{ modelId: 'attacker-m0', weaponId: 'meltagun' }],
+      }, dice as any);
+
+      expect(result.accepted).toBe(true);
+      expect(result.state.armies[0].units[0].hasShotThisTurn).toBe(true);
+      expect(result.state.zoneMortalisState?.doorways.find((entry) => entry.id === 'door-1')).toMatchObject({
+        state: 'destroyed',
+        hullPoints: 0,
+      });
+      expect(result.events).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          type: 'doorwayDamaged',
+          doorwayId: 'door-1',
+          destroyed: true,
+        }),
+        expect.objectContaining({
+          type: 'doorwayStateChanged',
+          doorwayId: 'door-1',
+          previousState: 'closed',
+          newState: 'destroyed',
+        }),
+      ]));
+    });
+
+    it('should resolve blast weapons against doorways without requiring marker placement', () => {
+      const doorway = createZoneMortalisDoorwayTerrain(
+        'door-1',
+        { x: 18, y: 9.7 },
+        2,
+        0.6,
+        { hullPoints: 1, maxHullPoints: 1, state: 'closed' },
+      );
+      const attacker = createUnit(
+        'attacker-unit',
+        [
+          createTacticalModel('attacker-m0', 10, 10, {
+            equippedWargear: ['plasma-cannon'],
+          }),
+        ],
+        { profileId: 'tactical-squad' },
+      );
+      const state = createGameState({
+        gameMode: GameMode.ZoneMortalis,
+        battlefield: { width: 48, height: 48 },
+        currentPhase: Phase.Shooting,
+        currentSubPhase: SubPhase.Attack,
+        terrain: [doorway],
+        armies: [createArmy(0, [attacker]), createArmy(1, [])],
+      });
+
+      const dice = new FixedDiceProvider([5, 5]);
+      const result = processCommand(state, {
+        type: 'declareShooting',
+        attackingUnitId: 'attacker-unit',
+        targetUnitId: '',
+        target: { kind: 'doorway', doorwayId: 'door-1' },
+        targetDoorwayId: 'door-1',
+        weaponSelections: [{ modelId: 'attacker-m0', weaponId: 'plasma-cannon' }],
+      }, dice as any);
+
+      expect(result.accepted).toBe(true);
+      expect(result.events.some((event) => event.type === 'blastMarkerPlaced')).toBe(true);
+      expect(result.state.zoneMortalisState?.doorways.find((entry) => entry.id === 'door-1')).toMatchObject({
+        state: 'destroyed',
+        hullPoints: 0,
+      });
+    });
+
+    it('should reject doorway shooting when a bulkhead wall blocks line of sight', () => {
+      const wall = {
+        ...createRectTerrain(
+          'wall-1',
+          'Wall',
+          TerrainType.Impassable,
+          { x: 13.8, y: 7 },
+          0.6,
+          6,
+          false,
+          false,
+        ),
+        zoneMortalis: {
+          kind: 'wall' as const,
+          boundary: {
+            orientation: 'vertical' as const,
+            row: 1,
+            column: 1,
+          },
+        },
+      };
+      const doorway = createZoneMortalisDoorwayTerrain(
+        'door-1',
+        { x: 18, y: 9.7 },
+        2,
+        0.6,
+        { hullPoints: 1, maxHullPoints: 1, state: 'closed' },
+      );
+      const attacker = createUnit(
+        'attacker-unit',
+        [
+          createTacticalModel('attacker-m0', 10, 10, {
+            equippedWargear: ['meltagun'],
+          }),
+        ],
+        { profileId: 'tactical-squad' },
+      );
+      const state = createGameState({
+        gameMode: GameMode.ZoneMortalis,
+        battlefield: { width: 48, height: 48 },
+        currentPhase: Phase.Shooting,
+        currentSubPhase: SubPhase.Attack,
+        terrain: [wall, doorway],
+        armies: [createArmy(0, [attacker]), createArmy(1, [])],
+      });
+
+      const result = processCommand(state, {
+        type: 'declareShooting',
+        attackingUnitId: 'attacker-unit',
+        targetUnitId: '',
+        target: { kind: 'doorway', doorwayId: 'door-1' },
+        targetDoorwayId: 'door-1',
+        weaponSelections: [{ modelId: 'attacker-m0', weaponId: 'meltagun' }],
+      }, new FixedDiceProvider([5]) as any);
+
+      expect(result.accepted).toBe(false);
+      expect(result.errors[0]?.code).toBe('NO_LOS');
+    });
+  });
+
+  describe('Zone Mortalis doorway charges', () => {
+    it('should resolve a successful charge against a doorway and damage it in melee', () => {
+      const doorway = createZoneMortalisDoorwayTerrain(
+        'door-1',
+        { x: 18, y: 9.7 },
+        2,
+        0.6,
+        { hullPoints: 1, maxHullPoints: 1, state: 'closed' },
+      );
+      const attacker = createUnit(
+        'attacker-unit',
+        [
+          createTacticalModel('attacker-m0', 15, 10, {
+            equippedWargear: ['power-fist'],
+          }),
+        ],
+        { profileId: 'tactical-squad' },
+      );
+      const state = createGameState({
+        gameMode: GameMode.ZoneMortalis,
+        battlefield: { width: 48, height: 48 },
+        currentPhase: Phase.Assault,
+        currentSubPhase: SubPhase.Charge,
+        terrain: [doorway],
+        armies: [createArmy(0, [attacker]), createArmy(1, [])],
+      });
+
+      const result = processCommand(state, {
+        type: 'declareCharge',
+        chargingUnitId: 'attacker-unit',
+        targetUnitId: '',
+        target: { kind: 'doorway', doorwayId: 'door-1' },
+        targetDoorwayId: 'door-1',
+      }, new FixedDiceProvider([6, 2, 4]) as any);
+
+      expect(result.accepted).toBe(true);
+      expect(result.events.some((event) => event.type === 'chargeDeclared')).toBe(true);
+      expect(result.events.some((event) => event.type === 'chargeSucceeded')).toBe(true);
+      expect(result.state.zoneMortalisState?.doorways.find((entry) => entry.id === 'door-1')).toMatchObject({
+        state: 'destroyed',
+        hullPoints: 0,
+      });
+      expect(result.events).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          type: 'doorwayDamaged',
+          doorwayId: 'door-1',
+          destroyed: true,
+        }),
+      ]));
+    });
+
+    it('should fail a doorway charge, leave the doorway intact, and stun the charger on a failed Cool Check', () => {
+      const doorway = createZoneMortalisDoorwayTerrain(
+        'door-1',
+        { x: 18, y: 9.7 },
+        2,
+        0.6,
+        { hullPoints: 3, maxHullPoints: 3, state: 'closed' },
+      );
+      const attacker = createUnit(
+        'attacker-unit',
+        [
+          createTacticalModel('attacker-m0', 9, 10, {
+            equippedWargear: ['power-fist'],
+          }),
+        ],
+        { profileId: 'tactical-squad' },
+      );
+      const state = createGameState({
+        gameMode: GameMode.ZoneMortalis,
+        battlefield: { width: 48, height: 48 },
+        currentPhase: Phase.Assault,
+        currentSubPhase: SubPhase.Charge,
+        terrain: [doorway],
+        armies: [createArmy(0, [attacker]), createArmy(1, [])],
+      });
+
+      const result = processCommand(state, {
+        type: 'declareCharge',
+        chargingUnitId: 'attacker-unit',
+        targetUnitId: '',
+        target: { kind: 'doorway', doorwayId: 'door-1' },
+        targetDoorwayId: 'door-1',
+      }, new FixedDiceProvider([2, 1, 6, 6]) as any);
+
+      expect(result.accepted).toBe(true);
+      expect(result.events.some((event) => event.type === 'chargeFailed')).toBe(true);
+      expect(result.events).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          type: 'coolCheck',
+          unitId: 'attacker-unit',
+          passed: false,
+        }),
+      ]));
+      expect(result.state.armies[0].units[0].statuses).toContain(TacticalStatus.Stunned);
+      expect(result.state.zoneMortalisState?.doorways.find((entry) => entry.id === 'door-1')).toMatchObject({
+        state: 'closed',
+        hullPoints: 3,
+      });
+    });
+  });
+
+  describe('Zone Mortalis utility commands', () => {
+    it('should open a doorway when an eligible unit operates it successfully', () => {
+      const doorway = createZoneMortalisDoorwayTerrain(
+        'door-1',
+        { x: 18, y: 9.7 },
+        2,
+        0.6,
+        { hullPoints: 3, maxHullPoints: 3, state: 'closed' },
+      );
+      const operator = createUnit(
+        'operator-unit',
+        [createTacticalModel('operator-m0', 17.4, 10)],
+        { profileId: 'tactical-squad' },
+      );
+      const state = createGameState({
+        gameMode: GameMode.ZoneMortalis,
+        battlefield: { width: 48, height: 48 },
+        currentPhase: Phase.Movement,
+        currentSubPhase: SubPhase.Move,
+        terrain: [doorway],
+        armies: [createArmy(0, [operator]), createArmy(1, [])],
+      });
+
+      const result = processCommand(state, {
+        type: 'operateDoorway',
+        unitId: 'operator-unit',
+        doorwayId: 'door-1',
+        desiredState: 'open',
+      }, new FixedDiceProvider([2, 2]) as any);
+
+      expect(result.accepted).toBe(true);
+      expect(result.state.zoneMortalisState?.doorways.find((entry) => entry.id === 'door-1')).toMatchObject({
+        state: 'open',
+        hullPoints: 3,
+      });
+      expect(result.events).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          type: 'doorwayStateChanged',
+          doorwayId: 'door-1',
+          previousState: 'closed',
+          newState: 'open',
+        }),
+      ]));
+    });
+
+    it('should interface a Terminal Control objective and update both mission and Zone Mortalis objective state', () => {
+      const operator = createUnit(
+        'operator-unit',
+        [createTacticalModel('operator-m0', 19, 20)],
+        { profileId: 'tactical-squad' },
+      );
+      const state = createGameState({
+        gameMode: GameMode.ZoneMortalis,
+        battlefield: { width: 48, height: 48 },
+        currentPhase: Phase.Movement,
+        currentSubPhase: SubPhase.Move,
+        armies: [createArmy(0, [operator]), createArmy(1, [])],
+        missionState: {
+          missionId: 'terminal-control',
+          gameMode: GameMode.ZoneMortalis,
+          deploymentMap: DeploymentMap.ConfigurationPrimus,
+          deploymentZones: [
+            { playerIndex: 0, vertices: [] },
+            { playerIndex: 1, vertices: [] },
+          ],
+          objectives: [
+            {
+              id: 'obj-1',
+              position: { x: 20, y: 20 },
+              vpValue: 3,
+              currentVpValue: 3,
+              isRemoved: false,
+              label: 'Terminal Alpha',
+            },
+          ],
+          secondaryObjectives: [
+            { type: SecondaryObjectiveType.SlayTheWarlord, vpValue: 3, achievedByPlayer: null },
+          ],
+          activeSpecialRules: [MissionSpecialRule.Reserves],
+          firstStrikeTracking: {
+            player0FirstTurnCompleted: false,
+            player1FirstTurnCompleted: false,
+            player0Achieved: false,
+            player1Achieved: false,
+          },
+          scoringHistory: [],
+          vpAtTurnStart: [],
+          vanguardBonusHistory: [],
+          assaultPhaseObjectiveSnapshot: null,
+        },
+      });
+
+      const result = processCommand(state, {
+        type: 'interfaceObjective',
+        unitId: 'operator-unit',
+        objectiveId: 'obj-1',
+      }, new FixedDiceProvider([3, 3]) as any);
+
+      expect(result.accepted).toBe(true);
+      expect(result.state.missionState?.objectives[0]).toMatchObject({
+        id: 'obj-1',
+        currentVpValue: 1,
+      });
+      expect(result.state.zoneMortalisState?.objectives.find((entry) => entry.objectiveId === 'obj-1')).toMatchObject({
+        objectiveId: 'obj-1',
+        currentValue: 1,
+        isInterfaced: true,
+        isActive: true,
+      });
+      expect(result.events).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          type: 'objectiveInterfaced',
+          objectiveId: 'obj-1',
+          unitId: 'operator-unit',
+          passed: true,
+          previousValue: 3,
+          newValue: 1,
+        }),
+      ]));
     });
   });
 

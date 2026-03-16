@@ -4,6 +4,7 @@
  */
 
 import type { Position } from './game-state';
+import { GameMode } from './enums';
 
 // ─── Deployment Maps ─────────────────────────────────────────────────────────
 
@@ -19,6 +20,12 @@ export enum DeploymentMap {
   HammerAndAnvil = 'Hammer and Anvil',
   /** Short edges — deployment zones along the short (48") edges */
   DawnOfWar = 'Dawn of War',
+  /** Zone Mortalis diagonal deployment */
+  ConfigurationPrimus = 'Configuration Primus',
+  /** Zone Mortalis long-edge deployment */
+  ConfigurationSecundus = 'Configuration Secundus',
+  /** Zone Mortalis split-corner deployment */
+  ConfigurationTertius = 'Configuration Tertius',
 }
 
 /**
@@ -28,8 +35,24 @@ export enum DeploymentMap {
 export interface DeploymentZone {
   /** Which player this zone belongs to (0 or 1) */
   playerIndex: number;
-  /** Polygon vertices defining the zone boundary (clockwise) */
+  /** Primary polygon vertices defining the zone boundary (clockwise) */
   vertices: Position[];
+  /**
+   * Optional multi-area deployment regions.
+   * When present, `vertices` is the first region for backwards compatibility.
+   */
+  areas?: Position[][];
+}
+
+export interface ZoneMortalisSectionTrait {
+  /** Section row in the 4x4 grid (0 = top). */
+  row: number;
+  /** Section column in the 4x4 grid (0 = left). */
+  column: number;
+  /** Optional overlay label such as α or β. */
+  label?: string;
+  /** Confined Space value applied to the section. */
+  confinedSpace?: number | null;
 }
 
 /**
@@ -40,6 +63,8 @@ export interface DeploymentMapDefinition {
   id: string;
   /** Display name */
   name: string;
+  /** Which ruleset this deployment map belongs to */
+  gameMode: GameMode;
   /** Deployment map type */
   type: DeploymentMap;
   /** Description of the deployment layout */
@@ -51,6 +76,8 @@ export interface DeploymentMapDefinition {
    * @returns Array of two deployment zones (one per player)
    */
   getZones: (width: number, height: number) => [DeploymentZone, DeploymentZone];
+  /** Optional official Zone Mortalis section trait overlay */
+  zoneMortalisSectionTraits?: ZoneMortalisSectionTrait[];
 }
 
 // ─── Objectives ──────────────────────────────────────────────────────────────
@@ -180,6 +207,16 @@ export enum MissionSpecialRule {
    * reduce its VP value by 1 (to a minimum of 0). Remove if reduced to 0.
    */
   WindowOfOpportunity = 'Window of Opportunity',
+  /** Sector Sweep environmental surge. */
+  FailingPowerConduits = 'Failing Power Conduits',
+  /** Signal Influx battlefield collapse table. */
+  CrumblingSuperstructure = 'Crumbling Superstructure',
+  /** Zone Mortalis darkness limit. */
+  AbyssalDarkness = 'Abyssal Darkness',
+  /** Zone Mortalis Deep Strike restriction. */
+  ImpenetrableArea = 'Impenetrable Area',
+  /** Zone Mortalis flyer restriction. */
+  NoFlyZone = 'No Fly Zone',
 }
 
 // ─── Mission Definition ──────────────────────────────────────────────────────
@@ -193,10 +230,20 @@ export interface MissionDefinition {
   id: string;
   /** Display name */
   name: string;
+  /** Which ruleset this mission belongs to */
+  gameMode: GameMode;
   /** Description of the mission */
   description: string;
-  /** Which deployment map to use */
+  /** Default deployment map to use */
   deploymentMap: DeploymentMap;
+  /** Deployment maps that may be selected for this mission */
+  allowedDeploymentMaps?: DeploymentMap[];
+  /** Battlefield size for this mission */
+  battlefield: { width: number; height: number };
+  /** Default points limit for this mission */
+  pointsLimit: number;
+  /** Battle length in turns */
+  maxBattleTurns: number;
   /** How objectives are placed */
   objectivePlacement: ObjectivePlacementRule;
   /** Active special rules for this mission */
@@ -277,6 +324,8 @@ export interface AssaultPhaseObjectiveSnapshot {
 export interface MissionState {
   /** ID of the active mission definition */
   missionId: string;
+  /** Ruleset in use for the mission */
+  gameMode: GameMode;
   /** The deployment map type in use */
   deploymentMap: DeploymentMap;
   /** Deployment zones for each player */

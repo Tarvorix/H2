@@ -7,11 +7,17 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { LegionFaction, Phase, SubPhase } from '@hh/types';
+import { GameMode, LegionFaction, ModelSubType, Phase, SubPhase } from '@hh/types';
 import type { GameState, ArmyState, UnitState, ModelState, Position, TerrainPiece, MissionState, ObjectiveMarker } from '@hh/types';
 import type { GameUIState, GameUIAction, ArmyConfig, MissionSelectUIState } from '../types';
 import { getProfileById, findMission, findDeploymentMapByType } from '@hh/data';
-import { getModelStateBaseSizeMM, getModelWounds, initializeMissionState } from '@hh/engine';
+import {
+  getModelStateBaseSizeMM,
+  getModelWounds,
+  initializeMissionState,
+  initializeZoneMortalisState,
+  unitProfileHasSubType,
+} from '@hh/engine';
 import {
   DEPLOYMENT_FORMATION_LABELS,
   type DeploymentFormationPreset,
@@ -41,6 +47,7 @@ function createInitialGameState(
   terrain: TerrainPiece[],
   battlefieldWidth: number,
   battlefieldHeight: number,
+  gameMode: GameUIState['gameMode'],
   missionSelect: MissionSelectUIState,
   placedObjectives: ObjectiveMarker[],
   firstPlayerIndex: 0 | 1,
@@ -51,13 +58,15 @@ function createInitialGameState(
   ];
 
   // Initialize mission state from mission selection data
+  const missionDefinition = missionSelect.selectedMissionId
+    ? findMission(missionSelect.selectedMissionId)
+    : null;
   let missionState: MissionState | null = null;
-  if (missionSelect.selectedMissionId && missionSelect.selectedDeploymentMap) {
-    const mission = findMission(missionSelect.selectedMissionId);
+  if (missionDefinition && missionSelect.selectedDeploymentMap) {
     const deploymentMapDef = findDeploymentMapByType(missionSelect.selectedDeploymentMap);
-    if (mission && deploymentMapDef) {
+    if (deploymentMapDef) {
       missionState = initializeMissionState(
-        mission,
+        missionDefinition,
         deploymentMapDef,
         battlefieldWidth,
         battlefieldHeight,
@@ -66,13 +75,19 @@ function createInitialGameState(
     }
   }
 
+  const gameModeResolved = missionDefinition?.gameMode ?? gameMode ?? GameMode.CoreMissions;
+  const zoneMortalisState = gameModeResolved === GameMode.ZoneMortalis
+    ? initializeZoneMortalisState(terrain, missionState)
+    : undefined;
+
   return {
     gameId: `game-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    gameMode: gameModeResolved,
     battlefield: { width: battlefieldWidth, height: battlefieldHeight },
     terrain,
     armies,
     currentBattleTurn: 1,
-    maxBattleTurns: 4,
+    maxBattleTurns: missionDefinition?.maxBattleTurns ?? 4,
     activePlayerIndex: firstPlayerIndex,
     firstPlayerIndex,
     currentPhase: Phase.Start,
@@ -88,6 +103,7 @@ function createInitialGameState(
       { reactionDiscountUsedThisTurn: false, movementBonusActiveThisTurn: false, perTurnFlags: {} },
     ],
     missionState,
+    zoneMortalisState,
   };
 }
 
@@ -226,6 +242,7 @@ export function DeploymentScreen({ state, dispatch, onReturnToMenu }: Deployment
       state.terrain,
       state.battlefieldWidth,
       state.battlefieldHeight,
+      state.gameMode,
       state.missionSelect,
       state.objectivePlacement.placedObjectives,
       state.deployment.deployingPlayerIndex as 0 | 1,
@@ -242,12 +259,22 @@ export function DeploymentScreen({ state, dispatch, onReturnToMenu }: Deployment
   // Get units for the deploying player
   const deployingArmy: ArmyState | undefined = gameState?.armies[deployingPlayerIndex];
   const allUnits: UnitState[] = deployingArmy?.units ?? [];
+  const zoneMortalisUnavailableUnitIds = useMemo(() => new Set(
+    (state.gameMode === GameMode.ZoneMortalis ? allUnits : [])
+      .filter((unit) => unitProfileHasSubType(unit.profileId, ModelSubType.Flyer))
+      .map((unit) => unit.id),
+  ), [allUnits, state.gameMode]);
+
   const unitsToPlace = allUnits.filter(
-    (u: UnitState) => !deployment.deployedUnitIds.includes(u.id) && u.id !== deployment.selectedRosterUnitId,
+    (u: UnitState) =>
+      !zoneMortalisUnavailableUnitIds.has(u.id) &&
+      !deployment.deployedUnitIds.includes(u.id) &&
+      u.id !== deployment.selectedRosterUnitId,
   );
   const deployedUnits = allUnits.filter(
     (u: UnitState) => deployment.deployedUnitIds.includes(u.id),
   );
+  const unavailableUnits = allUnits.filter((unit) => zoneMortalisUnavailableUnitIds.has(unit.id));
 
   // Currently placing unit
   const placingUnit = allUnits.find(
@@ -568,6 +595,20 @@ export function DeploymentScreen({ state, dispatch, onReturnToMenu }: Deployment
                   <div>
                     <span className="terrain-name">{unit.profileId}</span>
                     <span className="terrain-type"> ({unit.models.length} models)</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {unavailableUnits.length > 0 && (
+            <div className="panel-section">
+              <div className="panel-title">Unavailable in Zone Mortalis</div>
+              {unavailableUnits.map((unit) => (
+                <div key={unit.id} className="terrain-list-item">
+                  <div>
+                    <span className="terrain-name">{unit.profileId}</span>
+                    <span className="terrain-type"> (Flyer)</span>
                   </div>
                 </div>
               ))}

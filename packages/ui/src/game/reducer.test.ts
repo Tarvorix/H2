@@ -3,14 +3,17 @@ import {
   Allegiance,
   CoreReaction,
   DeploymentMap,
+  GameMode,
   LegionFaction,
   Phase,
   SubPhase,
+  TerrainType,
   UnitMovementState,
 } from '@hh/types';
 import type {
   GameState,
   PendingReaction,
+  TerrainPiece,
 } from '@hh/types';
 import type { CommandResult } from '@hh/engine';
 import { createInitialGameUIState, GameUIPhase } from './types';
@@ -149,6 +152,42 @@ function createBaseGameState(overrides: Partial<GameState> = {}): GameState {
     ],
     missionState: null,
     ...overrides,
+    gameMode: overrides.gameMode ?? GameMode.CoreMissions,
+  };
+}
+
+function createZoneMortalisDoorwayTerrain(
+  doorwayId: string,
+  topLeft: { x: number; y: number },
+  width: number,
+  height: number,
+): TerrainPiece {
+  return {
+    id: doorwayId,
+    name: `Doorway ${doorwayId}`,
+    type: TerrainType.Impassable,
+    shape: {
+      kind: 'rectangle',
+      topLeft,
+      width,
+      height,
+    },
+    isDifficult: false,
+    isDangerous: false,
+    zoneMortalis: {
+      id: doorwayId,
+      kind: 'doorway',
+      boundary: {
+        orientation: width >= height ? 'horizontal' : 'vertical',
+        row: 1,
+        column: 1,
+      },
+      width: Math.max(width, height),
+      state: 'closed',
+      armourValue: 12,
+      hullPoints: 3,
+      maxHullPoints: 3,
+    },
   };
 }
 
@@ -171,6 +210,7 @@ function createReactionUiState(pendingReaction: PendingReaction) {
 
   return {
     ...uiState,
+    gameMode: GameMode.CoreMissions,
     uiPhase: GameUIPhase.Playing,
     gameState,
     flowState: {
@@ -192,6 +232,7 @@ function createChargeUiState() {
 
   return {
     ...uiState,
+    gameMode: GameMode.CoreMissions,
     uiPhase: GameUIPhase.Playing,
     gameState,
     flowState: {
@@ -199,7 +240,8 @@ function createChargeUiState() {
       step: {
         step: 'confirmCharge' as const,
         chargingUnitId: 'attacker-u1',
-        targetUnitId: 'target-u1',
+        target: { kind: 'unit' as const, unitId: 'target-u1' },
+        measuredDistance: 8,
       },
     },
   };
@@ -395,7 +437,7 @@ describe('gameReducer shooting special-shot flow', () => {
         step: {
           step: 'selectWeapons' as const,
           attackerUnitId: 'attacker-u1',
-          targetUnitId: 'target-u1',
+          target: { kind: 'unit' as const, unitId: 'target-u1' },
           weaponSelections: [{
             modelId: 'attacker-u1-m1',
             weaponId: 'plasma-cannon',
@@ -453,7 +495,7 @@ describe('gameReducer shooting special-shot flow', () => {
         step: {
           step: 'placeSpecial' as const,
           attackerUnitId: 'attacker-u1',
-          targetUnitId: 'target-u1',
+          target: { kind: 'unit' as const, unitId: 'target-u1' },
           weaponSelections: [{
             modelId: 'attacker-u1-m1',
             weaponId: 'plasma-cannon',
@@ -554,6 +596,162 @@ describe('gameReducer charge flow resolution', () => {
 
     expect(nextState.flowState).toEqual(state.flowState);
     expect(nextState.lastErrors).toEqual(result.errors);
+  });
+});
+
+describe('gameReducer Zone Mortalis doorway targeting', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('allows doorway targets to be selected in the Zone Mortalis shooting flow', () => {
+    const doorway = createZoneMortalisDoorwayTerrain('door-1', { x: 18, y: 9.7 }, 2, 0.6);
+    const state = {
+      ...createInitialGameUIState(),
+      gameMode: GameMode.ZoneMortalis,
+      uiPhase: GameUIPhase.Playing,
+      gameState: createBaseGameState({
+        gameMode: GameMode.ZoneMortalis,
+        currentPhase: Phase.Shooting,
+        currentSubPhase: SubPhase.Attack,
+        terrain: [doorway],
+        armies: [
+          {
+            ...createBaseGameState().armies[0],
+            units: [
+              {
+                ...createBaseGameState().armies[0].units[0],
+                models: [
+                  {
+                    ...createBaseGameState().armies[0].units[0].models[0],
+                    equippedWargear: ['meltagun'],
+                  },
+                ],
+              },
+            ],
+          },
+          createBaseGameState().armies[1],
+        ],
+        zoneMortalisState: {
+          sections: [],
+          doorways: [doorway.zoneMortalis as NonNullable<GameState['zoneMortalisState']>['doorways'][number]],
+          objectives: [],
+          doorwayOperationHistory: [],
+          pendingBlindPanicChecks: [],
+        },
+      }),
+      flowState: {
+        type: 'shooting' as const,
+        step: {
+          step: 'selectTarget' as const,
+          attackerUnitId: 'attacker-u1',
+        },
+      },
+    };
+
+    const nextState = gameReducer(state, {
+      type: 'SELECT_SHOOTING_TARGET',
+      target: { kind: 'doorway', doorwayId: 'door-1' },
+    });
+
+    expect(nextState.flowState.type).toBe('shooting');
+    expect(nextState.flowState.type === 'shooting' && nextState.flowState.step.step === 'selectWeapons').toBe(true);
+    if (nextState.flowState.type === 'shooting' && nextState.flowState.step.step === 'selectWeapons') {
+      expect(nextState.flowState.step.target).toEqual({ kind: 'doorway', doorwayId: 'door-1' });
+    }
+  });
+
+  it('submits doorway shooting commands with the doorway target payload', () => {
+    const state = {
+      ...createInitialGameUIState(),
+      gameMode: GameMode.ZoneMortalis,
+      uiPhase: GameUIPhase.Playing,
+      gameState: createBaseGameState({
+        gameMode: GameMode.ZoneMortalis,
+        currentPhase: Phase.Shooting,
+        currentSubPhase: SubPhase.Attack,
+      }),
+      flowState: {
+        type: 'shooting' as const,
+        step: {
+          step: 'selectWeapons' as const,
+          attackerUnitId: 'attacker-u1',
+          target: { kind: 'doorway' as const, doorwayId: 'door-1' },
+          weaponSelections: [{
+            modelId: 'attacker-u1-m1',
+            weaponId: 'meltagun',
+            weaponName: 'Meltagun',
+          }],
+        },
+      },
+    };
+
+    vi.mocked(commandBridge.executeCommand).mockReturnValue({
+      state: createBaseGameState({
+        gameMode: GameMode.ZoneMortalis,
+        currentPhase: Phase.Shooting,
+        currentSubPhase: SubPhase.Attack,
+      }),
+      events: [],
+      errors: [],
+      accepted: true,
+    });
+
+    gameReducer(state, { type: 'CONFIRM_SHOOTING' });
+
+    const submittedCommand = vi.mocked(commandBridge.executeCommand).mock.calls[0]?.[1];
+    expect(submittedCommand).toMatchObject({
+      type: 'declareShooting',
+      attackingUnitId: 'attacker-u1',
+      targetUnitId: '',
+      targetDoorwayId: 'door-1',
+      target: { kind: 'doorway', doorwayId: 'door-1' },
+    });
+  });
+
+  it('submits doorway charge commands with the doorway target and measured distance', () => {
+    const state = {
+      ...createInitialGameUIState(),
+      gameMode: GameMode.ZoneMortalis,
+      uiPhase: GameUIPhase.Playing,
+      gameState: createBaseGameState({
+        gameMode: GameMode.ZoneMortalis,
+        currentPhase: Phase.Assault,
+        currentSubPhase: SubPhase.Charge,
+      }),
+      flowState: {
+        type: 'assault' as const,
+        step: {
+          step: 'confirmCharge' as const,
+          chargingUnitId: 'attacker-u1',
+          target: { kind: 'doorway' as const, doorwayId: 'door-1' },
+          measuredDistance: 6.25,
+        },
+      },
+    };
+
+    vi.mocked(commandBridge.executeCommand).mockReturnValue({
+      state: createBaseGameState({
+        gameMode: GameMode.ZoneMortalis,
+        currentPhase: Phase.Assault,
+        currentSubPhase: SubPhase.Charge,
+      }),
+      events: [],
+      errors: [],
+      accepted: true,
+    });
+
+    gameReducer(state, { type: 'CONFIRM_CHARGE' });
+
+    const submittedCommand = vi.mocked(commandBridge.executeCommand).mock.calls[0]?.[1];
+    expect(submittedCommand).toMatchObject({
+      type: 'declareCharge',
+      chargingUnitId: 'attacker-u1',
+      targetUnitId: '',
+      targetDoorwayId: 'door-1',
+      target: { kind: 'doorway', doorwayId: 'door-1' },
+      measuredDistance: 6.25,
+    });
   });
 });
 
