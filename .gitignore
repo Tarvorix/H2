@@ -5,12 +5,21 @@ node_modules/
 dist/
 build/
 *.tsbuildinfo
+packages/ui/dist-types/
 
 # TypeScript build artifacts in source directories (tsc composite output)
 packages/*/src/**/*.d.ts
 packages/*/src/**/*.d.ts.map
 packages/*/src/**/*.js
 packages/*/src/**/*.js.map
+tools/alpha/*.test.d.ts
+tools/alpha/*.test.d.ts.map
+tools/alpha/*.test.js
+tools/alpha/*.test.js.map
+tools/nnue/*.test.d.ts
+tools/nnue/*.test.d.ts.map
+tools/nnue/*.test.js
+tools/nnue/*.test.js.map
 
 # Root config build artifacts
 vite.config.d.ts

@@ -1,1 +1,0 @@
-{"version":3,"file":"movementOverlay.d.ts","sourceRoot":"","sources":["../../src/overlays/movementOverlay.ts"],"names":[],"mappings":"AAAA;;;;;;;;GAQG;AAGH,OAAO,KAAK,EAAE,sBAAsB,EAAE,UAAU,EAAE,MAAM,cAAc,CAAC;AA6BvE,wBAAgB,sBAAsB,CACpC,GAAG,EAAE,wBAAwB,EAC7B,QAAQ,EAAE,sBAAsB,EAChC,YAAY,EAAE,UAAU,EACxB,IAAI,EAAE,MAAM,GACX,IAAI,CAyFN"}

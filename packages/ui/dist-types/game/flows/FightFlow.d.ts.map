@@ -1,1 +1,0 @@
-{"version":3,"file":"FightFlow.d.ts","sourceRoot":"","sources":["../../../src/game/flows/FightFlow.tsx"],"names":[],"mappings":"AAAA;;;;;GAKG;AAIH,OAAO,KAAK,EAAE,WAAW,EAAE,YAAY,EAAE,MAAM,UAAU,CAAC;AAE1D,UAAU,cAAc;IACtB,KAAK,EAAE,WAAW,CAAC;IACnB,QAAQ,EAAE,KAAK,CAAC,QAAQ,CAAC,YAAY,CAAC,CAAC;CACxC;AAWD,wBAAgB,SAAS,CAAC,EAAE,KAAK,EAAE,QAAQ,EAAE,EAAE,cAAc,kDAsH5D"}

@@ -1,6 +1,23 @@
 # HHv2 TODO
 
-Last Updated: 2026-03-14
+Last Updated: 2026-03-16
+
+## Execution Plan (Generated Artifact Cleanup - 2026-03-16)
+- [ ] Add the missing ignore rules for `packages/ui/dist-types/` and generated `tools/alpha` / `tools/nnue` test build output so they stop reappearing in git.
+- [ ] Remove the already-tracked generated artifacts from git index only, preserving the local working files.
+- [ ] Commit and push the cleanup with `Tarvorix` as author/committer.
+- Progress:
+  - Scope locked before edits:
+    - remove only the generated UI dist typings and generated `tools/alpha` / `tools/nnue` test artifacts from GitHub tracking
+    - preserve the local files in the working tree while untracking them from git
+    - leave all source `.ts` test files and non-generated tooling files untouched
+  - 2026-03-16 ignore-rules patch:
+    - added missing `.gitignore` coverage for `packages/ui/dist-types/`
+    - added missing `.gitignore` coverage for generated `.d.ts`, `.d.ts.map`, `.js`, and `.js.map` outputs from `tools/alpha/*.test.*` and `tools/nnue/*.test.*`
+  - 2026-03-16 git-index cleanup:
+    - removed the already-tracked generated artifact paths from git index only with `git rm --cached`, so they will no longer be pushed to GitHub
+    - verified the representative files remain on disk locally after untracking
+    - verified the representative files now match the new `.gitignore` rules
 
 ## Execution Plan (Implement Single-Level Zone Mortalis - 2026-03-15)
 - [ ] Add a top-level game mode selection flow before army building and persist `Core Missions` vs `Zone Mortalis` through setup and runtime state.
