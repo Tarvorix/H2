@@ -1,6 +1,115 @@
 # HHv2 TODO
 
-Last Updated: 2026-03-18
+Last Updated: 2026-03-20
+
+## Execution Plan (Army Builder Mobile Portrait Redesign - 2026-03-20)
+- [x] Confirm which army-builder containers still create nested or sticky mobile scroll traps after the previous scroll/footer patches.
+- [x] Refactor the army-builder mobile layout so portrait phones and tablets use a single reliable vertical flow with reachable summary and confirm actions.
+- [x] Run focused UI verification and record the exact result here before reporting back.
+- Progress:
+  - Scope locked before edits:
+    - fix the army-builder mobile usability failure only
+    - preserve existing army-builder logic, validation rules, and desktop behavior
+    - prioritize portrait phone/tablet usability over keeping the old sticky summary behavior on mobile
+  - Investigation result:
+    - the army builder still does not use the generic `.setup-content` flow, so its faction bar, warnings, grid panels, and summary bar are competing as sibling flex items instead of one predictable scroll body
+    - the responsive CSS still leaves the army summary panel sticky at narrow widths while the screen also depends on internal scrolling, which is brittle on mobile browsers and can leave the confirm action clipped or unclickable
+    - the unit browser retains its own scrollable list even after the broader mobile overflow changes, so portrait touch scrolling can still get trapped inside a nested panel instead of moving the full page
+  - 2026-03-20 army-builder mobile layout redesign:
+    - wrapped the faction bar, Zone Mortalis warnings, three-panel builder grid, and summary panel in a dedicated `army-builder-body` container so the screen now has one explicit content body instead of unrelated sibling flex regions
+    - changed the mobile army-builder body to own vertical scrolling while removing the remaining sticky summary and sticky unit-config action behavior that was clipping or hiding controls on portrait devices
+    - disabled the nested unit-browser list scroll trap on mobile so portrait touch gestures scroll the full builder flow instead of getting stuck inside the browser panel
+    - kept desktop behavior intact by preserving the existing three-column builder grid and validation/confirm logic outside the mobile-specific overflow rules
+  - Validation:
+    - `pnpm test -- packages/ui/src/game/screens/ArmyBuilderScreen.test.ts`
+      - passed: `1` file, `2` tests
+    - `pnpm --filter @hh/ui build`
+      - passed
+
+## Execution Plan (Mobile Army Builder Scroll Recovery - 2026-03-20)
+- [x] Confirm which mobile container should own vertical scrolling for setup screens after the recent footer-visibility changes.
+- [x] Patch the setup-screen and army-builder mobile CSS so touch scrolling works again without reintroducing the clipped confirm-bar bug.
+- [x] Run focused UI verification and record the exact result here before reporting back.
+- Progress:
+  - Scope locked before edits:
+    - fix the lost mobile scrolling behavior only
+    - preserve the existing footer-visibility fix for the army summary bar
+    - avoid changing army-builder logic or desktop layout
+  - Investigation result:
+    - `body` still uses `overflow: hidden`, so setup flows depend on an internal scroll container on mobile
+    - the earlier footer fix changed `.setup-screen` to `height: auto` at the narrow breakpoint, which means the setup screen no longer reliably owns scrolling while the page itself remains non-scrollable
+    - the army-builder child can remain auto-height for content growth, but the outer mobile setup container needs to return to a fixed viewport height with touch scrolling enabled
+  - 2026-03-20 mobile scroll ownership patch:
+    - restored `.setup-screen` as the mobile scroll container at `900px` and below with `height: 100dvh`, `overflow-y: auto`, and touch-friendly scrolling behavior
+    - kept `.army-builder-screen` itself auto-height so the army builder can still expand vertically inside the restored scroll container
+    - changed `.army-builder-content` to `flex: 0 0 auto` at the narrow breakpoint so the grid panels no longer try to consume the remaining viewport height and block access to lower content
+  - Validation:
+    - `pnpm --filter @hh/ui build`
+      - passed
+
+## Execution Plan (Zone Mortalis Selected Deployment Map Fix - 2026-03-19)
+- [x] Confirm the selected Zone Mortalis deployment map is being dropped or overwritten between mission select and deployment.
+- [x] Patch mission-state initialization so it persists the selected deployment-map type instead of the mission default.
+- [x] Add a regression proving a selected Zone Mortalis deployment map override survives initialization, then run targeted verification.
+- Progress:
+  - Scope locked before edits:
+    - fix only the selected-deployment-map state bug
+    - preserve the current mission definitions, including which mission defaults to which deployment map
+    - avoid changing deployment formation behavior except insofar as the wrong map is currently being used
+  - Investigation result:
+    - `DeploymentScreen` passes the selected deployment-map definition into `initializeMissionState(...)`
+    - `initializeMissionState(...)` builds zones from the selected definition but writes `mission.deploymentMap` back into mission state instead of the selected definition's `type`
+    - `DeploymentScreen` then prefers `gameState.missionState.deploymentMap`, so whole-unit formation placement can use diagonal `Configuration Primus` axes even while the visible zones came from top/bottom `Configuration Secundus`
+  - 2026-03-19 selected deployment-map state patch:
+    - changed engine mission-state initialization to persist `deploymentMapDef.type` instead of the mission default deployment map
+    - added a regression covering `Terminal Control` initialized with an explicitly selected `Configuration Primus` override so selected deployment maps survive mission-state creation
+  - Validation:
+    - `pnpm test -- packages/engine/src/missions/mission-state.test.ts`
+      - passed: `1` file, `19` tests
+    - `pnpm --filter @hh/ui build`
+      - passed
+
+## Execution Plan (Army Builder Mobile Footer Visibility Fix - 2026-03-19)
+- [x] Audit the army-builder mobile container and sticky summary panel interaction to isolate why the confirm controls are clipped on phone and iPad widths.
+- [x] Patch the army-builder mobile layout so the summary/confirm bar remains fully visible and reachable without being cut off by fixed-height viewport assumptions.
+- [x] Run focused UI verification and record the exact result here before reporting back.
+- Progress:
+  - Scope locked before edits:
+    - fix the clipped army-builder bottom controls only
+    - preserve the broader mobile spacing pass unless it directly causes this footer visibility bug
+    - keep the army summary sticky behavior, but make it fit within the mobile viewport safely
+  - Investigation result:
+    - `ArmyBuilderScreen` does not use the generic `.setup-content` container, so the earlier setup-screen footer spacing adjustments do not directly protect its bottom summary panel
+    - the mobile breakpoints still force `.setup-screen` back to `height: 100dvh` at `900px` and below while `.army-builder-screen` itself keeps `height: 100%`, which can clip the sticky summary bar when header + controls + content exceed the viewport
+  - 2026-03-19 army-builder footer visibility patch:
+    - removed the fixed-height mobile assumption from `.setup-screen` and `.army-builder-screen` at the narrower breakpoint so the army builder can grow and scroll instead of clipping the bottom summary controls
+    - added a mobile-safe `min-height: 0` on `.army-builder-content` plus `margin-top: auto` and safer bottom padding on `.army-summary-panel` so the confirm bar stays reachable on phone and iPad widths
+  - Validation:
+    - `pnpm --filter @hh/ui build`
+      - passed
+
+## Execution Plan (Mobile Layout Remediation - 2026-03-19)
+- [x] Audit the current responsive CSS and identify the main mobile breakpoints that still assume desktop widths.
+- [x] Tighten the setup-screen and active-game mobile layout so headers, sticky actions, and content columns collapse cleanly on narrow devices.
+- [x] Fix the army-builder mobile controls so player tabs, AI controls, faction rows, slots, and summary actions do not overflow or overlap on phones.
+- [x] Run focused UI verification and record the exact results here before reporting back.
+- Progress:
+  - Scope locked before edits:
+    - address layout and responsiveness only
+    - preserve the existing setup/game flow and visual language
+    - avoid refactoring screen logic unless a layout fix absolutely requires it
+  - Investigation result:
+    - the current responsive rules switch major layouts at `1100px`, `900px`, and `600px`, but several setup-header, army-builder, and detail rows still retain desktop spacing and alignment assumptions on phone widths
+    - sticky footers/panels are present on smaller screens, but the content padding and action-row collapse rules are not consistent enough to prevent crowding
+    - the army-builder header and slot/detail rows are the clearest mobile overflow risk because they combine tabs, AI controls, and long content in compact horizontal layouts
+  - 2026-03-19 mobile layout CSS patch:
+    - tightened phone/tablet setup-screen behavior so headers stack cleanly, back buttons stretch predictably, and sticky footer actions have room above the safe-area bottom inset
+    - improved army-builder responsiveness by letting player tabs, AI controls, faction rows, detachment rows, slot rows, unit details, and summary actions wrap instead of forcing desktop-width alignment
+    - added narrower-phone adjustments for full-width selects/buttons, stacked detachment controls, safer summary spacing, and overflow-safe map previews
+    - reduced small-screen toolbar crowding by hiding separators at the narrowest breakpoint instead of shrinking controls into overlap
+  - Validation:
+    - `pnpm --filter @hh/ui build`
+      - passed
 
 ## Execution Plan (Restore Zone Mortalis AI Toggle In Army Builder - 2026-03-18)
 - [x] Confirm whether Zone Mortalis AI is blocked only by UI gating or also by gameplay/runtime restrictions.

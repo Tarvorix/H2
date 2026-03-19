@@ -846,73 +846,75 @@ export function ArmyBuilderScreen({ state, dispatch, onReturnToMenu }: ArmyBuild
         </button>
       </div>
 
-      <div className="army-builder-faction-bar">
-        <FactionSelector
-          armyList={currentArmyList}
-          playerIndex={editingPlayerIndex}
-          selectedRiteId={armyBuilder.selectedRiteIds[editingPlayerIndex]}
-          onFactionChange={handleFactionChange}
-          onAllegianceChange={handleAllegianceChange}
-          onPointsLimitChange={handlePointsLimitChange}
-          onRiteChange={handleRiteChange}
-        />
-        {currentArmyList && (
-          <DoctrineSelector
+      <div className="army-builder-body">
+        <div className="army-builder-faction-bar">
+          <FactionSelector
             armyList={currentArmyList}
-            onArmyListChange={handleDoctrineChange}
+            playerIndex={editingPlayerIndex}
+            selectedRiteId={armyBuilder.selectedRiteIds[editingPlayerIndex]}
+            onFactionChange={handleFactionChange}
+            onAllegianceChange={handleAllegianceChange}
+            onPointsLimitChange={handlePointsLimitChange}
+            onRiteChange={handleRiteChange}
           />
-        )}
-      </div>
-
-      {zoneMortalisRosterWarnings.length > 0 && (
-        <div className="army-builder-zm-warnings" style={{ marginBottom: 16 }}>
-          <div className="panel-title">Zone Mortalis Warnings</div>
-          {zoneMortalisRosterWarnings.map((warning) => (
-            <div key={warning} className="army-builder-zm-warning">
-              {warning}
-            </div>
-          ))}
+          {currentArmyList && (
+            <DoctrineSelector
+              armyList={currentArmyList}
+              onArmyListChange={handleDoctrineChange}
+            />
+          )}
         </div>
-      )}
 
-      <div className="army-builder-content">
-        <DetachmentPanel
+        {zoneMortalisRosterWarnings.length > 0 && (
+          <div className="army-builder-zm-warnings">
+            <div className="panel-title">Zone Mortalis Warnings</div>
+            {zoneMortalisRosterWarnings.map((warning) => (
+              <div key={warning} className="army-builder-zm-warning">
+                {warning}
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="army-builder-content">
+          <DetachmentPanel
+            armyList={currentArmyList}
+            activeDetachmentIndex={armyBuilder.activeDetachmentIndex}
+            activeSlotId={armyBuilder.activeSlotId}
+            addOptions={detachmentAddOptions}
+            selectedAddTemplateId={selectedDetachmentTemplateId}
+            onSetSelectedAddTemplateId={setSelectedDetachmentTemplateId}
+            onAddDetachment={handleAddDetachment}
+            onRemoveDetachment={handleRemoveDetachment}
+            onRemoveUnit={handleRemoveUnitFromSlot}
+            onSelectDetachment={handleSelectDetachment}
+            onSelectSlot={handleSelectSlot}
+          />
+
+          <UnitBrowser
+            filterRole={filterRole}
+            searchFilter={armyBuilder.unitSearchFilter}
+            faction={currentArmyList?.faction ?? null}
+            onSelectUnit={handleSelectUnit}
+            onSearchChange={handleSearchChange}
+          />
+
+          <UnitConfigPanel
+            profile={selectedProfile}
+            onConfirm={handleUnitConfirm}
+            onCancel={handleUnitCancel}
+          />
+        </div>
+
+        <ArmySummaryPanel
           armyList={currentArmyList}
-          activeDetachmentIndex={armyBuilder.activeDetachmentIndex}
-          activeSlotId={armyBuilder.activeSlotId}
-          addOptions={detachmentAddOptions}
-          selectedAddTemplateId={selectedDetachmentTemplateId}
-          onSetSelectedAddTemplateId={setSelectedDetachmentTemplateId}
-          onAddDetachment={handleAddDetachment}
-          onRemoveDetachment={handleRemoveDetachment}
-          onRemoveUnit={handleRemoveUnitFromSlot}
-          onSelectDetachment={handleSelectDetachment}
-          onSelectSlot={handleSelectSlot}
-        />
-
-        <UnitBrowser
-          filterRole={filterRole}
-          searchFilter={armyBuilder.unitSearchFilter}
-          faction={currentArmyList?.faction ?? null}
-          onSelectUnit={handleSelectUnit}
-          onSearchChange={handleSearchChange}
-        />
-
-        <UnitConfigPanel
-          profile={selectedProfile}
-          onConfirm={handleUnitConfirm}
-          onCancel={handleUnitCancel}
+          validationResult={currentValidation}
+          onValidate={handleValidate}
+          onExport={handleExport}
+          onImport={handleImport}
+          onConfirm={handleConfirm}
         />
       </div>
-
-      <ArmySummaryPanel
-        armyList={currentArmyList}
-        validationResult={currentValidation}
-        onValidate={handleValidate}
-        onExport={handleExport}
-        onImport={handleImport}
-        onConfirm={handleConfirm}
-      />
     </div>
   );
 }

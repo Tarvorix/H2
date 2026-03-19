@@ -1443,6 +1443,14 @@
   height: 100%;
 }
 
+.army-builder-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .army-builder-player-tabs {
   display: flex;
   gap: 4px;
@@ -1519,8 +1527,26 @@
   border-bottom: 1px solid #2d4a7a;
 }
 
+.army-builder-zm-warnings {
+  margin: 12px 16px 0;
+  padding: 10px 12px;
+  background: #20131d;
+  border: 1px solid #4b1f2b;
+  border-radius: 6px;
+}
+
+.army-builder-zm-warning {
+  font-size: 11px;
+  color: #fca5a5;
+}
+
+.army-builder-zm-warning + .army-builder-zm-warning {
+  margin-top: 6px;
+}
+
 .army-builder-content {
   flex: 1;
+  min-height: 0;
   display: grid;
   grid-template-columns: 260px 1fr 280px;
   gap: 1px;
@@ -2350,12 +2376,16 @@
     backdrop-filter: blur(10px);
   }
 
+  .army-builder-body {
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+  }
+
   .army-summary-panel {
-    position: sticky;
-    bottom: 0;
-    z-index: 25;
-    background: rgba(17, 24, 39, 0.96);
-    backdrop-filter: blur(10px);
+    position: static;
+    z-index: auto;
+    background: #111827;
+    backdrop-filter: none;
     padding-bottom: calc(8px + var(--safe-bottom));
   }
 }
@@ -2379,18 +2409,54 @@
   }
 
   .setup-screen {
-    min-height: 100vh;
+    min-height: 100dvh;
     height: 100dvh;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .army-builder-screen {
+    min-height: 100dvh;
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  .army-builder-body {
+    gap: 12px;
+    overflow-y: auto;
+    padding-bottom: calc(12px + var(--safe-bottom));
+    -webkit-overflow-scrolling: touch;
   }
 
   .setup-header {
     padding: calc(12px + var(--safe-top)) calc(12px + var(--safe-right)) 12px calc(12px + var(--safe-left));
     gap: 10px;
     flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .setup-header > .setup-title,
+  .setup-header > .setup-subtitle {
+    width: 100%;
+  }
+
+  .setup-header > .toolbar-btn {
+    width: 100%;
   }
 
   .setup-content {
     padding: 12px calc(12px + var(--safe-right)) calc(12px + var(--safe-bottom)) calc(12px + var(--safe-left));
+    padding-bottom: calc(104px + var(--safe-bottom));
+  }
+
+  .setup-footer {
+    gap: 10px;
+    align-items: stretch;
+  }
+
+  .setup-footer > * {
+    width: 100%;
   }
 
   .army-load-content,
@@ -2410,12 +2476,53 @@
     width: 100%;
   }
 
+  .army-builder-faction-bar {
+    padding: 8px 12px;
+  }
+
+  .army-builder-zm-warnings {
+    margin: 0 12px;
+  }
+
   .army-builder-content {
+    flex: 0 0 auto;
     grid-template-columns: 1fr;
     grid-template-rows: auto auto auto;
     gap: 12px;
     background: transparent;
     overflow: visible;
+    min-height: 0;
+  }
+
+  .army-builder-player-tabs {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .army-builder-tab {
+    flex: 1 1 140px;
+    text-align: center;
+  }
+
+  .ai-toggle-group {
+    width: 100%;
+    margin-left: 0;
+    flex-wrap: wrap;
+  }
+
+  .ai-tier-select {
+    flex: 1 1 220px;
+    min-width: 0;
+  }
+
+  .faction-selector-row {
+    flex-wrap: wrap;
+    min-width: 0;
+  }
+
+  .faction-select {
+    min-width: 0;
+    max-width: 100%;
   }
 
   .detachment-panel,
@@ -2425,9 +2532,37 @@
     overflow: visible;
   }
 
+  .unit-browser-list {
+    flex: 0 0 auto;
+    overflow: visible;
+  }
+
+  .detachment-header,
+  .detachment-header-right,
+  .detachment-slot,
+  .unit-browser-item-details,
+  .unit-config-model-count,
+  .points-line {
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: flex-start;
+  }
+
+  .slot-unit {
+    width: 100%;
+    justify-content: space-between;
+  }
+
   .army-summary-panel {
+    position: static;
     padding: 10px;
     gap: 10px;
+    padding-bottom: 10px;
+  }
+
+  .army-summary-errors {
+    width: 100%;
+    max-width: none;
   }
 
   .army-summary-actions {
@@ -2447,12 +2582,11 @@
   }
 
   .unit-config-actions {
-    position: sticky;
-    bottom: calc(-12px - var(--safe-bottom));
+    position: static;
     margin-top: 16px;
-    padding-top: 12px;
-    padding-bottom: calc(12px + var(--safe-bottom));
-    background: linear-gradient(180deg, rgba(13, 17, 23, 0) 0%, rgba(13, 17, 23, 0.96) 18%);
+    padding-top: 0;
+    padding-bottom: 0;
+    background: none;
     flex-wrap: wrap;
   }
 
@@ -2468,6 +2602,12 @@
 
   .mission-select-grid {
     grid-template-columns: 1fr;
+  }
+
+  .mission-select-summary-details {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
   }
 
   .flow-panel {
@@ -2517,7 +2657,12 @@
 }
 
 @media (max-width: 600px) {
+  .main-menu {
+    align-items: stretch;
+  }
+
   .main-menu-content {
+    width: 100%;
     padding: 20px;
   }
 
@@ -2530,26 +2675,99 @@
     font-size: 18px;
   }
 
+  .army-builder-body {
+    gap: 8px;
+  }
+
   .army-builder-faction-bar {
     padding: 8px;
   }
 
+  .army-builder-zm-warnings {
+    margin: 0 8px;
+  }
+
   .faction-selector {
-    gap: 8px;
+    gap: 12px;
   }
 
   .faction-selector-row {
     width: 100%;
-    justify-content: space-between;
+    justify-content: flex-start;
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .faction-label {
     min-width: 0;
   }
 
+  .army-builder-player-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .army-builder-tab {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 6px;
+  }
+
+  .ai-toggle-group {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .ai-toggle-label {
+    justify-content: space-between;
+  }
+
+  .faction-select,
+  .detachment-add-select,
+  .ai-tier-select,
+  .toolbar-select,
+  .panel-input {
+    width: 100%;
+  }
+
+  .detachment-controls {
+    flex-direction: column;
+  }
+
+  .detachment-add-btn {
+    width: 100%;
+  }
+
+  .detachment-slot {
+    padding: 8px;
+  }
+
+  .slot-unit {
+    flex-wrap: wrap;
+  }
+
+  .unit-config-count-range {
+    width: 100%;
+  }
+
+  .army-summary-panel {
+    padding: 12px 8px calc(12px + var(--safe-bottom));
+    gap: 8px;
+  }
+
+  .army-summary-actions > * {
+    flex: 1 1 100%;
+  }
+
   .game-toolbar {
     padding: var(--safe-top) calc(8px + var(--safe-right)) 0 calc(8px + var(--safe-left));
     gap: 6px;
+  }
+
+  .toolbar-separator {
+    display: none;
   }
 
   .toolbar-label {
@@ -2568,6 +2786,10 @@
 
   .flow-panel-actions {
     flex-wrap: wrap;
+  }
+
+  .map-preview-ascii {
+    overflow-x: auto;
   }
 
   .faction-select,

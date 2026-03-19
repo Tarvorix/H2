@@ -9,7 +9,12 @@ import {
   SecondaryObjectiveType,
   MissionSpecialRule,
 } from '@hh/types';
-import { HEART_OF_BATTLE, SEARCH_AND_DESTROY } from '@hh/data';
+import {
+  HEART_OF_BATTLE,
+  SEARCH_AND_DESTROY,
+  TERMINAL_CONTROL,
+  findDeploymentMapByType,
+} from '@hh/data';
 import {
   initializeMissionState,
   updateMissionState,
@@ -104,6 +109,17 @@ describe('initializeMissionState', () => {
     const state = initializeMissionState(HEART_OF_BATTLE, SEARCH_AND_DESTROY);
     expect(state.scoringHistory).toEqual([]);
     expect(state.vpAtTurnStart).toEqual([]);
+  });
+
+  it('persists the selected Zone Mortalis deployment map instead of the mission default', () => {
+    const selectedDeploymentMap = findDeploymentMapByType(DeploymentMap.ConfigurationPrimus);
+    if (!selectedDeploymentMap) {
+      throw new Error('Configuration Primus deployment map definition is unavailable.');
+    }
+
+    const state = initializeMissionState(TERMINAL_CONTROL, selectedDeploymentMap, 48, 48);
+
+    expect(state.deploymentMap).toBe(DeploymentMap.ConfigurationPrimus);
   });
 });
 
