@@ -672,7 +672,7 @@ export function ArmyBuilderScreen({ state, dispatch, onReturnToMenu }: ArmyBuild
       return;
     }
 
-    if (aiEnabled && !isZoneMortalis) {
+    if (aiEnabled) {
       const alphaBudget = ALPHA_BUDGETS[aiAlphaBudgetPreset];
       const shadowBudget = ALPHA_BUDGETS[shadowAlphaBudgetPreset];
       dispatch({
@@ -728,7 +728,6 @@ export function ArmyBuilderScreen({ state, dispatch, onReturnToMenu }: ArmyBuild
     aiAlphaBudgetPreset,
     shadowAlphaEnabled,
     shadowAlphaBudgetPreset,
-    isZoneMortalis,
     state.armyBuilder.armyLists,
   ]);
 
@@ -760,90 +759,88 @@ export function ArmyBuilderScreen({ state, dispatch, onReturnToMenu }: ArmyBuild
             className={`army-builder-tab ${editingPlayerIndex === 1 ? 'active' : ''}`}
             onClick={() => handleSwitchPlayer(1)}
           >
-            Player 2{aiEnabled && !isZoneMortalis ? ' (AI)' : ''}
+            Player 2{aiEnabled ? ' (AI)' : ''}
           </button>
         </div>
-        {!isZoneMortalis && (
-          <div className="ai-toggle-group">
-            <label className="ai-toggle-label">
-              <input
-                type="checkbox"
-                className="ai-toggle-checkbox"
-                checked={aiEnabled}
-                onChange={(e) => setAiEnabled(e.target.checked)}
-              />
-              <span>AI Opponent</span>
-            </label>
-            {aiEnabled && (
-              <>
+        <div className="ai-toggle-group">
+          <label className="ai-toggle-label">
+            <input
+              type="checkbox"
+              className="ai-toggle-checkbox"
+              checked={aiEnabled}
+              onChange={(e) => setAiEnabled(e.target.checked)}
+            />
+            <span>AI Opponent</span>
+          </label>
+          {aiEnabled && (
+            <>
+              <select
+                className="ai-tier-select"
+                value={aiTier}
+                onChange={(e) => setAiTier(e.target.value as AIStrategyTier)}
+              >
+                <option value={AIStrategyTier.Basic}>Basic</option>
+                <option value={AIStrategyTier.Tactical}>Tactical</option>
+                <option value={AIStrategyTier.Engine}>Engine</option>
+                <option value={AIStrategyTier.Alpha}>Alpha</option>
+              </select>
+              {aiTier === AIStrategyTier.Engine && (
                 <select
                   className="ai-tier-select"
-                  value={aiTier}
-                  onChange={(e) => setAiTier(e.target.value as AIStrategyTier)}
+                  value={aiEngineBudgetPreset}
+                  onChange={(e) => setAiEngineBudgetPreset(e.target.value as EngineBudgetPreset)}
                 >
-                  <option value={AIStrategyTier.Basic}>Basic</option>
-                  <option value={AIStrategyTier.Tactical}>Tactical</option>
-                  <option value={AIStrategyTier.Engine}>Engine</option>
-                  <option value={AIStrategyTier.Alpha}>Alpha</option>
+                  <option value="normal">Engine: Normal (500ms)</option>
+                  <option value="turbo">Engine: Turbo (1000ms)</option>
                 </select>
-                {aiTier === AIStrategyTier.Engine && (
-                  <select
-                    className="ai-tier-select"
-                    value={aiEngineBudgetPreset}
-                    onChange={(e) => setAiEngineBudgetPreset(e.target.value as EngineBudgetPreset)}
-                  >
-                    <option value="normal">Engine: Normal (500ms)</option>
-                    <option value="turbo">Engine: Turbo (1000ms)</option>
-                  </select>
-                )}
-                {aiTier === AIStrategyTier.Alpha && (
-                  <select
-                    className="ai-tier-select"
-                    value={aiAlphaBudgetPreset}
-                    onChange={(e) => setAiAlphaBudgetPreset(e.target.value as AlphaBudgetPreset)}
-                  >
-                    <option value="balanced">Alpha: Balanced (600ms / 256 sims)</option>
-                    <option value="tournament">Alpha: Tournament (1500ms / 640 sims)</option>
-                  </select>
-                )}
+              )}
+              {aiTier === AIStrategyTier.Alpha && (
                 <select
                   className="ai-tier-select"
-                  value={aiDeploymentFormation}
-                  onChange={(e) => setAiDeploymentFormation(e.target.value as AIDeploymentFormation)}
+                  value={aiAlphaBudgetPreset}
+                  onChange={(e) => setAiAlphaBudgetPreset(e.target.value as AlphaBudgetPreset)}
                 >
-                  {(Object.keys(AI_DEPLOYMENT_FORMATION_LABELS) as AIDeploymentFormation[]).map((formation) => (
-                    <option key={formation} value={formation}>
-                      {`Deploy: ${AI_DEPLOYMENT_FORMATION_LABELS[formation]}`}
-                    </option>
-                  ))}
+                  <option value="balanced">Alpha: Balanced (600ms / 256 sims)</option>
+                  <option value="tournament">Alpha: Tournament (1500ms / 640 sims)</option>
                 </select>
-                {aiTier !== AIStrategyTier.Alpha && (
-                  <>
-                    <label className="ai-toggle-label">
-                      <input
-                        type="checkbox"
-                        className="ai-toggle-checkbox"
-                        checked={shadowAlphaEnabled}
-                        onChange={(e) => setShadowAlphaEnabled(e.target.checked)}
-                      />
-                      <span>Shadow Alpha</span>
-                    </label>
-                    {shadowAlphaEnabled && (
-                      <select
-                        className="ai-tier-select"
-                        value={shadowAlphaBudgetPreset}
-                        onChange={(e) => setShadowAlphaBudgetPreset(e.target.value as AlphaBudgetPreset)}
-                      >
-                        <option value="balanced">Shadow Alpha: Balanced</option>
-                        <option value="tournament">Shadow Alpha: Tournament</option>
-                      </select>
-                    )}
-                  </>
-                )}
-              </>
-            )}
-          </div>
-        )}
+              )}
+              <select
+                className="ai-tier-select"
+                value={aiDeploymentFormation}
+                onChange={(e) => setAiDeploymentFormation(e.target.value as AIDeploymentFormation)}
+              >
+                {(Object.keys(AI_DEPLOYMENT_FORMATION_LABELS) as AIDeploymentFormation[]).map((formation) => (
+                  <option key={formation} value={formation}>
+                    {`Deploy: ${AI_DEPLOYMENT_FORMATION_LABELS[formation]}`}
+                  </option>
+                ))}
+              </select>
+              {aiTier !== AIStrategyTier.Alpha && (
+                <>
+                  <label className="ai-toggle-label">
+                    <input
+                      type="checkbox"
+                      className="ai-toggle-checkbox"
+                      checked={shadowAlphaEnabled}
+                      onChange={(e) => setShadowAlphaEnabled(e.target.checked)}
+                    />
+                    <span>Shadow Alpha</span>
+                  </label>
+                  {shadowAlphaEnabled && (
+                    <select
+                      className="ai-tier-select"
+                      value={shadowAlphaBudgetPreset}
+                      onChange={(e) => setShadowAlphaBudgetPreset(e.target.value as AlphaBudgetPreset)}
+                    >
+                      <option value="balanced">Shadow Alpha: Balanced</option>
+                      <option value="tournament">Shadow Alpha: Tournament</option>
+                    </select>
+                  )}
+                </>
+              )}
+            </>
+          )}
+        </div>
         <button className="toolbar-btn" onClick={onReturnToMenu}>
           Back to Menu
         </button>

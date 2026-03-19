@@ -1,6 +1,33 @@
 # HHv2 TODO
 
-Last Updated: 2026-03-16
+Last Updated: 2026-03-18
+
+## Execution Plan (Restore Zone Mortalis AI Toggle In Army Builder - 2026-03-18)
+- [x] Confirm whether Zone Mortalis AI is blocked only by UI gating or also by gameplay/runtime restrictions.
+- [x] Remove the stale Zone Mortalis army-builder UI gate that hides the AI toggle and suppresses AI config submission.
+- [x] Update the mode-selection copy so Zone Mortalis no longer advertises human-only play if AI support is available.
+- [x] Add a focused regression covering AI-toggle visibility on the Zone Mortalis army-builder screen, then run targeted verification.
+- Progress:
+  - Scope locked before edits:
+    - restore the missing Zone Mortalis AI toggle only
+    - do not add AI roster generation or change the requirement that both player rosters exist before starting a game
+    - keep existing core-mission army-builder behavior unchanged
+  - Investigation result:
+    - `packages/ui/src/game/screens/ArmyBuilderScreen.tsx` hides the AI controls behind `!isZoneMortalis` and also suppresses AI config submission with `aiEnabled && !isZoneMortalis`
+    - `packages/ui/src/game/screens/ModeSelectScreen.tsx` still labels Zone Mortalis as `human-play only`
+    - current AI, deployment, and Zone Mortalis gameplay codepaths already exist in `packages/ai` and `packages/ui`, so the UI gate is stale rather than required
+  - 2026-03-18 Zone Mortalis AI toggle restoration patch:
+    - exposed the army-builder AI controls for Zone Mortalis instead of hiding them behind the stale `!isZoneMortalis` gate
+    - allowed Zone Mortalis army-builder confirmation to submit `SET_AI_CONFIG` when the AI toggle is enabled
+    - updated the Zone Mortalis mode card copy to advertise AI availability instead of human-only play
+    - added a render-level regression proving the AI toggle appears for both Core Missions and Zone Mortalis
+  - Validation:
+    - `pnpm test -- packages/ui/src/game/screens/ArmyBuilderScreen.test.ts`
+      - passed: `1` file, `2` tests
+    - `pnpm --filter @hh/ui typecheck`
+      - passed
+    - `pnpm --filter @hh/ui build`
+      - passed
 
 ## Execution Plan (Zone-Compatible Self-Play / Training / Gating - 2026-03-16)
 - [ ] Patch headless setup so core and Zone Mortalis games initialize the correct battlefield defaults, root `gameMode`, terrain, and runtime state for self-play and tooling.

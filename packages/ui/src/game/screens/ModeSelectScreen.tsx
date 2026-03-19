@@ -25,7 +25,7 @@ const MODE_CARDS: Array<{
     gameMode: GameMode.ZoneMortalis,
     title: 'Zone Mortalis',
     description: 'Single-level boarding and interior combat on a 48" x 48" battlefield.',
-    details: 'Official Zone Mortalis missions, section-based terrain, human-play only.',
+    details: 'Official Zone Mortalis missions, section-based terrain, AI options available.',
   },
 ];
 
