@@ -36,6 +36,8 @@ export interface OutOfPhaseWeaponFilterContext {
 export interface OutOfPhaseShootingOptions extends ShootingAttackExecutionOptions {
   defensiveWeaponsOnly?: boolean;
   weaponFilter?: (context: OutOfPhaseWeaponFilterContext) => boolean;
+  attackerModelFilter?: (model: ModelState) => boolean;
+  maxWeaponSelections?: number;
 }
 
 export interface OutOfPhaseShootingResult {
@@ -125,6 +127,10 @@ export function buildOutOfPhaseShootingCommand(
   const weaponSelections: WeaponAssignment[] = [];
 
   for (const model of getAliveModels(attackerUnit)) {
+    if (options.attackerModelFilter && !options.attackerModelFilter(model)) {
+      continue;
+    }
+
     if (!modelsWithLOS.has(model.id)) {
       continue;
     }
@@ -189,6 +195,13 @@ export function buildOutOfPhaseShootingCommand(
     weaponSelections.push({
       ...candidateWeapons[0].assignment,
     });
+
+    if (
+      options.maxWeaponSelections !== undefined &&
+      weaponSelections.length >= options.maxWeaponSelections
+    ) {
+      break;
+    }
   }
 
   if (weaponSelections.length === 0) {
@@ -262,6 +275,15 @@ export function buildOutOfPhaseShootingCommand(
     blastPlacements,
     templatePlacements,
   };
+}
+
+export function hasLegalOutOfPhaseShootingAttack(
+  state: GameState,
+  attackerUnitId: string,
+  targetUnitId: string,
+  options: OutOfPhaseShootingOptions = {},
+): boolean {
+  return buildOutOfPhaseShootingCommand(state, attackerUnitId, targetUnitId, options) !== null;
 }
 
 export function executeOutOfPhaseShootingAttack(

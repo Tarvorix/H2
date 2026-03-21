@@ -34,7 +34,7 @@ function createModel(id: string, x = 0, y = 0, destroyed = false): ModelState {
     currentWounds: destroyed ? 0 : 1,
     isDestroyed: destroyed,
     modifiers: [],
-    equippedWargear: [],
+    equippedWargear: ['bolter'],
     isWarlord: false,
   };
 }
@@ -257,6 +257,32 @@ describe('checkOverwatchTrigger', () => {
 
     const result = checkOverwatchTrigger(state, 'unit-0', 'unit-1');
     expect(result.canOverwatch).toBe(false);
+  });
+
+  it('should not trigger if target unit has no legal Overwatch shot', () => {
+    const state = createGameState({
+      armies: [
+        createArmy(0, [
+          createUnit('unit-0', {
+            models: [createModel('u0-m0', 10, 10)],
+          }),
+        ]),
+        createArmy(1, [
+          createUnit('unit-1', {
+            models: [{
+              ...createModel('u1-m0', 18, 10),
+              equippedWargear: [],
+            }],
+          }),
+        ]),
+      ],
+    });
+
+    const result = checkOverwatchTrigger(state, 'unit-0', 'unit-1');
+
+    expect(result.canOverwatch).toBe(false);
+    expect(result.eligibleUnitIds).toEqual([]);
+    expect(result.events).toHaveLength(0);
   });
 });
 

@@ -254,12 +254,25 @@ export function ReactionPrompt({ state, dispatch }: ReactionPromptProps) {
               <span className="panel-row-label">Placed Models</span>
               <span className="panel-row-value">{placedCount}</span>
             </div>
+            {step.validationErrors.length > 0 && (
+              <div style={{ marginTop: 12 }}>
+                <div className="panel-row-label" style={{ color: '#fca5a5', marginBottom: 6 }}>
+                  Invalid placement
+                </div>
+                {step.validationErrors.map((error) => (
+                  <div key={`${error.code}:${error.message}`} className="fire-group-detail" style={{ color: '#fca5a5' }}>
+                    {error.message}
+                  </div>
+                ))}
+              </div>
+            )}
           </>
         )}
         <div className="flow-panel-actions">
           {step.step === 'confirmMove' && (
             <button
               className="toolbar-btn"
+              disabled={step.validationErrors.length > 0}
               onClick={() => dispatch({ type: 'CONFIRM_REACTION_MOVE' })}
             >
               Confirm {reactionInfo.name}

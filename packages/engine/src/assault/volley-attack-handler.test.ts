@@ -16,6 +16,7 @@ import {
 import type { GameState, ArmyState, UnitState, ModelState } from '@hh/types';
 import type { DiceProvider } from '../types';
 import { resolveVolleyAttacks, shouldUseOverwatch } from './volley-attack-handler';
+import { buildOutOfPhaseShootingCommand } from '../shooting/out-of-phase-shooting';
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -28,7 +29,7 @@ function createModel(id: string, x = 0, y = 0, destroyed = false): ModelState {
     currentWounds: destroyed ? 0 : 1,
     isDestroyed: destroyed,
     modifiers: [],
-    equippedWargear: [],
+    equippedWargear: ['bolt-pistol', 'frag-grenades', 'krak-grenades'],
     isWarlord: false,
   };
 }
@@ -102,6 +103,11 @@ function createGameState(overrides: Partial<GameState> = {}): GameState {
     winnerPlayerIndex: null,
     log: [],
     turnHistory: [],
+    advancedReactionsUsed: [],
+    legionTacticaState: [
+      { reactionDiscountUsedThisTurn: false, movementBonusActiveThisTurn: false, perTurnFlags: {} },
+      { reactionDiscountUsedThisTurn: false, movementBonusActiveThisTurn: false, perTurnFlags: {} },
+    ],
     ...overrides,
   };
 }
@@ -336,6 +342,79 @@ describe('resolveVolleyAttacks', () => {
     expect(chargerEvent.attackerUnitId).toBe('unit-0');
     expect(chargerEvent.targetUnitId).toBe('unit-1');
     expect(chargerEvent.isSnapShot).toBe(true);
+  });
+
+  it('does not auto-select krak grenades for a normal volley attack', () => {
+    const state = createGameState({
+      armies: [
+        createArmy(0, [
+          createUnit('unit-0', {
+            models: [
+              {
+                ...createModel('u0-m0', 10, 10),
+                equippedWargear: ['krak-grenades'],
+              },
+            ],
+          }),
+        ]),
+        createArmy(1, [
+          createUnit('unit-1', {
+            models: [createModel('u1-m0', 15, 10)],
+          }),
+        ]),
+      ],
+    });
+
+    const command = buildOutOfPhaseShootingCommand(state, 'unit-0', 'unit-1', {
+      forceSnapShots: true,
+      weaponFilter: ({ weaponProfile }) =>
+        weaponProfile.traits.includes('Assault') &&
+        !weaponProfile.traits.includes('Grenade'),
+    });
+
+    expect(command).toBeNull();
+  });
+
+  it('resolves the frag-grenade substitute volley as a single unit-level attack', () => {
+    const state = createGameState({
+      armies: [
+        createArmy(0, [
+          createUnit('unit-0', {
+            models: [
+              {
+                ...createModel('u0-m0', 10, 10),
+                equippedWargear: ['frag-grenades'],
+              },
+              {
+                ...createModel('u0-m1', 10, 12),
+                equippedWargear: ['frag-grenades'],
+              },
+            ],
+          }),
+        ]),
+        createArmy(1, [
+          createUnit('unit-1', {
+            models: [createModel('u1-m0', 15, 10)],
+          }),
+        ]),
+      ],
+    });
+
+    const result = resolveVolleyAttacks(
+      state,
+      'unit-0',
+      'unit-1',
+      false,
+      createDiceProvider([4, 4, 4, 4]),
+      true,
+      false,
+    );
+    const declaredAttack = result.events.find((event) => event.type === 'shootingAttackDeclared') as {
+      fireGroupCount: number;
+    } | undefined;
+
+    expect(declaredAttack).toBeDefined();
+    expect(declaredAttack?.fireGroupCount).toBe(1);
   });
 });
 

@@ -290,7 +290,7 @@ export type ReactionFlowStep =
   | { step: 'prompt'; pendingReaction: PendingReaction }
   | { step: 'selectUnit'; reactionType: string; eligibleUnitIds: string[] }
   | { step: 'placeModels'; reactionType: string; unitId: string; currentModelId: string; modelPositions: { modelId: string; position: Position }[] }
-  | { step: 'confirmMove'; reactionType: string; unitId: string; modelPositions: { modelId: string; position: Position }[] }
+  | { step: 'confirmMove'; reactionType: string; unitId: string; modelPositions: { modelId: string; position: Position }[]; validationErrors: ValidationError[] }
   | { step: 'selectDeathOrGloryAttack'; reactionType: string; unitId: string }
   | { step: 'resolving' };
 

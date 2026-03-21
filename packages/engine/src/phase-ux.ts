@@ -9,6 +9,7 @@ import {
   getActiveArmy,
   isUnitDestroyed,
 } from './game-queries';
+import { getPendingAftermathUnitIds } from './assault/combat-state';
 
 export type PhaseUxMode = 'auto' | 'decision' | 'conditional';
 export type PhaseUxState = 'auto' | 'decision' | 'blocked';
@@ -49,6 +50,9 @@ function getTacticalActionsForCurrentSubPhase(state: GameState): string[] {
   const activeArmy = getActiveArmy(state);
   const aliveUnits = activeArmy.units.filter(unit => !isUnitDestroyed(unit));
   const hasUnresolvedCombat = state.activeCombats?.some(combat => !combat.resolved) ?? false;
+  const hasPendingAftermath = state.activeCombats?.some(
+    (combat) => getPendingAftermathUnitIds(state, combat).length > 0,
+  ) ?? false;
 
   switch (state.currentSubPhase) {
     case SubPhase.Reserves: {
@@ -106,7 +110,7 @@ function getTacticalActionsForCurrentSubPhase(state: GameState): string[] {
       return filterValidCommands(valid, ['resolveFight', 'declareWeapons']);
 
     case SubPhase.Resolution:
-      if (!hasUnresolvedCombat) return [];
+      if (!hasPendingAftermath) return [];
       return filterValidCommands(valid, ['selectAftermath']);
 
     default:

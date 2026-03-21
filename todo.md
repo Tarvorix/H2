@@ -2,6 +2,47 @@
 
 Last Updated: 2026-03-20
 
+## Execution Plan (Assault, Grenade, and Reaction Rules Corrections - 2026-03-20)
+- [ ] Enforce Assault Fight and Resolution progression so unresolved combats and aftermath decisions cannot be skipped.
+- [ ] Correct volley and melee grenade handling to match the current rules documents exactly.
+- [ ] Tighten reaction legality and prevent no-op reactions from being offered or consuming allotment.
+- [ ] Add reaction placement preview validation and exact UI error feedback before confirmation.
+- [ ] Add focused regressions for assault progression, grenade behavior, reaction legality, and reaction placement, then run verification.
+- Progress:
+  - Scope locked before edits:
+    - implement only the confirmed assault, grenade, and reaction rules defects from the current audit
+    - preserve existing working assault, challenge, shooting, and movement behavior unless a change is required for strict rules accuracy
+    - prefer the more specific local rules sources when there is any ambiguity between summary text and detailed weapon or armoury entries
+  - Planned execution order:
+    - write and maintain this plan entry while implementing
+    - patch engine assault progression guards and assault UI flow surfacing
+    - correct volley frag-grenade handling plus melee krak grenade and melta bomb detonation handling
+    - tighten Overwatch and Return Fire legality gating and no-op reaction bookkeeping
+    - add preview-time validation and exact feedback for placement reactions
+    - add targeted regressions and run focused tests
+  - 2026-03-20 engine rules pass in progress:
+    - added Assault/Fight and Assault/Resolution advancement blockers so unresolved combats and pending aftermath cannot be skipped through `endSubPhase` or `endPhase`
+    - corrected volley attack weapon filtering so normal volley attacks no longer treat grenades as generic assault weapons
+    - added explicit melee grenade profiles for krak grenades and melta bombs, with combat-time detonation filtering so they are only considered in eligible fights
+    - tightened Overwatch and Return Fire trigger checks to require a real legal out-of-phase shooting attack before the reaction is offered
+    - stopped Return Fire and Overwatch bookkeeping from consuming a reaction on a no-op shot as a safety backstop
+    - added a shared reaction placement preview validator in the engine so UI preview errors come from the same rules used by live reaction resolution
+    - wired the reducer to auto-surface compulsory Assault/Fight and Assault/Resolution aftermath states instead of dropping back to idle
+    - blocked the action bar from showing skip/cancel affordances during mandatory assault resolution work and from confirming invalid placement reactions
+    - normalized the Combat Air Patrol preview helper so the validation path and entered-state preview path share the same typed unit resolution
+    - updated the focused Return Fire and Overwatch fixture baselines so legal-trigger tests now include an actual ranged weapon, matching the stricter rules gate
+    - added regression coverage for grenade detonation data, volley grenade filtering, reposition preview validation, compulsory assault flow surfacing, and no-op reaction-consumption backstops
+    - fixed a reposition regression introduced during refactor so `repositionExecuted` events once again record per-model `from` and `to` positions
+    - corrected the new volley regression assertions to use the out-of-phase shooting filter context shape the engine actually passes at runtime
+    - replaced the frag-grenade volley substitute path with a single-model custom shooting command so the one-shot substitute attack actually resolves instead of silently dropping out
+    - rewrote the frag-grenade regression to assert against the live volley resolution path and its single declared substitute attack, rather than the generic builder internals
+    - relaxed the frag substitute’s preselection gate to range-only and deferred LOS enforcement to the live shooting validator, eliminating a false-negative precheck on otherwise legal volleys
+    - aligned the frag substitute attack with the rules intent by resolving it at full BS instead of treating it as a snap-shot volley, which was collapsing its fire groups to a no-op
+    - corrected the frag substitute regression fixture so the target actually sits inside grenade range, preventing a false failure caused by an 8\" throw distance
+    - restored the missing `enemyUnits` assault tactica context during volley full-BS evaluation so legion PreHit handlers no longer crash when Step 4 resumes after a declined advanced reaction
+    - gated the World Eaters Hereticus after-volley reaction on actual charger casualties from volley attacks, matching the explicit rule condition instead of offering it after casualty-free volleys
+    - updated the charge-sequence integration fixtures so Overwatch is only asserted in states with a legal ranged weapon and the after-volley assault reaction is only asserted after a real casualty-producing volley
+
 ## Execution Plan (Army Builder Mobile Portrait Redesign - 2026-03-20)
 - [x] Confirm which army-builder containers still create nested or sticky mobile scroll traps after the previous scroll/footer patches.
 - [x] Refactor the army-builder mobile layout so portrait phones and tablets use a single reliable vertical flow with reachable summary and confirm actions.

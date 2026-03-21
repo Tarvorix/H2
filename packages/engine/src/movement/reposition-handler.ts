@@ -185,10 +185,12 @@ export function handleRepositionReaction(
   modelMoves: Array<{ modelId: string; position: Position }>,
   dice: DiceProvider,
 ): CommandResult {
-  const events: GameEvent[] = [];
-  const errors: ValidationError[] = [];
+  const validationErrors = validateRepositionReactionMoves(state, reactingUnitId, modelMoves);
+  if (validationErrors.length > 0) {
+    return { state, events: [], errors: validationErrors, accepted: false };
+  }
 
-  // ── Step 1: Validate the reacting unit ──────────────────────────────
+  const events: GameEvent[] = [];
 
   const unit = findUnit(state, reactingUnitId);
   if (!unit) {
@@ -200,160 +202,29 @@ export function handleRepositionReaction(
     };
   }
 
-  // Validate unit belongs to the reactive player
-  const unitPlayerIndex = findUnitPlayerIndex(state, reactingUnitId);
   const reactivePlayerIndex = getReactivePlayerIndex(state);
-  if (unitPlayerIndex !== reactivePlayerIndex) {
-    return {
-      state,
-      events: [],
-      errors: [{
-        code: 'NOT_REACTIVE_PLAYER',
-        message: 'Reposition reaction can only be performed by the reactive player\'s units',
-      }],
-      accepted: false,
-    };
-  }
-
-  // Check the unit can react
-  if (!canUnitReact(unit)) {
-    return {
-      state,
-      events: [],
-      errors: [{
-        code: 'UNIT_CANNOT_REACT',
-        message: `Unit "${reactingUnitId}" is not eligible to react`,
-        context: {
-          hasReacted: unit.hasReactedThisTurn,
-          statuses: unit.statuses,
-          isLockedInCombat: unit.isLockedInCombat,
-          isDeployed: unit.isDeployed,
-          embarkedOnId: unit.embarkedOnId,
-        },
-      }],
-      accepted: false,
-    };
-  }
-
-  // Check the reactive army has allotments remaining
-  const reactiveArmy = getReactiveArmy(state);
-  if (!hasReactionAllotment(reactiveArmy)) {
-    return {
-      state,
-      events: [],
-      errors: [{
-        code: 'NO_REACTION_ALLOTMENT',
-        message: 'Reactive army has no reaction allotments remaining',
-      }],
-      accepted: false,
-    };
-  }
-
-  // ── Step 2: Validate each model move ────────────────────────────────
-
   const aliveModels = getAliveModels(unit);
   const aliveModelIds = new Set(aliveModels.map(m => m.id));
 
-  // Get enemy model shapes for exclusion zone check
-  const enemyShapes = getEnemyModelShapes(state, unitPlayerIndex!);
-
   // Record model moves for the event
   const modelMoveRecords: { modelId: string; from: Position; to: Position }[] = [];
-  const finalPositions = new Map<string, Position>(
-    aliveModels.map((model) => [model.id, model.position]),
-  );
-  for (const move of modelMoves) {
-    if (aliveModelIds.has(move.modelId)) {
-      finalPositions.set(move.modelId, move.position);
-    }
-  }
-
-  for (const move of modelMoves) {
-    if (!aliveModelIds.has(move.modelId)) {
-      errors.push({
-        code: 'MODEL_NOT_FOUND',
-        message: `Model "${move.modelId}" not found in unit "${reactingUnitId}"`,
-        context: { modelId: move.modelId },
-      });
-      continue;
-    }
-
-    // Find the model
-    const model = aliveModels.find(m => m.id === move.modelId);
-    if (!model) continue;
-
-    const modelInit = getModelInitiative(model.unitProfileId, model.profileModelName);
-
-    const friendlyShapes = aliveModels
-      .filter((other) => other.id !== move.modelId)
-      .map((other) =>
-        getModelShapeAtPosition(other, finalPositions.get(other.id) ?? other.position),
-      );
-
-    const moveErrors = validateModelMove(
-      model,
-      move.position,
-      modelInit,
-      state.terrain,
-      enemyShapes,
-      friendlyShapes,
-      state.battlefield.width,
-      state.battlefield.height,
-    ).map((error) => {
-      if (error.code !== 'EXCEEDS_MOVEMENT') {
-        return error;
-      }
-
-      const moveDist = vec2Distance(model.position, move.position);
-      return {
-        ...error,
-        code: 'EXCEEDS_INITIATIVE',
-        message: `Model "${move.modelId}" move of ${moveDist.toFixed(2)}" exceeds Initiative of ${modelInit}"`,
-        context: { modelId: move.modelId, distance: moveDist, maxDistance: modelInit },
-      };
-    });
-    if (moveErrors.length > 0) {
-      errors.push(...moveErrors);
-    }
-
-    modelMoveRecords.push({
-      modelId: move.modelId,
-      from: model.position,
-      to: move.position,
-    });
-  }
-
-  // Check coherency after all moves
-  if (modelMoves.length > 0 && aliveModels.length > 1) {
-    const shapes = aliveModels.map((model) =>
-      getModelShapeAtPosition(
-        model,
-        finalPositions.get(model.id) ?? model.position,
-      ),
-    );
-    const coherencyResult = checkCoherency(shapes, STANDARD_COHERENCY_RANGE);
-    if (!coherencyResult.isCoherent) {
-      errors.push({
-        code: 'COHERENCY_BROKEN',
-        message: 'Repositioned models must maintain coherency',
-      });
-    }
-  }
-
-  if (errors.length > 0) {
-    return { state, events: [], errors, accepted: false };
-  }
-
   // ── Step 3: Apply model moves ───────────────────────────────────────
 
   let newState = state;
   for (const move of modelMoves) {
     if (!aliveModelIds.has(move.modelId)) continue;
+    const movedModel = aliveModels.find((model) => model.id === move.modelId);
+    if (!movedModel) {
+      continue;
+    }
+    modelMoveRecords.push({
+      modelId: move.modelId,
+      from: movedModel.position,
+      to: move.position,
+    });
     newState = updateUnitInGameState(newState, reactingUnitId, (u) =>
       updateModelInUnit(u, move.modelId, (m) => moveModel(m, move.position)),
     );
-
-    const movedModel = aliveModels.find((model) => model.id === move.modelId);
     if (
       movedModel &&
       !(newState.dangerousTerrainTestedModelIds?.includes(move.modelId) ?? false) &&
@@ -407,4 +278,124 @@ export function handleRepositionReaction(
   events.push(event);
 
   return { state: newState, events, errors: [], accepted: true };
+}
+
+export function validateRepositionReactionMoves(
+  state: GameState,
+  reactingUnitId: string,
+  modelMoves: Array<{ modelId: string; position: Position }>,
+): ValidationError[] {
+  const unit = findUnit(state, reactingUnitId);
+  if (!unit) {
+    return [{ code: 'UNIT_NOT_FOUND', message: `Unit "${reactingUnitId}" not found` }];
+  }
+
+  const unitPlayerIndex = findUnitPlayerIndex(state, reactingUnitId);
+  const reactivePlayerIndex = getReactivePlayerIndex(state);
+  if (unitPlayerIndex !== reactivePlayerIndex) {
+    return [{
+      code: 'NOT_REACTIVE_PLAYER',
+      message: 'Reposition reaction can only be performed by the reactive player\'s units',
+    }];
+  }
+
+  if (!canUnitReact(unit)) {
+    return [{
+      code: 'UNIT_CANNOT_REACT',
+      message: `Unit "${reactingUnitId}" is not eligible to react`,
+      context: {
+        hasReacted: unit.hasReactedThisTurn,
+        statuses: unit.statuses,
+        isLockedInCombat: unit.isLockedInCombat,
+        isDeployed: unit.isDeployed,
+        embarkedOnId: unit.embarkedOnId,
+      },
+    }];
+  }
+
+  const reactiveArmy = getReactiveArmy(state);
+  if (!hasReactionAllotment(reactiveArmy)) {
+    return [{
+      code: 'NO_REACTION_ALLOTMENT',
+      message: 'Reactive army has no reaction allotments remaining',
+    }];
+  }
+
+  const errors: ValidationError[] = [];
+  const aliveModels = getAliveModels(unit);
+  const aliveModelIds = new Set(aliveModels.map(m => m.id));
+  const enemyShapes = getEnemyModelShapes(state, unitPlayerIndex!);
+  const finalPositions = new Map<string, Position>(
+    aliveModels.map((model) => [model.id, model.position]),
+  );
+  for (const move of modelMoves) {
+    if (aliveModelIds.has(move.modelId)) {
+      finalPositions.set(move.modelId, move.position);
+    }
+  }
+
+  for (const move of modelMoves) {
+    if (!aliveModelIds.has(move.modelId)) {
+      errors.push({
+        code: 'MODEL_NOT_FOUND',
+        message: `Model "${move.modelId}" not found in unit "${reactingUnitId}"`,
+        context: { modelId: move.modelId },
+      });
+      continue;
+    }
+
+    const model = aliveModels.find(m => m.id === move.modelId);
+    if (!model) {
+      continue;
+    }
+
+    const modelInit = getModelInitiative(model.unitProfileId, model.profileModelName);
+    const friendlyShapes = aliveModels
+      .filter((other) => other.id !== move.modelId)
+      .map((other) =>
+        getModelShapeAtPosition(other, finalPositions.get(other.id) ?? other.position),
+      );
+
+    const moveErrors = validateModelMove(
+      model,
+      move.position,
+      modelInit,
+      state.terrain,
+      enemyShapes,
+      friendlyShapes,
+      state.battlefield.width,
+      state.battlefield.height,
+    ).map((error) => {
+      if (error.code !== 'EXCEEDS_MOVEMENT') {
+        return error;
+      }
+
+      const moveDist = vec2Distance(model.position, move.position);
+      return {
+        ...error,
+        code: 'EXCEEDS_INITIATIVE',
+        message: `Model "${move.modelId}" move of ${moveDist.toFixed(2)}" exceeds Initiative of ${modelInit}"`,
+        context: { modelId: move.modelId, distance: moveDist, maxDistance: modelInit },
+      };
+    });
+    errors.push(...moveErrors);
+  }
+
+  if (modelMoves.length > 0 && aliveModels.length > 1) {
+    const shapes = aliveModels.map((model) =>
+      getModelShapeAtPosition(
+        model,
+        finalPositions.get(model.id) ?? model.position,
+      ),
+    );
+    const coherencyResult = checkCoherency(shapes, STANDARD_COHERENCY_RANGE);
+    if (!coherencyResult.isCoherent) {
+      errors.push({
+        code: 'COHERENCY_BROKEN',
+        message: 'Repositioned models must maintain coherency',
+      });
+    }
+  }
+
+  return errors;
 }

@@ -359,6 +359,31 @@ describe('gameReducer reaction interaction steps', () => {
     expect(confirmedState.flowState).toEqual({ type: 'idle' });
   });
 
+  it('surfaces preview validation errors before confirming a move-based reaction', () => {
+    const state = createReactionUiState(createPendingReaction(CoreReaction.Reposition));
+
+    const selectedState = gameReducer(state, {
+      type: 'SELECT_REACTION_UNIT',
+      unitId: 'target-u1',
+      reactionType: CoreReaction.Reposition,
+    });
+    const placedState = gameReducer(selectedState, {
+      type: 'PLACE_REACTION_MODEL',
+      position: { x: 40, y: 40 },
+    });
+
+    expect(placedState.flowState.type).toBe('reaction');
+    expect(placedState.flowState.type === 'reaction' && placedState.flowState.step.step === 'confirmMove').toBe(true);
+    if (placedState.flowState.type === 'reaction' && placedState.flowState.step.step === 'confirmMove') {
+      expect(placedState.flowState.step.validationErrors.some((error) => error.code === 'EXCEEDS_INITIATIVE')).toBe(true);
+    }
+
+    const confirmedState = gameReducer(placedState, { type: 'CONFIRM_REACTION_MOVE' });
+
+    expect(vi.mocked(commandBridge.executeCommand)).not.toHaveBeenCalled();
+    expect(confirmedState.notifications[confirmedState.notifications.length - 1]?.type).toBe('warning');
+  });
+
   it('collects the Death or Glory attacker and weapon before dispatching the reaction command', () => {
     const state = createReactionUiState(createPendingReaction('death-or-glory'));
 
@@ -398,6 +423,102 @@ describe('gameReducer reaction interaction steps', () => {
     );
     expect(vi.mocked(commandBridge.executeCommand)).toHaveBeenCalledTimes(1);
     expect(confirmedState.flowState).toEqual({ type: 'idle' });
+  });
+});
+
+describe('gameReducer assault flow auto-entry', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('auto-surfaces the fight flow when an engine result enters Assault/Fight with unresolved combat', () => {
+    const state = {
+      ...createInitialGameUIState(),
+      gameMode: GameMode.CoreMissions,
+      uiPhase: GameUIPhase.Playing,
+      gameState: createBaseGameState({
+        currentPhase: Phase.Assault,
+        currentSubPhase: SubPhase.Charge,
+      }),
+    };
+
+    vi.mocked(commandBridge.executeCommand).mockReturnValue({
+      state: createBaseGameState({
+        currentPhase: Phase.Assault,
+        currentSubPhase: SubPhase.Fight,
+        activeCombats: [{
+          combatId: 'combat-1',
+          activePlayerUnitIds: ['attacker-u1'],
+          reactivePlayerUnitIds: ['target-u1'],
+          activePlayerCRP: 0,
+          reactivePlayerCRP: 0,
+          activePlayerCasualties: [],
+          reactivePlayerCasualties: [],
+          challengeState: null,
+          resolved: false,
+          isMassacre: false,
+          aftermathResolvedUnitIds: [],
+        }] as any,
+      }),
+      events: [],
+      errors: [],
+      accepted: true,
+    });
+
+    const nextState = gameReducer(state, { type: 'END_SUB_PHASE' });
+
+    expect(nextState.flowState).toEqual({
+      type: 'assault',
+      step: {
+        step: 'fightPhase',
+        combatId: 'combat-1',
+      },
+    });
+  });
+
+  it('auto-surfaces the aftermath flow when an engine result enters Assault/Resolution with pending aftermath', () => {
+    const state = {
+      ...createInitialGameUIState(),
+      gameMode: GameMode.CoreMissions,
+      uiPhase: GameUIPhase.Playing,
+      gameState: createBaseGameState({
+        currentPhase: Phase.Assault,
+        currentSubPhase: SubPhase.Fight,
+      }),
+    };
+
+    vi.mocked(commandBridge.executeCommand).mockReturnValue({
+      state: createBaseGameState({
+        currentPhase: Phase.Assault,
+        currentSubPhase: SubPhase.Resolution,
+        activeCombats: [{
+          combatId: 'combat-1',
+          activePlayerUnitIds: ['attacker-u1'],
+          reactivePlayerUnitIds: ['target-u1'],
+          activePlayerCRP: 2,
+          reactivePlayerCRP: 0,
+          activePlayerCasualties: [],
+          reactivePlayerCasualties: [],
+          challengeState: null,
+          resolved: true,
+          isMassacre: false,
+          aftermathResolvedUnitIds: [],
+        }] as any,
+      }),
+      events: [],
+      errors: [],
+      accepted: true,
+    });
+
+    const nextState = gameReducer(state, { type: 'END_SUB_PHASE' });
+
+    expect(nextState.flowState.type).toBe('assault');
+    expect(nextState.flowState.type === 'assault' && nextState.flowState.step.step === 'selectAftermath').toBe(true);
+    if (nextState.flowState.type === 'assault' && nextState.flowState.step.step === 'selectAftermath') {
+      expect(nextState.flowState.step.combatId).toBe('combat-1');
+      expect(nextState.flowState.step.unitId).toBe('target-u1');
+      expect(nextState.flowState.step.availableOptions.length).toBeGreaterThan(0);
+    }
   });
 });
 

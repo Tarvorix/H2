@@ -11,17 +11,20 @@
  */
 
 import type { AttackTargetRef, Position, ArmyList, GameState } from '@hh/types';
-import { ChallengeGambit, CoreReaction, GameMode, Phase, SubPhase } from '@hh/types';
+import { ChallengeGambit, CoreReaction, GameMode, Phase, SubPhase, TacticalStatus } from '@hh/types';
 import type { CommandResult } from '@hh/engine';
 import {
   applyZoneMortalisCrumblingSuperstructure,
+  getAvailableAftermathOptions,
   getModelInitiative,
   getModelMovement,
+  getPendingAftermathUnitIds,
   getZoneMortalisMovementDistance,
   canUnitShoot,
   getEligibleAcceptors,
   getEligibleChallengers,
   RandomDiceProvider,
+  validateReactionPlacementPreview,
 } from '@hh/engine';
 import {
   findMission,
@@ -502,25 +505,29 @@ function applyEngineCommand(
   // Check if game is over
   const newUIPhase = result.state.isGameOver ? GameUIPhase.GameOver : state.uiPhase;
 
-  // Check if reaction is pending — update flow state
   let flowState = state.flowState;
-  if (result.state.awaitingReaction && result.state.pendingReaction) {
-    flowState = {
-      type: 'reaction',
-      step: {
-        step: 'prompt',
-        pendingReaction: result.state.pendingReaction,
-      },
-    };
-  } else if (state.flowState.type === 'reaction' && !result.state.awaitingReaction) {
-    // Reaction was resolved — return to idle
-    flowState = { type: 'idle' };
-  }
-
+  const reactionFlowState = result.state.awaitingReaction && result.state.pendingReaction
+    ? {
+        type: 'reaction' as const,
+        step: {
+          step: 'prompt' as const,
+          pendingReaction: result.state.pendingReaction,
+        },
+      }
+    : null;
   const challengeFlowState = getChallengeFlowState(result.state);
-  if (challengeFlowState) {
+  const assaultFlowState = getAssaultFlowState(result.state);
+  if (reactionFlowState) {
+    flowState = reactionFlowState;
+  } else if (challengeFlowState) {
     flowState = challengeFlowState;
-  } else if (state.flowState.type === 'challenge') {
+  } else if (assaultFlowState) {
+    flowState = assaultFlowState;
+  } else if (
+    state.flowState.type === 'reaction' ||
+    state.flowState.type === 'challenge' ||
+    state.flowState.type === 'assault'
+  ) {
     flowState = { type: 'idle' };
   }
 
@@ -637,6 +644,93 @@ function getChallengeFlowState(
     default:
       return null;
   }
+}
+
+function getAssaultFlowState(
+  gameState: GameState,
+): GameUIState['flowState'] | null {
+  if (gameState.currentPhase !== Phase.Assault) {
+    return null;
+  }
+
+  if (gameState.currentSubPhase === SubPhase.Fight) {
+    const unresolvedCombat = gameState.activeCombats?.find((combat) => !combat.resolved);
+    if (!unresolvedCombat) {
+      return null;
+    }
+
+    return {
+      type: 'assault',
+      step: {
+        step: 'fightPhase',
+        combatId: unresolvedCombat.combatId,
+      },
+    };
+  }
+
+  if (gameState.currentSubPhase !== SubPhase.Resolution) {
+    return null;
+  }
+
+  for (const combat of gameState.activeCombats ?? []) {
+    const pendingUnitId = getPendingAftermathUnitIds(gameState, combat)[0];
+    if (!pendingUnitId) {
+      continue;
+    }
+
+    const isActiveUnit = combat.activePlayerUnitIds.includes(pendingUnitId);
+    const isWinner = (isActiveUnit && combat.activePlayerCRP > combat.reactivePlayerCRP)
+      || (!isActiveUnit && combat.reactivePlayerCRP > combat.activePlayerCRP);
+    const isLoser = (isActiveUnit && combat.activePlayerCRP < combat.reactivePlayerCRP)
+      || (!isActiveUnit && combat.reactivePlayerCRP < combat.activePlayerCRP);
+    const isDraw = combat.activePlayerCRP === combat.reactivePlayerCRP;
+    const enemyUnitIds = isActiveUnit
+      ? combat.reactivePlayerUnitIds
+      : combat.activePlayerUnitIds;
+    const allEnemyFleeing = enemyUnitIds.every((enemyUnitId) => {
+      const enemyUnit = findUnitById(gameState, enemyUnitId);
+      if (!enemyUnit) {
+        return true;
+      }
+
+      const hasAliveModels = enemyUnit.models.some((model) => !model.isDestroyed);
+      return !hasAliveModels || enemyUnit.statuses.includes(TacticalStatus.Routed);
+    });
+    const availableOptions = getAvailableAftermathOptions(
+      gameState,
+      pendingUnitId,
+      isWinner,
+      isLoser,
+      isDraw,
+      allEnemyFleeing,
+    );
+    if (availableOptions.length === 0) {
+      continue;
+    }
+
+    return {
+      type: 'assault',
+      step: {
+        step: 'selectAftermath',
+        combatId: combat.combatId,
+        unitId: pendingUnitId,
+        availableOptions,
+      },
+    };
+  }
+
+  const combat = gameState.activeCombats?.[0];
+  if (!combat) {
+    return null;
+  }
+
+  return {
+    type: 'assault',
+    step: {
+      step: 'resolution',
+      combatId: combat.combatId,
+    },
+  };
 }
 
 // ─── Reducer ─────────────────────────────────────────────────────────────────
@@ -1906,14 +2000,7 @@ export function gameReducer(
         return newState;
       }
 
-      if (newState.flowState.type === 'reaction') {
-        return newState;
-      }
-
-      return {
-        ...newState,
-        flowState: { type: 'idle' },
-      };
+      return newState;
     }
 
     case 'CANCEL_CHARGE':
@@ -1921,7 +2008,7 @@ export function gameReducer(
 
     case 'RESOLVE_FIGHT': {
       const newState = applyEngineCommand(state, buildResolveFightCommand(action.combatId));
-      return { ...newState, flowState: { type: 'idle' } };
+      return newState;
     }
 
     case 'SELECT_AFTERMATH': {
@@ -1929,7 +2016,7 @@ export function gameReducer(
         state,
         buildSelectAftermathCommand(action.unitId, action.option),
       );
-      return { ...newState, flowState: { type: 'idle' } };
+      return newState;
     }
 
     // ── Reaction Flow ───────────────────────────────────────────────────
@@ -2000,6 +2087,12 @@ export function gameReducer(
       ) ?? null;
 
       if (!nextCurrentModelId) {
+        const validationErrors = validateReactionPlacementPreview(
+          state.gameState,
+          step.unitId,
+          step.reactionType,
+          nextModelPositions,
+        );
         return {
           ...state,
           flowState: {
@@ -2009,6 +2102,7 @@ export function gameReducer(
               reactionType: step.reactionType,
               unitId: step.unitId,
               modelPositions: nextModelPositions,
+              validationErrors,
             },
           },
         };
@@ -2058,6 +2152,20 @@ export function gameReducer(
       if (state.flowState.step.step !== 'confirmMove') return state;
 
       const step = state.flowState.step;
+      if (step.validationErrors.length > 0) {
+        return {
+          ...state,
+          notifications: [
+            ...state.notifications,
+            {
+              message: step.validationErrors.map((error) => error.message).join('; '),
+              type: 'warning',
+              timestamp: Date.now(),
+              duration: 5000,
+            },
+          ],
+        };
+      }
       const newState = applyEngineCommand(
         state,
         buildReactionCommand(step.unitId, step.reactionType, {
@@ -2127,7 +2235,6 @@ export function gameReducer(
       const newState = applyEngineCommand(state, buildEndPhaseCommand());
       return {
         ...newState,
-        flowState: { type: 'idle' },
         selectedUnitId: null,
         ghostTrails: [], // Clear ghost trails at phase end
       };
@@ -2135,10 +2242,7 @@ export function gameReducer(
 
     case 'END_SUB_PHASE': {
       const newState = applyEngineCommand(state, buildEndSubPhaseCommand());
-      return {
-        ...newState,
-        flowState: { type: 'idle' },
-      };
+      return newState;
     }
 
     // ── Engine Command (direct passthrough) ─────────────────────────────

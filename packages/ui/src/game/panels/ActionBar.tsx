@@ -9,6 +9,7 @@
 import { useCallback, useMemo } from 'react';
 import {
   canUnitShoot,
+  getValidCommands,
   getModelStateBaseSizeMM,
   getPhaseUxStatus,
   getZoneMortalisMeasurementDistance,
@@ -187,6 +188,7 @@ function getAvailableActions(
   const selectedUnit = state.selectedUnitId ? findUnitById(state, state.selectedUnitId) : null;
   const selectedUnitCanShoot = selectedUnit ? canUnitShoot(selectedUnit) : false;
   const phaseStatus = getPhaseUxStatus(gs);
+  const validCommands = new Set(getValidCommands(gs));
   const zoneMortalisTargets = selectedUnit
     ? getZoneMortalisActionTargets(state, selectedUnit)
     : {
@@ -209,6 +211,15 @@ function getAvailableActions(
 
   // If a flow is already active, only allow canceling that flow.
   if (state.flowState.type !== 'idle') {
+    const isCompulsoryAssaultFlow = state.flowState.type === 'assault' && (
+      state.flowState.step.step === 'fightPhase' ||
+      state.flowState.step.step === 'resolution' ||
+      state.flowState.step.step === 'selectAftermath'
+    );
+    if (isCompulsoryAssaultFlow) {
+      return actions;
+    }
+
     actions.push({
       id: 'cancel',
       label: 'Cancel',
@@ -338,7 +349,9 @@ function getAvailableActions(
   }
 
   const shouldShowContinue =
-    !gs.isGameOver && (phaseAutomationPaused || phaseStatus.isDecisionPoint);
+    !gs.isGameOver &&
+    validCommands.has('endSubPhase') &&
+    (phaseAutomationPaused || phaseStatus.isDecisionPoint);
 
   if (shouldShowContinue) {
     actions.push({

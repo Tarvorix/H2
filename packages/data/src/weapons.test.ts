@@ -724,6 +724,22 @@ describe('findWeaponByName', () => {
   });
 });
 
+describe('Grenade detonation profiles', () => {
+  it('keeps krak grenades as ranged wargear and exposes a separate melee detonation profile', () => {
+    expect(RANGED_WEAPONS['krak-grenades']).toBeDefined();
+    expect(MELEE_WEAPONS['krak-grenades-detonation']).toBeDefined();
+    expect(MELEE_WEAPONS['krak-grenades-detonation']?.parentWeaponId).toBe('krak-grenades');
+    expect(MELEE_WEAPONS['krak-grenades-detonation']?.specialRules.some((rule) => rule.name === 'Detonation')).toBe(true);
+  });
+
+  it('keeps melta bombs as ranged wargear and exposes a separate melee detonation profile', () => {
+    expect(RANGED_WEAPONS['melta-bombs']).toBeDefined();
+    expect(MELEE_WEAPONS['melta-bombs-detonation']).toBeDefined();
+    expect(MELEE_WEAPONS['melta-bombs-detonation']?.parentWeaponId).toBe('melta-bombs');
+    expect(MELEE_WEAPONS['melta-bombs-detonation']?.specialRules.some((rule) => rule.name === 'Detonation')).toBe(true);
+  });
+});
+
 describe('isRangedWeapon / isMeleeWeapon', () => {
   it('correctly identifies ranged weapons', () => {
     const bolter = findWeapon('bolter')!;

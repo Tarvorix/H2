@@ -255,6 +255,33 @@ export const GRENADE_WEAPONS: RangedWeaponProfile[] = [
   ranged('phosphex-bombs', 'Phosphex bombs', 6, 1, 5, 2, 1, ['Blast (3")', 'Breaching (4+)', 'Poisoned (3+)'], ['Grenade']),
 ];
 
+export const GRENADE_MELEE_WEAPONS: MeleeWeaponProfile[] = [
+  melee(
+    'krak-grenades-detonation',
+    'Krak grenades',
+    '-3',
+    1,
+    6,
+    4,
+    2,
+    ['Detonation'],
+    ['Grenade'],
+    { parentWeaponId: 'krak-grenades' },
+  ),
+  melee(
+    'melta-bombs-detonation',
+    'Melta bombs',
+    '-3',
+    1,
+    9,
+    2,
+    4,
+    ['Armourbane', 'Detonation'],
+    ['Grenade'],
+    { parentWeaponId: 'melta-bombs' },
+  ),
+];
+
 // ─── Blackshields Supplement Weapons ──────────────────────────────────────────
 
 export const BLACKSHIELDS_SUPPLEMENT_RANGED_WEAPONS: RangedWeaponProfile[] = [
@@ -407,6 +434,7 @@ const allMeleeArrays = [
   FORCE_WEAPONS,
   POWER_WEAPONS,
   BASIC_MELEE,
+  GRENADE_MELEE_WEAPONS,
   DREADNOUGHT_MELEE,
   BLACKSHIELDS_SUPPLEMENT_MELEE_WEAPONS,
 ];

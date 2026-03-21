@@ -43,6 +43,7 @@ import {
   updateUnitInGameState,
   updateArmyByIndex,
 } from '../state-helpers';
+import { hasLegalOutOfPhaseShootingAttack } from './out-of-phase-shooting';
 
 // ---- Result Types ----------------------------------------------------------
 
@@ -150,6 +151,22 @@ export function checkReturnFireTrigger(
 
   // Check that the target unit is eligible to react
   if (!canUnitReact(targetUnit)) {
+    return noTrigger;
+  }
+
+  if (
+    !hasLegalOutOfPhaseShootingAttack(
+      state,
+      targetUnitId,
+      attackerUnitId,
+      {
+        countsAsStationary: true,
+        defensiveWeaponsOnly: isVehicleUnit(targetUnit),
+        allowReturnFireTrigger: false,
+        suppressMoraleAndStatusChecks: true,
+      },
+    )
+  ) {
     return noTrigger;
   }
 

@@ -1,6 +1,7 @@
 import type { GameState, ModelState, UnitState } from '@hh/types';
+import { ModelType } from '@hh/types';
 import type { StatModifier } from '@hh/types';
-import { findLegionWeapon, findWeapon, isMeleeWeapon } from '@hh/data';
+import { MELEE_WEAPONS, findLegionWeapon, findWeapon, isMeleeWeapon } from '@hh/data';
 import type { GameEvent } from '../types';
 import {
   findUnitPlayerIndex,
@@ -11,6 +12,8 @@ import {
 } from '../game-queries';
 import {
   getModelSave,
+  getModelMovement,
+  getModelType,
 } from '../profile-lookup';
 import type { CombatState, InitiativeStep, MeleeStrikeGroup } from './assault-types';
 import { determineCombats } from './fight-handler';
@@ -94,9 +97,30 @@ function scoreWeapon(weapon: ResolvedMeleeWeaponProfile): number {
   return (weapon.damage * 10) + apScore + specialRuleScore;
 }
 
+function resolveEquippedMeleeWeapons(weaponId: string): import('@hh/types').MeleeWeaponProfile[] {
+  const resolved: import('@hh/types').MeleeWeaponProfile[] = [];
+  const directWeapon = findWeapon(weaponId) ?? findLegionWeapon(weaponId);
+  if (directWeapon && isMeleeWeapon(directWeapon)) {
+    resolved.push(directWeapon);
+  }
+
+  for (const weapon of Object.values(MELEE_WEAPONS)) {
+    if (weapon.parentWeaponId === weaponId) {
+      resolved.push(weapon);
+    }
+  }
+
+  return resolved;
+}
+
+function weaponHasDetonationRule(weapon: ResolvedMeleeWeaponProfile): boolean {
+  return weapon.specialRules.some((rule) => rule.name.toLowerCase() === 'detonation');
+}
+
 function resolveMeleeWeaponProfile(
   model: ModelState,
   declaredWeaponId: string | null,
+  allowDetonation: boolean,
 ): ResolvedMeleeWeaponProfile {
   const candidateIds = declaredWeaponId
     ? [declaredWeaponId, ...model.equippedWargear.filter((weaponId) => weaponId !== declaredWeaponId)]
@@ -104,22 +128,24 @@ function resolveMeleeWeaponProfile(
 
   const meleeWeapons: ResolvedMeleeWeaponProfile[] = [];
   for (const weaponId of candidateIds) {
-    const weapon = findWeapon(weaponId) ?? findLegionWeapon(weaponId);
-    if (!weapon || !isMeleeWeapon(weapon)) {
-      continue;
+    const weapons = resolveEquippedMeleeWeapons(weaponId);
+    for (const weapon of weapons) {
+      const resolvedWeapon = {
+        id: weapon.id,
+        name: weapon.name,
+        initiativeModifier: weapon.initiativeModifier,
+        attacksModifier: weapon.attacksModifier,
+        strengthModifier: weapon.strengthModifier,
+        ap: weapon.ap,
+        damage: weapon.damage,
+        specialRules: [...weapon.specialRules],
+        isPsychicWeapon: false,
+      };
+      if (weaponHasDetonationRule(resolvedWeapon) && !allowDetonation) {
+        continue;
+      }
+      meleeWeapons.push(resolvedWeapon);
     }
-
-    meleeWeapons.push({
-      id: weapon.id,
-      name: weapon.name,
-      initiativeModifier: weapon.initiativeModifier,
-      attacksModifier: weapon.attacksModifier,
-      strengthModifier: weapon.strengthModifier,
-      ap: weapon.ap,
-      damage: weapon.damage,
-      specialRules: [...weapon.specialRules],
-      isPsychicWeapon: false,
-    });
   }
   meleeWeapons.sort((left, right) => scoreWeapon(right) - scoreWeapon(left));
 
@@ -148,6 +174,26 @@ function resolveMeleeWeaponProfile(
   }
 
   return meleeWeapons[0] ?? createFallbackWeapon();
+}
+
+function modelQualifiesAsDetonationTarget(model: ModelState): boolean {
+  const modelType = getModelType(model.unitProfileId, model.profileModelName);
+  if (modelType === ModelType.Vehicle || modelType === ModelType.Building) {
+    return true;
+  }
+
+  return getModelMovement(model.unitProfileId, model.profileModelName) <= 0;
+}
+
+function combatAllowsDetonation(enemyUnits: UnitState[]): boolean {
+  if (enemyUnits.length === 0) {
+    return false;
+  }
+
+  return enemyUnits.every((unit) => {
+    const aliveModels = getAliveModels(unit);
+    return aliveModels.length > 0 && aliveModels.every(modelQualifiesAsDetonationTarget);
+  });
 }
 
 function chooseTargetUnitId(
@@ -209,14 +255,15 @@ function buildStrikeGroupsForCombat(
 
       const engagedModels = getEngagedModels(state, attackerUnitId, side.defenderUnitIds);
       const declaredSelections = combat.weaponDeclarations ?? [];
+      const allowDetonation = combatAllowsDetonation(defenderUnits);
 
       for (const attackerModel of engagedModels) {
         const declaredWeaponId = declaredSelections.find((selection) => selection.modelId === attackerModel.id)?.weaponId ?? null;
-        const weapon = resolveMeleeWeaponProfile(attackerModel, declaredWeaponId);
         const targetUnitId = chooseTargetUnitId(defenderUnits, attackerModel);
         if (!targetUnitId) {
           continue;
         }
+        const weapon = resolveMeleeWeaponProfile(attackerModel, declaredWeaponId, allowDetonation);
 
         const initiativeValue = Math.max(
           1,

@@ -41,6 +41,7 @@ import {
   updateArmyByIndex,
   setAwaitingReaction,
 } from '../state-helpers';
+import { hasLegalOutOfPhaseShootingAttack } from '../shooting/out-of-phase-shooting';
 
 // ─── Result Types ───────────────────────────────────────────────────────────
 
@@ -154,6 +155,22 @@ export function checkOverwatchTrigger(
 
   // Target unit must not already be locked in combat with other units
   if (targetUnit.isLockedInCombat) {
+    return noTrigger;
+  }
+
+  if (
+    !hasLegalOutOfPhaseShootingAttack(
+      state,
+      targetUnitId,
+      chargingUnitId,
+      {
+        forceNoSnapShots: true,
+        allowReturnFireTrigger: false,
+        suppressMoraleAndStatusChecks: true,
+        blockShroudedDamageMitigation: true,
+      },
+    )
+  ) {
     return noTrigger;
   }
 

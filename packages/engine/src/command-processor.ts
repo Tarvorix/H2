@@ -21,6 +21,7 @@ import type {
   CommandResult,
   DiceProvider,
   GameEvent,
+  ValidationError,
   AdvancedReactionDeclaredEvent,
   AdvancedReactionResolvedEvent,
 } from './types';
@@ -51,7 +52,11 @@ import { handleMoveModel, handleMoveUnit, handleRushUnit } from './movement/move
 import { handleReservesTest, handleReservesEntry } from './movement/reserves-handler';
 import { handleEmbark, handleDisembark } from './movement/embark-disembark-handler';
 import { resolvePendingZoneMortalisBlindPanicChecks } from './movement/rout-handler';
-import { checkRepositionTrigger, handleRepositionReaction } from './movement/reposition-handler';
+import {
+  checkRepositionTrigger,
+  handleRepositionReaction,
+  validateRepositionReactionMoves,
+} from './movement/reposition-handler';
 import {
   detectVehicleMoveThroughTriggers,
   getDeathOrGloryEligibleUnitIds,
@@ -68,7 +73,10 @@ import {
 import { countCasualtiesPerUnit } from './shooting/casualty-removal';
 import type { PendingMoraleCheck, ResolvedWeaponProfile, ResolvedWeaponProfileModifier } from './shooting/shooting-types';
 import { markUnitReacted, isDefensiveWeapon } from './shooting/return-fire-handler';
-import { executeOutOfPhaseShootingAttack } from './shooting/out-of-phase-shooting';
+import {
+  executeOutOfPhaseShootingAttack,
+  hasLegalOutOfPhaseShootingAttack,
+} from './shooting/out-of-phase-shooting';
 import { resolveDeferredMisfiresFromAttackState } from './shooting/overload-misfire';
 import { resolveWeaponAssignment } from './shooting/weapon-declaration';
 
@@ -90,7 +98,7 @@ import {
 import { resolveVolleyAttacks } from './assault/volley-attack-handler';
 import { resolveChargeMove } from './assault/charge-move-handler';
 import { checkOverwatchTrigger, resolveOverwatch, declineOverwatch } from './assault/overwatch-handler';
-import { syncActiveCombats } from './assault/combat-state';
+import { getPendingAftermathUnitIds, syncActiveCombats } from './assault/combat-state';
 
 // Phase lifecycle handlers
 import { handleStartPhase } from './phases/start-phase';
@@ -239,6 +247,47 @@ function getRemainingChallengeCombatIds(state: GameState): string[] {
       combatHasActiveChallengeOpportunity(state, combat),
     )
     .map((combat) => combat.combatId);
+}
+
+function getAssaultAdvanceBlocker(
+  state: GameState,
+): { state: GameState; code: string; message: string } | null {
+  if (
+    state.currentPhase !== Phase.Assault ||
+    (state.currentSubPhase !== SubPhase.Fight && state.currentSubPhase !== SubPhase.Resolution)
+  ) {
+    return null;
+  }
+
+  const syncedState = state.activeCombats && state.activeCombats.length > 0
+    ? state
+    : syncActiveCombats(state).state;
+
+  if (state.currentSubPhase === SubPhase.Fight) {
+    const unresolvedCombat = syncedState.activeCombats?.find((combat) => !combat.resolved);
+    if (unresolvedCombat) {
+      return {
+        state: syncedState,
+        code: 'FIGHT_COMBATS_REMAIN',
+        message: 'Resolve all combats before ending the Fight sub-phase.',
+      };
+    }
+  }
+
+  if (state.currentSubPhase === SubPhase.Resolution) {
+    const pendingAftermathCombat = syncedState.activeCombats?.find(
+      (combat) => getPendingAftermathUnitIds(syncedState, combat).length > 0,
+    );
+    if (pendingAftermathCombat) {
+      return {
+        state: syncedState,
+        code: 'AFTERMATH_PENDING',
+        message: 'Resolve all aftermath decisions before ending the Resolution sub-phase.',
+      };
+    }
+  }
+
+  return null;
 }
 
 function getHeroicInterventionEligibleUnitIds(
@@ -1223,108 +1272,26 @@ function resolveCombatAirPatrolReaction(
   modelPositions: { modelId: string; position: Position }[] | undefined,
   dice: DiceProvider,
 ): CommandResult {
-  const reactingUnit = findUnit(state, reactingUnitId);
-  if (!reactingUnit) {
-    return reject(state, 'UNIT_NOT_FOUND', `Reacting unit '${reactingUnitId}' was not found.`);
-  }
-
-  if (!isAerialReserveReactionUnit(reactingUnit)) {
-    return reject(
+  const validationErrors = validateCombatAirPatrolReactionPlacement(
+    state,
+    reactingUnitId,
+    targetUnitId,
+    modelPositions,
+  );
+  if (validationErrors.length > 0) {
+    return {
       state,
-      'INVALID_COMBAT_AIR_PATROL_UNIT',
-      'Combat Air Patrol requires a reacting unit in Aerial Reserves with the Interceptor trait.',
-    );
+      events: [],
+      errors: validationErrors,
+      accepted: false,
+    };
   }
 
-  if (!modelPositions || modelPositions.length === 0) {
-    return reject(
-      state,
-      'MODEL_POSITIONS_REQUIRED',
-      'Combat Air Patrol requires final model positions so the reacting flyer can enter from the battlefield edge.',
-    );
-  }
-
-  const aliveModelIds = new Set(getAliveModels(reactingUnit).map((model) => model.id));
-  for (const model of getAliveModels(reactingUnit)) {
-    if (!modelPositions.some((candidate) => candidate.modelId === model.id)) {
-      return reject(
-        state,
-        'MISSING_MODEL_POSITION',
-        `Combat Air Patrol requires a destination for model '${model.id}'.`,
-      );
-    }
-  }
-
-  for (const placement of modelPositions) {
-    if (!aliveModelIds.has(placement.modelId)) {
-      continue;
-    }
-
-    if (
-      placement.position.x < 0 ||
-      placement.position.y < 0 ||
-      placement.position.x > state.battlefield.width ||
-      placement.position.y > state.battlefield.height
-    ) {
-      return reject(state, 'OUT_OF_BOUNDS', 'Combat Air Patrol placement must remain on the battlefield.');
-    }
-
-    const model = reactingUnit.models.find((candidate) => candidate.id === placement.modelId);
-    if (!model) {
-      continue;
-    }
-
-    const maxMove = getModelMovement(model.unitProfileId, model.profileModelName);
-    const distanceToEdge = getDistanceToNearestBattlefieldEdge(
-      placement.position,
-      state.battlefield.width,
-      state.battlefield.height,
-    );
-    if (distanceToEdge > maxMove + 0.01) {
-      return reject(
-        state,
-        'COMBAT_AIR_PATROL_MOVE_TOO_FAR',
-        `Model '${placement.modelId}' exceeds the legal Combat Air Patrol move from the battlefield edge.`,
-      );
-    }
-
-    for (const terrain of state.terrain) {
-      if (terrain.type === TerrainType.Impassable && terrain.shape.kind === 'circle') {
-        const dx = placement.position.x - terrain.shape.center.x;
-        const dy = placement.position.y - terrain.shape.center.y;
-        if (Math.sqrt(dx * dx + dy * dy) <= terrain.shape.radius) {
-          return reject(
-            state,
-            'IN_IMPASSABLE_TERRAIN',
-            `Combat Air Patrol placement for model '${placement.modelId}' ends in impassable terrain.`,
-          );
-        }
-      }
-    }
-  }
-
-  let enteredState = setAwaitingReaction(state, false);
-  for (const placement of modelPositions) {
-    if (!aliveModelIds.has(placement.modelId)) {
-      continue;
-    }
-    enteredState = updateUnitInGameState(enteredState, reactingUnitId, (unit) =>
-      updateModelInUnit(unit, placement.modelId, (model) => ({
-        ...model,
-        position: placement.position,
-      })),
-    );
-  }
-
-  enteredState = updateUnitInGameState(enteredState, reactingUnitId, (unit) => ({
-    ...unit,
-    isInReserves: false,
-    isDeployed: true,
-    reserveReadyToEnter: false,
-    movementState: UnitMovementState.Moved,
-    reserveEntryMethodThisTurn: 'combat-air-patrol',
-  }));
-
+  const enteredState = createCombatAirPatrolEnteredState(
+    setAwaitingReaction(state, false),
+    reactingUnitId,
+    modelPositions ?? [],
+  );
   const weaponProfileModifier: ResolvedWeaponProfileModifier = (weaponProfile) => (
     weaponProfile.traits.some((trait) => trait.toLowerCase() === 'defensive')
       ? weaponProfile
@@ -1369,6 +1336,161 @@ function resolveCombatAirPatrolReaction(
     errors: [],
     accepted: true,
   };
+}
+
+function validateCombatAirPatrolReactionPlacement(
+  state: GameState,
+  reactingUnitId: string,
+  targetUnitId: string,
+  modelPositions: { modelId: string; position: Position }[] | undefined,
+): ValidationError[] {
+  const errors: ValidationError[] = [];
+  const reactingUnit = findUnit(state, reactingUnitId);
+  if (!reactingUnit) {
+    return [{ code: 'UNIT_NOT_FOUND', message: `Reacting unit '${reactingUnitId}' was not found.` }];
+  }
+
+  if (!isAerialReserveReactionUnit(reactingUnit)) {
+    return [{
+      code: 'INVALID_COMBAT_AIR_PATROL_UNIT',
+      message: 'Combat Air Patrol requires a reacting unit in Aerial Reserves with the Interceptor trait.',
+    }];
+  }
+
+  if (!modelPositions || modelPositions.length === 0) {
+    return [{
+      code: 'MODEL_POSITIONS_REQUIRED',
+      message: 'Combat Air Patrol requires final model positions so the reacting flyer can enter from the battlefield edge.',
+    }];
+  }
+
+  const aliveModelIds = new Set(getAliveModels(reactingUnit).map((model) => model.id));
+  for (const model of getAliveModels(reactingUnit)) {
+    if (!modelPositions.some((candidate) => candidate.modelId === model.id)) {
+      errors.push({
+        code: 'MISSING_MODEL_POSITION',
+        message: `Combat Air Patrol requires a destination for model '${model.id}'.`,
+      });
+    }
+  }
+
+  for (const placement of modelPositions) {
+    if (!aliveModelIds.has(placement.modelId)) {
+      errors.push({
+        code: 'MODEL_NOT_FOUND',
+        message: `Model '${placement.modelId}' is not part of the reacting unit.`,
+      });
+      continue;
+    }
+
+    if (
+      placement.position.x < 0 ||
+      placement.position.y < 0 ||
+      placement.position.x > state.battlefield.width ||
+      placement.position.y > state.battlefield.height
+    ) {
+      errors.push({
+        code: 'OUT_OF_BOUNDS',
+        message: 'Combat Air Patrol placement must remain on the battlefield.',
+      });
+      continue;
+    }
+
+    const model = reactingUnit.models.find((candidate) => candidate.id === placement.modelId);
+    if (!model) {
+      continue;
+    }
+
+    const maxMove = getModelMovement(model.unitProfileId, model.profileModelName);
+    const distanceToEdge = getDistanceToNearestBattlefieldEdge(
+      placement.position,
+      state.battlefield.width,
+      state.battlefield.height,
+    );
+    if (distanceToEdge > maxMove + 0.01) {
+      errors.push({
+        code: 'COMBAT_AIR_PATROL_MOVE_TOO_FAR',
+        message: `Model '${placement.modelId}' exceeds the legal Combat Air Patrol move from the battlefield edge.`,
+      });
+      continue;
+    }
+
+    for (const terrain of state.terrain) {
+      if (terrain.type === TerrainType.Impassable && terrain.shape.kind === 'circle') {
+        const dx = placement.position.x - terrain.shape.center.x;
+        const dy = placement.position.y - terrain.shape.center.y;
+        if (Math.sqrt(dx * dx + dy * dy) <= terrain.shape.radius) {
+          errors.push({
+            code: 'IN_IMPASSABLE_TERRAIN',
+            message: `Combat Air Patrol placement for model '${placement.modelId}' ends in impassable terrain.`,
+          });
+          break;
+        }
+      }
+    }
+  }
+
+  if (errors.length > 0) {
+    return errors;
+  }
+
+  const previewState = createCombatAirPatrolEnteredState(
+    setAwaitingReaction(state, false),
+    reactingUnitId,
+    modelPositions,
+  );
+  const weaponProfileModifier: ResolvedWeaponProfileModifier = (weaponProfile) => (
+    weaponProfile.traits.some((trait) => trait.toLowerCase() === 'defensive')
+      ? weaponProfile
+      : {
+          ...weaponProfile,
+          traits: [...weaponProfile.traits, 'Defensive'],
+        }
+  );
+  if (!hasLegalOutOfPhaseShootingAttack(previewState, reactingUnitId, targetUnitId, { weaponProfileModifier })) {
+    errors.push({
+      code: 'NO_LEGAL_COMBAT_AIR_PATROL_ATTACK',
+      message: 'No legal Combat Air Patrol attack can be made from the chosen positions.',
+    });
+  }
+
+  return errors;
+}
+
+function createCombatAirPatrolEnteredState(
+  state: GameState,
+  reactingUnitId: string,
+  modelPositions: { modelId: string; position: Position }[],
+): GameState {
+  const reactingUnit = findUnit(state, reactingUnitId);
+  if (!reactingUnit) {
+    return state;
+  }
+
+  const aliveModelIds = new Set(getAliveModels(reactingUnit).map((model) => model.id));
+  let enteredState = state;
+  for (const placement of modelPositions) {
+    if (!aliveModelIds.has(placement.modelId)) {
+      continue;
+    }
+    enteredState = updateUnitInGameState(enteredState, reactingUnitId, (unit) =>
+      updateModelInUnit(unit, placement.modelId, (model) => ({
+        ...model,
+        position: placement.position,
+      })),
+    );
+  }
+
+  enteredState = updateUnitInGameState(enteredState, reactingUnitId, (unit) => ({
+    ...unit,
+    isInReserves: false,
+    isDeployed: true,
+    reserveReadyToEnter: false,
+    movementState: UnitMovementState.Moved,
+    reserveEntryMethodThisTurn: 'combat-air-patrol',
+  }));
+
+  return enteredState;
 }
 
 function resolveEvadeReaction(
@@ -1421,6 +1543,77 @@ function resolveEvadeReaction(
     dice,
     repositionResult.events,
   );
+}
+
+export function validateReactionPlacementPreview(
+  state: GameState,
+  reactingUnitId: string,
+  reactionType: string,
+  modelPositions: { modelId: string; position: Position }[],
+): ValidationError[] {
+  if (reactionType === CoreReaction.Reposition) {
+    return validateRepositionReactionMoves(state, reactingUnitId, modelPositions);
+  }
+
+  if (reactionType === 'evade') {
+    const attackState = state.assaultAttackState;
+    if (!attackState || attackState.chargeStep !== 'CHARGE_ROLL') {
+      return [{
+        code: 'EVADE_UNAVAILABLE',
+        message: 'Evade may only be resolved after charge volley attacks and before the charge roll.',
+      }];
+    }
+
+    const chargingUnitId =
+      state.pendingReaction?.triggerSourceUnitId || attackState.chargingUnitId;
+    if (attackState.targetUnitId !== reactingUnitId || attackState.chargingUnitId !== chargingUnitId) {
+      return [{
+        code: 'EVADE_TARGET_MISMATCH',
+        message: 'The selected Evade unit does not match the pending charge target.',
+      }];
+    }
+
+    return validateRepositionReactionMoves(state, reactingUnitId, modelPositions);
+  }
+
+  if (reactionType === 'combat-air-patrol') {
+    const targetUnitId = state.pendingReaction?.triggerSourceUnitId;
+    if (!targetUnitId) {
+      return [{
+        code: 'COMBAT_AIR_PATROL_SOURCE_MISSING',
+        message: 'Unable to resolve the Combat Air Patrol target.',
+      }];
+    }
+
+    return validateCombatAirPatrolReactionPlacement(
+      state,
+      reactingUnitId,
+      targetUnitId,
+      modelPositions,
+    );
+  }
+
+  if (reactionType === 'reserve-entry-intercept') {
+    const targetUnitId = state.pendingReaction?.triggerSourceUnitId;
+    if (!targetUnitId) {
+      return [{
+        code: 'INTERCEPT_SOURCE_MISSING',
+        message: 'Unable to resolve the reserve-entry reaction target.',
+      }];
+    }
+
+    const reactingUnit = findUnit(state, reactingUnitId);
+    if (reactingUnit && isAerialReserveReactionUnit(reactingUnit)) {
+      return validateCombatAirPatrolReactionPlacement(
+        state,
+        reactingUnitId,
+        targetUnitId,
+        modelPositions,
+      );
+    }
+  }
+
+  return [];
 }
 
 function resolveHeroicInterventionReaction(
@@ -2255,6 +2448,14 @@ function processEndSubPhase(state: GameState, dice: DiceProvider): CommandResult
 
     baseState = syncedChallengeState;
   }
+  const assaultAdvanceBlocker = getAssaultAdvanceBlocker(baseState);
+  if (assaultAdvanceBlocker) {
+    return reject(
+      assaultAdvanceBlocker.state,
+      assaultAdvanceBlocker.code,
+      assaultAdvanceBlocker.message,
+    );
+  }
   if (state.currentPhase === Phase.Shooting && state.currentSubPhase === SubPhase.ShootingMorale) {
     const returned = returnFlyersToAerialReservesAtEndOfShooting(state);
     baseState = returned.state;
@@ -2291,6 +2492,15 @@ function processEndPhase(state: GameState, dice: DiceProvider): CommandResult {
     if (flyerMoveError) {
       return reject(state, flyerMoveError.code, flyerMoveError.message);
     }
+  }
+
+  const assaultAdvanceBlocker = getAssaultAdvanceBlocker(state);
+  if (assaultAdvanceBlocker) {
+    return reject(
+      assaultAdvanceBlocker.state,
+      assaultAdvanceBlocker.code,
+      assaultAdvanceBlocker.message,
+    );
   }
 
   let baseState = state;
@@ -2395,43 +2605,45 @@ function resumeChargeAfterOverwatchDecision(
       };
     }
 
-    const afterVolleyTrigger = checkAssaultAdvancedReactionTriggers(
-      resumedState,
-      'afterVolleyAttacks',
-      chargingUnitId,
-      targetUnitId,
-    );
-    if (afterVolleyTrigger) {
-      const playerIndex = afterVolleyTrigger.eligibleUnitIds.length > 0
-        ? findUnitPlayerIndex(resumedState, afterVolleyTrigger.eligibleUnitIds[0]) ?? -1
-        : -1;
+    if (volleyResult.targetCasualtiesInflicted > 0) {
+      const afterVolleyTrigger = checkAssaultAdvancedReactionTriggers(
+        resumedState,
+        'afterVolleyAttacks',
+        chargingUnitId,
+        targetUnitId,
+      );
+      if (afterVolleyTrigger) {
+        const playerIndex = afterVolleyTrigger.eligibleUnitIds.length > 0
+          ? findUnitPlayerIndex(resumedState, afterVolleyTrigger.eligibleUnitIds[0]) ?? -1
+          : -1;
 
-      const reactionState = setAwaitingReaction(resumedState, true, {
-        reactionType: afterVolleyTrigger.reactionId,
-        isAdvancedReaction: true,
-        eligibleUnitIds: afterVolleyTrigger.eligibleUnitIds,
-        triggerDescription: `Charge advanced reaction "${afterVolleyTrigger.reactionId}" triggered by charger "${chargingUnitId}"`,
-        triggerSourceUnitId: chargingUnitId,
-      });
+        const reactionState = setAwaitingReaction(resumedState, true, {
+          reactionType: afterVolleyTrigger.reactionId,
+          isAdvancedReaction: true,
+          eligibleUnitIds: afterVolleyTrigger.eligibleUnitIds,
+          triggerDescription: `Charge advanced reaction "${afterVolleyTrigger.reactionId}" triggered by charger "${chargingUnitId}"`,
+          triggerSourceUnitId: chargingUnitId,
+        });
 
-      return {
-        state: setAssaultAttackState(reactionState, {
-          ...attackState,
-          chargeStep: 'CHARGE_ROLL',
-          closestDistance: currentChargeDistance,
-        }),
-        events: [
-          ...events,
-          {
-            type: 'advancedReactionDeclared' as const,
-            reactionId: afterVolleyTrigger.reactionId,
-            reactionName: afterVolleyTrigger.reactionId,
-            reactingUnitId: '',
-            triggerSourceUnitId: chargingUnitId,
-            playerIndex,
-          },
-        ],
-      };
+        return {
+          state: setAssaultAttackState(reactionState, {
+            ...attackState,
+            chargeStep: 'CHARGE_ROLL',
+            closestDistance: currentChargeDistance,
+          }),
+          events: [
+            ...events,
+            {
+              type: 'advancedReactionDeclared' as const,
+              reactionId: afterVolleyTrigger.reactionId,
+              reactionName: afterVolleyTrigger.reactionId,
+              reactingUnitId: '',
+              triggerSourceUnitId: chargingUnitId,
+              playerIndex,
+            },
+          ],
+        };
+      }
     }
 
     const chargeResult = resolveChargeMove(
@@ -2497,7 +2709,17 @@ function executeOverwatchReaction(
 
   if (overwatchAttack.accepted) {
     currentState = overwatchAttack.state;
-    events.push(...overwatchAttack.events);
+    if (overwatchAttack.fired) {
+      events.push(...overwatchAttack.events);
+    }
+  }
+
+  if (!overwatchAttack.fired) {
+    return {
+      state: setAwaitingReaction(currentState, false),
+      events,
+      chargerWipedOut: false,
+    };
   }
 
   const resolved = resolveOverwatch(currentState, reactingUnitId, chargingUnitId);
@@ -2597,46 +2819,48 @@ function continueChargeFromAdvancedStepFour(
       };
     }
 
-    const afterVolleyTrigger = checkAssaultAdvancedReactionTriggers(
-      newState,
-      'afterVolleyAttacks',
-      chargingUnitId,
-      targetUnitId,
-    );
+    if (volleyResult.targetCasualtiesInflicted > 0) {
+      const afterVolleyTrigger = checkAssaultAdvancedReactionTriggers(
+        newState,
+        'afterVolleyAttacks',
+        chargingUnitId,
+        targetUnitId,
+      );
 
-    if (afterVolleyTrigger) {
-      const playerIndex = afterVolleyTrigger.eligibleUnitIds.length > 0
-        ? findUnitPlayerIndex(newState, afterVolleyTrigger.eligibleUnitIds[0]) ?? -1
-        : -1;
+      if (afterVolleyTrigger) {
+        const playerIndex = afterVolleyTrigger.eligibleUnitIds.length > 0
+          ? findUnitPlayerIndex(newState, afterVolleyTrigger.eligibleUnitIds[0]) ?? -1
+          : -1;
 
-      const reactionState = setAwaitingReaction(newState, true, {
-        reactionType: afterVolleyTrigger.reactionId,
-        isAdvancedReaction: true,
-        eligibleUnitIds: afterVolleyTrigger.eligibleUnitIds,
-        triggerDescription: `Charge advanced reaction "${afterVolleyTrigger.reactionId}" triggered by charger "${chargingUnitId}"`,
-        triggerSourceUnitId: chargingUnitId,
-      });
+        const reactionState = setAwaitingReaction(newState, true, {
+          reactionType: afterVolleyTrigger.reactionId,
+          isAdvancedReaction: true,
+          eligibleUnitIds: afterVolleyTrigger.eligibleUnitIds,
+          triggerDescription: `Charge advanced reaction "${afterVolleyTrigger.reactionId}" triggered by charger "${chargingUnitId}"`,
+          triggerSourceUnitId: chargingUnitId,
+        });
 
-      return {
-        state: setAssaultAttackState(reactionState, {
-          ...attackState,
-          chargeStep: 'CHARGE_ROLL',
-          closestDistance: currentChargeDistance,
-        }),
-        events: [
-          ...events,
-          {
-            type: 'advancedReactionDeclared',
-            reactionId: afterVolleyTrigger.reactionId,
-            reactionName: afterVolleyTrigger.reactionId,
-            reactingUnitId: '',
-            triggerSourceUnitId: chargingUnitId,
-            playerIndex,
-          } as GameEvent,
-        ],
-        errors: [],
-        accepted: true,
-      };
+        return {
+          state: setAssaultAttackState(reactionState, {
+            ...attackState,
+            chargeStep: 'CHARGE_ROLL',
+            closestDistance: currentChargeDistance,
+          }),
+          events: [
+            ...events,
+            {
+              type: 'advancedReactionDeclared',
+              reactionId: afterVolleyTrigger.reactionId,
+              reactionName: afterVolleyTrigger.reactionId,
+              reactingUnitId: '',
+              triggerSourceUnitId: chargingUnitId,
+              playerIndex,
+            } as GameEvent,
+          ],
+          errors: [],
+          accepted: true,
+        };
+      }
     }
 
     const chargeResult = resolveChargeMove(
@@ -2872,7 +3096,9 @@ function processSelectReaction(
 
     if (returnFireAttack.accepted) {
       newState = returnFireAttack.state;
-      events.push(...returnFireAttack.events);
+      if (returnFireAttack.fired) {
+        events.push(...returnFireAttack.events);
+      }
     }
 
     const deferredMisfires = resolveDeferredMisfiresFromAttackState(newState, dice);
@@ -2882,8 +3108,9 @@ function processSelectReaction(
     newState = deferredMisfires.state;
     events.push(...deferredMisfires.events);
 
-    // Declared reactions consume allotment even when no weapons can be brought to bear.
-    newState = markUnitReacted(newState, command.unitId);
+    if (returnFireAttack.fired) {
+      newState = markUnitReacted(newState, command.unitId);
+    }
     newState = finalizePendingReturnFireAttackState(newState);
     newState = setAwaitingReaction(newState, false);
     const finalized = finalizePendingShootingAttackStepEleven(newState, dice);
@@ -3785,7 +4012,10 @@ export function getValidCommands(state: GameState): string[] {
     return ['selectReaction', 'declineReaction'];
   }
 
-  const validCommands: string[] = ['endSubPhase', 'endPhase', 'placeTerrain', 'removeTerrain', 'selectWargearOption'];
+  const validCommands: string[] = ['placeTerrain', 'removeTerrain', 'selectWargearOption'];
+  if (!getAssaultAdvanceBlocker(state)) {
+    validCommands.push('endSubPhase', 'endPhase');
+  }
 
   switch (state.currentPhase) {
     case Phase.Start:

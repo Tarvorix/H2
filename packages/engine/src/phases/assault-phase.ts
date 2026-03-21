@@ -510,27 +510,29 @@ export function handleCharge(
   }
 
   if (options.skipAdvancedReactionChecks !== true) {
-    const afterVolleyTrigger = checkAssaultAdvancedReactionTriggers(
-      newState,
-      'afterVolleyAttacks',
-      chargingUnitId,
-      targetUnitId,
-    );
-    if (afterVolleyTrigger) {
-      return offerChargeAdvancedReaction(
+    if (volleyResult.targetCasualtiesInflicted > 0) {
+      const afterVolleyTrigger = checkAssaultAdvancedReactionTriggers(
         newState,
-        events,
-        afterVolleyTrigger.reactionId,
-        afterVolleyTrigger.eligibleUnitIds,
+        'afterVolleyAttacks',
         chargingUnitId,
         targetUnitId,
-        'CHARGE_ROLL',
-        setupResult.setupMoveDistance,
-        disordered,
-        getCurrentChargeDistance(newState, chargingUnitId, targetUnitId),
-        targetValidation.modelsWithLOS,
-        command.psychicPower,
       );
+      if (afterVolleyTrigger) {
+        return offerChargeAdvancedReaction(
+          newState,
+          events,
+          afterVolleyTrigger.reactionId,
+          afterVolleyTrigger.eligibleUnitIds,
+          chargingUnitId,
+          targetUnitId,
+          'CHARGE_ROLL',
+          setupResult.setupMoveDistance,
+          disordered,
+          getCurrentChargeDistance(newState, chargingUnitId, targetUnitId),
+          targetValidation.modelsWithLOS,
+          command.psychicPower,
+        );
+      }
     }
   }
 

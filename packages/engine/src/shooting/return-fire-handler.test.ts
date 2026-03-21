@@ -33,7 +33,7 @@ function createTestModel(id: string, overrides?: Partial<ModelState>): ModelStat
     maxWounds: 1,
     isDestroyed: false,
     modifiers: [],
-    equippedWargear: [],
+    equippedWargear: ['bolter'],
     isWarlord: false,
     characteristicModifiers: [],
     ...overrides,
@@ -318,6 +318,28 @@ describe('checkReturnFireTrigger', () => {
     const state = createTestGameState();
 
     const result = checkReturnFireTrigger(state, 'target', 'nonexistent');
+
+    expect(result.canReturnFire).toBe(false);
+    expect(result.eligibleUnitIds).toEqual([]);
+    expect(result.events).toHaveLength(0);
+  });
+
+  it('does not trigger when the target unit has no legal Return Fire shot', () => {
+    const state = createTestGameState({
+      armies: [
+        createTestArmy(0, [createTestUnit('attacker', {
+          models: [createTestModel('atk-m1', { position: { x: 10, y: 24 } })],
+        })]),
+        createTestArmy(1, [createTestUnit('target', {
+          models: [createTestModel('tgt-m1', {
+            position: { x: 36, y: 24 },
+            equippedWargear: [],
+          })],
+        })]),
+      ],
+    });
+
+    const result = checkReturnFireTrigger(state, 'target', 'attacker');
 
     expect(result.canReturnFire).toBe(false);
     expect(result.eligibleUnitIds).toEqual([]);

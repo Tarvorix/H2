@@ -230,7 +230,11 @@ export type {
 export { getPhaseUxStatus } from './phase-ux';
 
 // ─── Command Processor ──────────────────────────────────────────────────────
-export { processCommand, getValidCommands } from './command-processor';
+export {
+  processCommand,
+  getValidCommands,
+  validateReactionPlacementPreview,
+} from './command-processor';
 
 // ─── Movement Phase ──────────────────────────────────────────────────────────
 export {

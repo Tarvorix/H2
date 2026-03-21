@@ -6,16 +6,18 @@
 
 import type { GameState } from '@hh/types';
 import { PipelineHook } from '@hh/types';
-import { getTacticaEffectsForLegion } from '@hh/data';
-import type { DiceProvider, GameEvent } from '../types';
+import { findWeapon, getTacticaEffectsForLegion } from '@hh/data';
+import type { CommandResult, DiceProvider, GameEvent } from '../types';
 import {
   findUnit,
+  getDistanceBetween,
   getAliveModels,
   isUnitDestroyed,
   getUnitLegion,
 } from '../game-queries';
 import { applyLegionTactica } from '../legion';
 import { executeOutOfPhaseShootingAttack } from '../shooting/out-of-phase-shooting';
+import { handleShootingAttack } from '../phases/shooting-phase';
 
 export interface VolleyAttackResult {
   state: GameState;
@@ -33,6 +35,170 @@ interface SingleVolleyResult {
   casualtiesInflicted: number;
 }
 
+const FRAG_GRENADE_RANGE = findWeapon('frag-grenades') && 'range' in findWeapon('frag-grenades')!
+  ? (findWeapon('frag-grenades') as { range: number }).range
+  : 6;
+
+function unitHasFragGrenades(state: GameState, unitId: string): boolean {
+  const unit = findUnit(state, unitId);
+  if (!unit) {
+    return false;
+  }
+
+  return getAliveModels(unit).some((model) => model.equippedWargear.includes('frag-grenades'));
+}
+
+function executeNormalVolleyAttack(
+  state: GameState,
+  attackerUnitId: string,
+  targetUnitId: string,
+  dice: DiceProvider,
+  fullBS: boolean,
+) {
+  return executeOutOfPhaseShootingAttack(
+    state,
+    attackerUnitId,
+    targetUnitId,
+    dice,
+    {
+      forceSnapShots: !fullBS,
+      forceNoSnapShots: fullBS,
+      allowReturnFireTrigger: false,
+      suppressMoraleAndStatusChecks: true,
+      weaponFilter: ({ weaponProfile }) =>
+        weaponProfile.traits.some((trait) => trait.toLowerCase() === 'assault') &&
+        !weaponProfile.traits.some((trait) => trait.toLowerCase() === 'grenade'),
+    },
+  );
+}
+
+function executeFragGrenadeVolleyAttack(
+  state: GameState,
+  attackerUnitId: string,
+  targetUnitId: string,
+  dice: DiceProvider,
+  fullBS: boolean,
+) {
+  const attackerUnit = findUnit(state, attackerUnitId);
+  const targetUnit = findUnit(state, targetUnitId);
+  if (!attackerUnit || !targetUnit) {
+    return {
+      state,
+      events: [],
+      accepted: true,
+      fired: false,
+      casualtiesInflicted: 0,
+    };
+  }
+  const targetModels = getAliveModels(targetUnit);
+  let selectedModelId: string | null = null;
+  let selectedTargetPosition: { x: number; y: number } | null = null;
+  let bestDistance = Number.POSITIVE_INFINITY;
+
+  for (const model of getAliveModels(attackerUnit)) {
+    if (!model.equippedWargear.includes('frag-grenades')) {
+      continue;
+    }
+
+    for (const targetModel of targetModels) {
+      const distance = getDistanceBetween(model.position, targetModel.position);
+      if (distance <= FRAG_GRENADE_RANGE && distance < bestDistance) {
+        bestDistance = distance;
+        selectedModelId = model.id;
+        selectedTargetPosition = targetModel.position;
+      }
+    }
+  }
+
+  if (!selectedModelId || !selectedTargetPosition) {
+    return {
+      state,
+      events: [],
+      accepted: true,
+      fired: false,
+      casualtiesInflicted: 0,
+    };
+  }
+
+  return executeVolleyShootingCommand(
+    state,
+    targetUnitId,
+    {
+      type: 'declareShooting',
+      attackingUnitId: attackerUnitId,
+      targetUnitId,
+      weaponSelections: [{ modelId: selectedModelId, weaponId: 'frag-grenades' }],
+      blastPlacements: [{
+        sourceModelIds: [selectedModelId],
+        position: selectedTargetPosition,
+      }],
+      templatePlacements: [],
+    },
+    dice,
+    {
+      // Frag grenades are a distinct single-shot substitute attack, not a snap-shot volley.
+      forceSnapShots: false,
+      forceNoSnapShots: true,
+      allowReturnFireTrigger: false,
+      suppressMoraleAndStatusChecks: true,
+    },
+  );
+}
+
+function executeVolleyShootingCommand(
+  state: GameState,
+  targetUnitId: string,
+  command: import('@hh/types').DeclareShootingCommand,
+  dice: DiceProvider,
+  options: {
+    forceSnapShots: boolean;
+    forceNoSnapShots: boolean;
+    allowReturnFireTrigger: boolean;
+    suppressMoraleAndStatusChecks: boolean;
+  },
+) {
+  const priorShootingAttackState = state.shootingAttackState;
+  const targetBefore = findUnit(state, targetUnitId);
+  const aliveBefore = targetBefore ? getAliveModels(targetBefore).length : 0;
+  const result: CommandResult = handleShootingAttack(state, command, dice, {
+    allowOutOfPhaseAttack: true,
+    allowNonActiveAttacker: true,
+    ignoreRushedRestriction: true,
+    ignoreHasShotRestriction: true,
+    persistShootingAttackState: false,
+    consumeShootingAction: false,
+    ...options,
+  });
+
+  if (!result.accepted) {
+    return {
+      state: {
+        ...result.state,
+        shootingAttackState: priorShootingAttackState,
+      },
+      events: result.events,
+      accepted: false,
+      fired: true,
+      casualtiesInflicted: 0,
+    };
+  }
+
+  const restoredState = {
+    ...result.state,
+    shootingAttackState: priorShootingAttackState,
+  };
+  const targetAfter = findUnit(restoredState, targetUnitId);
+  const aliveAfter = targetAfter ? getAliveModels(targetAfter).length : 0;
+
+  return {
+    state: restoredState,
+    events: result.events,
+    accepted: true,
+    fired: true,
+    casualtiesInflicted: Math.max(0, aliveBefore - aliveAfter),
+  };
+}
+
 function unitHasNoVolleyAttacksModifier(state: GameState, unitId: string): boolean {
   const unit = findUnit(state, unitId);
   if (!unit) {
@@ -48,10 +214,15 @@ function unitHasNoVolleyAttacksModifier(state: GameState, unitId: string): boole
   );
 }
 
-function shouldVolleyAtFullBS(state: GameState, attackerUnitId: string): boolean {
+function shouldVolleyAtFullBS(
+  state: GameState,
+  attackerUnitId: string,
+  targetUnitId: string,
+): boolean {
   const attackingUnit = findUnit(state, attackerUnitId);
+  const targetUnit = findUnit(state, targetUnitId);
   const legion = getUnitLegion(state, attackerUnitId);
-  if (!attackingUnit || !legion) {
+  if (!attackingUnit || !targetUnit || !legion) {
     return false;
   }
 
@@ -69,6 +240,9 @@ function shouldVolleyAtFullBS(state: GameState, attackerUnitId: string): boolean
     weaponTraits: [],
     fireGroupDiceCount: 0,
     weaponSpecialRules: [],
+    isChargeTurn: true,
+    isChallenge: false,
+    enemyUnits: [targetUnit],
     entireUnitHasTactica: true,
   } as any);
 
@@ -105,21 +279,7 @@ function resolveSingleVolley(
     targetModelCount: targetModels.length,
   });
 
-  const attack = executeOutOfPhaseShootingAttack(
-    state,
-    attackerUnitId,
-    targetUnitId,
-    dice,
-    {
-      forceSnapShots: !fullBS,
-      forceNoSnapShots: fullBS,
-      allowReturnFireTrigger: false,
-      suppressMoraleAndStatusChecks: true,
-      weaponFilter: ({ weaponProfile }) =>
-        weaponProfile.traits.some((trait) => trait.toLowerCase() === 'assault'),
-    },
-  );
-
+  const attack = executeNormalVolleyAttack(state, attackerUnitId, targetUnitId, dice, fullBS);
   if (!attack.accepted) {
     return {
       state,
@@ -128,10 +288,41 @@ function resolveSingleVolley(
     };
   }
 
+  if (attack.fired) {
+    return {
+      state: attack.state,
+      events: [...events, ...attack.events],
+      casualtiesInflicted: attack.casualtiesInflicted,
+    };
+  }
+
+  if (!unitHasFragGrenades(state, attackerUnitId)) {
+    return {
+      state,
+      events,
+      casualtiesInflicted: 0,
+    };
+  }
+
+  const fragAttack = executeFragGrenadeVolleyAttack(
+    state,
+    attackerUnitId,
+    targetUnitId,
+    dice,
+    fullBS,
+  );
+  if (!fragAttack.accepted || !fragAttack.fired) {
+    return {
+      state,
+      events,
+      casualtiesInflicted: 0,
+    };
+  }
+
   return {
-    state: attack.state,
-    events: [...events, ...attack.events],
-    casualtiesInflicted: attack.casualtiesInflicted,
+    state: fragAttack.state,
+    events: [...events, ...fragAttack.events],
+    casualtiesInflicted: fragAttack.casualtiesInflicted,
   };
 }
 
@@ -170,7 +361,7 @@ export function resolveVolleyAttacks(
       chargingUnitId,
       targetUnitId,
       dice,
-      shouldVolleyAtFullBS(currentState, chargingUnitId),
+      shouldVolleyAtFullBS(currentState, chargingUnitId, targetUnitId),
     );
     currentState = chargerVolleyResult.state;
     chargerCasualtiesInflicted += chargerVolleyResult.casualtiesInflicted;
@@ -196,7 +387,7 @@ export function resolveVolleyAttacks(
       targetUnitId,
       chargingUnitId,
       dice,
-      shouldVolleyAtFullBS(currentState, targetUnitId),
+      shouldVolleyAtFullBS(currentState, targetUnitId, chargingUnitId),
     );
     currentState = targetVolleyResult.state;
     targetCasualtiesInflicted += targetVolleyResult.casualtiesInflicted;

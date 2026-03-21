@@ -2808,7 +2808,9 @@ describe('processCommand', () => {
 
     it('should resume charge after accepting Overwatch and skip defender snap-shot volley', () => {
       const chargerUnit = createUnit('charger-u1', [createModel('c-m0', 10, 10)]);
-      const targetUnit = createUnit('target-u1', [createModel('t-m0', 12, 10)]);
+      const targetUnit = createUnit('target-u1', [
+        { ...createModel('t-m0', 12, 10), equippedWargear: ['bolt-pistol'] },
+      ]);
       const state = createGameState({
         currentPhase: Phase.Assault,
         currentSubPhase: SubPhase.Charge,
@@ -2838,7 +2840,7 @@ describe('processCommand', () => {
         ],
       });
 
-      const dice = new FixedDiceProvider([6, 1]);
+      const dice = new FixedDiceProvider([1, 6, 1]);
       const result = processCommand(state, {
         type: 'selectReaction',
         unitId: 'target-u1',
@@ -3026,7 +3028,7 @@ describe('processCommand', () => {
       expect(offer.state.pendingReaction?.isAdvancedReaction).toBe(true);
       expect(offer.state.pendingReaction?.reactionType).toBe('ec-h-twisted-desire');
 
-      const declined = processCommand(offer.state, { type: 'declineReaction' }, new FixedDiceProvider([]));
+      const declined = processCommand(offer.state, { type: 'declineReaction' }, new FixedDiceProvider([6, 1]));
       expect(declined.accepted).toBe(true);
       expect(declined.events.some(event => event.type === 'chargeDeclared')).toBe(true);
     });
@@ -3087,7 +3089,9 @@ describe('processCommand', () => {
 
     it('offers an assault advanced reaction at charge step 4 and resumes to Overwatch after decline', () => {
       const chargerUnit = createUnit('charger-u1', [createModel('c-m0', 10, 10)]);
-      const targetUnit = createUnit('target-u1', [createModel('t-m0', 18, 10)]);
+      const targetUnit = createUnit('target-u1', [
+        { ...createModel('t-m0', 18, 10), equippedWargear: ['bolt-pistol'] },
+      ]);
       const state = createGameState({
         currentPhase: Phase.Assault,
         currentSubPhase: SubPhase.Charge,
@@ -3114,8 +3118,13 @@ describe('processCommand', () => {
     });
 
     it('offers an assault advanced reaction after volley attacks when applicable', () => {
-      const chargerUnit = createUnit('charger-u1', [createModel('c-m0', 10, 10)]);
-      const targetUnit = createUnit('target-u1', [createModel('t-m0', 18, 10)]);
+      const chargerUnit = createUnit('charger-u1', [
+        createModel('c-m0', 10, 10),
+        createModel('c-m1', 10, 11),
+      ]);
+      const targetUnit = createUnit('target-u1', [
+        { ...createModel('t-m0', 18, 10), equippedWargear: ['bolt-pistol'] },
+      ]);
       const state = createGameState({
         currentPhase: Phase.Assault,
         currentSubPhase: SubPhase.Charge,
@@ -3143,7 +3152,7 @@ describe('processCommand', () => {
       const declinedOverwatch = processCommand(
         declared.state,
         { type: 'declineReaction' },
-        new FixedDiceProvider([]),
+        new FixedDiceProvider([6, 6, 1]),
       );
 
       expect(declinedOverwatch.accepted).toBe(true);
@@ -3285,6 +3294,227 @@ describe('getValidCommands', () => {
     expect(commands).not.toContain('declareCharge');
     expect(commands).not.toContain('declareChallenge');
     expect(commands).not.toContain('resolveFight');
+  });
+
+  it('omits endSubPhase and endPhase during Fight when unresolved combats remain', () => {
+    const state = createGameState({
+      currentPhase: Phase.Assault,
+      currentSubPhase: SubPhase.Fight,
+      armies: [
+        createArmy(0, [
+          createUnit('active-u1', [createTacticalModel('active-m0', 10, 10)], { profileId: 'tactical-squad' }),
+        ]),
+        createArmy(1, [
+          createUnit('reactive-u1', [createTacticalModel('reactive-m0', 11, 10)], { profileId: 'tactical-squad' }),
+        ]),
+      ],
+      activeCombats: [{
+        combatId: 'combat-1',
+        activePlayerUnitIds: ['active-u1'],
+        reactivePlayerUnitIds: ['reactive-u1'],
+        activePlayerCRP: 0,
+        reactivePlayerCRP: 0,
+        activePlayerCasualties: [],
+        reactivePlayerCasualties: [],
+        challengeState: null,
+        resolved: false,
+        isMassacre: false,
+        aftermathResolvedUnitIds: [],
+      }] as any,
+    });
+
+    const commands = getValidCommands(state);
+
+    expect(commands).toContain('resolveFight');
+    expect(commands).not.toContain('endSubPhase');
+    expect(commands).not.toContain('endPhase');
+  });
+
+  it('omits endSubPhase and endPhase during Resolution when aftermath decisions remain', () => {
+    const state = createGameState({
+      currentPhase: Phase.Assault,
+      currentSubPhase: SubPhase.Resolution,
+      armies: [
+        createArmy(0, [
+          createUnit('active-u1', [createTacticalModel('active-m0', 10, 10)], { profileId: 'tactical-squad' }),
+        ]),
+        createArmy(1, [
+          createUnit('reactive-u1', [createTacticalModel('reactive-m0', 11, 10)], { profileId: 'tactical-squad' }),
+        ]),
+      ],
+      activeCombats: [{
+        combatId: 'combat-1',
+        activePlayerUnitIds: ['active-u1'],
+        reactivePlayerUnitIds: ['reactive-u1'],
+        activePlayerCRP: 2,
+        reactivePlayerCRP: 0,
+        activePlayerCasualties: [],
+        reactivePlayerCasualties: [],
+        challengeState: null,
+        resolved: true,
+        isMassacre: false,
+        aftermathResolvedUnitIds: [],
+      }] as any,
+    });
+
+    const commands = getValidCommands(state);
+
+    expect(commands).toContain('selectAftermath');
+    expect(commands).not.toContain('endSubPhase');
+    expect(commands).not.toContain('endPhase');
+  });
+});
+
+describe('assault advancement guards', () => {
+  it('rejects endSubPhase during Fight while unresolved combats remain', () => {
+    const state = createGameState({
+      currentPhase: Phase.Assault,
+      currentSubPhase: SubPhase.Fight,
+      armies: [
+        createArmy(0, [
+          createUnit('active-u1', [createTacticalModel('active-m0', 10, 10)], { profileId: 'tactical-squad' }),
+        ]),
+        createArmy(1, [
+          createUnit('reactive-u1', [createTacticalModel('reactive-m0', 11, 10)], { profileId: 'tactical-squad' }),
+        ]),
+      ],
+      activeCombats: [{
+        combatId: 'combat-1',
+        activePlayerUnitIds: ['active-u1'],
+        reactivePlayerUnitIds: ['reactive-u1'],
+        activePlayerCRP: 0,
+        reactivePlayerCRP: 0,
+        activePlayerCasualties: [],
+        reactivePlayerCasualties: [],
+        challengeState: null,
+        resolved: false,
+        isMassacre: false,
+        aftermathResolvedUnitIds: [],
+      }] as any,
+    });
+
+    const result = processCommand(state, { type: 'endSubPhase' }, new FixedDiceProvider([]));
+
+    expect(result.accepted).toBe(false);
+    expect(result.errors[0]?.code).toBe('FIGHT_COMBATS_REMAIN');
+  });
+
+  it('rejects endPhase during Resolution while aftermath decisions remain', () => {
+    const state = createGameState({
+      currentPhase: Phase.Assault,
+      currentSubPhase: SubPhase.Resolution,
+      armies: [
+        createArmy(0, [
+          createUnit('active-u1', [createTacticalModel('active-m0', 10, 10)], { profileId: 'tactical-squad' }),
+        ]),
+        createArmy(1, [
+          createUnit('reactive-u1', [createTacticalModel('reactive-m0', 11, 10)], { profileId: 'tactical-squad' }),
+        ]),
+      ],
+      activeCombats: [{
+        combatId: 'combat-1',
+        activePlayerUnitIds: ['active-u1'],
+        reactivePlayerUnitIds: ['reactive-u1'],
+        activePlayerCRP: 2,
+        reactivePlayerCRP: 0,
+        activePlayerCasualties: [],
+        reactivePlayerCasualties: [],
+        challengeState: null,
+        resolved: true,
+        isMassacre: false,
+        aftermathResolvedUnitIds: [],
+      }] as any,
+    });
+
+    const result = processCommand(state, { type: 'endPhase' }, new FixedDiceProvider([]));
+
+    expect(result.accepted).toBe(false);
+    expect(result.errors[0]?.code).toBe('AFTERMATH_PENDING');
+  });
+
+  it('does not consume Return Fire when no legal reaction shot exists', () => {
+    const state = createGameState({
+      currentPhase: Phase.Shooting,
+      currentSubPhase: SubPhase.Attack,
+      awaitingReaction: true,
+      shootingAttackState: {
+        attackerUnitId: 'a-u1',
+        targetUnitId: 'r-u1',
+        attackerPlayerIndex: 0,
+        targetFacing: null,
+        weaponAssignments: [],
+        fireGroups: [],
+        currentFireGroupIndex: 0,
+        currentStep: 'AWAITING_RETURN_FIRE',
+        accumulatedGlancingHits: [],
+        accumulatedCasualties: [],
+        unitSizesAtStart: { 'a-u1': 1, 'r-u1': 1 },
+        pendingMoraleChecks: [],
+        returnFireResolved: false,
+        isReturnFire: false,
+        modelsWithLOS: [],
+      } as any,
+      pendingReaction: {
+        reactionType: CoreReaction.ReturnFire,
+        eligibleUnitIds: ['r-u1'],
+        triggerDescription: 'test',
+        triggerSourceUnitId: 'a-u1',
+      },
+      armies: [
+        createArmy(0, [createUnit('a-u1', [createModel('a-m0', 24, 24)])]),
+        createArmy(1, [createUnit('r-u1', [createModel('r-m0', 36, 24)])]),
+      ],
+    });
+
+    const result = processCommand(state, {
+      type: 'selectReaction',
+      unitId: 'r-u1',
+      reactionType: 'ReturnFire',
+    }, new FixedDiceProvider([]));
+
+    expect(result.accepted).toBe(true);
+    expect(result.state.armies[1].reactionAllotmentRemaining).toBe(1);
+    expect(result.state.armies[1].units[0].hasReactedThisTurn).toBe(false);
+  });
+
+  it('does not consume Overwatch when no legal reaction shot exists', () => {
+    const state = createGameState({
+      currentPhase: Phase.Assault,
+      currentSubPhase: SubPhase.Charge,
+      awaitingReaction: true,
+      pendingReaction: {
+        reactionType: CoreReaction.Overwatch,
+        eligibleUnitIds: ['reactive-u1'],
+        triggerDescription: 'Charge declared',
+        triggerSourceUnitId: 'charger-u1',
+      },
+      assaultAttackState: {
+        chargingUnitId: 'charger-u1',
+        targetUnitId: 'reactive-u1',
+        chargeStep: 'AWAITING_OVERWATCH',
+        targetDoorwayId: undefined,
+        isDisordered: false,
+        closestDistance: 6,
+      } as any,
+      armies: [
+        createArmy(0, [
+          createUnit('charger-u1', [createTacticalModel('charger-m0', 10, 10)], { profileId: 'tactical-squad' }),
+        ]),
+        createArmy(1, [
+          createUnit('reactive-u1', [createModel('reactive-m0', 18, 10)]),
+        ]),
+      ],
+    });
+
+    const result = processCommand(state, {
+      type: 'selectReaction',
+      unitId: 'reactive-u1',
+      reactionType: 'Overwatch',
+    }, new FixedDiceProvider([4, 4]));
+
+    expect(result.accepted).toBe(true);
+    expect(result.state.armies[1].reactionAllotmentRemaining).toBe(1);
+    expect(result.state.armies[1].units[0].hasReactedThisTurn).toBe(false);
   });
 });
 

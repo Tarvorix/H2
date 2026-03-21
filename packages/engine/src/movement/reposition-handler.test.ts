@@ -9,6 +9,7 @@ import { FixedDiceProvider } from '../dice';
 import {
   checkRepositionTrigger,
   handleRepositionReaction,
+  validateRepositionReactionMoves,
 } from './reposition-handler';
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
@@ -607,5 +608,41 @@ describe('handleRepositionReaction', () => {
     ], new FixedDiceProvider([]));
 
     expect(result.accepted).toBe(true);
+  });
+});
+
+describe('validateRepositionReactionMoves', () => {
+  it('returns initiative-range validation errors before resolution', () => {
+    const reactiveUnit = createUnit('reactive-u1', [createModel('r-m0', 36, 24)]);
+    const state = createGameState({
+      activePlayerIndex: 0,
+      armies: [
+        createArmy(0, [createUnit('active-u1', [createModel('a-m0', 30, 24)])]),
+        createArmy(1, [reactiveUnit]),
+      ],
+    });
+
+    const errors = validateRepositionReactionMoves(state, 'reactive-u1', [
+      { modelId: 'r-m0', position: { x: 44, y: 24 } },
+    ]);
+
+    expect(errors.some((error) => error.code === 'EXCEEDS_INITIATIVE')).toBe(true);
+  });
+
+  it('returns no errors for a legal reposition preview', () => {
+    const reactiveUnit = createUnit('reactive-u1', [createModel('r-m0', 36, 24)]);
+    const state = createGameState({
+      activePlayerIndex: 0,
+      armies: [
+        createArmy(0, [createUnit('active-u1', [createModel('a-m0', 30, 24)])]),
+        createArmy(1, [reactiveUnit]),
+      ],
+    });
+
+    const errors = validateRepositionReactionMoves(state, 'reactive-u1', [
+      { modelId: 'r-m0', position: { x: 39, y: 24 } },
+    ]);
+
+    expect(errors).toEqual([]);
   });
 });
